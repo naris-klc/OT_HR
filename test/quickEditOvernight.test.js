@@ -136,12 +136,10 @@ test('สวิตช์สองตัวอยู่ในแถบเดี�
     'แถบสวิตช์ไม่ได้เรียงเป็นแถวแล้ว');
   assert.ok(!css.includes('.quick-edit .checks { gap: 14px; flex-direction: column; }'),
     'กฎเก่าที่วางซ้อนกันบนมือถือยังอยู่');
-  // And the locked เหมารายวัน times say why they are locked, once, under the
-  // two ticks rather than beside the mark. It is drawn only on a flat row now:
-  // its first line used to be the ข้ามคืน sentence, which stood on every
-  // correction, and an empty grey line under two ticks is not a note.
-  assert.ok(edit.includes('className="checks-note"'), 'ไม่มีบรรทัดบอกว่าทำไมแก้เวลาเหมารายวันเองไม่ได้');
-  assert.ok(edit.includes('{form.flatDaily && ('), 'บรรทัดใต้ช่องติ๊กไม่ได้ผูกกับเหมารายวัน');
+  // And the line under the ticks is still a line under the ticks — what it says
+  // now, and why only one sentence is left of it, is test/quickEditChecks.test.js.
+  assert.ok(edit.includes('className="checks-note"'), 'บรรทัดใต้ช่องติ๊กหายไปทั้งบรรทัด');
+  assert.ok(edit.includes('{relockedTimes && ('), 'บรรทัดใต้ช่องติ๊กไม่ได้ผูกกับเวลาที่ยังไม่ตรงกัน');
 });
 
 /**

@@ -9032,9 +9032,14 @@ table.mini tbody tr:hover { background: none; }
    off the panel; a rule for a class no component writes is the shape somebody
    re-uses for a control it was never reasoned about. `endsNextDay` is still
    derived and still saved; it is simply not drawn here any more. */
-/* Its own line, under the ticks. Said once for the box rather than beside the
-   mark: a disabled control with no reason given is the one somebody presses
-   twice and then reports as broken. */
+/* Its own line, under the ticks — and since 2026-09-10 it carries ONE sentence,
+   drawn on some flat rows and not all of them: *ใบนี้บันทึกไว้ 08:00–20:00 น.
+   ถ้ากดบันทึกจะแก้เวลาให้ด้วย*. The paragraph that opened it said the lock, the
+   nine-hour span and the eight on the form over again, all three of which are
+   already elsewhere on this panel; HR had it removed, as they had the same
+   paragraph removed from the filing form on 2026-09-09. `flex-basis: 100%` is
+   what keeps it on a line of its own under the two ticks rather than beside
+   them. */
 .quick-edit .checks-note {
   flex: 1 1 100%;
   font: 400 11.5px/1.45 var(--sans); color: var(--muted-2);

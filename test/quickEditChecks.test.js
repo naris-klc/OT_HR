@@ -44,7 +44,13 @@ import { DEFAULT_POLICY } from '../src/config/policy.js';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (p) => readFileSync(join(ROOT, p), 'utf8');
+/** Line endings normalised before anything below matches a character of this —
+    see `.gitattributes`, which records the day eight test files reported the
+    CHECKOUT they ran on rather than the code. `core.autocrlf` makes the working
+    copy CRLF on the machine this is developed on and LF on the Linux box that
+    serves it, and a multi-line assertion written for either one fails on the
+    other against a tree with nothing wrong in it. */
+const read = (p) => readFileSync(join(ROOT, p), 'utf8').replace(/\r\n/g, '\n');
 
 const queue = read('components/ApprovalQueue.jsx');
 const edit = queue.slice(queue.indexOf('function QuickEdit'), queue.indexOf('const OVER_CAP'));
@@ -232,8 +238,7 @@ test('ใบที่ติ๊กไม่พักเที่ยงไว้�
  * strip has something in it, and it survives the box it was written for.
  */
 test('ไม่เหลือช่องไหนเลย ต้องไม่วาดแถบเปล่า', () => {
-  assert.ok(edit.includes('{(mayTickNoBreak || mayTickFlatDaily) && (\r\n      <div className="checks">')
-    || edit.includes('{(mayTickNoBreak || mayTickFlatDaily) && (\n      <div className="checks">'),
+  assert.ok(edit.includes('{(mayTickNoBreak || mayTickFlatDaily) && (\n      <div className="checks">'),
   'แถบช่องติ๊กไม่ได้ถูกกั้นด้วยกฎของสองช่องที่เหลือ');
   const guard = edit.slice(edit.indexOf('{(mayTick'));
   const terms = guard.slice(0, guard.indexOf(') && (')).match(/mayTick\w+/g) || [];
@@ -241,13 +246,41 @@ test('ไม่เหลือช่องไหนเลย ต้องไม�
 });
 
 /**
- * และบรรทัดใต้ช่องติ๊กเหลือเรื่องเดียว. Its first line used to be the ข้ามคืน
- * sentence, which stood on every correction; what is left says only why a
- * เหมารายวัน day's two times are locked, so it is drawn only on a flat row. An
- * empty grey line under two ticks is not a note.
+ * บรรทัดใต้ช่องติ๊กเหลือประโยคเดียว — ประโยคที่ไม่มีที่อื่นบนจอพูดแทนได้.
+ *
+ * IT CARRIED THREE SENTENCES IN ONE DAY AND LOST TWO OF THEM. It opened with
+ * the ข้ามคืน line, which went with that box in the morning; then with
+ * *เหมารายวันล็อกเวลาไว้ที่ 08:00–17:00 น. (อยู่ที่ทำงาน 9 ชม. รวมพักเที่ยง 1 ชม.)
+ * แก้เวลาเองไม่ได้*, which HR had removed the same afternoon — every clause of it
+ * was already on this panel: the lock under the two boxes it greys, the eight
+ * hours in the green `FLAT_DAILY_SAY` Alert beside the figure they explain. The
+ * filing form deleted the same paragraph on 2026-09-09 (test/flatDaily.test.js
+ * owns that side, and it pins the import going with it, as this does here).
+ *
+ * WHAT IS LEFT HAS NOWHERE ELSE TO BE: the row behind the pop-up reads
+ * 08:00–20:00 while the boxes above read 08:00–17:00, and a reviewer who cannot
+ * see why would report the panel as showing the wrong request. It is therefore
+ * drawn on `relockedTimes` — the rows where the stored pair and the locked pair
+ * disagree — and not on every flat row, because a grey line saying nothing is
+ * the paragraph again in miniature.
  */
-test('บรรทัดใต้ช่องติ๊กขึ้นเฉพาะใบเหมารายวัน', () => {
-  assert.match(edit, /\{form\.flatDaily && \(\s*\r?\n\s*<div className="checks-note">/);
+test('บรรทัดใต้ช่องติ๊กเหลือเฉพาะประโยคที่บอกว่าเวลาเดิมจะถูกแก้ด้วย', () => {
+  assert.match(edit, /\{relockedTimes && \(\s*\n\s*<div className="checks-note">/);
+  assert.match(edit, /ใบนี้บันทึกไว้ \$\{entry\.startTime\}–\$\{entry\.endTime\} น\. ถ้ากดบันทึกจะแก้เวลาให้ด้วย/);
+  // และ relockedTimes ยังเป็น “ใบเหมา + เวลาที่เก็บไว้ไม่ตรงกับคู่ที่ล็อก”
+  assert.match(edit, /const relockedTimes = form\.flatDaily\s*\n?\s*&& \(form\.startTime !== entry\.startTime \|\| form\.endTime !== entry\.endTime\)/);
+
+  // ── สองประโยคที่ถูกถอดออก ต้องไม่กลับมา ──
   assert.ok(!edit.includes('“ข้ามคืน” คำนวณจากเวลาที่กรอก จึงติ๊กเองไม่ได้'),
-    'ประโยคอธิบายช่องติ๊กที่ถูกตัดออกไปแล้วยังอยู่');
+    'ประโยคข้ามคืนที่ถูกตัดออกไปแล้วยังอยู่');
+  // ถามกับ CODE ไม่ใช่กับคอมเมนต์ — คอมเมนต์เหนือบรรทัดนั้นอ้างประโยคที่มันบันทึก
+  // การตายของมันไว้ ซึ่งเป็นวิธีที่ไฟล์นี้ทั้งไฟล์เขียนถึงสิ่งที่ถูกถอดออก
+  const code = edit.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/เหมารายวันล็อกเวลาไว้ที่/.test(code),
+    'ย่อหน้าใต้ช่องติ๊กกลับมาแล้ว — บอกกฎเดียวกันซ้ำเป็นครั้งที่สอง');
+  // …และค่าคงที่ที่มันเป็นผู้อ่านคนเดียว ออกจาก import ไปด้วย ไม่ใช่ค้างเป็นชื่อ
+  // ที่คนอ่านคนถัดไปต้องหาเหตุผลให้ · ตัวเลข 9 ชม. เองไม่ถูกแตะ — test/flatDaily
+  // ยังตรึง FLAT_DAY_SPAN_MINUTES ไว้ที่เก้าชั่วโมงเหมือนเดิม
+  assert.ok(!/FLAT_DAY_SPAN_MINUTES/.test(queue.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'FLAT_DAY_SPAN_MINUTES ยังถูก import อยู่ ทั้งที่แผงนี้ไม่ได้วาดมันแล้ว');
 });

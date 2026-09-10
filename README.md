@@ -3899,6 +3899,20 @@ edits keeps its stored times rather than arming an "unsaved changes" prompt on a
 pop-up somebody opened to read. While the two disagree, the line under the ticks
 names the stored pair — *ใบนี้บันทึกไว้ 08:00–20:00 น. ถ้ากดบันทึกจะแก้เวลาให้ด้วย*.
 
+**That sentence is the whole of that line since 2026-09-10, and the line is drawn
+only while the two disagree.** It opened with *เหมารายวันล็อกเวลาไว้ที่ 08:00–17:00
+น. (อยู่ที่ทำงาน 9 ชม. รวมพักเที่ยง 1 ชม.) แก้เวลาเองไม่ได้* until HR had it
+removed — the same paragraph, for the same reason, that came off the filing form
+on 2026-09-09: every clause of it was already on the panel. The lock is under the
+two boxes it greys (left-aligned with เวลาเริ่ม since that afternoon); the eight
+hours are `FLAT_DAILY_SAY` in green beside the figure they explain; nine on the
+clock against eight on the form is that Alert and the preview. So the condition
+moved with the words: `relockedTimes` rather than `form.flatDaily`, because what
+is left is true of some flat rows and not of all of them, and a grey line saying
+nothing is the paragraph again in miniature. `FLAT_DAY_SPAN_MINUTES` left the
+component's imports with it — the span itself is untouched, and
+test/flatDaily.test.js still holds it to nine hours.
+
 **The tick is also in `แก้ไขชั่วโมง` on รออนุมัติ OT — 2026-09-07.** A request
 filed without it reads as an ordinary twelve-hour shift and pays like one, with
 nothing on the row saying a tick is missing; before this, putting that right
@@ -9935,6 +9949,16 @@ build แล้ว
   และเป็นสิ่งที่ทำให้บรรทัดถัดไปใต้ช่องใดช่องหนึ่งเป็น*บรรทัด* ไม่ใช่*ความเหลื่อม*
   · ตรึงไว้ใน `quickEditOvernight` พร้อมกฎ `.row` ที่ร่วมกัน เพราะข้อยกเว้นมีความหมาย
   เฉพาะตอนที่กฎร่วมยังไม่ตรงกับมัน
+  · **แล้วรอบที่สามในบ่ายเดียวกัน: ย่อหน้าใต้ช่องติ๊กถูกถอด** —
+  *เหมารายวันล็อกเวลาไว้ที่ 08:00–17:00 น. (อยู่ที่ทำงาน 9 ชม. รวมพักเที่ยง 1 ชม.)
+  แก้เวลาเองไม่ได้* · **ทุกวรรคของมันอยู่บนแผงนี้อยู่แล้ว** — การล็อกอยู่ใต้ช่องเวลา
+  สองช่องที่มันทำให้เทา (ชิดซ้ายตรงกับ เวลาเริ่ม ตั้งแต่บ่ายวันเดียวกัน) · แปดชั่วโมง ×1.5
+  คือป้ายเขียว `FLAT_DAILY_SAY` ข้างตัวเลขที่มันอธิบาย · เก้าบนนาฬิกา/แปดบนใบ อยู่บน
+  ป้ายนั้นกับผลคำนวณ · **ฟอร์มยื่นถอดย่อหน้าเดียวกันด้วยเหตุผลเดียวกันเมื่อ 2026-09-09**
+  · เหลือประโยคเดียวที่ไม่มีที่อื่นพูดแทนได้ — *ใบนี้บันทึกไว้ … ถ้ากดบันทึกจะแก้เวลา
+  ให้ด้วย* — และเงื่อนไขย้ายตามคำ: `relockedTimes` แทน `form.flatDaily` เพราะสิ่งที่
+  เหลือจริงกับใบเหมา*บางใบ* ไม่ใช่ทุกใบ · `FLAT_DAY_SPAN_MINUTES` ออกจาก import ของ
+  คอมโพเนนต์ไปด้วย (ตัวค่าคงที่ไม่ถูกแตะ — `flatDaily` ยังตรึงไว้ที่เก้าชั่วโมง)
   ✅ `npm test` **2449/2449** ผ่าน 2026-09-10 (เดิม 2448)
 
 - **แถบช่องติ๊กในแผง แก้ไขชั่วโมง บน รออนุมัติ OT เหลือสองช่อง และแต่ละช่องมีกฎของตัวเอง**

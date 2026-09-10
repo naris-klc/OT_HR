@@ -14,7 +14,7 @@ import {
 } from '@/lib/caps.js';
 import {
   MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
-  maySignFirstStep, isOwnRequest, FLAT_DAY_TIMES, FLAT_DAY_SPAN_MINUTES, isBirthdayWelfare,
+  maySignFirstStep, isOwnRequest, FLAT_DAY_TIMES, isBirthdayWelfare,
   humanHistory, isFlatDailyPosition, isCompanyOffDay, mayCorrectEntries,
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
@@ -3250,30 +3250,35 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
             (`publicEmployee` keeps `birthDate` off the roster they hold).
             Nobody is asked now. The date decides, and moving the date is what
             moves the answer — see the note in PATCH /api/entries/[id]. */}
-        {/* Once, for the box, rather than beside the mark: a disabled control
-            with no reason given is the thing somebody presses twice and then
-            reports as broken. The first sentence answers the question the tick
-            raises straight away — "did ticking that just move the times?" —
-            which since 2026-09-09 is answered YES, and the second says which
-            times were moved, because they are the ones on the signed sheet.
+        {/* WHAT NOTHING ELSE ON THE SCREEN SAYS — AND ONLY THAT, SINCE
+            2026-09-10.
 
-            THE SECOND IS THE ONE THAT EARNS ITS PLACE. The row behind this
-            pop-up still reads 08:00–20:00 while the boxes above read
-            08:00–17:00, and a reviewer who cannot see why would report the
+            The line opened with *เหมารายวันล็อกเวลาไว้ที่ 08:00–17:00 น. (อยู่ที่
+            ทำงาน 9 ชม. รวมพักเที่ยง 1 ชม.) แก้เวลาเองไม่ได้* until HR asked for
+            it to go, and every clause of it was already on this panel: the lock
+            is said under the two boxes it greys, a line above and left-aligned
+            with เวลาเริ่ม; the eight hours are the green `FLAT_DAILY_SAY` Alert
+            beside the figure it explains; nine-on-the-clock against
+            eight-on-the-form is that Alert and the preview's own arithmetic.
+            The filing form deleted the same paragraph on 2026-09-09 for the
+            same reason (see the note over `lock-note` in app/styles.css) — this
+            panel is two days behind it, as it was on the tick rules.
+
+            WHAT IS LEFT IS THE ONE CLAUSE WITH NOWHERE ELSE TO BE. The row
+            behind this pop-up still reads 08:00–20:00 while the boxes above
+            read 08:00–17:00, and a reviewer who cannot see why would report the
             panel as showing the wrong request. It is drawn on a row filed
             before the lock and on one the reviewer has just ticked, which are
             the same case: times the stored entry does not agree with yet.
 
-            IT IS DRAWN ONLY ON A เหมารายวัน ROW NOW. Its first line used to be
-            the ข้ามคืน sentence, which stood on every correction; with that box
-            gone the note has nothing to say about an ordinary shift, and an
-            empty grey line under two ticks is not a note. */}
-        {form.flatDaily && (
+            SO THE CONDITION IS `relockedTimes` AND NOT `form.flatDaily`. It was
+            the flag while the line led with the lock, which is true of every
+            flat row; what is left is true of some of them, and a grey line
+            saying nothing under a row where the times already agree is the
+            paragraph again in miniature. */}
+        {relockedTimes && (
           <div className="checks-note">
-            {`เหมารายวันล็อกเวลาไว้ที่ ${FLAT_DAY_TIMES.startTime}–${FLAT_DAY_TIMES.endTime} น. `}
-            {`(อยู่ที่ทำงาน ${FLAT_DAY_SPAN_MINUTES / 60} ชม. รวมพักเที่ยง 1 ชม.) แก้เวลาเองไม่ได้`}
-            {relockedTimes
-              && ` · ใบนี้บันทึกไว้ ${entry.startTime}–${entry.endTime} น. ถ้ากดบันทึกจะแก้เวลาให้ด้วย`}
+            {`ใบนี้บันทึกไว้ ${entry.startTime}–${entry.endTime} น. ถ้ากดบันทึกจะแก้เวลาให้ด้วย`}
           </div>
         )}
       </div>
