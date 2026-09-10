@@ -1705,16 +1705,40 @@ export default function ApprovalQueue({
                       {e.department?.nameTh || e.department?.name}
                     </div>
                   </td>
-                  {/* "16/08/2569" over "อา." — the date and the weekday, which
-                      is what a reviewer scans this column for: Saturday and
-                      Sunday are holidays, holidays pay at a different multiple,
-                      and "ส." beside a row is how the ×3 figure explains itself.
-                      The date used to be "16 ส.ค. 69" here and the long form
-                      elsewhere; one form now, and it is the same ten characters
-                      wide as the short one it replaced. */}
+                  {/* "ส.12/09/2569" — the weekday and the date, which is what a
+                      reviewer scans this column for: Saturday and Sunday are
+                      holidays, holidays pay at a different multiple, and "ส."
+                      beside a row is how the ×3 figure explains itself. The date
+                      used to be "16 ส.ค. 69" here and the long form elsewhere;
+                      one form now, and it is the same ten characters wide as the
+                      short one it replaced.
+
+                      ⚠ IT READ "16/08/2569" OVER "อา." — TWO LINES — UNTIL
+                      2026-09-11, when it was reported as *ความกว้างไม่สมดุล
+                      ตรงคอลัมน์ วันที่ ต้องการให้แสดง ส.12/09/2569 ไม่ให้ตกไป
+                      คนละบรรทัด*. The imbalance is real and it was never the
+                      date's doing: `th.when-col`'s 136px is measured against
+                      `ย้อนหลัง 365 วัน` in the tag below, and the date was
+                      spending 68 of it on a line of its own with the weekday
+                      spending a whole second line on two characters.
+
+                      THE ORDER IS ส. FIRST, and that is the half worth saying
+                      out loud. The card below 861px has run these two inline
+                      since it existed, but with "อา." AFTER the date; leading
+                      with it puts the thing that changes the pay rate at the
+                      start of the line the eye lands on, and the trailing dot
+                      does the separating so nothing has to sit between them.
+
+                      `.cell-sub th`, NOT `.cell-sub`. This line was mono, and
+                      IBM Plex Mono carries no Thai at all — so "ส." has been
+                      dropping to whatever font the system had, which is the one
+                      face on the page that is not IBM Plex Sans Thai Looped.
+                      That was survivable while it sat alone on its own line and
+                      is not survivable beside the date. The `.th` variant
+                      exists for exactly this and says so at its own rule. */}
                   <td className="when-col">
+                    <span className="cell-sub th when-day">{dayAbbr(e.workDate)}</span>
                     {thaiDate(e.workDate)}
-                    <div className="cell-sub">{dayAbbr(e.workDate)}</div>
                     {/* UNDER THE WEEKDAY, WHICH IS WHERE IT WAS ASKED FOR —
                         2026-09-09. The three lines are one reading: which day
                         the work was, what kind of day that was, and how far
