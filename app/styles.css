@@ -2831,6 +2831,13 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    in components/App.jsx and taken off at the first keystroke, so the red only
    ever means "you pressed เข้าสู่ระบบ and this was blank".
 
+   A TEXTAREA WEARS IT TOO — 2026-09-10, for รายละเอียดงานที่ทำ on บันทึก OT,
+   which is the same case one element down: that box is `required` and the
+   browser was answering an empty one with its own bubble, in its own words. The
+   selector below is all that had to learn the second element — the sentence, the
+   keystroke that clears it and the focus that follows the press are the login
+   screen's, copied on purpose. See `descriptionRefusal` in components/OtForm.jsx.
+
    It applies to `.field input` at the same specificity the base rule has, so
    ORDER is what makes it win — it must stay below the block above. See the
    note in memory about .dept-menu losing to .pick-menu for four rounds.
@@ -2844,7 +2851,9 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    is. Border-colour only — no fill. A wash behind a box somebody is about to
    type in makes it read as disabled, which is the opposite of the request. */
 .field input.invalid,
-.field input.invalid:focus {
+.field input.invalid:focus,
+.field textarea.invalid,
+.field textarea.invalid:focus {
   border-color: var(--invalid-line);
 }
 /* The sentence takes the cool red on the login panel ONLY, so the box and the
