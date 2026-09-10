@@ -15636,6 +15636,15 @@ table.mini tbody tr:hover { background: none; }
 .manual-rail-a:hover { background: var(--green-wash); color: var(--ink-2); }
 .manual-rail-i { width: 15px; height: 15px; flex: none; }
 
+/* THE TWO PARTS THAT BELONG TO THE PHONE, STOOD DOWN HERE — see the block at
+   900px. `display: contents` and not `display: flex`: the wrapper stops being a
+   box at all, so the headings and the links are still `.manual-rail`'s own flex
+   children and every rule above this line reaches them unchanged. Written the
+   other way round — the column rebuilt on the wrapper — the desktop rail would
+   have two places to keep in step for no gain. */
+.manual-rail-btn { display: none; }
+.manual-rail-list { display: contents; }
+
 /* ── THE SECTIONS ───────────────────────────────────────────────────────
    `:target` and not a scroll observer — the mark answers "which one did I jump
    to", which is a question with an exact answer, rather than "which one is most
@@ -16067,19 +16076,81 @@ table.mini tbody tr:hover { background: none; }
  */
 @media (max-width: 900px) {
   .manual-layout { grid-template-columns: minmax(0, 1fr); }
+
+  /* ── ⚠ IT WAS A STRIP OF CHIPS UNTIL 2026-09-10 ───────────────────────
+   *
+   * *แถบเลือกหัวข้อ ค่อนข้างใช้งานยาก*. The rail took the shape the app's own
+   * menu takes on a phone — a row of pills that scrolls sideways — and the
+   * reason that shape works for the menu is the reason it failed here: the
+   * menu is four fixed destinations and this is up to fifteen Thai titles.
+   * Measured on a 390px screen: the strip 366px wide, a chip 116px, so **two
+   * and a half of a พนักงาน's eight หัวข้อ were on screen** and the rest were
+   * behind a sideways swipe with no scrollbar, no fade and nothing saying how
+   * much was left. A chip was **32px** tall against the 44px a finger is drawn
+   * to. And `.manual-rail-h { display: none }` stood here, because a heading
+   * cannot be a chip in a row — so the one thing that would have told a reader
+   * where they were in a flat list of titles was switched off.
+   *
+   * SO IT OPENS DOWNWARDS, which is the axis a phone has. One full-width row
+   * says ไปที่หัวข้อ and how many there are; under it is the whole rail, the
+   * headings back and one 44px row per หัวข้อ. Nothing is hidden behind a
+   * gesture: the panel scrolls the way the page does when there are fifteen.
+   *
+   * IT STAYS STICKY, and that is what the closed row buys. A list that had to
+   * be scrolled back to is a list nobody uses twice; 50px at the top of the
+   * screen — 48 and its own hairline — is the price of the next หัวข้อ always
+   * being one press away, and it is 4px LESS than the 54px strip it replaces.
+   */
   .manual-rail {
     position: sticky; top: 62px; z-index: 3;
-    flex-direction: row; flex-wrap: nowrap; gap: 6px;
-    max-height: none; overflow-x: auto; overflow-y: hidden;
-    padding: 10px; border-radius: var(--radius-lg);
+    flex-direction: column; gap: 0;
+    max-height: none; overflow: visible;
+    padding: 0; border-radius: var(--radius-lg);
   }
-  /* The headings are a column's furniture. In a row they would be chips that
-     look pressable and are not. */
-  .manual-rail-h { display: none; }
+  /* Open, it is a panel over the page rather than a band across it — the same
+     thing the app bar does with `--shadow-soft`, for the same reason: the text
+     scrolling underneath has to read as being underneath. */
+  .manual-rail.open { box-shadow: 0 10px 24px -12px var(--shadow-soft); }
+
+  .manual-rail-btn {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; min-height: 48px; padding: 12px 14px;
+    background: none; border: 0; border-radius: var(--radius-lg);
+    color: var(--ink-2); text-align: left; cursor: pointer;
+  }
+  .manual-rail-btn-t { flex: 1; min-width: 0; font: 600 13px/1.4 var(--sans); }
+  /* The count is the honest part of a closed list: it is the only thing on the
+     row that says how much is behind it. */
+  .manual-rail-btn-n {
+    flex: none; font: 500 11.5px/1.4 var(--sans); color: var(--muted-3);
+  }
+  .manual-rail-chev {
+    flex: none; font: 400 13px/1 var(--sans); color: var(--muted-2);
+    transition: transform .18s ease;
+  }
+  .manual-rail.open .manual-rail-chev { transform: rotate(180deg); }
+
+  .manual-rail-list {
+    display: none;
+    padding: 2px 8px 8px;
+    border-top: 1px solid var(--line-soft);
+    /* Fifteen rows is taller than a phone. The panel scrolls, and `contain`
+       keeps that scroll off the page behind it — the same pair the desktop
+       rail uses when the window is short. */
+    max-height: min(58vh, 420px); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .manual-rail.open .manual-rail-list { display: block; }
+
+  .manual-rail-h { padding: 12px 10px 4px; }
   .manual-rail-a {
-    flex: none; white-space: nowrap; border-left: 0;
-    border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px;
+    min-height: 44px; padding: 8px 10px;
+    border-left: 0; font-size: 13.5px; color: var(--ink-2);
   }
+
+  /* The sticky rail is a second bar over the page, so a jump has to clear both
+     it and the app bar. Without this the หัวข้อ the reader pressed for lands
+     UNDER the row they pressed it on — 62 + 48 is where the page starts. */
+  .manual-sec { scroll-margin-top: calc(62px + 48px + 12px); }
   /* Both drawings still appear — that is the whole point of the pair — but
      stacked, because two mocks side by side inside a phone's own width is two
      unreadable mocks. */

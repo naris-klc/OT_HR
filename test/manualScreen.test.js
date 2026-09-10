@@ -547,6 +547,69 @@ test('the rail links, and a link lands below the app bar rather than under it', 
 });
 
 /**
+ * ── ⚠ ON A PHONE THE RAIL OPENS DOWNWARDS, AND MUST NOT GO BACK SIDEWAYS ────
+ *
+ * Reported on 2026-09-10 as *แถบเลือกหัวข้อ ค่อนข้างใช้งานยาก*. The rail wore
+ * the shape the app's own menu wears on a phone — pills in a row that scrolls
+ * sideways — and measured on a 390px screen that put **two and a half of a
+ * พนักงาน's eight หัวข้อ on screen** (the strip 366px, a chip 116px), with the
+ * other five or twelve behind a swipe that has no scrollbar and no edge fade.
+ * A chip was **32px** tall against the 44px a finger is drawn to, and the group
+ * headings were switched off, because a heading cannot be a chip in a row.
+ *
+ * The shape that replaced it is the one the phone has room for: a pinned row
+ * that opens the whole list downwards, headings and all. What is pinned here is
+ * every part of that a later tidy-up would undo one at a time — the button, the
+ * headings being back, the 44px row, and the jump clearing BOTH bars.
+ *
+ * AND THAT THE DESKTOP COLUMN IS UNTOUCHED, which is the half that has no
+ * screenshot to catch it: `display: contents` on the wrapper is what keeps the
+ * links direct children of `.manual-rail`, so every rule written for the column
+ * still reaches them. Replaced with `display: block` or `flex`, the desktop
+ * rail loses its own layout and nothing in this file would have said so.
+ */
+test('on a phone the หัวข้อ list opens downwards, and the desktop column is untouched', () => {
+  const css = read('app/styles.css');
+  const phone = css.slice(css.indexOf('@media (max-width: 900px) {'));
+  const block = phone.slice(0, phone.indexOf('@media (max-width: 640px)'));
+  /* Rules and not prose: the note over this block records the strip it
+     replaced, spelling included, which a plain search would read as the strip
+     still being here. */
+  const rules = codeOnly(block);
+
+  // The strip, in the two spellings that made it one.
+  assert.ok(!/\.manual-rail \{[^}]*flex-direction: row/.test(rules),
+    'the rail is a row again — eight Thai titles do not fit across a phone');
+  assert.ok(!/\.manual-rail \{[^}]*overflow-x: auto/.test(rules),
+    'the rail scrolls sideways again, which is the swipe that was reported');
+  assert.ok(!/\.manual-rail-h \{ display: none/.test(rules),
+    'the group headings are switched off again — the list is flat titles with no orientation');
+
+  // The pinned row that opens it, and the panel it opens.
+  assert.match(manual, /className="manual-rail-btn"/, 'the phone lost the row that opens the list');
+  assert.match(manual, /aria-expanded=\{open\}/, 'the button does not say whether it is open');
+  assert.match(manual, /onClick=\{\(\) => setOpen\(false\)\}/,
+    'pressing a หัวข้อ no longer puts the panel away, so it lands under the panel');
+  assert.match(block, /\.manual-rail\.open \.manual-rail-list \{ display: block; \}/);
+  assert.match(block, /max-height: min\(58vh, 420px\); overflow-y: auto; overscroll-behavior: contain;/,
+    'the panel no longer scrolls inside itself — fifteen หัวข้อ is taller than a phone');
+
+  // A row a finger is meant to hit.
+  assert.match(block, /\.manual-rail-a \{\n {4}min-height: 44px;/,
+    'the rows are back under 44px');
+
+  /* THE JUMP HAS TWO BARS TO CLEAR, NOT ONE. The rail is sticky under a sticky
+     app bar, so `calc(62px + 14px)` — right on a desktop, where the rail is
+     beside the text — lands the หัวข้อ underneath the row that was pressed. */
+  assert.match(block, /\.manual-sec \{ scroll-margin-top: calc\(62px \+ 48px \+ 12px\); \}/,
+    'a jump lands under the pinned row on a phone');
+
+  // …and the desktop column, which has no picture of itself in this file.
+  assert.match(css, /\.manual-rail-btn \{ display: none; \}\n\.manual-rail-list \{ display: contents; \}/,
+    'the wrapper became a box on the desktop, so the column lost its own layout');
+});
+
+/**
  * THE STEP NUMBERS ARE A CSS COUNTER.
  *
  * Written into the markup they drift the first time a step is inserted in the

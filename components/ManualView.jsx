@@ -43,11 +43,13 @@ import { useBackHandler } from './nav.jsx';
  *   is one account.
  *
  *   **The index did not go away, it stopped being a door.** `.manual-rail` is
- *   the same list of หัวข้อ, pinned beside the text on a desktop and a strip of
- *   chips above it on a phone, marking where the reader is. Jumping to a หัวข้อ
- *   still costs one press; what it no longer costs is a press to get BACK, and
- *   a reader who wanted the next หัวข้อ after this one no longer has to know
- *   its name to reach it.
+ *   the same list of หัวข้อ, pinned beside the text on a desktop and pinned
+ *   above it on a phone, marking where the reader is. Jumping to a หัวข้อ still
+ *   costs one press; what it no longer costs is a press to get BACK, and a
+ *   reader who wanted the next หัวข้อ after this one no longer has to know its
+ *   name to reach it. (It read "a strip of chips above it on a phone" until
+ *   2026-09-10 — see the ⚠ over `Rail`, which is where the phone shape and the
+ *   reason it changed are written down.)
  *
  * ── THE MENU ROW IS UNGATED; THE SECTIONS ARE GATED ────────────────────────
  *
@@ -3269,9 +3271,9 @@ function ManualPrint({ visible, ctx, picked, onPick, onClose }) {
  * ── THE RAIL ───────────────────────────────────────────────────────────────
  *
  * The same list twice over is what this is NOT: it is one list, drawn as a
- * column beside the text on a desktop and as a strip of chips above it on a
- * phone, which is the same two shapes the app's own menu takes and for the same
- * reason — a phone has no room for a column beside anything.
+ * column beside the text on a desktop and as a list that opens downwards from a
+ * pinned row on a phone — a phone has no room for a column beside anything, and
+ * (since 2026-09-10) no patience for one laid on its side either.
  *
  * PLAIN ANCHORS AND NOT BUTTONS. `#sec-approve` is a real address: it survives
  * a reload, it can be sent to somebody, and the browser's own smooth scroll
@@ -3284,25 +3286,80 @@ function ManualPrint({ visible, ctx, picked, onPick, onClose }) {
  * being too short to ever win — three things to get wrong in exchange for a
  * moving highlight on a page that is at most eighteen headings long. `:target`
  * marks the one the reader actually jumped to, which is the question they asked.
+ *
+ * ── ⚠ ON A PHONE IT WAS A STRIP OF CHIPS, AND IT WAS REPORTED AS UNUSABLE ───
+ *
+ * *แถบเลือกหัวข้อ ค่อนข้างใช้งานยาก*, 2026-09-10. Measured on a 390px screen
+ * before it was changed: the strip is 366px wide and 54px tall, a chip is 116px
+ * wide and **32px** tall, so **two and a half of the eight หัวข้อ a พนักงาน has
+ * were on screen** — ผู้ดูแลระบบ has fifteen — and the rest were reached by
+ * swiping a bar sideways with no scrollbar, no edge fade and nothing saying how
+ * much of it is left. The chips are also under the 44px a finger is drawn
+ * against, and the group headings were switched off (`.manual-rail-h`) because
+ * a heading cannot be a chip in a row, so the strip was a flat list of Thai
+ * titles with no orientation in it at all.
+ *
+ * IT IS THE SAME LIST, GIVEN THE AXIS THE PHONE HAS. A phone is short of width
+ * and long on height, so the list opens DOWNWARDS: one full-width row saying
+ * ไปที่หัวข้อ and how many there are, and under it the whole rail — headings
+ * back, one 44px row per หัวข้อ, all of them visible without a sideways swipe.
+ * The panel is what scrolls when there are fifteen, and it scrolls the way the
+ * page does.
+ *
+ * ONE PIECE OF STATE AND NOTHING ELSE. `open` draws a class; the links under it
+ * are the same plain anchors they are on a desktop, so the address, the back
+ * stack and the browser's own scrolling are all untouched — see the paragraph
+ * above. Pressing one closes the panel, which is the only thing the click
+ * handler does: it does not scroll, and it does not know which หัวข้อ was
+ * pressed. On a desktop the button is `display: none` and the panel is
+ * `display: contents`, so the column is the column it always was and this state
+ * is never true.
  */
 function Rail({ sections }) {
   const groups = GROUPS
     .map((label) => ({ label, items: sections.filter((s) => s.group === label) }))
     .filter((g) => g.items.length > 0);
 
+  /* Phone only — see the note above. Closed to begin with, because the หัวข้อ
+     the reader wants first is the one at the top of the page they just opened. */
+  const [open, setOpen] = useState(false);
+
   return (
-    <nav className="manual-rail no-print" aria-label="หัวข้อในคู่มือ">
-      {groups.map((g) => (
-        <React.Fragment key={g.label}>
-          <span className="manual-rail-h">{g.label}</span>
-          {g.items.map((s) => (
-            <a key={s.key} className="manual-rail-a" href={`#sec-${s.key}`}>
-              <Icon name={s.icon} className="manual-rail-i" />
-              <span>{s.title}</span>
-            </a>
-          ))}
-        </React.Fragment>
-      ))}
+    <nav className={`manual-rail no-print${open ? ' open' : ''}`} aria-label="หัวข้อในคู่มือ">
+      <button
+        type="button"
+        className="manual-rail-btn"
+        aria-expanded={open}
+        aria-controls="manual-rail-list"
+        onClick={() => setOpen((was) => !was)}
+      >
+        <span className="manual-rail-btn-t">ไปที่หัวข้อ</span>
+        <span className="manual-rail-btn-n">{sections.length} หัวข้อ</span>
+        {/* `▾` is the mark this app already uses for a list that opens
+            downwards (components/App.jsx), turned by the stylesheet rather than
+            swapped for a second character — one glyph cannot be half-turned,
+            and a transition can. */}
+        <span className="manual-rail-chev" aria-hidden="true">▾</span>
+      </button>
+      <div
+        id="manual-rail-list"
+        className="manual-rail-list"
+        /* The press that navigates is the anchor's; this only puts the panel
+           away, so the หัวข้อ lands on a screen with nothing over it. */
+        onClick={() => setOpen(false)}
+      >
+        {groups.map((g) => (
+          <React.Fragment key={g.label}>
+            <span className="manual-rail-h">{g.label}</span>
+            {g.items.map((s) => (
+              <a key={s.key} className="manual-rail-a" href={`#sec-${s.key}`}>
+                <Icon name={s.icon} className="manual-rail-i" />
+                <span>{s.title}</span>
+              </a>
+            ))}
+          </React.Fragment>
+        ))}
+      </div>
     </nav>
   );
 }
@@ -3352,7 +3409,8 @@ export default function ManualView({ user, navGroups = [], barSlots = [] }) {
         <p className="hint">
           คู่มือหน้านี้เปิดได้ทุกบทบาท และ<b>แสดงเฉพาะวิธีใช้งานที่บทบาทของคุณใช้ได้จริง</b> —
           คุณกำลังอ่านฉบับของ <b>{p.label}</b> ทั้งหมด {visible.length} หัวข้อ
-          เลื่อนอ่านต่อกันได้ทั้งหน้า หรือกดหัวข้อจากแถบด้านข้าง
+          เลื่อนอ่านต่อกันได้ทั้งหน้า หรือกระโดดไปทีละหัวข้อจากรายการหัวข้อ —
+          อยู่ข้าง ๆ บนคอมพิวเตอร์ และอยู่ใต้ปุ่ม <b>ไปที่หัวข้อ</b> บนมือถือ
         </p>
         {/* The way to paper, on the card that introduces the manual rather than
             on a หัวข้อ: what gets printed is a CHOICE OF หัวข้อ, so the control
