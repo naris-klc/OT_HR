@@ -66,6 +66,16 @@ next-env.d.ts
 # (shared, deliberate) is NOT ignored.
 .claude/settings.local.json
 
+# Worktrees, when the harness makes them rather than a person. Several agent
+# sessions edit this tree at once (AGENTS.md §ทรีนี้ไม่ใช่ของคุณคนเดียว) and the
+# answer to that is a checkout of your own — `git worktree add ../OT_HR-<task>`
+# puts it outside the repo and needs no line here, but Claude Code's own
+# worktree command puts it INSIDE, under this path. Unignored, one of those
+# surfaces a whole second copy of the tree in every other session's
+# `git status`, which is the exact list they are told to read to find out which
+# dirty files are not theirs.
+.claude/worktrees/
+
 # Scratch scripts an agent wrote while walking the app — one-off mongo
 # queries, mock-data builders, and `tokens.json`, which holds SIGNED JWTs
 # minted for real accounts so a headless browser could open the app as them.

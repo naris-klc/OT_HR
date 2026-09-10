@@ -13,6 +13,124 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 The project rules below are ours. The block above is Next.js's own and is
 rewritten by `next dev`; nothing here depends on it.
 
+## ทรีนี้ไม่ใช่ของคุณคนเดียว — Another agent is editing these files while you read this
+
+**Assume at every moment that another session has uncommitted work in this
+working tree.** Two or more agents run against this repository on branch `dev`
+at the same time, in separate processes that cannot see each other's turns.
+While this very section was being written on 2026-09-11, another session
+committed `d368f67` onto `dev` underneath it — nothing announced it, and the
+only reason it was noticed at all was a `git worktree list` printing a HEAD that
+had moved.
+
+**Take a baseline on your first turn**, before you touch anything:
+
+```bash
+git status --short
+```
+
+Everything in that list is somebody else's work. It is the only thing that will
+still tell you, an hour and forty edits later, which of the dirty files are
+yours.
+
+### Rules that hold in every tree
+
+- **`git add <path>`, one path at a time, only files you edited yourself.**
+  Never `git add -A`, never `git add .`. On 2026-08-26 a `git add -A` put 1185
+  files of somebody's scratch build dir into a commit about CSS.
+- **Never `git stash`** — not even to get a clean tree for one test run. On
+  2026-09-10 a `git stash push -u` took 55 files of another session's work off
+  the tree; that session then wrote its files again from its own context, and
+  `git stash pop` failed on the conflict. Nothing was lost, by luck and not by
+  method.
+- **Never `git checkout --`, `git restore`, `git reset --hard`, or a shell
+  redirect onto a file you did not write in this session.** The tree is not
+  yours to make clean.
+- **Commit the moment your own task is done — one commit per task, carrying
+  your files and nobody else's.** Work you leave sitting in the tree stops being
+  attributable within minutes: the next session cannot tell your half-finished
+  change from its own, and the documentation rule below is written per commit
+  for exactly this reason.
+- A dirty tree is the normal state here, and tidying it is not a favour.
+
+### For work bigger than a couple of files: take a worktree of your own
+
+`git worktree` gives you a checkout that no other session can write into, on a
+branch that no other session commits to. The recipe below was walked end to end
+on this laptop on 2026-09-11:
+
+```bash
+git worktree add ../OT_HR-<task> -b dev-<task> dev
+cd ../OT_HR-<task>
+cp ../OT_HR/.env .
+```
+
+Copying `.env` is not optional and not a mistake: it is git-ignored, so a new
+worktree has none, and the app, the tests that reach a database, and every
+`src/` script read it. `node_modules` is not checked out either, and `npm ci`
+for it is minutes of disk. A directory junction costs nothing and needs no
+administrator:
+
+```powershell
+New-Item -ItemType Junction -Path node_modules -Target ..\OT_HR\node_modules
+```
+
+Commit onto `dev-<task>` as often as you like. When the task is done, merge in
+the tree that has `dev` checked out — git will not let you move `dev` from
+anywhere else:
+
+```bash
+cd ../OT_HR && git merge --no-ff dev-<task>
+```
+
+**That merge lands in somebody else's dirty tree.** Both halves of what it does
+were walked on 2026-09-11:
+
+- Files nobody has open merge normally, uncommitted work elsewhere in the tree
+  and all.
+- A file that someone has uncommitted changes in stops the whole merge —
+  `error: Your local changes to the following files would be overwritten by
+  merge` — and nothing is written. **That refusal is correct and it is not
+  yours to override.** Not with stash, not with checkout, not with a reset.
+  Leave your branch where it is, say which file collided, and let the user
+  decide.
+
+**Take the junction out before you remove the worktree**, and take it out with
+a tool that unlinks rather than recurses — `Remove-Item -Recurse` on a junction
+can walk into the real `node_modules` and empty it:
+
+```powershell
+cmd /c rmdir "C:\Users\bcozf\Downloads\primus-ot\OT_HR-<task>\node_modules"
+```
+
+```bash
+git worktree remove ../OT_HR-<task> && git branch -d dev-<task>
+```
+
+Skip the unlink and `git worktree remove` fails on the junction with `Invalid
+argument`, having already deleted half the directory and its own bookkeeping —
+after which the path is neither a worktree nor gone, and `git worktree prune`
+plus a manual delete is what clears it.
+
+If your harness has a worktree command of its own (Claude Code has one), it
+still leaves you both steps above to do by hand, and it branches from
+`origin/main` unless it is told otherwise — which is the wrong base here. Its
+worktrees land in `.claude/worktrees/`, git-ignored since 2026-09-11 so that a
+worktree full of files does not surface in everybody else's `git status`.
+
+### What a worktree does not isolate
+
+- **The database.** Every tree reads the same `.env`, which points at the one
+  `mongod` HR is using. `npm run seed`, `npm run backup`, `npm run restore` and
+  every `migrate:` script reach across every worktree there is. File isolation
+  is all you bought.
+- **The ports.** The verify recipe below uses `-p 3001`; two sessions verifying
+  at once collide on it. Pick a port nobody is holding, and name the build
+  directory after your task — `VERIFY_DIST_DIR=.next-verify-<task>`, which
+  `.next-*/` already ignores.
+- **:3000 and the deploy.** Both belong to the main tree, and the deploy is the
+  user's call — see the section below before you go near either.
+
 ## What serves this app, and why you cannot check a change by looking at :3000
 
 **The production server is `next start` on 127.0.0.1:3000, serving `.next`.**
