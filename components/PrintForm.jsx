@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { api, hours, thaiDate, firstName, BUCKETS } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 import { formPrintStatuses, FORM_PRINT_SCOPE_SAY } from '@/lib/reports.js';
@@ -149,6 +149,70 @@ export function narrowedByPolicy(form, asked = '') {
 }
 
 /**
+ * ย่อ/กาง for one notice above the sheet, remembered in this browser only.
+ *
+ * THE HEADING NEVER FOLDS. It carries the count — ใบนี้มี 12 รายการที่ยังไม่อนุมัติ
+ * — and the count is the part that bears on whether the sheet is signed; what
+ * folds is the list of rows and the paragraph explaining them, which are read
+ * once and then only push the preview down the screen. ▲/▼ rather than ✕ for the
+ * reason `ot-holiday-fold` gives in README: the press folds, and a ✕ would
+ * promise a notice that does not come back on the next sheet.
+ *
+ * ONE KEY, holding the kinds that are folded (`pending,acting`), so folding the
+ * ผู้ทำแทน list is not a request to fold ยังไม่อนุมัติ as well. Absent key = all
+ * open, as the other folds store it. Read in a mount effect, never during render
+ * — the server has no localStorage.
+ */
+const NOTICE_FOLD_KEY = 'ot-f027-notice-fold';
+
+function foldedKinds() {
+  try {
+    return new Set((localStorage.getItem(NOTICE_FOLD_KEY) || '').split(',').filter(Boolean));
+  } catch {
+    return new Set(); // storage blocked: every notice opens, the safe way to be wrong
+  }
+}
+
+function FoldAlert({ kind, fold, head, bold = true, children }) {
+  const [folded, setFolded] = useState(false);
+  const bodyId = useId();
+
+  useEffect(() => { setFolded(foldedKinds().has(fold)); }, [fold]);
+
+  function toggle() {
+    const next = !folded;
+    setFolded(next);
+    try {
+      const kinds = foldedKinds();
+      if (next) kinds.add(fold);
+      else kinds.delete(fold);
+      if (kinds.size) localStorage.setItem(NOTICE_FOLD_KEY, [...kinds].join(','));
+      else localStorage.removeItem(NOTICE_FOLD_KEY);
+    } catch { /* the fold still applies to this sheet */ }
+  }
+
+  return (
+    <Alert kind={kind}>
+      <div className="alert-fold-row">
+        <div className="alert-fold-text" style={bold ? { fontWeight: 600 } : undefined}>{head}</div>
+        <button
+          type="button"
+          className="alert-fold"
+          aria-expanded={!folded}
+          aria-controls={bodyId}
+          aria-label={folded ? 'กางรายละเอียด' : 'ย่อรายละเอียด'}
+          title={folded ? 'กางรายละเอียด' : 'ย่อรายละเอียด'}
+          onClick={toggle}
+        >
+          {folded ? '▼' : '▲'}
+        </button>
+      </div>
+      <div id={bodyId} hidden={folded} style={{ marginTop: 4 }}>{children}</div>
+    </Alert>
+  );
+}
+
+/**
  * What this month has that the paper does not — said on the screen, never on
  * the sheet.
  *
@@ -191,10 +255,11 @@ export function FormNotices({ form, who = null, asked = '' }) {
           whether the sheet should be signed at all. */}
       {form.pending?.length > 0 && (
         <div className="no-print" style={{ marginBottom: 12 }}>
-          <Alert kind="warn">
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>
-              {of}ใบนี้มี {form.pending.length} รายการที่ยังไม่อนุมัติ และถูกนับรวมใน สรุปรวม แล้ว
-            </div>
+          <FoldAlert
+            kind="warn"
+            fold="pending"
+            head={<>{of}ใบนี้มี {form.pending.length} รายการที่ยังไม่อนุมัติ และถูกนับรวมใน สรุปรวม แล้ว</>}
+          >
             {form.pending.map((p) => (
               <div key={p.id} style={{ fontSize: 12.5 }}>
                 {thaiDate(p.workDate)} {p.from}–{p.to} · {hours(p.otHours)} ชม. ·
@@ -208,7 +273,7 @@ export function FormNotices({ form, who = null, asked = '' }) {
               “นโยบายการพิมพ์ใบขออนุมัติ OT” ในตั้งค่าระบบเป็น
               “เฉพาะรายการที่อนุมัติแล้ว”
             </div>
-          </Alert>
+          </FoldAlert>
         </div>
       )}
 
@@ -227,11 +292,12 @@ export function FormNotices({ form, who = null, asked = '' }) {
           the next question and the paper cannot answer it either. */}
       {form.notPrinted?.length > 0 && (
         <div className="no-print" style={{ marginBottom: 12 }}>
-          <Alert kind="warn">
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+          <FoldAlert kind="warn" fold="notPrinted"
+            head={<>
               {of}ใบนี้ไม่ได้พิมพ์ชั่วโมงหลังเที่ยงคืน {hours(form.notPrintedHours)} ชม.
               {' '}จาก {form.notPrinted.length} ช่วง — ยอดบนใบจึงน้อยกว่ายอดจริงเท่ากับจำนวนนี้
-            </div>
+            </>}
+          >
             {form.notPrinted.map((n, i) => (
               <div key={`${n.id}-${i}`} style={{ fontSize: 12.5 }}>
                 คืนวันที่ {thaiDate(n.workDate)} · ต่อเข้า {thaiDate(n.onDate)}
@@ -244,7 +310,7 @@ export function FormNotices({ form, who = null, asked = '' }) {
               {' '}สรุป OT ส่งบัญชี และไฟล์ CSV ทั้งสอง — <strong>ใบนี้กับรายงานเหล่านั้นจะไม่ตรงกัน</strong>
               {' '}เท่ากับจำนวนข้างต้น หากต้องการให้ตรงกัน ต้องแยกยื่นเป็นสองใบคนละวัน
             </div>
-          </Alert>
+          </FoldAlert>
         </div>
       )}
 
@@ -257,16 +323,20 @@ export function FormNotices({ form, who = null, asked = '' }) {
           know, and a count with no days does not say where to look. */}
       {form.unmarked?.length > 0 && (
         <div className="no-print" style={{ marginBottom: 12 }}>
-          <Alert kind="info">
-            <div>
+          <FoldAlert
+            kind="info"
+            fold="unmarked"
+            bold={false}
+            head={<>
               {of}ใบนี้รวม {form.unmarked.length} รายการที่สถานะยังเป็น
               “{unmarkedLabels}” — {unmarkedDates}
-            </div>
-            <div style={{ fontSize: 12, marginTop: 4 }}>
+            </>}
+          >
+            <div style={{ fontSize: 12 }}>
               รายการเหล่านี้พิมพ์ลงใบโดยไม่มีเครื่องหมายกำกับ · หัวหน้างานอนุมัติแล้ว
               ขั้นที่เหลือคือช่อง “เฉพาะฝ่ายบุคคล” ท้ายใบนี้
             </div>
-          </Alert>
+          </FoldAlert>
         </div>
       )}
 
@@ -293,10 +363,11 @@ export function FormNotices({ form, who = null, asked = '' }) {
       */}
       {form.acting?.length > 0 && (
         <div className="no-print" style={{ marginBottom: 12 }}>
-          <Alert kind="info">
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>
-              {of}เดือนนี้มี {form.acting.length} รายการที่บันทึกหรืออนุมัติโดยผู้ทำแทน
-            </div>
+          <FoldAlert
+            kind="info"
+            fold="acting"
+            head={<>{of}เดือนนี้มี {form.acting.length} รายการที่บันทึกหรืออนุมัติโดยผู้ทำแทน</>}
+          >
             {form.acting.map((a, i) => (
               <div key={i} style={{ fontSize: 12.5 }}>{actingLine(a)}</div>
             ))}
@@ -306,7 +377,7 @@ export function FormNotices({ form, who = null, asked = '' }) {
                 : 'ใบพิมพ์จะแสดงเฉพาะเครื่องหมาย (แทน) ในช่องรายละเอียดงาน '
                   + '· เปิด proxyNoteOnForm ในนโยบายการคำนวณ หากต้องการให้พิมพ์รายชื่อผู้ทำแทนลงในใบด้วย'}
             </div>
-          </Alert>
+          </FoldAlert>
         </div>
       )}
 
@@ -316,10 +387,11 @@ export function FormNotices({ form, who = null, asked = '' }) {
           the person holding both. */}
       {form.hidden?.length > 0 && (
         <div className="no-print" style={{ marginBottom: 12 }}>
-          <Alert kind="warn">
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>
-              {of}ซ่อน {form.hidden.length} รายการที่ซ้ำช่วงเวลาเดิม — ใบฟอร์มแสดงเฉพาะรายการที่กรอกล่าสุดของแต่ละช่วงเวลา
-            </div>
+          <FoldAlert
+            kind="warn"
+            fold="hidden"
+            head={<>{of}ซ่อน {form.hidden.length} รายการที่ซ้ำช่วงเวลาเดิม — ใบฟอร์มแสดงเฉพาะรายการที่กรอกล่าสุดของแต่ละช่วงเวลา</>}
+          >
             {form.hidden.map((h) => (
               <div key={h.id} style={{ fontSize: 12.5 }}>
                 {thaiDate(h.workDate)} {h.from}–{h.to} · {hours(h.otHours)} ชม. ·
@@ -330,7 +402,7 @@ export function FormNotices({ form, who = null, asked = '' }) {
               ชั่วโมงเหล่านี้ไม่ถูกนับใน สรุปรวม ของใบนี้ แต่ยังคงอยู่ในรายงานรายเดือนและไฟล์ส่งบัญชี ·
               หากเป็นรายการที่กรอกผิด ให้ยกเลิกรายการนั้นเพื่อให้ยอดทั้งสองฝั่งตรงกัน
             </div>
-          </Alert>
+          </FoldAlert>
         </div>
       )}
     </>
