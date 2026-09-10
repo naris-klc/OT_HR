@@ -2,12 +2,32 @@
 
 Files here are served from the site root: `public/logo.png` → `/logo.png`.
 
-## Two files, and only one of them is drawn
+## Three files, and only one of them is drawn
+
+> **This heading read "Two files, and only one of them is drawn" until
+> 2026-09-11**, when a second piece of supplied artwork arrived for a job the
+> first one cannot do — see the last row.
 
 | file | what it is | who draws it |
 |---|---|---|
 | `logo.png` | the supplied artwork — the Pm mark **over the word PRIMUS** | nothing. it is the SOURCE |
 | `logo-mark.png` | the Pm mark alone, cropped out of it, transparent | the sidebar, the mobile bar, the login panel |
+| `app icon.png` | a second supplied artwork, 619×596, for the **home-screen icon only** | nothing yet — see below |
+
+### `app icon.png` is not the badge, and is not wired up yet
+
+It exists for one job: the icon a phone shows after "add to Home Screen". That
+needs 512 px, and `logo.png` is 449×445 — under the bar Chrome sets for an
+installable icon, which is why a separate source was supplied rather than the
+badge artwork being reused.
+
+**Nothing reads this file today.** There is no `app/manifest.js` and no
+`apple-touch-icon`; the plan that adds them is
+[docs/plan-design-system.md](../docs/plan-design-system.md) §4ก, and the
+generator that turns this file into 192/512/maskable sizes is written there as
+work not yet done. **The badges on the web keep using `logo.png` /
+`logo-mark.png` and are not affected** — that boundary was set deliberately when
+the file was supplied.
 
 `logo-mark.png` and `app/icon.png` are both **generated** from `logo.png` by
 `node scripts/make-icon.js`. **Replace `logo.png` and run that script**, or the
