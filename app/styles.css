@@ -14339,6 +14339,15 @@ table.mini tbody tr:hover { background: none; }
      would loosen every row of every table in the app. */
   .stack-table tbody td.entry-desc { line-height: 1.75; padding-bottom: 4px; }
 
+  /* ITS CHIPS START AT THE LEFT, where the card's other chips do. The cell
+     right-aligns its value like every labelled field, and `บันทึกแทน · ชื่อ`
+     rode along to the right edge while `รอ HR` one field down sat at the left —
+     two pills on one card at opposite ends, asked about 2026-09-10. The chip is
+     on its own line under the description, not the value beside the label, so
+     it follows the chips rather than the text. `clear` keeps it off the floated
+     label's line when the description is empty. */
+  .stack-table tbody td.entry-desc .entry-mark { clear: left; text-align: left; }
+
   /* THE SENTENCE BECOMES THE CHECKBOX'S DESCRIPTION HERE, AND SO IT STACKS.
 
      On the desktop the bar is two things at the two ends of one line: the

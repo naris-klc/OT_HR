@@ -2023,9 +2023,11 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2486 tests
+and the engine know nothing about Next.js, so the whole suite — **2487 tests
 across 137 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2486 tests across 137 files" until the phone card's บันทึกแทน chip moved to
+the left edge later the same day — one case in `entryRowChrome`. It read
 "2470 tests across 136 files" until ot-hardening-and-slips was merged a THIRD
 time later the same day — five more commits, one new file
 (`otFormBlankDescription`) and sixteen cases across four files. The branch
@@ -11394,8 +11396,10 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2486 tests**, about 3 s, measured 2026-09-10 across 137
-  files, all green. It read **"2470 tests … across 136"** until
+- `npm test` — **2487 tests**, about 3 s, measured 2026-09-10 across 137
+  files, all green. It read **"2486 tests"** until the phone card's บันทึกแทน
+  chip moved to the left edge the same day — one case in `entryRowChrome`. It
+  read **"2470 tests … across 136"** until
   ot-hardening-and-slips was merged a THIRD time the same day — five more
   commits, one new file (`otFormBlankDescription`) and sixteen cases across
   four files. The branch's own **"2463 tests … across 136"** was measured on a

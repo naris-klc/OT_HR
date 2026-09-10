@@ -445,6 +445,15 @@ test('the one value that wraps gets a line-height, and only that one', () => {
   assert.match(css, /^td \{ padding: 12px;[^}]*font: 400 14px\/1\.5 var\(--sans\);/m);
 });
 
+test('on a phone card the description\'s chips start at the left, like สถานะ', () => {
+  // The cell right-aligns its value, and `บันทึกแทน · ชื่อ` went to the right
+  // edge with it while `รอ HR` one field down sat at the left. Asked 2026-09-10.
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(phone, /\.stack-table tbody td\.entry-desc \.entry-mark \{ clear: left; text-align: left; \}/);
+  // The description itself stays right-aligned with the card's other values.
+  assert.ok(!/td\.entry-desc \{[^}]*text-align/.test(phone), 'the whole cell went left, not only its chips');
+});
+
 test('the notice under the name has one place, whether or not there is a notice', () => {
   // Most months carry no policy warning, so this slot is empty on most people —
   // and `.alert` brought its own 12px top margin while `.audit-bar` brings 16,
