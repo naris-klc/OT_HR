@@ -455,9 +455,18 @@ test('a superseded filing is dropped before the ceiling counts it', async () => 
  * node --test does not), so this half is checked as text.
  */
 test('neither the screen nor the CSV queries per employee', () => {
-  for (const [file, loopStartsAt] of [
-    ['app/api/reports/monthly/[period]/route.js', 'const employees = ['],
-    ['app/api/exports/monthly.csv/route.js', 'const rows = ['],
+  /* The third column is how many `OtEntry.find(` calls the file is allowed.
+     ⚠ IT READ `1` FOR BOTH UNTIL 2026-09-11, and the count is a PROXY — what is
+     actually being defended is the assertion above it: no read may sit after the
+     loop starts. The monthly route grew a second read that morning for
+     `departmentCounts`, the figures beside the names in the แผนก dropdown, and
+     it is a read of the whole month rather than one per employee: the dropdown
+     is a REQUEST, so once ผลิต1 is picked the rows in hand are ผลิต1's and
+     seventeen of the eighteen figures have nothing left to count.
+     So the number moved and the property did not. */
+  for (const [file, loopStartsAt, allowed] of [
+    ['app/api/reports/monthly/[period]/route.js', 'const employees = [', 2],
+    ['app/api/exports/monthly.csv/route.js', 'const rows = [', 1],
   ]) {
     const src = readFileSync(join(ROOT, file), 'utf8');
 
@@ -466,11 +475,25 @@ test('neither the screen nor the CSV queries per employee', () => {
       !/\.find\(/.test(src.slice(src.indexOf(loopStartsAt))),
       `${file} issues a query per employee`,
     );
-    // One read of its own — the rows it prints. The ceiling's read is the
-    // helper's, and only when the filter is narrower than the ceiling's list.
+    // The rows it prints, and — on the monthly route — the department tally.
+    // The ceiling's read is the helper's, and only when the filter is narrower
+    // than the ceiling's list.
     const reads = [...src.matchAll(/OtEntry\.find\(/g)].length;
-    assert.equal(reads, 1, `${reads} OtEntry reads in ${file} — the helper owns the second`);
+    assert.equal(reads, allowed, `${reads} OtEntry reads in ${file} — the helper owns the ceiling's`);
+    // …and every one of them is above the loop, which is the rule the count is
+    // only standing in for.
+    for (const m of src.matchAll(/OtEntry\.find\(/g)) {
+      assert.ok(m.index < src.indexOf(loopStartsAt), `a read in ${file} is inside the per-employee loop`);
+    }
   }
+
+  // ⚠ AND THE SECOND READ IS NOT ISSUED ON EVERY LOAD. It is skipped whenever
+  // `?department=` was not sent, because the rows in hand are then already the
+  // whole month — so the widest reading of the biggest screen in the app still
+  // costs exactly the one read it always did.
+  const monthly = readFileSync(join(ROOT, 'app/api/reports/monthly/[period]/route.js'), 'utf8');
+  assert.match(monthly, /const forCounting = q\.department$/m);
+  assert.match(monthly, /^    : all;$/m);
 });
 
 /**
