@@ -3004,7 +3004,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    The sentence saying WHY goes underneath in .field-note — grey on its own
    reads as "broken" rather than as "not yours". */
 /* The third of the three, excluded for the same reason as the two above and
-   found by looking rather than by being reported: `ข้ามคืน` on the queue's
+   found by looking rather than by being reported: the second line on the queue's
    edit form is a `disabled readOnly` checkbox sitting in a `.field`, so this
    rule was painting `--neutral-wash` behind that tick as well. A disabled
    checkbox already reads as disabled — the browser greys the box itself. */
@@ -7986,7 +7986,8 @@ tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
 /* ไม่พักเที่ยง — A HIGHLIGHT, NOT A COLOURED LINE. Asked for on 2026-09-08 in
    those words: *ตรงไม่พักเที่ยงขอเป็นไฮไลท์สีแดง*.
 
-   WHY THIS FLAG IS LOUDER THAN THE ONE ABOVE IT. `.cell-note` carries ข้ามคืน
+   WHY THIS FLAG IS LOUDER THAN `.cell-note`. That class carried ข้ามคืน until
+   2026-09-10 and now carries
    in the same cell, and that one describes the shift — it says which day the
    end time belongs to and moves no figure by itself. ไม่พักเที่ยง is the one
    flag on the row that ADDS AN HOUR to the total beside it: the lunch hour is
@@ -9591,8 +9592,8 @@ table.mini tbody tr:hover { background: none; }
    drew. It greyed the ข้ามคืน read-out — the one tick in this strip that
    reported the two times instead of asking about them — and HR took that box
    off the panel; a rule for a class no component writes is the shape somebody
-   re-uses for a control it was never reasoned about. `endsNextDay` is still
-   derived and still saved; it is simply not drawn here any more. */
+   re-uses for a control it was never reasoned about. The field it reported was
+   removed later the same day, with the rest of ทำงานข้ามคืน. */
 /* Its own line, under the ticks — and since 2026-09-10 it carries ONE sentence,
    drawn on some flat rows and not all of them: *ใบนี้บันทึกไว้ 08:00–20:00 น.
    ถ้ากดบันทึกจะแก้เวลาให้ด้วย*. The paragraph that opened it said the lock, the
@@ -12033,7 +12034,7 @@ table.mini tbody tr:hover { background: none; }
      of the card to carry two characters. */
   .queue-table td.when-col .cell-sub { display: inline; margin: 0 0 0 5px; }
   /* ── AND `.filed-lead` STAYS A BLOCK, which is not an oversight ────────────
-     ข้ามคืน and "อา." were pulled inline because a block child of `span-col`
+     the second line and "อา." were pulled inline because a block child of `span-col`
      begins a third of the way into the card and lines up with nothing — the
      note under `.queue-table td.span-col .cell-note` has the measurement. This
      cell is the opposite case: `when` is the card's second grid column and its
@@ -12049,7 +12050,7 @@ table.mini tbody tr:hover { background: none; }
   /* Now that the two sit together, something has to say they are two facts. */
   .queue-table td.span-col::before { content: '· '; color: var(--muted-2); }
   /**
-   * ข้ามคืน AND ไม่พักเที่ยง GET THE SAME TREATMENT AS "อา." ABOVE, and for a
+   * ไม่พักเที่ยง GETS THE SAME TREATMENT AS "อา." ABOVE, and for a
    * worse version of the same reason.
    *
    * They are `<div>`s inside `span-col`, which on the card is grid columns 3–4
@@ -12061,7 +12062,7 @@ table.mini tbody tr:hover { background: none; }
    * and lining up with nothing above it or below it.
    *
    * Inline, it becomes the third fact in a sentence the card already reads as
-   * one — "15 ส.ค. 69 ส. · 08:00–17:00 · ข้ามคืน" — and the third edge is gone.
+   * one — "15 ส.ค. 69 ส. · 08:00–17:00 · ไม่พักเที่ยง" — and the third edge is gone.
    *
    * `white-space: normal` is re-declared because the cell is `nowrap` to keep
    * 08:00–17:00 from breaking at its dash, and that would otherwise be inherited
@@ -14418,7 +14419,7 @@ table.mini tbody tr:hover { background: none; }
 
   /* One tick-box per line. Side by side they were two 17px targets a few pixels
      apart with wrapped labels running between them — the row where "ไม่พักเที่ยง"
-     is pressed by mistake instead of "ทำงานข้ามคืน". */
+     is pressed by mistake instead of the tick beside it. */
   .form-checks { flex-direction: column; align-items: stretch; gap: 4px; }
   .form-checks .check { min-height: 44px; }
 

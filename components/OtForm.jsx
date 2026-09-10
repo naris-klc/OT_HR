@@ -5,7 +5,7 @@ import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS, normaliseDescription } from '@/src/config/policy.js';
 import {
   submissionWindow, zeroOtHoursAllowed,
-  endsNextDayFor, isFlatDailyPosition, isCompanyOffDay,
+  isFlatDailyPosition, isCompanyOffDay,
   FLAT_DAY_TIMES,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
@@ -48,7 +48,6 @@ const blank = () => ({
   workDate: today(),
   startTime: '17:00',
   endTime: '20:00',
-  endsNextDay: false,
   noBreakTaken: false,
   /** เหมารายวัน — see `flatDaily` on the model. Stored with the request. */
   flatDaily: false,
@@ -304,7 +303,6 @@ export default function OtForm({
         workDate: from.workDate,
         startTime: from.startTime,
         endTime: from.endTime,
-        endsNextDay: from.endsNextDay,
         noBreakTaken: from.noBreakTaken,
         flatDaily,
         description: from.description,
@@ -327,7 +325,7 @@ export default function OtForm({
          * saved, so the change lands in the entry's history with a `before` on
          * it like any other correction — see `ENTERED_FIELDS` in lib/entries.js.
          */
-        ...(flatDaily ? { ...FLAT_DAY_TIMES, endsNextDay: false } : null),
+        ...(flatDaily ? { ...FLAT_DAY_TIMES } : null),
       };
     }
     return blank();
@@ -453,31 +451,25 @@ export default function OtForm({
    * and then SHUT (`disabled={form.flatDaily}` on both boxes below), which is
    * HR's rule of that day: *ให้ล็อกเวลาไว้ที่ 08:00–17:00 ไม่มีการปรับเวลา*.
    */
+  /*
+   * THE PAIR IS THE WHOLE OF WHAT A TICK WRITES NOW. It wrote a third thing
+   * beside it until 2026-09-10 — the wrap flag, re-derived from the locked
+   * pair, because ticking เหมารายวัน over a 22:00–02:00 shift would otherwise
+   * have left a `true` standing against two times that no longer wrapped. There
+   * is no flag to leave behind.
+   */
   const tickDay = (k, on) => setForm((f) => (
     on
       ? {
         ...f,
         [k]: true,
         ...FLAT_DAY_TIMES,
-        /**
-         * AND THE PAIR ANSWERS ข้ามคืน TOO, since the tick for it came off this
-         * form on 2026-09-08. 08:00–17:00 is not an overnight, but the pair it
-         * REPLACES may have been: tick เหมารายวัน over a 22:00–02:00 shift and
-         * the flag would otherwise be left reading `true` against two times
-         * that no longer wrap, which is `TOO_LONG` out of the engine on a state
-         * nobody can now correct by hand.
-         *
-         * Asked rather than written as `false`, because this is the one place
-         * the flag is set from the locked pair and the answer should come from
-         * the same helper every other press on this form asks.
-         */
-        endsNextDay: endsNextDayFor(FLAT_DAY_TIMES.startTime, FLAT_DAY_TIMES.endTime),
       }
       : { ...f, [k]: false }
   ));
 
   /**
-   * เวลาเริ่ม — and ข้ามคืน with it.
+   * เวลาเริ่ม.
    *
    * IT HAD A เหมารายวัน BRANCH UNTIL 2026-09-09, and losing it is the whole of
    * what HR asked for that day. The branch derived the end from the start
@@ -486,29 +478,20 @@ export default function OtForm({
    * rule at all, because on a flat day this box does not open. Both boxes are
    * shut and hold `FLAT_DAY_TIMES` — see `tickDay` above.
    *
-   * So this handler is now the ORDINARY day's, and it is the one press it has
-   * always been: the start, and whether the pair it makes crosses midnight.
-   * ทำงานข้ามคืน stopped being a tick on this form on 2026-09-08 and became what
-   * the two times already say, the way it has been in `แก้ไขชั่วโมง` on
-   * รออนุมัติ OT since 2026-09-07. `setEnd` below is the other half; between
-   * them there is no press on this form that moves a time and leaves the flag
-   * behind.
+   * So this handler is now the ORDINARY day's, and it is one press setting one
+   * value. It carried a second until 2026-09-10 — `endsNextDayFor(v, f.endTime)`
+   * on every press, ทำงานข้ามคืน worked out from the pair rather than asked —
+   * and the whole of that went with the feature. A start that lands after the
+   * end is now simply a pair the server refuses, and it says why.
    */
-  const setStart = (v) => setForm((f) => (
-    { ...f, startTime: v, endsNextDay: endsNextDayFor(v, f.endTime) }
-  ));
+  const setStart = (v) => setForm((f) => ({ ...f, startTime: v }));
 
   /**
-   * เวลาสิ้นสุด — the second half of an ordinary shift, and ข้ามคืน with it.
+   * เวลาสิ้นสุด — the second half of an ordinary shift.
    *
-   * Shut on a เหมารายวัน day, where the pair is not typed at all. Everywhere
-   * else this is the second of the two presses that can make a shift wrap, and
-   * it asks the same `endsNextDayFor` the start box does rather than repeating
-   * the comparison.
+   * Shut on a เหมารายวัน day, where the pair is not typed at all.
    */
-  const setEnd = (v) => setForm((f) => (
-    { ...f, endTime: v, endsNextDay: endsNextDayFor(f.startTime, v) }
-  ));
+  const setEnd = (v) => setForm((f) => ({ ...f, endTime: v }));
 
   /**
    * ช่องติ๊กเหมารายวันแสดงเฉพาะเจ้าหน้าที่บริการ — HR, 2026-09-08.
@@ -561,11 +544,11 @@ export default function OtForm({
    * ช่องติ๊กไม่พักเที่ยง โชว์เฉพาะวันหยุดเสาร์อาทิตย์และวันหยุดของบริษัท
    * ไม่รวมวันเกิด — HR, 2026-09-08.
    *
-   * WHY THE ANSWER IS THE WORKDATE'S AND NOT THE SHIFT'S. The box is about the
+   * IT IS THE WORKDATE'S BECAUSE THERE IS NO OTHER DATE. The box is about the
    * hour at noon, and the noon it is about belongs to the day the request is
-   * filed under. An overnight shift crosses a second date, and that date's kind
-   * is not what HR named: they named *the day*, which on this form is
-   * วันที่ทำงาน. `endDateLabel` is a caption, not a second question.
+   * filed under — which since 2026-09-10 is the only day a request touches.
+   * The paragraph this replaces had to argue the point, because an overnight
+   * shift crossed a second date whose kind was not what HR named.
    *
    * THE EXCLUSION IS STRUCTURAL, NOT AN `if`. `isCompanyOffDay` is handed the
    * company calendar and `weekendDays` and nothing else — no birth date reaches
@@ -618,7 +601,7 @@ export default function OtForm({
     }, 250);
     return () => clearTimeout(timer.current);
   }, [
-    form.workDate, form.startTime, form.endTime, form.endsNextDay, form.noBreakTaken,
+    form.workDate, form.startTime, form.endTime, form.noBreakTaken,
     // เหมารายวัน moves an ANSWER and not only a label — it changes the hours the
     // split shows — so it re-asks. วันเกิด was on this list for the same reason
     // until 2026-09-08 and left with the tick; the birthday is answered by the
@@ -776,8 +759,6 @@ export default function OtForm({
    */
   const zeroHoursBlocks = Boolean(preview)
     && preview.totals.otHours <= 0 && !zeroOtHoursAllowed(form);
-  const overnight = form.endsNextDay;
-  const endDateLabel = overnight ? nextDay(form.workDate) : form.workDate;
 
   /**
    * The title, said once for both shapes this form takes.
@@ -1180,16 +1161,12 @@ export default function OtForm({
             disabled={form.flatDaily}
             onChange={setEnd}
           />
-          {/* THE ONLY PLACE THE WRAP IS ANNOUNCED, since ทำงานข้ามคืน stopped
-              being a tick on 2026-09-08 — so it says the word as well as the
-              day. `overnight` is `form.endsNextDay`, which `setStart`/`setEnd`
-              derive from these two times, so this cannot disagree with what is
-              posted. */}
-          {overnight && (
-            <span style={{ fontSize: 12, color: 'var(--amber)' }}>
-              ข้ามคืน · สิ้นสุดวัน{dayName(endDateLabel)}ถัดไป
-            </span>
-          )}
+          {/* AN AMBER `ข้ามคืน · สิ้นสุดวัน…ถัดไป` LINE STOOD HERE and was, from
+              2026-09-08, the only thing on the screen that said a shift wrapped.
+              It went with the feature on 2026-09-10. A pair that would once
+              have lit it is now refused by the server, in a sentence that says
+              to file one request per date — and a note here promising to
+              understand the wrap would be a promise this app no longer keeps. */}
         </div>
       </div>
 
@@ -1224,24 +1201,26 @@ export default function OtForm({
 
           วันเกิด IS NOT HERE ANY MORE — removed 2026-09-08, for the reason
           ทำงานข้ามคืน went in the note below: it was not a question the person
-          could answer. The server resolves the day from the stored วันเกิด
+          could answer differently. The server resolves the day from the stored วันเกิด
           whatever the box said, so a tick either agreed with an answer already
           given or was refused for disagreeing with it. It is reported now, above
           the split, instead of being asked here.
 
-          ทำงานข้ามคืน IS NOT HERE ANY MORE — removed 2026-09-08. It was never a
-          question the person could answer differently from the two times above
-          it: the engine accepts exactly one value of `endsNextDay` per pair and
-          throws on the other, so every tick of it was either redundant or a
-          server error reading "A single session cannot exceed 24 hours". It is
-          computed now, on every press that moves a time, from `endsNextDayFor`
-          — the same treatment `แก้ไขชั่วโมง` on รออนุมัติ OT gave it on
-          2026-09-07, except that panel keeps a greyed box to report the answer
-          and this form says it beside เวลาสิ้นสุด instead, where the times are.
+          ทำงานข้ามคืน WENT FROM THIS STRIP ON 2026-09-08 AND FROM THE APP ON
+          2026-09-10. The tick came off first because it was never a question
+          the person could answer differently from the two times above it — the
+          engine took exactly one value per pair and threw on the other, so
+          every press of it was redundant or a server error. What was left was
+          a field nobody typed and an amber line beside เวลาสิ้นสุด, and HR
+          asked for that to go too: *เคลียร์ทุกอย่างที่เกี่ยวกับฟีเจอร์ ทำงาน
+          ข้ามคืน ออกจากระบบ ทั้งหมด*.
 
-          The one thing it cost: a 17:00 → next-day 20:00 shift, twenty-seven
-          hours, can no longer be filed. The engine refused it as `TOO_LONG`
-          before this, so nothing that used to save has stopped saving. */}
+          WHAT IT COSTS, SAID PLAINLY, because this half is real where the
+          2026-09-08 note's was not. A 17:00–02:00 shift used to save and no
+          longer does; it is two requests now, one per date. The note here read
+          *"nothing that used to save has stopped saving"* while that was
+          true — the tick only ever reached a 27-hour shift the engine already
+          refused — and it stopped being true on 2026-09-10. */}
       {/* AND THE STRIP ITSELF GOES WHEN BOTH ARE WITHHELD, which any ordinary
           Tuesday reaches: no เหมารายวัน (not a เจ้าหน้าที่บริการ ตำแหน่ง) and no
           ไม่พักเที่ยง (a working day). An empty 14px band under the time boxes
@@ -1453,7 +1432,6 @@ export default function OtForm({
               <li key={o.id}>
                 <span className="when">
                   {thaiDate(o.workDate)} · {o.startTime}–{o.endTime}
-                  {o.endsNextDay && ' (ข้ามคืน)'}
                 </span>
                 <StatusChip status={o.status} />
                 {/* Only the minute rule has a span to report. */}
@@ -1678,7 +1656,7 @@ function BatchResult({ results, nameOf, form, onDone, onRetryFailed }) {
     <div className="card">
       <h2>สรุปผลการบันทึกแทน</h2>
       <div className="hint" style={{ marginBottom: 12 }}>
-        {form.workDate} · {form.startTime}–{form.endTime}{form.endsNextDay ? ' (ข้ามคืน)' : ''}
+        {form.workDate} · {form.startTime}–{form.endTime}
         {form.description ? ` · ${form.description}` : ''}
       </div>
 
@@ -1732,12 +1710,6 @@ function BatchResult({ results, nameOf, form, onDone, onRetryFailed }) {
   );
 }
 
-function nextDay(dateStr) {
-  if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d) + 86400000).toISOString().slice(0, 10);
-}
-
 /**
  * Did the engine make this day a holiday because it is the filer's birthday?
  *
@@ -1748,11 +1720,11 @@ function nextDay(dateStr) {
  * what the server resolved for this exact session, so the note appears when, and
  * only when, the hours in the columns above got there that way.
  *
- * Every date the session touches, `workDate` included. Between 2026-08-31 and
- * 2026-09-03 the first of those was refused outright before this was read, so
- * all it could catch was the tail of an overnight shift; filing one's own
- * birthday is the ordinary case again, and this is what explains the columns to
- * somebody who did not tick the box. Unchanged either way, because it answers
+ * The session's one date. Between 2026-08-31 and 2026-09-03 that date was
+ * refused outright before this was read, so all this could catch was the tail
+ * of an overnight shift running into a birthday; filing one's own birthday is
+ * the ordinary case again, and overnight shifts stopped existing on
+ * 2026-09-10. Unchanged either way, because it answers
  * one question — "did a birthday put hours in the วันหยุด columns" — and which
  * rule is speaking is decided where the note is drawn.
  */

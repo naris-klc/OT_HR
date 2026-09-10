@@ -122,13 +122,21 @@ test('a birthday is a holiday for that person, so it counts here too', () => {
   assert.equal(weekdayOtRefusal(DAILY, result), null);
 });
 
-test('a shift crossing midnight into a holiday is refused whole, and says so', () => {
-  // Tuesday 11 Aug 22:00 → วันแม่ 02:00: both buckets in one session.
-  const mixed = run({
-    workDate: '2026-08-11', startTime: '22:00', endTime: '02:00', endsNextDay: true,
-  });
-  assert.ok(mixed.buckets[BUCKETS.OT15_WEEKDAY] > 0, 'the Tuesday half is weekday OT');
-  assert.ok(mixed.buckets[BUCKETS.OT3_HOLIDAY] > 0, 'the วันแม่ half is holiday OT');
+test('an entry with hours in both kinds of bucket is refused whole, and says so', () => {
+  /**
+   * THE ENGINE CANNOT PRODUCE THIS ANY MORE, AND THE RULE STILL HAS TO HANDLE IT.
+   *
+   * It was a midnight crossing — Tuesday 11 Aug 22:00 → วันแม่ 02:00, the
+   * weekday half and the holiday half in one session — until 2026-09-10, when
+   * ทำงานข้ามคืน was removed and a session stopped being able to touch two
+   * dates. One date is one kind of day, so no computation reaches this branch.
+   *
+   * SO THE RESULT IS BUILT BY HAND, which is the honest way to test it now.
+   * `weekdayOtRefusal` reads a stored `buckets` object and there are entries in
+   * the database, filed before that day, that carry exactly this shape — the
+   * sentence they get when somebody re-reads them has to go on being right.
+   */
+  const mixed = { buckets: { [BUCKETS.OT15_WEEKDAY]: 2, [BUCKETS.OT3_HOLIDAY]: 2 } };
 
   const message = weekdayOtRefusal(NONE, mixed);
   assert.ok(message, 'refused, because part of it is weekday OT');

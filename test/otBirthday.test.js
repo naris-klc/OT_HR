@@ -223,64 +223,58 @@ test('วันเกิดของคนหนึ่งไม่ใช่ว�
   assert.equal(colleague.buckets[BUCKETS.OT15_WEEKDAY], 3);
 });
 
-// ── overnight: two holiday segments, two different reasons ──────────────────
-
-test('วันเกิดวันศุกร์ ทำงาน 17:00 ข้ามคืนไปเสาร์ 07:00 — คนละช่อง คนละเหตุผล', () => {
-  const session = {
-    workDate: '2026-08-07', startTime: '17:00', endTime: '07:00', endsNextDay: true,
-  };
+/**
+ * A TEST STOOD HERE AND CANNOT BE WRITTEN ANY MORE — 2026-09-10.
+ *
+ * *วันเกิดวันศุกร์ ทำงาน 17:00 ข้ามคืนไปเสาร์ 07:00 — คนละช่อง คนละเหตุผล* was
+ * the sharpest case for `applyBirthdayTiers` counting PER DATE: the Friday half
+ * was the first seven hours of the filer's own birthday and went ×1.5 whole,
+ * while the Saturday half belonged to nobody's birthday and was cut by the
+ * clock into ×3. Two rows, identical on paper before 2026-09-08, told apart by
+ * `dayReason` after it.
+ *
+ * No session reaches a second date now, so the two halves are two requests and
+ * each is answered on its own. What the per-date accumulator still guarantees
+ * is the half below: a birthday's count starts at nought and is spent by the
+ * one request that date may carry (หนึ่งวัน หนึ่งใบ).
+ */
+test('วันเกิดวันศุกร์ ทำงาน 17:00–23:00 — เจ็ดชั่วโมงแรกของวันเกิด อยู่ ×1.5 ทั้งใบ', () => {
+  const session = { workDate: '2026-08-07', startTime: '17:00', endTime: '23:00' };
   const r = run(session, { birthDate: '1994-08-07' });
 
-  assert.deepEqual(sessionDates(session), ['2026-08-07', '2026-08-08']);
+  assert.deepEqual(sessionDates(session), ['2026-08-07']);
+  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 6, 'หกชั่วโมง ยังไม่ถึงเพดานแปดชั่วโมงแรก');
+  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 0);
+  assert.equal(r.segments.every((x) => x.date === '2026-08-07'), true);
+  assert.equal(r.segments.every((x) => x.dayReason === 'birthday'), true);
+});
 
-  const friday = r.segments.filter((s) => s.date === '2026-08-07');
-  const saturday = r.segments.filter((s) => s.date === '2026-08-08');
-  assert.equal(friday.length, 1);
-  assert.equal(saturday.length, 1);
-
-  /**
-   * นับใหม่ทุกวันที่ — และนี่คือที่ที่มันเห็นได้ชัดที่สุด.
-   *
-   * ฝั่งศุกร์คือ 7 ชม. แรกของวันเกิด จึงอยู่ ×1.5 ทั้งฝั่ง ส่วนฝั่งเสาร์ไม่ใช่
-   * วันเกิดของใคร กฎนาฬิกาของวันหยุดจึงตัดสินตามเดิม เจ็ดชั่วโมงหลังเที่ยงคืนอยู่
-   * นอกเวลางาน จึงเป็น ×3 — ตัวเลขรวมเท่าเดิมกับที่เคยเป็นก่อน 2026-09-08 แต่
-   * มาจากคนละเหตุผลกันคนละครึ่ง
-   *
-   * ทั้งสองแถวเคยเป็น ot3_holiday เหมือนกันจนแยกไม่ออกบนกระดาษ ตอนนี้แยกออกได้
-   * ตั้งแต่ในช่อง
-   */
-  assert.equal(friday[0].bucket, BUCKETS.OT15_HOLIDAY);
-  assert.equal(saturday[0].bucket, BUCKETS.OT3_HOLIDAY);
-  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 7);
-  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 7);
-  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 0);
-
-  // Arrived there by different rules. Only the Friday half moves if HR turns
-  // the birthday rule off again, which is why the reason is recorded.
-  assert.equal(friday[0].dayReason, DAY_REASONS.BIRTHDAY);
-  assert.equal(saturday[0].dayReason, DAY_REASONS.WEEKEND);
-
-  // Example D from the requirements is this same session for somebody whose
-  // birthday it is not: 7 h ×1.5 + 7 h ×3.
-  const ordinary = run(session, { birthDate: null });
-  assert.equal(ordinary.buckets[BUCKETS.OT15_WEEKDAY], 7);
-  assert.equal(ordinary.buckets[BUCKETS.OT3_HOLIDAY], 7);
+test('กะที่ข้ามคืนออกไปจากวันเกิด ยื่นไม่ได้แล้ว', () => {
+  assert.throws(
+    () => run(
+      { workDate: '2026-08-07', startTime: '17:00', endTime: '07:00' },
+      { birthDate: '1994-08-07' },
+    ),
+    (e) => e.code === 'END_BEFORE_START',
+  );
 });
 
 // ── the map is the contract ─────────────────────────────────────────────────
 
 test('dayTypes ที่ไม่มีวันที่ที่ engine ต้องใช้ — ต้อง throw ไม่ใช่เดาว่าเป็น workday', () => {
-  const session = {
-    workDate: '2026-08-07', startTime: '17:00', endTime: '07:00', endsNextDay: true,
-  };
+  const session = { workDate: '2026-08-07', startTime: '17:00', endTime: '23:00' };
 
-  // The Saturday half is missing — exactly what a caller resolving only
-  // `workDate` would hand over.
+  /**
+   * THE HOLE USED TO BE THE FAR SIDE OF A MIDNIGHT — a caller resolving only
+   * `workDate` on an overnight session handed over a map missing the Saturday.
+   * There is no far side since 2026-09-10, so the only map with a hole in it is
+   * an empty one, and it must still throw rather than default to `workday`.
+   */
   assert.throws(
-    () => computeSession(session, { dayTypes: { '2026-08-07': 'workday' } }),
+    () => computeSession(session, { dayTypes: {} }),
     (err) => err instanceof OtValidationError
       && err.code === 'MISSING_DAY_TYPE'
-      && err.message.includes('2026-08-08'),
+      && err.message.includes('2026-08-07'),
   );
 
   assert.throws(
@@ -335,17 +329,19 @@ test('sessionDates ครอบคลุมทุกวันที่ที่ 
     sessionDates({ workDate: '2026-08-04', startTime: '17:00', endTime: '20:00' }),
     ['2026-08-04'],
   );
+  /**
+   * IT USED TO RETURN TWO — `['2026-08-31', '2026-09-01']` for a 22:00 → 02:00
+   * shift, *ข้ามเดือนก็ยังเป็นสองวันที่*. One is the whole answer now, and the
+   * late end that once made a second date makes none.
+   */
   assert.deepEqual(
-    sessionDates({
-      workDate: '2026-08-31', startTime: '22:00', endTime: '02:00', endsNextDay: true,
-    }),
-    ['2026-08-31', '2026-09-01'],
-    'ข้ามเดือนก็ยังเป็นสองวันที่',
+    sessionDates({ workDate: '2026-08-31', startTime: '22:00', endTime: '23:59' }),
+    ['2026-08-31'],
   );
-  // 17:00 → 24:00 ends exactly at midnight and puts no minutes into the 8th.
-  assert.deepEqual(
-    sessionDates({ workDate: '2026-08-07', startTime: '17:00', endTime: '24:00' }),
-    ['2026-08-07'],
+  // Still parsed on the way through, so a malformed time is refused here rather
+  // than being carried to a caller that trusted the answer.
+  assert.throws(
+    () => sessionDates({ workDate: '2026-08-07', startTime: '17:00', endTime: '25:00' }),
   );
 });
 

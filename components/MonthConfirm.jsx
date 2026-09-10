@@ -162,7 +162,7 @@ export default function MonthConfirm({
             id="month-confirm-why"
             rows={2}
             value={why}
-            placeholder="เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมข้ามคืน · ปิดงบสิ้นเดือน"
+            placeholder="เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมด่วน · ปิดงบสิ้นเดือน"
             onChange={(ev) => setWhy(ev.target.value)}
           />
           <div className="field-note">

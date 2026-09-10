@@ -372,7 +372,7 @@ export async function monthlyUsage(employeeId, period, { excludeId = null, polic
  * as approved (see the fallback in `usageInMonth`), which is the exact
  * misreading the split was added to end.
  */
-const MONTH_USAGE_SELECT = 'buckets totals employee period workDate startTime endTime endsNextDay createdAt status';
+const MONTH_USAGE_SELECT = 'buckets totals employee period workDate startTime endTime createdAt status';
 
 /** The same, plus `segments` — the weekly window attributes hours by the date
     of each segment, so without them an overnight shift lands in one week. */
@@ -851,7 +851,6 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
         workDate: entry.workDate,
         startTime: entry.startTime,
         endTime: entry.endTime,
-        endsNextDay: entry.endsNextDay,
         noBreakTaken: entry.noBreakTaken,
         flatDaily: entry.flatDaily,
       };

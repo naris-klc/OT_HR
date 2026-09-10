@@ -2002,7 +2002,7 @@ lib/scanFile.js           the .txt a fingerprint scanner writes, read: two
 lib/scanMatch.js          the row's own times against the scanner's file — a
                           QUESTION and never an arithmetic: nothing it returns
                           can move an hour, a bucket, a ceiling or a status.
-                          Pure, so every edge (overnight, เหมารายวัน, the
+                          Pure, so every edge (เหมารายวัน, the
                           morning punch that must not answer for an evening
                           request, the 17:00 nobody scans at) is a case rather
                           than a hope
@@ -2010,7 +2010,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     144 files, run by `npm test`. Six named below as a
+test/                     143 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2023,9 +2023,15 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2571 tests
-across 144 files**, measured 2026-09-10 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2561 tests
+across 143 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2571 tests across 144 files" until ทำงานข้ามคืน was removed later that day —
+`quickEditOvernight` is the file that went, and the rest of the fall is cases in
+eleven other files that had a wrapped shift for a fixture, against a handful the
+same afternoon's other branch added. **It is the first time this figure has gone
+DOWN because a feature was withdrawn** rather than because files were merged.
+And it read
 "2569 tests across 144 files" for as long as it took to open the app — the
 2570th is `monthBatchApprove`'s declaration-order guard, added after
 ตรวจสอบประจำเดือน threw *Cannot access 'canPick' before initialization* on
@@ -2106,9 +2112,14 @@ requirements call "the arithmetic, and the arithmetic is what the whole system
 exists to get right" is testable without a running server, and a timezone can
 never silently move a date.
 
-Sessions are stored as `workDate` + `startTime` + `endTime` + `endsNextDay`
-(§12.2), not as timestamps. The paper form has one row per date, and wall-clock
-fields map onto it one-to-one.
+Sessions are stored as `workDate` + `startTime` + `endTime` (§12.2), not as
+timestamps. The paper form has one row per date, and wall-clock fields map onto
+it one-to-one.
+
+It read "`workDate` + `startTime` + `endTime` + `endsNextDay`" until 2026-09-10,
+when the fourth field was removed with the rest of ทำงานข้ามคืน. **An end must
+now be after its start**, and a shift worked across a midnight is two requests,
+one per date — see §ทำงานข้ามคืนถูกถอดออกทั้งหมด below.
 
 ---
 
@@ -2124,7 +2135,7 @@ signed-off number is worse than an inconsistency.
 | # | Question | Default shipped | Flag |
 |---|---|---|---|
 | 1 | Break on every session? | Only the part overlapping 12:00–13:00 | `breakMode: 'lunchWindow'` |
-| 2 | Overnight: one break or two? | One per lunch window crossed | `breakPerCalendarDay: true` |
+| 2 | ~~Overnight: one break or two?~~ | **Withdrawn 2026-09-10** — a session lives inside one date, so it crosses one lunch window at most | ~~`breakPerCalendarDay`~~ |
 | 3 | Round down / up / nearest? | Down, per bucket, to 30-minute blocks, forgiving nothing | `roundingMode: 'floor'`, `roundingIncrementMinutes: 30`, `roundingGraceMinutes: 0` |
 | 4 | Under 1 hour: accept, raise or reject? | Accept the real hours, flag for HR ⚠ | `belowMinimum: 'accept'` |
 | 5 | OT starts 17:00 or 17:01? | 17:00 — 17:00–20:00 is 3 h | `otStartsAtCoreEnd: true` |
@@ -3672,10 +3683,13 @@ above is decided on `dayReason === 'birthday'`, so that value now changes a
 figure and the field it lives in stopped being decoration.
 
 The other two remain exactly that, and the reason the field exists is unchanged:
-the reason is not recoverable afterwards. An overnight session starting on a
-birthday Friday and running into Saturday produces segments that got to their
-columns by different rules, and only the Friday half moves if the benefit is
-withdrawn.
+the reason is not recoverable afterwards. A birthday that falls on a Saturday
+produces segments that got to their column by two rules at once, and only one of
+them moves if the benefit is withdrawn.
+
+*(This paragraph made the point with an overnight session — one starting on a
+birthday Friday and running into Saturday, its two halves in two columns by two
+different rules. No session touches two dates since 2026-09-10.)*
 
 ### Where “วันเกิด” is printed
 
@@ -3984,13 +3998,12 @@ re-ticked, and nothing can be left ticked on the wrong day. See
 case now.** A **หัวหน้า บันทึกแทนลูกทีม** on a day that happens to be their team
 member's birthday files as it always did — they are not told whose birthday it
 is, and the hours land in the วันหยุด columns anyway because the engine put them
-there. And the **tail of an overnight shift**: a request filed against an
-ordinary Monday that runs past midnight into the filer's birthday is Monday's
-request, and the far side of midnight is that day's own hours under that day's
-own rules.
+there. *(The second was the **tail of an overnight shift** — a request filed
+against an ordinary Monday running past midnight into the filer's birthday,
+whose far side was that day's own hours under that day's own rules. There is no
+tail since 2026-09-10; a birthday's hours are filed against the birthday.)*
 
-**The note above the split is what explains both** — the tail, and the day
-itself. The form prints, above the figures, that the date is the filer's own
+**The note above the split is what explains it** — the day itself. The form prints, above the figures, that the date is the filer's own
 birthday, that the system worked that out on its own, that the first eight hours
 are ×1.5 and the rest ×3, and that *ยื่นถูกแล้ว* — read off the preview's
 `dayReason` (`isOwnBirthday()`) rather than recomputed in the browser. It is
@@ -4061,7 +4074,8 @@ about a rule.
 > - From 2026-09-07 it read “**เวลาสิ้นสุด is not typed; it is เวลาเริ่ม plus
 >   nine hours**” — *เปลี่ยนเวลาเริ่มได้ แต่เวลาจบไม่สามารถปรับได้ ให้บวกจากเวลา
 >   เริ่ม 9 ชั่วโมงอัตโนมัติ*. `flatDayEnd('07:00')` was `'16:00'`; it **wrapped**
->   (16:00 → 01:00), so every press of the start box re-derived ข้ามคืน off a
+>   (16:00 → 01:00), so every press of the start box re-derived ข้ามคืน — a
+>   flag withdrawn on 2026-09-10 — off a
 >   time nobody had typed.
 > - Since 2026-09-09 the start does not move either, so there is nothing left to
 >   derive: **`flatDayEnd` is deleted**, and the wrap and its ข้ามคืน consequence
@@ -4091,7 +4105,8 @@ re-read if the office day is ever actually moved.
 > There is no such box on this form any more — it was removed for every kind of
 > day, not only for flat ones, and a wrap is now announced by the amber
 > `ข้ามคืน · สิ้นสุดวัน…ถัดไป` line beside เวลาสิ้นสุด. A flat day cannot wrap at
-> all since 2026-09-09. See §ทำงานข้ามคืนไม่ใช่คำถามอีกต่อไป below.
+> all since 2026-09-09, and nothing can since 2026-09-10. See
+> §ทำงานข้ามคืนถูกถอดออกทั้งหมด below.
 
 **A flat row already stored is put back to 08:00–17:00 when a form opens it.**
 
@@ -4223,8 +4238,9 @@ have been offered, which is the safe direction to be wrong in.
 correction panel the same sentence they had given the filing form two days
 earlier. The date it asks about is `entry.workDate`, which that panel cannot
 move: the box is about the hour at noon, and that noon belongs to the day the
-request is filed under rather than to the second date an overnight shift
-crosses. The calendar is fetched when the panel opens, not when the pop-up does —
+request is filed under — which since 2026-09-10 is the only day a request has.
+*(It read "rather than to the second date an overnight shift crosses" while
+there was a second date to rule out.)* The calendar is fetched when the panel opens, not when the pop-up does —
 แก้ไขชั่วโมง is pressed on a few rows out of a queue of hundreds, and a calendar
 loaded with every รายละเอียด would be a request per row read.
 
@@ -4237,43 +4253,77 @@ something in it" only while that box existed — `5d8821e` took the box out on
 2026-09-09 and the term went with it. `แก้ไขชั่วโมง` took the same guard on
 2026-09-10, where the two conditions are its own two rules.)*
 
-#### ทำงานข้ามคืนไม่ใช่คำถามอีกต่อไป — the tick came off the filing form
+#### ทำงานข้ามคืนถูกถอดออกทั้งหมด — the feature, not just the tick
 
-**HR, 2026-09-08, in the same breath as the re-ordering:** *ตัดช่องติ๊กข้ามคืนออก*.
-It was never a question anybody could answer two ways. The engine accepts exactly
-one value of `endsNextDay` per pair of times and throws on the other, so every tick
-of that box was either redundant or a server error — and the error came back as
-**"A single session cannot exceed 24 hours"**, a sentence about a limit for what
-was really a tick-box in the wrong state. (**Thai since 2026-09-10** — the same
-sentence now reads *ช่วงเวลาเดียวต้องไม่เกิน 24 ชั่วโมง*; what it says about the
-tick-box is unchanged, and `TOO_LONG` is still the code behind it.)
+**HR, 2026-09-10:** *เคลียร์ทุกอย่างที่เกี่ยวกับฟีเจอร์ "ทำงานข้ามคืน" ออกจากระบบ
+ทั้งหมด*. **An OT request now lives inside one calendar date.** `computeSession`
+refuses an end that is not after its start — `END_BEFORE_START`, in a sentence
+that says what to do instead — and there is no longer any value of anything that
+makes a wrapped pair legal.
 
-`endsNextDayFor(startTime, endTime)` in [`lib/entries.js`](lib/entries.js) is this
-app’s one answer to the question, and it is now asked on **every press that moves
-a time**: `setStart` and `setEnd` in [`components/OtForm.jsx`](components/OtForm.jsx).
-The field is unchanged — still entered, still posted, still stored, still what the
-engine and F-HR-027 read — only the person has stopped being asked for it.
+**What somebody who worked 17:00 to 02:00 does now:** two requests, 17:00–23:59
+on the first date and 00:01–02:00 on the second. That is legal under
+**หนึ่งวัน หนึ่งใบ**, which counts dates and not shifts.
 
-**The reader is still told.** With no box to look at, the amber
-`ข้ามคืน · สิ้นสุดวัน…ถัดไป` line beside เวลาสิ้นสุด is the only thing on the screen
-that says a shift wraps, so it says the word as well as the day, and it is drawn
-from `form.endsNextDay` — the very value about to be posted.
+**What it cost, said plainly, because the previous round's note could honestly
+say it cost nothing and this one cannot.** A 17:00–02:00 shift used to save and
+no longer does. One row in the live database carried the flag — 2026-09-09,
+21:00–21:00, `pending_mgr`, a 24-hour session — and it cannot be recomputed
+until somebody corrects its times or cancels it;
+`npm run migrate:drop-ends-next-day`
+([`src/migrate-drop-ends-next-day.js`](src/migrate-drop-ends-next-day.js), with
+`--dry` to see the plan) clears the field and NAMES any such row rather than
+editing times on its own — what the real hours were is a decision for a person,
+not for a batch.
 
-**What it cost, said plainly:** a 17:00 shift ending 20:00 the NEXT day —
-twenty-seven hours — can no longer be filed. The engine refused it as `TOO_LONG`
-before this, so nothing that used to save has stopped saving.
+**What went with it, in one list**, because the field was load-bearing in more
+places than a flag usually is:
 
-`แก้ไขชั่วโมง` on รออนุมัติ OT took the same road on 2026-09-07 and finished it on
-**2026-09-10**: *ตัดข้ามคืนออกไปเลย*. It read *"stopped one step short: it keeps a
-greyed, read-only box that **reports** the answer … a reviewer correcting somebody
-else’s times is reading a record, and the flag is part of what they are checking"*
-until that day. What ended it is that the box was the one control in a panel that
-exists to change things which nobody may touch — the thing somebody presses twice
-and then reports as broken. **The reviewer is still told, twice, before the panel
-is even open**: the row carries a `ข้ามคืน` note and เวลาที่ขอ in the pop-up above
-the panel reads *17:00–02:00 (ข้ามคืน)*. And the FIELD is untouched — `set` in
-`QuickEdit` still asks `endsNextDayFor` on every press that moves a time, and the
-value still rides to the preview and the PATCH with the rest of the form.
+| Where | What it did |
+|---|---|
+| `src/lib/otEngine.js` | added 1440 minutes, cut the session at midnight, walked `dayIndex` across dates, printed a segment end as `24:00`, and refused a 25-hour session as `TOO_LONG` |
+| `src/lib/otEngine.js` `sessionDates` | returned the two dates `resolveDayTypes` had to answer for; it returns `[workDate]` |
+| `src/config/policy.js` | **[OPEN 2] `breakPerCalendarDay`** — one lunch deduction or two. One date crosses one lunch hour, so the question is unanswerable and the setting is off ตั้งค่าระบบ |
+| `lib/entries.js` | `endsNextDayFor(startTime, endTime)`, the inverse of the engine's two `throw`s |
+| `lib/overlap.js` | the day offset in `sessionWindow`, and `(ข้ามคืน)` in `describeClash` |
+| `lib/holidays.js` | `previousDay` — adding a holiday replayed the day BEFORE it too, for the session that spilled in |
+| `lib/scanMatch.js` | the `(+1)` marker on a punch from the second morning |
+| `lib/reports.js` | the fifth part of `latestPerSession`'s key |
+| exports | the `ข้ามคืน` column on the entries CSV |
+| screens | the amber `ข้ามคืน · สิ้นสุดวัน…ถัดไป` line, the `cell-note` on every row, `เวลาที่ขอ`'s `(ข้ามคืน)` suffix, and the manual page that taught people to file one |
+
+**What deliberately stayed.** `findOverlaps` — the เวลาทับซ้อน rule — is now
+strictly redundant beside หนึ่งวัน หนึ่งใบ, and it is kept anyway: it is the only
+check in the building that reads MINUTES, and removing it would be removing a
+rule HR did not ask about on the strength of an argument about what another rule
+covers. `lib/scanMatchQuery.js` still reads a day either side of the range, for
+the reason the forward side did NOT have before: a request finishing at 23:50 is
+answered by a reader punch at 00:05 carrying tomorrow's date.
+
+##### The two rounds before it, which is how a feature ends
+
+**2026-09-08, the filing form:** *ตัดช่องติ๊กข้ามคืนออก*. The box was never a
+question anybody could answer two ways — the engine accepted exactly one value of
+the flag per pair of times and threw on the other, so every tick was redundant or
+a server error reading **"A single session cannot exceed 24 hours"** (Thai from
+2026-09-10: *ช่วงเวลาเดียวต้องไม่เกิน 24 ชั่วโมง*; `TOO_LONG` was the code, and
+both the sentence and the code are gone with the branch that raised them). The
+field stayed, derived by `endsNextDayFor` on every press that moved a time, and
+the amber line beside เวลาสิ้นสุด reported it.
+
+**2026-09-10, morning, `แก้ไขชั่วโมง` on รออนุมัติ OT:** *ตัดข้ามคืนออกไปเลย* — the
+greyed read-only box came off that panel, on the grounds that a control nobody
+may touch, in a panel that exists to change things, is the thing somebody presses
+twice and then reports as broken. That note read *"the FIELD is untouched — `set`
+in `QuickEdit` still asks `endsNextDayFor` on every press that moves a time"* and
+*"the reviewer is still told, twice, before the panel is even open"*. Neither
+survived the afternoon.
+
+**The shape of it is worth keeping**: two rounds took the QUESTION off two
+screens while the ANSWER went on being computed, stored and read; the third took
+the answer. A feature that nobody is asked about is not a feature that is gone,
+and the gap between those two states is where a paragraph like this one goes
+stale.
 
 #### The eight hours are OT ×1.5, and the day says which column
 
@@ -4293,10 +4343,15 @@ Three decisions in one line, and they are separable:
   **`ot3_holiday` is nought on every flat day there is** — the multiplier is
   written into the branch and never clocked.
 
-**An overnight flat shift is one day and one row**, dated `workDate`. A Saturday
+**A flat shift is one day and one row**, dated `workDate`, however long the
+clock ran. Twelve hours on a Saturday is eight hours on the sheet in the
+Saturday's column.
+
+*(This read "**An overnight flat shift is one day and one row**… A Saturday
 evening running to 06:00 Sunday is eight hours in total rather than eight per
 date, and the column is Saturday's — reading the far side would let it depend on
-how late somebody stayed, which is the opposite of *แบบเหมา*.
+how late somebody stayed" until 2026-09-10. The far side is gone; the surviving
+half of the rule is that the clock does not price a flat day.)*
 
 **A flat day now spends the ceiling and reaches payroll's multiplier**, and that
 is the part to say out loud rather than leave to be discovered in a total: hours
@@ -5182,7 +5237,10 @@ against a 19:30 end is HR's own third shape, สแกนเข้าแต่�
 > checks 17:29, finds it is the start-of-OT scan, and concludes the feature is
 > confused. `test/scanMatch.test.js` holds that case now.
 
-**Overnight rows are read on one number line.** A request ending 02:00 next day
+**Punches from a neighbouring date are read on one number line.** *(This read
+"**Overnight rows are read on one number line**" until 2026-09-10; what it
+protects now is the row that finishes at 23:50 and is scanned out at 00:05.)* A
+request ending 02:00 next day
 is minute 1560 from its `workDate`'s midnight and a punch at 02:04 the following
 morning is 1564 — four apart, which is what they are. Compared as clock faces
 they would be 1436 apart and every ข้ามคืน row in the system would be flagged.
@@ -5243,7 +5301,7 @@ were added to replace.
 are a list and nothing more: a reader can see what an evening time on an OT row
 means and the system is not in a position to assert it. The arrival itself IS
 named now, and only it — see **เวลาเริ่ม** below. A punch on the following
-morning is marked `(+1)` — on an overnight row it belongs to the row but not to
+morning was marked `(+1)` until 2026-09-10 — on an overnight row it belonged to the row but not to
 the date, and a bare `02:04` among evening times reads as the wrong morning.
 
 ##### เวลาเริ่ม — the day's first punch from 04:00 on, under its own name
@@ -5271,7 +5329,7 @@ LEAVING the previous evening's OT — naming it เวลาเริ่ม woul
 hours before the person walked in. There is no night shift here (*ไม่มีกะดึก*,
 2026-09-04, the same answer `alreadyInside` rests on), so nothing legitimate
 starts between midnight and 04:00. `SCAN_CHECK_IN_FLOOR_MINUTES` is the floor;
-a punch at exactly 04:00 is an arrival, one at 03:59 is not. On an overnight row
+a punch at exactly 04:00 is an arrival, one at 03:59 is not. *(On an overnight row,
 the punches past midnight wear `(+1)` and belong to the morning AFTER the row,
 so the first of THEM is never taken as the arrival.
 
@@ -6711,14 +6769,19 @@ of it; a title not on the list prints as part of the name, where somebody can
 see it. Which rows print blank, and the page counts that set the 7.2pt type
 size, are in §Status under `test/formSignatures.test.js`.
 
-Rows are built from *segments*, not entries, so an overnight session's hours
-land in the column the clock decides. **Only the date it was filed against gets
-a line**, though: since 2026-09-02 the segment after a midnight prints nowhere,
-and the hours it holds are named on the screen above the sheet
-(`notPrintedHours`) instead. This paragraph read "an overnight session appears on
-both dates … Friday's row reads 17:00–24:00 and Saturday's 00:00–07:00" until
-2026-09-08, which had been false for six days — see §หนึ่งวัน หนึ่งใบ and
-`test/oneRowPerDate.test.js`.
+Rows are built from *segments*, not entries, so a session that spans a rate
+boundary prints one line per rate. **Every segment is dated `workDate`** since
+2026-09-10, when ทำงานข้ามคืน was removed — so `printsOn` and `notPrintedHours`
+can no longer drop anything, and an F-HR-027 reconciles against every other
+document for its month.
+
+*(Two superseded readings, and the second is why the first is worth keeping.
+This paragraph read "an overnight session appears on both dates … Friday's row
+reads 17:00–24:00 and Saturday's 00:00–07:00" until 2026-09-08, which had been
+false for six days. It then read that "since 2026-09-02 the segment after a
+midnight prints nowhere, and the hours it holds are named on the screen above
+the sheet (`notPrintedHours`) instead" — true, and about a case that stopped
+existing two days later. See §หนึ่งวัน หนึ่งใบ and `test/oneRowPerDate.test.js`.)*
 
 ### The two CSVs beside it, and the bug their new labels exposed
 
@@ -7565,7 +7628,7 @@ than truncating it silently.
 signature on the entry.
 
 *The employee, while the entry is still `pending_mgr`.* Nobody has approved
-anything yet, so correcting a mistyped time, an overnight flag or a thin
+anything yet, so correcting a mistyped time or a thin
 description only changes what the manager is about to read. **แก้ไข** sits
 beside **ยกเลิก** on those rows in ประวัติการขอ OT and on the recent list
 (`components/EmployeeView.jsx`); it opens the same form the entry was written
@@ -7933,7 +7996,7 @@ hierarchy instead of the contrast carrying it. (For the record, ธีมมื�
 wash: `--muted-2` is 4.59 and `--muted-3` 3.83 — the light theme is still the
 half that cannot afford it.)
 
-**Four inline greys left the file with them.** The day under the date, ข้ามคืน,
+**Four inline greys left the file with them.** The day under the date, ข้ามคืน (itself withdrawn 2026-09-10),
 who last edited the row and the ceiling warning were `fontSize: 12` and
 `fontSize: 11.5` written by hand; they are `.cell-sub.th` and `.cell-note` now,
 which is what **คิวรออนุมัติ** already prints the same two strings from. Two
@@ -7942,9 +8005,11 @@ prevent — and an inline style is the one thing the 860px block cannot reach.
 
 **ไม่พักเที่ยง is the exception, and it is a red highlight — 2026-09-08.** Asked
 for in those words while reading รออนุมัติ OT: *ตรงไม่พักเที่ยงขอเป็นไฮไลท์สีแดง*.
-The two flags that share that cell are not the same kind of fact. ข้ามคืน
-**describes the shift** — it says which day the end time belongs to and moves no
-figure by itself, so it keeps `.cell-note`’s quiet amber. ไม่พักเที่ยง is the one
+The two flags that shared that cell were not the same kind of fact. ข้ามคืน
+**described the shift** — it said which day the end time belonged to and moved no
+figure by itself, so it kept `.cell-note`’s quiet amber. *(It was withdrawn on
+2026-09-10 with the feature; `.cell-note` still carries the ceiling warning, and
+the contrast below is with that.)* ไม่พักเที่ยง is the one
 flag on the row that **adds an hour to the total two columns along**: the lunch
 hour is deducted from every other request in the table and not from this one, and
 that is exactly what a reviewer scanning the queue is looking for.
@@ -8066,6 +8131,35 @@ What did **not** go is the instruction and where to carry it out.
 `npm run migrate:policy-version` is the whole reason its unversioned case does.
 A version of this that kept only the figures would be a tidier panel that had
 stopped saying the thing it is for.
+
+**The first sentence's "where" was withdrawn on 2026-09-10, and it is the one
+place in this app where a notice offered a repair that does not exist.** It read
+*"ตรวจก่อนเซ็นรับรอง หรือสั่งคำนวณใหม่ทั้งเดือนที่ ตั้งค่าระบบ → นโยบายการคำนวณ"*.
+A replay stamps every entry with the version in force **on its work date**
+(`versionForDate`), so a month whose rules moved on the 5th, the 13th, the 19th
+and the 24th comes out of one holding those same four rule sets — the banner is
+still there afterwards, and correctly. Walked rather than argued: สิงหาคม 2569 on
+this database is 298 entries over five versions, and `POST /api/settings/recompute`
+across the whole month returned **`replayed 298, changed 0`** — not one figure
+moved, the banner did not shift, and the run wrote a `recompute` row into the
+history of all 298 entries that had nothing to record. The sentence now names the
+cause instead, which is the only part anybody can act on: *"ตรวจยอดก่อนเซ็นรับรอง
+— ใบคิดด้วยกฎที่มีผลในวันที่ทำงาน คำนวณใหม่ไม่ทำให้เหลือกฎชุดเดียว · กฎเปลี่ยน
+เมื่อไรดูที่ ประวัติเวอร์ชันนโยบาย"*. It points at that table for **when the rules
+changed and what changed**, which is what the table prints; it does not print
+`effectiveFrom` per version, so the sentence does not promise a reader the day
+ranges themselves.
+
+**A button was built for the old sentence and taken out again the same day.**
+ตั้งค่าระบบ → นโยบายการคำนวณ carried *คำนวณใบที่ยังไม่อนุมัติใหม่* — a period
+picker over `POST /api/settings/recompute` with a confirmation — for a few hours
+on 2026-09-10, on the reading that a screen the banner names should contain the
+action the banner asks for. The figures above are what that button produced on
+its first press, and they are the argument against it: everything that genuinely
+moves an hour already replays on its own (a policy save, a holiday edit, a
+birthday correction), so what was left for a button to do was write 298 audit
+rows about nothing. The endpoint stays where it was, reachable by the typed
+command in §สิทธิ์ ผู้ดูแลระบบ ที่ยังไม่มีหน้าจอ.
 
 **The fourth sentence came down again on 2026-08-26.** It read *"หน้านี้ไม่ได้
 โหลดกฎเบื้องหลังมาด้วย — ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว"* and is now
@@ -10152,7 +10246,9 @@ and the `company` handling in `app/api/employees/**` and the บริษัท 
 ซึ่งเป็นเส้นแบ่งที่ `lib/complianceExport.js` เขียนไว้อยู่แล้วว่าจอตอบ *"เพิ่งเกิด
 อะไรขึ้น"* ส่วนไฟล์ถูกอ่านจากบนลงล่าง
 
-**คีย์ที่สามและสี่คือ `startTime` แล้ว `createdAt`** — คนหนึ่งถือสองใบในวันเดียว
+**คีย์ที่สามและสี่คือ `startTime` แล้ว `createdAt`** *(ประโยคที่ตามมาอธิบายด้วยใบ
+ข้ามคืน ซึ่งถูกถอดออกทั้งหมดเมื่อ 2026-09-10 — คีย์ทั้งสองยังอยู่ เพราะใบที่ยื่นใหม่
+ยังชนกันได้ทั้งวันและเวลา)* — คนหนึ่งถือสองใบในวันเดียว
 ได้เมื่อมีใบข้ามคืน และใบที่ยื่นใหม่ชนกันได้ทั้งวันและเวลา สองแถวที่เท่ากันทุกคีย์
 คือรายการที่สลับลำดับตัวเองระหว่างการเปิดสองครั้งของเดือนที่ไม่มีอะไรเปลี่ยน
 
@@ -11344,7 +11440,9 @@ build แล้ว
   วันนั้นแผงนั้นรับกฎตำแหน่งของฟอร์มยื่นมาด้วย บวกกฎบทบาท (ฝ่ายบุคคล/ผู้ดูแลระบบ)
   ที่ฟอร์มยื่นไม่มี และ**ตัดช่อง ข้ามคืน แบบเทาทิ้ง** ตามที่สั่งมาว่า *ตัดข้ามคืนออกไปเลย*
   · ธง `endsNextDay` ยังถูกคิดและถูกส่งเหมือนเดิม เปลี่ยนแค่ว่าไม่มีช่องให้มองแล้ว
-  ดู §ทำงานข้ามคืนไม่ใช่คำถามอีกต่อไป และแถวของรอบ 2026-09-10 ใน `docs/features.md`.
+  ดู §ทำงานข้ามคืนถูกถอดออกทั้งหมด และแถวของรอบ 2026-09-10 ใน `docs/features.md`
+  · **ทั้งย่อหน้านี้ถูกแทนที่ในวันเดียวกัน** — ฝ่ายบุคคลสั่งให้ตัดทั้งฟีเจอร์
+  ธง `endsNextDay` จึงไม่ได้ "ยังถูกคิดและถูกส่งเหมือนเดิม" อีกต่อไป มันไม่มีแล้ว.
   ✅ `npm test` **2374/2374** ผ่าน 2026-09-08 (เดิม 2366 · `otFormChecks` เป็น
   ไฟล์เทสต์ที่ 131 · **ตัวเลขของรอบนั้น ไม่ใช่ของวันนี้** — รอบสวัสดิการวันเกิด
   วัดได้ 2372 ข้อ และ 32 ข้อในหกไฟล์ที่อ่าน `app/styles.css` ไม่ผ่าน ซึ่งไม่ผ่าน
@@ -12045,8 +12143,16 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2571 tests**, about 4 s, measured 2026-09-10 across 144
-  files, all green. The 2570th is a guard against a `ReferenceError` this round
+- `npm test` — **2561 tests**, about 4 s, measured 2026-09-10 across 143
+  files, all green. It read **"2571 tests … across 144"** until
+  ทำงานข้ามคืน was removed whole later the same day — `quickEditOvernight`
+  is the file that went, and the rest of the fall is cases in eleven files that
+  filed a wrapped shift to make some other point, net of the ones the same
+  afternoon's `รวมรออนุมัติ` round added. **The count went DOWN and the coverage
+  did not**: the engine's refusal, the two-request replacement and the absence of
+  the field from every screen are all pinned where the old cases were, and this
+  is the first fall in this figure caused by withdrawing a feature rather than by
+  merging files. Before that, the 2570th was a guard against a `ReferenceError` a round
   shipped and every other test missed — see §ตรวจสอบประจำเดือน เซ็นชื่อได้.
   It read **"2562 tests … across 143"** until a row could be
   confirmed from inside ตรวจสอบใบของพนักงาน (`monthRowConfirm`, seven cases, no
@@ -12281,8 +12387,15 @@ build แล้ว
   overnight session filed against the 7th put its 00:00–07:00 on the 8th, above
   the 8th's own request — the only way left for a date to draw two lines. HR
   asked for that line off the sheet on 2026-09-02 and asked twice, with the cost
-  stated both times, so `printsOn` now prints a segment only on the date its
-  request was filed against.
+  stated both times, so `printsOn` prints a segment only on the date its request
+  was filed against.
+
+  ✅ **AND ON 2026-09-10 THE CASE ITSELF WENT.** ทำงานข้ามคืน was removed whole,
+  so no session reaches a second date and `notPrintedHours` is nought on every
+  month there is. Everything below this line describes a cost that was real
+  between 2026-09-02 and that day, and is kept because the reasoning — a
+  controlled form that must not grow a line to explain a line taken off it — is
+  what would be re-derived from scratch the next time a sheet has to be short.
 
   ⚠️ **THE HOURS ARE DROPPED, NOT MOVED, AND THE SHEET IS NOW SHORT ON PURPOSE.**
   They leave the rows and สรุปรวม together — a total counting a line the paper
@@ -12299,12 +12412,13 @@ build แล้ว
   taken off it is not a trade this sheet makes.
 
   **Counted on the live database, read-only, on 2026-09-02: one entry.** Of 21
-  live entries, exactly one crosses a midnight — in งวด 2026-08, dropping
+  live entries, exactly one crossed a midnight — in งวด 2026-08, dropping
   **7 hours from `ot3_holiday`**, the ×3 bucket and the most expensive one there
-  is. It is the row in the screenshot the change was asked from. So the cost
-  today is one person's August sheet reading 7 hours short against every other
-  document for that month, and the cost tomorrow is every overnight OT filed
-  from here on.
+  is. It was the row in the screenshot the change was asked from. So the cost
+  then was one person's August sheet reading 7 hours short against every other
+  document for that month — *and the sentence that followed it, "the cost
+  tomorrow is every overnight OT filed from here on", is the one 2026-09-10
+  answered: there is no overnight OT from here on.*
 
   `continuedFromPreviousDay` and the (ต่อจากคืนก่อน) mark went with the row —
   the flag could only ever be false once `printsOn` existed, and a flag that
@@ -13247,7 +13361,8 @@ database. Four are screen only; the other four reach `app/api`, `lib/` or
 fix`, which is arithmetic. What that commit actually changes is the birthday
 queue's floor, not the engine — `src/lib/otEngine.js` is untouched by it — and
 its four edge cases (a missing date in `dayTypes`, an overnight session
-straddling a birthday, 29 February in a common year, a birthday landing on a
+straddling a birthday — withdrawn 2026-09-10 with the feature, and now a test
+that the shift is refused — 29 February in a common year, a birthday landing on a
 Saturday or a company holiday) are covered by `test/otBirthday.test.js` and
 “test/birthdayCheck.test.js” (ลบแล้ว 2026-09-03), checked 2026-08-24.
 

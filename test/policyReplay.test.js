@@ -62,11 +62,19 @@ const contextOf = (version, session, birthDate = null) => ({
 });
 
 const SESSIONS = [
-  { workDate: '2026-08-03', startTime: '17:00', endTime: '20:20', endsNextDay: false },
-  { workDate: '2026-08-08', startTime: '08:00', endTime: '17:00', endsNextDay: false },
-  { workDate: '2026-08-12', startTime: '08:00', endTime: '22:15', endsNextDay: false },
-  { workDate: '2026-08-14', startTime: '17:00', endTime: '07:00', endsNextDay: true },
-  { workDate: '2026-08-17', startTime: '17:00', endTime: '17:20', endsNextDay: false },
+  { workDate: '2026-08-03', startTime: '17:00', endTime: '20:20' },
+  { workDate: '2026-08-08', startTime: '08:00', endTime: '17:00' },
+  { workDate: '2026-08-12', startTime: '08:00', endTime: '22:15' },
+  /**
+   * THE REFUSAL CASE, and it changed its reason on 2026-09-10 rather than
+   * leaving. It was a legal overnight shift — 17:00 to 07:00 with the flag set,
+   * fourteen hours over two dates — and it is now `END_BEFORE_START`, because
+   * ทำงานข้ามคืน was removed and an end must be after its start. Either way it
+   * is here for the same property: a refusal is an outcome like any other and
+   * has to reproduce identically against every stored policy version.
+   */
+  { workDate: '2026-08-14', startTime: '17:00', endTime: '07:00' },
+  { workDate: '2026-08-17', startTime: '17:00', endTime: '17:20' },
 ];
 
 /**
@@ -104,7 +112,7 @@ test('replaying against the version an entry names reproduces its hours exactly'
 });
 
 test('a refusal recorded under an older version reproduces as the same refusal', () => {
-  const short = { workDate: '2026-08-17', startTime: '17:00', endTime: '17:40', endsNextDay: false };
+  const short = { workDate: '2026-08-17', startTime: '17:00', endTime: '17:40' };
 
   // Under the version that refused it, three months later, it is still refused.
   for (let i = 0; i < 3; i++) {
@@ -132,7 +140,7 @@ test('[OPEN 4] raise → accept: ใบ pending ได้ชั่วโมง�
   const V_RAISE = { _id: 'vr', seq: 5, policy: { ...DEFAULT_POLICY, belowMinimum: 'raise' } };
   const V_ACCEPT = { _id: 'va', seq: 6, policy: { ...DEFAULT_POLICY } };
 
-  const session = { workDate: '2026-08-17', startTime: '17:00', endTime: '17:40', endsNextDay: false };
+  const session = { workDate: '2026-08-17', startTime: '17:00', endTime: '17:40' };
   const month = [
     { _id: 'a', status: 'pending_mgr', session, policyVersionId: 'vr' },
     { _id: 'b', status: 'pending_hr', session, policyVersionId: 'vr' },
@@ -180,7 +188,7 @@ test('[OPEN 4] raise → accept: ใบ pending ได้ชั่วโมง�
  * would be a warning on a row that no longer has anything wrong with it.
  */
 test('[OPEN 4] belowMinimumFlagged is written with the hours it describes, and cleared with them', () => {
-  const short = { workDate: '2026-08-17', startTime: '17:00', endTime: '17:40', endsNextDay: false };
+  const short = { workDate: '2026-08-17', startTime: '17:00', endTime: '17:40' };
   const entry = {};
 
   applyComputation(entry, computeSession(short, contextOf(V1, short)));

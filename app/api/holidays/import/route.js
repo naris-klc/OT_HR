@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { pick } from '@/src/lib/csv.js';
 import { readUploadedTable, NO_TABLE_UPLOADED } from '@/src/lib/importTable.js';
 import { recomputeEntries } from '@/src/services/otService.js';
-import { normaliseDate, previousDay } from '@/lib/holidays.js';
+import { normaliseDate } from '@/lib/holidays.js';
 
 // ── [OPEN 10] calendar import ───────────────────────────────────────────────
 // The doc asks whether HR's calendar is Excel, PDF or a wall poster. Excel is
@@ -54,7 +54,9 @@ export const POST = route(async (req) => {
   }
 
   // Existing entries on the imported dates change rate bucket, so replay them.
-  const affected = [...new Set(dates.flatMap((d) => [d, previousDay(d)]))];
+  // The imported days themselves. The evening before each one used to be on
+  // this list for the sake of a session that ran into it; see ../route.js.
+  const affected = [...new Set(dates)];
   const recomputed = affected.length
     ? await recomputeEntries({ workDate: { $in: affected } }, user)
     : { updated: 0, failed: [] };

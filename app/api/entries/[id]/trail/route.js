@@ -50,7 +50,7 @@ export const GET = route(async (req, { params }) => {
     // Scoped like the head: a manager who has moved departments must not read
     // an ancestry they would be refused if they asked for it directly.
     const parent = await OtEntry.findOne({ _id: cursor, ...scope })
-      .select('workDate startTime endTime endsNextDay noBreakTaken description '
+      .select('workDate startTime endTime noBreakTaken description '
         + 'status rejectionReason buckets totals history createdAt refiledFrom')
       .lean();
     if (!parent) break; // out of scope or deleted — the trail simply stops here
@@ -72,7 +72,6 @@ export const GET = route(async (req, { params }) => {
       workDate: e.workDate,
       startTime: e.startTime,
       endTime: e.endTime,
-      endsNextDay: Boolean(e.endsNextDay),
       noBreakTaken: Boolean(e.noBreakTaken),
       description: e.description,
       status: e.status,

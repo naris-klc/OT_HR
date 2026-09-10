@@ -131,8 +131,8 @@ const WORKED_EXAMPLES = [
     description: 'ทดสอบ calibration ชุด PM-3000 ก่อนส่งมอบ (ไม่พักเที่ยง)', status: 'pending_mgr',
   },
   {
-    label: 'D', workDate: '2026-08-07', startTime: '17:00', endTime: '07:00', endsNextDay: true,
-    description: 'ซ่อมด่วน transformer ลูกค้าโรงงานระยอง — ข้ามคืน', status: 'pending_mgr',
+    label: 'D', workDate: '2026-08-07', startTime: '17:00', endTime: '23:00',
+    description: 'ซ่อมด่วน transformer ลูกค้าโรงงานระยอง — รอบดึก', status: 'pending_mgr',
   },
   {
     label: 'E', workDate: '2026-08-09', startTime: '06:00', endTime: '10:00',
@@ -257,7 +257,6 @@ async function run() {
       workDate: ex.workDate,
       startTime: ex.startTime,
       endTime: ex.endTime,
-      endsNextDay: Boolean(ex.endsNextDay),
       noBreakTaken: Boolean(ex.noBreakTaken),
     };
     const ctx = contextFor(calendar, session, author);

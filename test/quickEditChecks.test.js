@@ -24,7 +24,7 @@ import { DEFAULT_POLICY } from '../src/config/policy.js';
  * of lib/entries.js rather than describing them, so a rule can only be moved in
  * one place: the library both screens read.
  *
- * THE THIRD IS THIS PANEL'S ALONE. ข้ามคืน was a greyed read-out here from
+ * THE THIRD WAS THIS PANEL'S ALONE. ข้ามคืน was a greyed read-out here from
  * 2026-09-07 — a box that reported what the two times already said — and it is
  * gone. `endsNextDay` is NOT gone: it is derived on every press that moves a
  * time, sent with the correction and thrown on by the engine when it disagrees
@@ -60,38 +60,36 @@ const block = strip.slice(0, strip.indexOf('</div>'));
 // ── ข้ามคืน ตัดออกทั้งช่อง ───────────────────────────────────────────────────
 
 /**
- * ตัดข้ามคืนออกไปเลย — HR, 2026-09-10.
+ * ตัดข้ามคืนออกไปเลย — HR, 2026-09-10, and then the rest of it the same day.
  *
- * The box was disabled and grey, which is what made it worth removing rather
- * than leaving: a control nobody may touch, in a panel that exists to change
- * things, is a question a reviewer keeps trying to answer. The filing form took
- * the same step on 2026-09-08.
+ * The box went first, and it was disabled and grey, which is what made it worth
+ * removing rather than leaving: a control nobody may touch, in a panel that
+ * exists to change things, is a question a reviewer keeps trying to answer. The
+ * filing form took that step on 2026-09-08.
  *
- * WHAT MUST NOT GO WITH IT is the field. The three assertions below are the
- * difference between "the question is not asked" and "the answer is not sent" —
- * the second would save a `TOO_LONG` refusal on times somebody typed correctly.
+ * TWO TESTS STOOD HERE AND ARE NOW ONE, and what they asserted has reversed.
+ * *ไม่มีช่องติ๊กข้ามคืนในแผงแก้ไขชั่วโมงแล้ว **แต่ค่ายังถูกคิดและถูกส่ง*** pinned
+ * the field surviving the box — *"the difference between the question is not
+ * asked and the answer is not sent"* — and *ข้ามคืนยังถูกรายงานบนแถวและใน
+ * รายละเอียด* pinned the two read-outs that stood in for it. HR asked for the
+ * feature itself a few hours later, so the field, the derivation, the row note
+ * and the เวลาที่ขอ suffix all went.
+ *
+ * WHAT IS PINNED NOW is that none of them comes back, and that the panel still
+ * posts the form it holds.
  */
-test('ไม่มีช่องติ๊กข้ามคืนในแผงแก้ไขชั่วโมงแล้ว แต่ค่ายังถูกคิดและถูกส่ง', () => {
+test('ไม่เหลืออะไรเกี่ยวกับข้ามคืนในแผงแก้ไขชั่วโมง หรือบนแถวหลังมัน', () => {
   assert.ok(!edit.includes('checked={form.endsNextDay}'), 'ช่องติ๊กข้ามคืนกลับมาแล้ว');
   assert.ok(!edit.includes('(สิ้นสุดวันถัดไป)'), 'คำอธิบายข้ามคืนยังอยู่ในแถบช่องติ๊ก');
 
-  // …and the flag is still derived from the pair, on every press.
-  assert.match(edit, /endsNextDay: endsNextDayFor\(next\.startTime, next\.endTime\)/);
-  // …still measured, so a correction that only wraps the shift still counts as
-  // a change and can still be saved.
-  assert.match(edit, /form\.endsNextDay !== opened\.endsNextDay/);
-  // …and still posted: `...form` carries it to both the preview and the PATCH.
-  assert.match(edit, /api\.patch\(`\/entries\/\$\{entry\._id\}`, \{ \.\.\.form, note: note\.trim\(\) \}\)/);
-});
+  // ถามกับ CODE ไม่ใช่กับคอมเมนต์ — คอมเมนต์ในไฟล์นั้นบันทึกกฎที่ถูกถอดออกไว้
+  const queueCode = queue.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/endsNextDay/.test(queueCode), 'คิวยังแตะ endsNextDay อยู่');
+  assert.ok(!/ข้ามคืน/.test(queueCode), 'คิวยังวาดคำว่าข้ามคืนอยู่');
 
-/**
- * และคนตรวจยังต้องรู้ว่ากะนี้ข้ามคืน. Two places say so, both of them before
- * this panel is opened: the row in the queue and เวลาที่ขอ in the pop-up the
- * panel sits inside. Neither is a control.
- */
-test('ข้ามคืนยังถูกรายงานบนแถวและในรายละเอียด', () => {
-  assert.ok(queue.includes('{e.endsNextDay && <div className="cell-note">ข้ามคืน</div>}'));
-  assert.ok(queue.includes("e.endsNextDay ? ' (ข้ามคืน)' : ''"));
+  // …and the panel still posts the whole form it holds, which is how every
+  // other entered field reaches the PATCH.
+  assert.match(edit, /api\.patch\(`\/entries\/\$\{entry\._id\}`, \{ \.\.\.form, note: note\.trim\(\) \}\)/);
 });
 
 // ── เหมารายวัน — ตำแหน่ง และ บทบาท ต้องเข้าเงื่อนไขทั้งคู่ ──────────────────

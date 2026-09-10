@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
    with no JSX transform, so a `.jsx` import fails at load with
    ERR_UNKNOWN_FILE_EXTENSION and takes the whole file down with it. That is
    also why every UI assertion in this suite reads source as TEXT. The helper
-   lives beside `endsNextDayFor`, the other function here that reads an HH:mm
+   lived beside `endsNextDayFor` until 2026-09-10 — the other function that read an HH:mm
    pair — and both rest on the same fact: these strings are zero-padded and
    24-hour, so they compare as strings and the engine never parses them. */
 import { parseTime } from '../lib/entries.js';

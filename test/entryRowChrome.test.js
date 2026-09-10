@@ -72,16 +72,21 @@ test('the only thing that can be pressed is the only thing drawn as a button', (
 test('nothing in a row writes its own type size any more', () => {
   // The four that were here — the day under the date, ข้ามคืน, who last edited
   // the row, and the ceiling warning — are `.cell-sub.th` and `.cell-note` now,
-  // which is what คิวรออนุมัติ prints the same two strings from. Two screens
+  // which is what คิวรออนุมัติ prints the same strings from. Two screens
   // quoting one fact in two sizes is what those classes exist to prevent.
+  //
+  // ข้ามคืน WAS ONE OF THE FOUR AND IS NOT DRAWN ANY MORE — 2026-09-10, when
+  // the feature went. `.cell-note` still exists and still carries the ceiling
+  // warning, which is what keeps this assertion about a class and not about a
+  // string that happened to use it.
   assert.ok(
     !/style=\{\{ fontSize:/.test(code),
     'an inline font size came back into a row',
   );
   assert.match(jsx, /<div className="cell-sub th">วัน\{dayName\(e\.workDate\)\}<\/div>/);
-  assert.match(jsx, /<div className="cell-note">ข้ามคืน<\/div>/);
-  // The same string, from the same class, on the screen that shares it.
-  assert.match(read('components/ApprovalQueue.jsx'), /<div className="cell-note">ข้ามคืน<\/div>/);
+  assert.match(jsx, /className="cell-note"/);
+  // The same class, on the screen that shares these rows.
+  assert.match(read('components/ApprovalQueue.jsx'), /className="cell-note"/);
 });
 
 test('the two of them share one row, and the sentence is not on the buttons’ baseline', () => {
@@ -784,18 +789,18 @@ test('the rule set moved into the drawer, above the trail rather than inside it'
  * ไม่พักเที่ยง เป็นไฮไลท์สีแดง — 2026-09-08, asked for in those words while
  * reading รออนุมัติ OT.
  *
- * WHY IT IS LOUDER THAN THE LINE ABOVE IT, and why that is the assertion worth
- * having: ข้ามคืน describes the shift and moves no figure by itself, while
- * ไม่พักเที่ยง is the one flag in that cell that ADDS AN HOUR to the total two
- * columns along — the lunch hour is deducted from every other row and not from
- * this one. The two are pinned apart here so a later tidy-up cannot quietly
- * fold them back into one grey voice.
+ * WHY IT IS LOUDER THAN A `.cell-note` LINE, and why that is the assertion
+ * worth having: ไม่พักเที่ยง is the one flag in that cell that ADDS AN HOUR to
+ * the total two columns along — the lunch hour is deducted from every other row
+ * and not from this one. It was ข้ามคืน that this was measured against, a line
+ * that described the shift and moved no figure by itself; that line went on
+ * 2026-09-10 and the contrast is now with the ceiling warning, which is amber
+ * for the same reason.
  *
  * AND ONE MARK ACROSS BOTH SCREENS. The employee reading their own month and
  * the reviewer reading it beside them are looking at the same square of the
  * same table about the same request; two marks for one fact is the failure the
- * `.cell-sub` / `.cell-note` classes exist to prevent, and this file already
- * holds ข้ามคืน to it three tests up.
+ * `.cell-sub` / `.cell-note` classes exist to prevent.
  */
 test('ไม่พักเที่ยง ขึ้นเป็นไฮไลท์สีแดง และเป็นมาร์กเดียวกันทั้งสองจอ', () => {
   const queue = read('components/ApprovalQueue.jsx');
@@ -822,10 +827,11 @@ test('ไม่พักเที่ยง ขึ้นเป็นไฮไล�
   assert.ok(css.includes('--danger-bg: light-dark('));
   assert.ok(css.includes('--danger-ink: light-dark('));
 
-  // ข้ามคืน KEEPS THE QUIET AMBER in the same cell. It says which day the end
-  // time belongs to; it does not move the figure beside it.
+  // `.cell-note` KEEPS THE QUIET AMBER in the same cell — the voice for a line
+  // that tells the reader something without moving the figure beside it. It
+  // carried ข้ามคืน until 2026-09-10 and carries the ceiling warning now.
   assert.ok(rule('.cell-note').includes('color: var(--amber);'));
-  assert.ok(queue.includes('<div className="cell-note">ข้ามคืน</div>'));
+  assert.ok(!queue.includes('ข้ามคืน</div>'), 'บรรทัดข้ามคืนกลับมาบนแถวแล้ว');
 
   // NOT A CHIP. Every pill on that row is a STATUS (รอหัวหน้า · รอ HR ·
   // เหมารายวัน); a fourth one that is not a status is how a reader learns the

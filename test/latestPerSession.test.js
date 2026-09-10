@@ -16,7 +16,6 @@ const entry = (over = {}) => ({
   workDate: '2026-08-08',
   startTime: '08:00',
   endTime: '17:00',
-  endsNextDay: false,
   createdAt: at('2026-08-06T04:57:03.608Z'),
   ...over,
 });
@@ -68,11 +67,20 @@ test('the same clock window on different days is not a duplicate', () => {
   assert.equal(latestPerSession([day8, day9]).hidden.length, 0);
 });
 
-test('an overnight session is distinct from a same-day one at the same clock time', () => {
-  const sameDay = entry({ _id: 'same', endsNextDay: false });
-  const overnight = entry({ _id: 'over', endsNextDay: true });
+/**
+ * `endsNextDay` WAS THE FIFTH PART OF THE KEY and came off it on 2026-09-10.
+ *
+ * The test here read *"an overnight session is distinct from a same-day one at
+ * the same clock time"* — two filings with identical dates and times, told
+ * apart by the wrap flag alone. Neither the flag nor the session it described
+ * exists, so what is left to pin is that the four remaining parts still tell
+ * two genuinely different filings apart, and still fold two of the same one.
+ */
+test('the key is the four fields, and a different end time is a different session', () => {
+  const early = entry({ _id: 'early', endTime: '20:00' });
+  const late = entry({ _id: 'late', endTime: '21:00' });
 
-  assert.equal(latestPerSession([sameDay, overnight]).hidden.length, 0);
+  assert.equal(latestPerSession([early, late]).hidden.length, 0);
 });
 
 test('entries written in the same millisecond still resolve the same way twice', () => {

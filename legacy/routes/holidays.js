@@ -34,7 +34,7 @@ router.post('/', requireRole('admin', 'hr'), wrap(async (req, res) => {
     { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
   );
   // A date becoming a holiday changes which buckets its entries fall into.
-  const recomputed = await recomputeEntries({ workDate: { $in: [date, previousDay(date)] } }, req.user);
+  const recomputed = await recomputeEntries({ workDate: date }, req.user);
   return res.status(201).json({ holiday, recomputed });
 }));
 
@@ -42,7 +42,7 @@ router.delete('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   const holiday = await Holiday.findByIdAndDelete(req.params.id);
   if (!holiday) return res.status(404).json({ error: 'ไม่พบวันหยุด' });
   const recomputed = await recomputeEntries(
-    { workDate: { $in: [holiday.date, previousDay(holiday.date)] } },
+    { workDate: holiday.date },
     req.user,
   );
   return res.json({ ok: true, recomputed });
@@ -89,7 +89,7 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
   }
 
   // Existing entries on the imported dates change rate bucket, so replay them.
-  const affected = [...new Set(dates.flatMap((d) => [d, previousDay(d)]))];
+  const affected = [...new Set(dates)];
   const recomputed = affected.length
     ? await recomputeEntries({ workDate: { $in: affected } }, req.user)
     : { updated: 0, failed: [] };
@@ -110,19 +110,6 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
  */
 function normaliseDate(raw) {
   return smartDate(raw).date;
-}
-
-/**
- * An overnight session started the day BEFORE a new holiday now spills into
- * holiday buckets, so it has to be replayed too.
- */
-function previousDay(date) {
-  const ms = Date.UTC(
-    Number(date.slice(0, 4)),
-    Number(date.slice(5, 7)) - 1,
-    Number(date.slice(8, 10)),
-  ) - 86400000;
-  return new Date(ms).toISOString().slice(0, 10);
 }
 
 export default router;

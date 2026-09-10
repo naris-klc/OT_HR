@@ -13,7 +13,7 @@ import {
   OVER_CEILING_REASON_REQUIRED,
 } from '@/lib/caps.js';
 import {
-  MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
+  MAX_LIST_LIMIT, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
   maySignFirstStep, isOwnRequest, FLAT_DAY_TIMES, isBirthdayWelfare,
   humanHistory, isFlatDailyPosition, isCompanyOffDay, mayCorrectEntries,
 } from '@/lib/entries.js';
@@ -1682,14 +1682,14 @@ export default function ApprovalQueue({
                   </td>
                   <td className="span-col">
                     {e.startTime}–{e.endTime}
-                    {e.endsNextDay && <div className="cell-note">ข้ามคืน</div>}
-                    {/* THE ONE FLAG IN THIS CELL THAT MOVES THE FIGURE BESIDE
+                    {/* AN AMBER ข้ามคืน NOTE SAT ABOVE THE FLAG BELOW until
+                        2026-09-10, when the feature it reported was removed.
+                        THE ONE FLAG LEFT IN THIS CELL MOVES THE FIGURE BESIDE
                         IT — the lunch hour is deducted from every other row in
                         the column and not from this one — so it is a red
                         highlight rather than the grey line it was until
                         2026-09-08. Asked for in those words; see `.cell-flag`
-                        in app/styles.css for why it is not a chip and why
-                        ข้ามคืน above it keeps the quieter amber. */}
+                        in app/styles.css for why it is not a chip. */}
                     {e.noBreakTaken && <div className="cell-flag">ไม่พักเที่ยง</div>}
                   </td>
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
@@ -2317,7 +2317,7 @@ function ConfirmModal({
             value={why}
             placeholder={needsReason
               ? 'เช่น แผนก ADM ยังไม่มีหัวหน้างาน · หัวหน้าลาออกเมื่อ 20 ส.ค. ยังไม่ได้ตั้งคนใหม่'
-              : 'เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมข้ามคืน · ปิดงบสิ้นเดือน'}
+              : 'เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมด่วน · ปิดงบสิ้นเดือน'}
             onChange={(ev) => setWhy(ev.target.value)}
           />
           {/* NOT the ceiling sentence a second time. The banner above carries
@@ -2731,7 +2731,7 @@ function DetailModal({
               </div>
             )}
             <dl className="fact-grid">
-              <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}${e.endsNextDay ? ' (ข้ามคืน)' : ''}`} />
+              <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}`} />
               <Fact k="พักเที่ยง" v={e.noBreakTaken ? 'ไม่พัก' : 'หักตามนโยบาย'} />
               <Fact k="ชั่วโมงตามนาฬิกา" v={`${hours(e.totals?.clockHours)} ชม.`} />
               <Fact
@@ -2886,11 +2886,10 @@ function DetailModal({
 const asOpened = (entry) => ({
   startTime: entry.startTime,
   endTime: entry.endTime,
-  endsNextDay: Boolean(entry.endsNextDay),
   noBreakTaken: Boolean(entry.noBreakTaken),
   /** เหมารายวัน — an entered field, stored on the entry. */
   flatDaily: Boolean(entry.flatDaily),
-  ...(entry.flatDaily ? { ...FLAT_DAY_TIMES, endsNextDay: false } : null),
+  ...(entry.flatDaily ? { ...FLAT_DAY_TIMES } : null),
 });
 
 /**
@@ -2942,7 +2941,6 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
   const opened = asOpened(entry);
   const moved = form.startTime !== opened.startTime
     || form.endTime !== opened.endTime
-    || form.endsNextDay !== opened.endsNextDay
     || form.noBreakTaken !== opened.noBreakTaken
     // เหมารายวัน moves an ANSWER and not only a label — it rewrites what the day
     // is worth — so a tick alone is a saveable correction and counts as
@@ -3065,23 +3063,20 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
   }
 
   /*
-   * ข้ามคืน IS NOT A CHOICE — IT IS WHAT THE TWO TIMES ALREADY SAY.
+   * ข้ามคืน IS GONE FROM THIS PANEL AND FROM THE APP — 2026-09-10.
    *
-   * Every tick of that box was either redundant or a server error, and the
-   * error came back as "A single session cannot exceed 24 hours": a sentence
-   * about a limit, for what is really a tick-box in the wrong state. The rule
-   * and the reasoning are in `endsNextDayFor` (lib/entries.js), next to the two
-   * `throw`s in the engine it is the inverse of.
+   * Two things went on the same day and it is worth keeping them apart. The
+   * greyed BOX that reported the flag came off this strip in the morning: a
+   * disabled control nobody may touch, in a panel that exists to change things,
+   * is a question a reviewer keeps trying to answer. Then HR asked for the rest
+   * — *เคลียร์ทุกอย่างที่เกี่ยวกับฟีเจอร์ ทำงานข้ามคืน ออกจากระบบ ทั้งหมด* — and
+   * `endsNextDay` itself went, along with `endsNextDayFor` in lib/entries.js
+   * that this function used to ask on every press that moved a time.
    *
-   * Derived on CHANGE, not on render, so opening the pop-up on a stored entry
-   * does not mark the form dirty before anybody has touched it.
-   *
-   * THE GREYED BOX THAT REPORTED IT CAME OFF THIS PANEL ON 2026-09-10 — HR —
-   * and this derivation is untouched by that. What was withdrawn is the
-   * REPORTING of the flag, not the flag: it is still computed on every press
-   * that moves a time, still sent with the correction, and still what the
-   * engine splits the night on. Where a reviewer reads it now is written out
-   * over the tick strip below.
+   * SO A CORRECTION THAT LEAVES THE END BEFORE THE START IS REFUSED NOW, by the
+   * engine, with a sentence saying to file one request per date. That is a real
+   * loss and not a tidy-up: a reviewer who could once fix a wrapped row's times
+   * has nothing to fix them TO.
    *
    * ── AND TICKING เหมารายวัน WRITES BOTH TIMES ───────────────────────────────
    *
@@ -3101,7 +3096,7 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
   const set = (patch) => setForm((f) => {
     const next = { ...f, ...patch };
     if (patch.flatDaily === true) Object.assign(next, FLAT_DAY_TIMES);
-    return { ...next, endsNextDay: endsNextDayFor(next.startTime, next.endTime) };
+    return next;
   });
   const nextHours = preview?.result?.totals?.otHours;
 
@@ -3222,16 +3217,14 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
         `mayTickNoBreak` and `mayTickFlatDaily` above, which are the filing
         form’s two rules asked again here, of the same request.
 
-        ข้ามคืน WAS THE THIRD AND IS GONE — HR, 2026-09-10. It had been a greyed
-        box reporting what the two times above it already said, kept so the
-        answer was visible somewhere; the filing form dropped its own tick on
-        2026-09-08 and says the fact beside เวลาสิ้นสุด instead. A disabled
-        control nobody may touch, in a panel that exists to change things, is a
-        question a reviewer keeps trying to answer. `endsNextDay` IS STILL
-        DERIVED AND STILL SAVED — every press that moves a time asks
-        `endsNextDayFor` in `set` above, exactly as before — and the fact is
-        still reported twice on the way in: on the row (`cell-note`) and on
-        เวลาที่ขอ in the pop-up over this panel.
+        ข้ามคืน WAS THE THIRD AND IS GONE — HR, 2026-09-10, twice over. The box
+        came off this strip first, on the grounds that it was a disabled control
+        in a panel that exists to change things. It read *"`endsNextDay` IS
+        STILL DERIVED AND STILL SAVED … still reported twice on the way in: on
+        the row (`cell-note`) and on เวลาที่ขอ in the pop-up over this panel"*
+        for the rest of that day. None of those three is true now: the field,
+        the row note and the เวลาที่ขอ suffix all went with the feature. See
+        `set` above for what a wrapped pair does instead.
 
         AND THE STRIP ITSELF GOES WHEN BOTH ARE WITHHELD, which any ordinary
         Tuesday on an ordinary ตำแหน่ง reaches. An empty tinted band under the

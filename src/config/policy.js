@@ -39,15 +39,6 @@ export const DEFAULT_POLICY = Object.freeze({
   /** Used by 'threshold' mode only. */
   breakThresholdHours: 5,
 
-  // ── [OPEN 2] Overnight session (17:00 → 07:00): one break or two? ──────────
-  /**
-   * In 'lunchWindow' mode this is answered structurally: one deduction per
-   * 12:00–13:00 window the session actually crosses. A 17:00 → 07:00 session
-   * crosses none, so it deducts nothing. Set false to hard-cap at one break
-   * per session regardless of how many days it spans.
-   */
-  breakPerCalendarDay: true,
-
   // ── [OPEN 3] Round down, up, or to nearest 30 minutes? ─────────────────────
   /**
    * 'floor'   — ปัดลงทั้งหมด (DEFAULT: never over-reports hours).

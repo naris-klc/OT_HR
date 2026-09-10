@@ -462,7 +462,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                         line with: `.cell-sub.th` for a quiet one and `.cell-note`
                         for an amber one. They were `fontSize: 12` and
                         `fontSize: 11.5` written by hand, and คิวรออนุมัติ prints
-                        the SAME two strings — ข้ามคืน and the ceiling warning —
+                        the SAME strings — the ceiling warning among them —
                         from those classes. Two screens quoting one fact in two
                         type sizes is what the classes exist to prevent, and an
                         inline style is also the one thing the 860px block cannot
@@ -481,9 +481,6 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                         `when-col` on the `th` is a class. */}
                     <td className="when-cell" data-label="จาก–ถึง">
                       {e.startTime}–{e.endTime}
-                      {e.endsNextDay && (
-                        <div className="cell-note">ข้ามคืน</div>
-                      )}
                       {/* BESIDE THE TIMES, not beside the description with the
                           other marks. This one is about these two numbers and
                           nothing else on the row; the reader whose eye it has to
@@ -519,8 +516,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           the chips and under the times they exist to be read
                           against. NOT inside `entry-mark`: that class caps its
                           content against the phone card because it holds pills,
-                          and this is a line of text that should wrap the way the
-                          ข้ามคืน note above it does. */}
+                          and this is a line of text that should wrap. */}
                       {scanChecked && <ScanDayPunches entry={e} />}
                     </td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>

@@ -26,7 +26,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
  */
 
 const at = (workDate, startTime, endTime, extra = {}) => ({
-  workDate, startTime, endTime, endsNextDay: false, ...extra,
+  workDate, startTime, endTime, ...extra,
 });
 
 // ── the timeline ────────────────────────────────────────────────────────────
@@ -38,15 +38,25 @@ test('a window is minutes on one timeline shared by every date', () => {
   assert.equal(a.end - a.start, 120);
 });
 
-test('endsNextDay adds a whole day rather than being inferred from the times', () => {
-  const overnight = sessionWindow(at('2026-08-10', '22:00', '02:00', { endsNextDay: true }));
-  assert.equal(overnight.end - overnight.start, 240);
+/**
+ * A TEST STOOD HERE AND HAS NOTHING LEFT TO CHECK — 2026-09-10.
+ *
+ * *endsNextDay adds a whole day rather than being inferred from the times*
+ * pinned the one case inference would have got wrong: 22:00 → 22:00 with the
+ * flag set was a legal 24-hour session, and reading the wrap off the times
+ * would have made it zero minutes long and therefore clash with nothing. The
+ * flag and the session are both gone; `computeSession` refuses an end that is
+ * not after its start.
+ *
+ * What replaces it is the property the flag used to complicate: a window is its
+ * two times and nothing else, on whichever date it is filed under.
+ */
+test('a window is exactly its two times, whatever date it sits on', () => {
+  const evening = sessionWindow(at('2026-08-10', '22:00', '23:59'));
+  assert.equal(evening.end - evening.start, 119);
 
-  // 22:00 → 22:00 with the flag set is the 24-hour session `computeSession`
-  // allows. Inferred from the times it would be zero minutes long and would
-  // therefore clash with nothing at all.
-  const full = sessionWindow(at('2026-08-10', '22:00', '22:00', { endsNextDay: true }));
-  assert.equal(full.end - full.start, 1440);
+  const wholeDay = sessionWindow(at('2026-08-10', '00:00', '23:59'));
+  assert.equal(wholeDay.end - wholeDay.start, 1439, 'the longest a session can be');
 });
 
 test('a date or a time it cannot read throws the engine own refusal', () => {
@@ -89,48 +99,46 @@ test('the same window on a different day does not clash', () => {
   assert.equal(findOverlaps(at('2026-08-11', '17:00', '19:00'), existing).length, 0);
 });
 
-// ── midnight, which is the whole reason this is not a string comparison ─────
+// ── the dates, which is why this is not a clock comparison ─────────────────
 
-test('an overnight shift is caught by a request filed against the following day', () => {
-  // 9 Aug 22:00 → 10 Aug 02:00, against a fresh 10 Aug 01:00–03:00. Two
-  // different workDates, so no key comparison could ever have found this.
-  const existing = [{
-    _id: 'a', ...at('2026-08-09', '22:00', '02:00', { endsNextDay: true }),
-  }];
-  const [clash] = findOverlaps(at('2026-08-10', '01:00', '03:00'), existing);
-  assert.ok(clash, 'yesterday overnight shift reaches into today');
-  assert.equal(clash.minutes, 60);
+/**
+ * THREE TESTS STOOD HERE AND THEY WERE ALL ABOUT A MIDNIGHT — 2026-09-10.
+ *
+ * *an overnight shift is caught by a request filed against the following day*,
+ * its mirror, and the touching pair that must NOT clash. Each of them turned on
+ * a session on the 9th holding minutes of the 10th, which is what stopped being
+ * possible. The date rule (`findSameDate`) covers everything the minute rule
+ * covers now; see the head of lib/overlap.js for why the minute rule stays.
+ *
+ * What is still worth pinning is the half that made the timeline necessary in
+ * the first place: two sessions on two different dates never clash, however
+ * their clock faces read.
+ */
+test('the same clock window on two dates does not clash', () => {
+  const existing = [{ _id: 'a', ...at('2026-08-09', '22:00', '23:59') }];
+  assert.equal(findOverlaps(at('2026-08-10', '22:00', '23:59'), existing).length, 0);
 });
 
-test('a new overnight shift is caught by a request already filed on the next day', () => {
-  const existing = [{ _id: 'a', ...at('2026-08-11', '01:00', '03:00') }];
-  const [clash] = findOverlaps(
-    at('2026-08-10', '22:00', '02:00', { endsNextDay: true }),
-    existing,
-  );
-  assert.equal(clash.minutes, 60);
-});
-
-test('an overnight shift ending exactly where the next begins does not clash', () => {
-  const existing = [{ _id: 'a', ...at('2026-08-11', '02:00', '05:00') }];
-  assert.equal(
-    findOverlaps(at('2026-08-10', '22:00', '02:00', { endsNextDay: true }), existing).length,
-    0,
-  );
+test('a later start on the next date does not clash with an earlier end on this one', () => {
+  // 9 Aug 22:00–23:59 against 10 Aug 00:01–03:00: adjacent on the clock, and
+  // the bare times would compare as though 00:01 preceded 22:00.
+  const existing = [{ _id: 'a', ...at('2026-08-09', '22:00', '23:59') }];
+  assert.equal(findOverlaps(at('2026-08-10', '00:01', '03:00'), existing).length, 0);
 });
 
 /**
- * WHY lib/overlapQuery.js QUERIES ONE DAY EITHER SIDE AND NO MORE.
+ * WHY lib/overlapQuery.js STILL QUERIES ONE DAY EITHER SIDE AND NO MORE.
  *
- * `computeSession` refuses anything over 24 hours, so a session reaches at
- * most one midnight past its own `workDate` — in both directions. This pins
- * that bound: the longest session the engine permits, filed two days away,
- * still cannot touch us.
+ * A session lives inside its own `workDate`, so strictly it need read no
+ * neighbour at all; the window is kept because it costs one index range and it
+ * is what makes the comparison total rather than dependent on the caller having
+ * narrowed correctly. This pins the bound it does have: the longest session
+ * there is, filed on either neighbouring date, still cannot touch us.
  */
-test('nothing two days away can reach us, which is what bounds the query', () => {
+test('nothing on a neighbouring date can reach us, which is what bounds the query', () => {
   const existing = [
-    { _id: 'a', ...at('2026-08-08', '00:00', '00:00', { endsNextDay: true }) },
-    { _id: 'b', ...at('2026-08-12', '00:00', '00:00', { endsNextDay: true }) },
+    { _id: 'a', ...at('2026-08-09', '00:00', '23:59') },
+    { _id: 'b', ...at('2026-08-11', '00:00', '23:59') },
   ];
   assert.equal(findOverlaps(at('2026-08-10', '00:00', '23:59'), existing).length, 0);
 });
@@ -182,11 +190,19 @@ test('the refusal names the existing entry the way its own row prints it', () =>
   assert.match(line, /30 นาที/);
 });
 
-test('an overnight neighbour says so, or it reads as a session running backwards', () => {
-  const found = findOverlaps(at('2026-08-10', '01:00', '03:00'), [
-    { _id: 'a', ...at('2026-08-09', '22:00', '02:00', { endsNextDay: true }) },
+/**
+ * IT READ `ข้ามคืน` AFTER THE WINDOW until 2026-09-10 — *an overnight neighbour
+ * says so, or it reads as a session running backwards* — because 22:00–02:00 on
+ * one line is otherwise a session that appears to go backwards. No window can
+ * read that way now, so the line is the two times and the word is not there.
+ */
+test('a neighbour is named by its own two times and nothing else', () => {
+  const found = findOverlaps(at('2026-08-10', '18:00', '20:00'), [
+    { _id: 'a', ...at('2026-08-10', '17:00', '19:00') },
   ]);
-  assert.match(describeClash(found[0]), /ข้ามคืน/);
+  const line = describeClash(found[0]);
+  assert.match(line, /17:00–19:00/);
+  assert.ok(!line.includes('ข้ามคืน'), 'the word is gone with the feature');
 });
 
 test('the message names every clash rather than the first', () => {
@@ -223,14 +239,19 @@ test('a neighbouring date is a different day, however long the shift ran', () =>
   // The rows the query hands over are three days wide, so this filter is the
   // one thing that narrows them to the day being filed.
   const near = [
-    { _id: 'a', ...at('2026-08-04', '22:00', '02:00', { endsNextDay: true }) },
+    { _id: 'a', ...at('2026-08-04', '22:00', '23:59') },
     { _id: 'b', ...at('2026-08-06', '17:00', '19:00') },
   ];
   assert.equal(findSameDate(at('2026-08-05', '17:00', '19:00'), near).length, 0);
 
-  // …and that is exactly the pair the minute rule still has to catch, which is
-  // why the date rule did not replace it.
-  assert.equal(findOverlaps(at('2026-08-05', '01:00', '03:00'), near).length, 1);
+  /**
+   * IT ENDED BY CATCHING THAT PAIR WITH THE MINUTE RULE — *…and that is exactly
+   * the pair the minute rule still has to catch, which is why the date rule did
+   * not replace it* — on the strength of the 4th running to 02:00 of the 5th.
+   * It cannot, since 2026-09-10, so neither rule finds anything and the date
+   * rule is no longer the narrower of the two.
+   */
+  assert.equal(findOverlaps(at('2026-08-05', '01:00', '03:00'), near).length, 0);
 });
 
 test('an edit does not find itself sitting on its own date', () => {

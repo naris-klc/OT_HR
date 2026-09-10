@@ -594,7 +594,6 @@ const FIELD = {
   workDate: ['วันที่', (v) => thaiDate(v)],
   startTime: ['เวลาเริ่ม', (v) => v || '—'],
   endTime: ['เวลาสิ้นสุด', (v) => v || '—'],
-  endsNextDay: ['ข้ามคืน', (v) => (v ? 'ใช่' : 'ไม่')],
   noBreakTaken: ['ไม่พักเที่ยง', (v) => (v ? 'ใช่' : 'ไม่')],
   flatDaily: ['เหมารายวัน', (v) => (v ? 'ใช่' : 'ไม่')],
   description: ['รายละเอียดงานที่ทำ', (v) => v || '—'],
@@ -970,7 +969,7 @@ export function ScanMismatchMark({ entry }) {
           The `title` above holds the whole sentence and a title is a HOVER,
           which a phone does not have — so the part that makes the mark legible
           ("อีก 40 นาที" rather than "ไม่ครบ") is printed as well.
-          `cell-sub th` is the same quiet second line วัน…, ข้ามคืน and the
+          `cell-sub th` is the same quiet second line วัน… and the
           editor's name already use in this table, so it is not a new voice.
           Not on ไม่ตรง: `ไม่มีข้อมูลสแกน` says the whole of itself. เกินเวลา
           DOES get the line, because the one thing a reader wants next — were
@@ -1055,7 +1054,7 @@ export function FlatDailyMark({ entry }) {
           mismatch, the figure would be unexplained on every other flat row and
           would read as a row that failed to compute.
 
-          `cell-sub th` is the quiet second line วัน…, ข้ามคืน and สแกน … already
+          `cell-sub th` is the quiet second line วัน… and สแกน … already
           use in this table, so a fact is stated in the voice facts get. */}
       {/* ── AND NOTHING IS APPENDED TO IT — 2026-09-07 ────────────────────
           It used to carry the scan finding as well — the shortfall from
@@ -1166,7 +1165,6 @@ const currentOf = (entry) => ({
   workDate: entry.workDate,
   startTime: entry.startTime,
   endTime: entry.endTime,
-  endsNextDay: entry.endsNextDay,
   noBreakTaken: entry.noBreakTaken,
   description: entry.description,
   otHours: entry.totals?.otHours,
@@ -1461,7 +1459,6 @@ export function trailOf(entry) {
     workDate: e.workDate,
     startTime: e.startTime,
     endTime: e.endTime,
-    endsNextDay: e.endsNextDay,
     noBreakTaken: e.noBreakTaken,
     description: e.description,
     status: e.status,

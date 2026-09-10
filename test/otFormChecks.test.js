@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  isFlatDailyPosition, FLAT_DAILY_POSITIONS, endsNextDayFor, isCompanyOffDay,
+  isFlatDailyPosition, FLAT_DAILY_POSITIONS, isCompanyOffDay,
   FLAT_DAY_TIMES,
 } from '../lib/entries.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
@@ -23,11 +23,13 @@ import { DEFAULT_POLICY } from '../src/config/policy.js';
  * WHY A TEST AND NOT JUST AN EDIT. Two of the three things asserted here are
  * invisible on the screen when they are wrong:
  *
- *   · ข้ามคืน is gone as a QUESTION but not as a FIELD. `endsNextDay` is still
- *     posted, still stored, and the engine still throws on the wrong value of
- *     it — so every press that moves a time has to recompute it. A handler that
- *     forgets is a form that saves a `TOO_LONG` refusal on times the person
- *     typed correctly, with no box on screen they could use to put it right.
+ *   · ข้ามคืน is gone as a QUESTION, and since 2026-09-10 as a FIELD as well.
+ *     This bullet read *"`endsNextDay` is still posted, still stored, and the
+ *     engine still throws on the wrong value of it — so every press that moves
+ *     a time has to recompute it"* while that was the arrangement. What is
+ *     asserted now is the opposite, and it is just as invisible when wrong: no
+ *     handler may write the field, and no line may promise the reader that a
+ *     wrapped shift is understood.
  *   · the เหมารายวัน gate hides a control. A hidden control that is ALREADY
  *     TICKED is a flag priced at eight hours with nothing on the screen able to
  *     take it off, which is why the gate lets an on box through whatever the
@@ -36,8 +38,8 @@ import { DEFAULT_POLICY } from '../src/config/policy.js';
  *
  * `npm test` is plain `node --test` with no JSX transform (README §Status), so
  * the component is read as SOURCE TEXT. The rule itself is exercised for real —
- * `isFlatDailyPosition` and `endsNextDayFor` are imported from lib/entries.js,
- * where they live precisely so this file can call them.
+ * `isFlatDailyPosition` is imported from lib/entries.js, where it lives
+ * precisely so this file can call it.
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -75,59 +77,43 @@ test('สองช่อง เรียง เหมารายวัน → �
 });
 
 /**
- * ตัดช่องติ๊กข้ามคืนออก — and the field it used to write is now computed.
+ * ตัดช่องติ๊กข้ามคืนออก (2026-09-08) — และตัดทั้งฟีเจอร์ (2026-09-10).
  *
- * The box was never a question anybody could answer two ways: the engine takes
- * exactly one value of `endsNextDay` per pair of times and throws on the other
- * (test/quickEditOvernight.test.js pins the helper against both throws). Every
- * tick of it was therefore redundant or a server error, and the error read "A
- * single session cannot exceed 24 hours" — a sentence about a limit for what
- * was really a tick-box in the wrong state.
+ * The box went first: it was never a question anybody could answer two ways,
+ * since the engine took exactly one value of `endsNextDay` per pair of times
+ * and threw on the other. Then HR asked for the rest — *เคลียร์ทุกอย่างที่
+ * เกี่ยวกับฟีเจอร์ ทำงานข้ามคืน ออกจากระบบ ทั้งหมด* — and the field, the
+ * derivation and the amber line that reported it went with it.
+ *
+ * THREE TESTS STOOD HERE AND ARE NOW ONE. *ทุกการกดที่ขยับเวลา คิดข้ามคืนใหม่
+ * จาก endsNextDayFor* pinned `setStart` and `setEnd` to a helper that no longer
+ * exists, and *บรรทัดข้ามคืนอยู่ข้างช่องเวลาสิ้นสุด และอ่านจากค่าที่จะถูกส่ง*
+ * pinned an amber line that is no longer drawn. What is left is the one thing
+ * still invisible when it is wrong: nothing on this form may write the field,
+ * and nothing may promise the reader a wrap the server will refuse.
  */
-test('ไม่มีช่องติ๊กข้ามคืนบนฟอร์มแล้ว', () => {
+test('ไม่เหลืออะไรเกี่ยวกับข้ามคืนบนฟอร์มแล้ว', () => {
   assert.ok(!form.includes('ทำงานข้ามคืน (สิ้นสุดวันถัดไป)'), 'ป้ายช่องติ๊กข้ามคืนยังอยู่');
-  assert.ok(!/checked=\{form\.endsNextDay\}/.test(form), 'ยังมี input ที่ผูกกับ endsNextDay');
-  assert.ok(!/set\('endsNextDay'/.test(form), 'ยังมีทางเขียน endsNextDay ตรง ๆ');
-});
 
-test('ทุกการกดที่ขยับเวลา คิดข้ามคืนใหม่จาก endsNextDayFor', () => {
-  // เวลาเริ่ม — ONE BRANCH SINCE 2026-09-09. It had two: the flat one derived
-  // the end from the start and asked about the pair it had just made. A flat
-  // day's times are locked now, so the only press that reaches this handler is
-  // an ordinary day's, and it asks about the end already in the box.
-  assert.match(form, /const setStart = \(v\) => setForm/);
-  assert.match(form, /startTime: v, endsNextDay: endsNextDayFor\(v, f\.endTime\)/);
-
-  // เวลาสิ้นสุด — the other half, and the box is wired to it rather than to the
-  // plain field setter that used to write `endTime` and leave the flag behind.
-  assert.match(form, /const setEnd = \(v\) => setForm/);
-  assert.match(form, /endTime: v, endsNextDay: endsNextDayFor\(f\.startTime, v\)/);
-  assert.match(form, /onChange=\{setEnd\}/);
-  assert.ok(!/set\('endTime'/.test(form), 'ช่องเวลาสิ้นสุดยังเขียนผ่าน set() ธรรมดา');
-
-  // ติ๊กเหมารายวัน เขียนเวลาให้ — และคิดข้ามคืนใหม่ด้วย. 08:00–17:00 does not
-  // wrap, but the pair it REPLACES may have.
-  assert.match(form, /endsNextDay: endsNextDayFor\(FLAT_DAY_TIMES\.startTime, FLAT_DAY_TIMES\.endTime\)/);
-
-  // AND THE COMPARISON IS NOT COPIED INTO THE COMPONENT. `endsNextDayFor` is
-  // this app's one answer to the question; a second reading of it in the form
-  // is how the screen comes to disagree with the engine behind it.
+  /**
+   * MEASURED ON THE CODE, NOT ON THE COMMENTS. The prose above `setStart` says
+   * what `endsNextDayFor` used to do on every press that moved a time, and that
+   * paragraph is the record of a rule that was withdrawn — which this repo
+   * keeps rather than deletes. It is the CODE that must not name either.
+   */
   const code = form.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  assert.ok(!/endTime <= .*startTime/.test(code), 'คอมโพเนนต์เขียนกฎข้ามคืนเองซ้ำ');
-});
+  assert.ok(!/endsNextDay/.test(code), 'โค้ดบนฟอร์มยังแตะ endsNextDay อยู่');
+  assert.ok(!code.includes('ข้ามคืน · สิ้นสุดวัน'), 'บรรทัดสีเหลืองข้ามคืนยังถูกวาดอยู่');
 
-/**
- * และคนกรอกยังต้องรู้ว่ากะนี้ข้ามคืน. With no tick to look at, the amber line
- * beside เวลาสิ้นสุด is the only thing on the screen that says so — so it says
- * the word as well as the day, and it is drawn from `form.endsNextDay`, the
- * very value being posted.
- */
-test('บรรทัดข้ามคืนอยู่ข้างช่องเวลาสิ้นสุด และอ่านจากค่าที่จะถูกส่ง', () => {
-  assert.match(form, /const overnight = form\.endsNextDay;/);
-  assert.match(form, /ข้ามคืน · สิ้นสุดวัน\{dayName\(endDateLabel\)\}ถัดไป/);
-  const end = form.slice(form.indexOf('<label>เวลาสิ้นสุด (ถึง)</label>'));
-  assert.ok(end.slice(0, end.indexOf('</div>')).includes('{overnight && ('),
-    'บรรทัดข้ามคืนไม่ได้อยู่ในกล่องเวลาสิ้นสุด');
+  // The two handlers survive and each sets ONE value now.
+  assert.match(form, /const setStart = \(v\) => setForm\(\(f\) => \(\{ \.\.\.f, startTime: v \}\)\);/);
+  assert.match(form, /const setEnd = \(v\) => setForm\(\(f\) => \(\{ \.\.\.f, endTime: v \}\)\);/);
+  assert.match(form, /onChange=\{setEnd\}/);
+
+  // AND NO SCREEN WRITES THE OLD COMPARISON BACK. `endsNextDayFor` was this
+  // app's one answer while the question existed; a copy of it appearing inside
+  // a component is how the wrap would come back without anybody deciding to.
+  assert.ok(!/endTime <= .*startTime/.test(code), 'คอมโพเนนต์เขียนกฎข้ามคืนเองซ้ำ');
 });
 
 // ── เหมารายวัน แสดงเฉพาะ เจ้าหน้าที่บริการ ──────────────────────────────────
@@ -205,7 +191,6 @@ test('เหมารายวันเขียนเวลา 08:00–17:00 �
   assert.match(form, /onChange=\{\(e\) => tickDay\('flatDaily', e\.target\.checked\)\}/);
   assert.match(form, /\.\.\.FLAT_DAY_TIMES,/);
   assert.deepEqual({ ...FLAT_DAY_TIMES }, { startTime: '08:00', endTime: '17:00' });
-  assert.equal(endsNextDayFor('08:00', '17:00'), false);
 });
 
 // ── ไม่พักเที่ยง แสดงเฉพาะวันหยุดของบริษัท ──────────────────────────────────

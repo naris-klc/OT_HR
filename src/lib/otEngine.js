@@ -3,7 +3,14 @@
  *
  * One session in, segmented rate buckets out. This module is pure: no database,
  * no clock, no timezone. Wall-clock times only, which is what the paper form
- * records and what makes midnight crossing tractable.
+ * records.
+ *
+ * ONE SESSION IS ONE CALENDAR DATE, and it has been since 2026-09-10 —
+ * `endsNextDay` and every piece of two-day arithmetic that hung off it were
+ * taken out that day at HR's word (*เคลียร์ทุกอย่างที่เกี่ยวกับฟีเจอร์ ทำงาน
+ * ข้ามคืน ออกจากระบบ ทั้งหมด*). A session whose end is not after its start is
+ * `END_BEFORE_START` and there is no longer a value of anything that makes it
+ * legal. Somebody who worked 17:00 to 02:00 files two requests, one per date.
  *
  * The system never calculates money (requirements §1). Multipliers here are
  * bucket labels, not rates.
@@ -53,11 +60,11 @@ export const DAY_TYPES = Object.freeze({ WORKDAY: 'workday', HOLIDAY: 'holiday' 
  * `applyBirthdayTiers`), so 'birthday' is now the one reason that changes a
  * figure, and the field it lives in stopped being decoration.
  *
- * The other two remain exactly that. An overnight session that starts on an
- * employee's birthday Friday and runs into Saturday still produces segments
- * that arrived at the same bucket by different rules — one because HR turned
- * the birthday rule on, one because Saturday has always been a holiday — and
- * only the first moves if the rule is turned off again.
+ * The other two remain exactly that. A session on an employee's birthday that
+ * falls on a Saturday produces segments that arrived at their bucket by two
+ * rules at once — one because HR turned the birthday rule on, one because
+ * Saturday has always been a holiday — and only the first moves if the rule is
+ * turned off again.
  */
 export const DAY_REASONS = Object.freeze({
   WEEKEND: 'weekend',
@@ -203,28 +210,35 @@ export function makeIsHoliday(holidayDates = [], policy = DEFAULT_POLICY) {
 // ── day types ───────────────────────────────────────────────────────────────
 
 /**
- * Every calendar date a session can put minutes into.
+ * Every calendar date a session can put minutes into — ONE, always.
  *
  * The caller resolves day types ahead of time and this is the list to resolve.
- * It mirrors `computeSession`'s own segmentation exactly — an overnight session
- * spans two dates that may be different kinds of day, and a caller that
- * resolved only `workDate` would hand the engine a map with a hole in it.
+ * It mirrors `computeSession`'s own segmentation, which since 2026-09-10 cannot
+ * leave `workDate`: a session that does not end after it starts is refused
+ * rather than carried into tomorrow.
+ *
+ * IT READ A LIST OF DATES OFF THE CLOCK until that day, walking day by day to
+ * the end of an overnight session so a caller that resolved only `workDate`
+ * would not hand the engine a map with a hole in it. There is no second date to
+ * hole any more, and this survives as a function rather than becoming
+ * `[workDate]` at every call site for one reason: it is the shape
+ * `resolveDayTypes` is fed everywhere, and it still validates the date.
  *
  * Lenient where `computeSession` is strict: a session whose end is not after
- * its start is rejected there, with a message about the form. Throwing a
- * different error here, one step earlier, would replace it with a worse one.
+ * its start is rejected there, with a message about what to do instead.
+ * Throwing a different error here, one step earlier, would replace it with a
+ * worse one.
  */
 export function sessionDates(session) {
   const { workDate, startTime, endTime } = session || {};
   parseDate(workDate);
-  const startMin = parseTime(startTime);
-  let endMin = parseTime(endTime);
-  if (session.endsNextDay) endMin += MINUTES_PER_DAY;
-
-  const lastDay = Math.floor((Math.max(endMin, startMin + 1) - 1) / MINUTES_PER_DAY);
-  const dates = [];
-  for (let day = 0; day <= lastDay; day++) dates.push(addDays(workDate, day));
-  return dates;
+  // Still parsed, still only for the throw: a malformed time refused here is
+  // refused with the same sentence it would have got one step later, and a
+  // caller that reached the database on the strength of a readable answer from
+  // this function would otherwise be reading one it never checked.
+  parseTime(startTime);
+  parseTime(endTime);
+  return [workDate];
 }
 
 function isLeapYear(year) {
@@ -466,10 +480,17 @@ function otStartMinute(policy) {
 }
 
 /**
- * Cut points that matter: midnight (day type can change), 08:00 and the instant
- * OT starts (the core-hours boundary — 17:00, or 17:01 under [OPEN 5]).
- * Everything between two adjacent cut points shares one bucket, which is what
- * makes a session spanning several buckets computable.
+ * Cut points that matter: 08:00 and the instant OT starts (the core-hours
+ * boundary — 17:00, or 17:01 under [OPEN 5]). Everything between two adjacent
+ * cut points shares one bucket, which is what makes a session spanning several
+ * buckets computable.
+ *
+ * MIDNIGHT WAS THE THIRD AND IT WALKED DAY BY DAY — the day type could change
+ * across it, so an overnight session had a cut there and a loop to place it.
+ * Since 2026-09-10 a session cannot reach a midnight at all, so the loop went
+ * and the three offsets are read once against day 0. `0` stays on the list for
+ * the one thing it still does: a session that starts before 08:00 is cut at
+ * 08:00, and nothing else here would put that cut in.
  *
  * It is `otStartMinute` and not `coreEndMinute` that appears here for the same
  * reason `bucketFor` reads it: a cut list that does not carry the boundary the
@@ -479,14 +500,8 @@ function otStartMinute(policy) {
  */
 function boundaryCuts(startAbs, endAbs, policy) {
   const cuts = new Set([startAbs, endAbs]);
-  const firstDay = Math.floor(startAbs / MINUTES_PER_DAY);
-  const lastDay = Math.floor((endAbs - 1) / MINUTES_PER_DAY);
-  for (let day = firstDay; day <= lastDay + 1; day++) {
-    const base = day * MINUTES_PER_DAY;
-    for (const off of [0, policy.coreStartMinute, otStartMinute(policy)]) {
-      const t = base + off;
-      if (t > startAbs && t < endAbs) cuts.add(t);
-    }
+  for (const t of [0, policy.coreStartMinute, otStartMinute(policy)]) {
+    if (t > startAbs && t < endAbs) cuts.add(t);
   }
   return [...cuts].sort((a, b) => a - b);
 }
@@ -587,19 +602,24 @@ function bucketFor(isHolidayDay, minuteOfDay, policy) {
 
 // ── break deduction ─────────────────────────────────────────────────────────
 
-/** The 12:00–13:00 windows the session actually crosses, as absolute minutes. */
+/**
+ * The 12:00–13:00 window the session actually crosses, as absolute minutes.
+ *
+ * AT MOST ONE, and that is now a fact about the calendar rather than a setting.
+ * `breakPerCalendarDay` ([OPEN 2] — *ทำงานข้ามคืน หักพักกี่ครั้ง*) stood here
+ * and decided whether a session crossing two lunch hours was deducted twice or
+ * once. A session inside one calendar date crosses one lunch hour or none, so
+ * the question stopped being answerable on 2026-09-10 and the setting went out
+ * of the policy with it.
+ *
+ * The array shape stays: `computeSession` subtracts these as holes and reads
+ * their total, and a single window that is sometimes absent is still a list.
+ */
 function lunchWindows(startAbs, endAbs, policy) {
-  const windows = [];
-  const firstDay = Math.floor(startAbs / MINUTES_PER_DAY);
-  const lastDay = Math.floor((endAbs - 1) / MINUTES_PER_DAY);
-  for (let day = firstDay; day <= lastDay; day++) {
-    const base = day * MINUTES_PER_DAY;
-    const ws = base + policy.breakWindowStartMinute;
-    const we = base + policy.breakWindowEndMinute;
-    if (we > startAbs && ws < endAbs) windows.push([Math.max(ws, startAbs), Math.min(we, endAbs)]);
-  }
-  if (!policy.breakPerCalendarDay && windows.length > 1) return windows.slice(0, 1);
-  return windows;
+  const ws = policy.breakWindowStartMinute;
+  const we = policy.breakWindowEndMinute;
+  if (we <= startAbs || ws >= endAbs) return [];
+  return [[Math.max(ws, startAbs), Math.min(we, endAbs)]];
 }
 
 /**
@@ -677,8 +697,7 @@ function minimumPiles(segments, workingSegments, policy) {
  * @param {object} session
  * @param {string} session.workDate      'YYYY-MM-DD' — the date the session starts
  * @param {string} session.startTime     'HH:MM'
- * @param {string} session.endTime       'HH:MM'
- * @param {boolean} [session.endsNextDay] session runs past midnight
+ * @param {string} session.endTime       'HH:MM' — must be after startTime
  * @param {boolean} [session.noBreakTaken] ไม่พักเที่ยง — skip the deduction
  * @param {object} options
  * @param {object|Map} options.dayTypes  date → 'workday' | 'holiday' | { type, reason }.
@@ -702,31 +721,37 @@ export function computeSession(session, options = {}) {
   const dayTypes = options.dayTypes || {};
 
   const { workDate, startTime, endTime } = session;
-  const endsNextDay = Boolean(session.endsNextDay);
   const noBreakTaken = Boolean(session.noBreakTaken);
 
   parseDate(workDate);
   const startMin = parseTime(startTime);
-  let endMin = parseTime(endTime);
+  const endMin = parseTime(endTime);
 
-  if (endsNextDay) {
-    endMin += MINUTES_PER_DAY;
-  } else if (endMin <= startMin) {
+  /**
+   * ONE DATE, AND THE ONLY THING A BACKWARDS PAIR CAN BE NOW.
+   *
+   * It read *"ถ้าเป็นกะข้ามคืน ต้องระบุว่าสิ้นสุดวันถัดไป"* until 2026-09-10 and named
+   * a `endsNextDay` that no longer exists, so it sent whoever hit it looking
+   * for a control on no screen and then for a field in no document. What it
+   * says instead is the thing there IS to do: two dates, two requests. That is
+   * legal under หนึ่งวัน หนึ่งใบ (lib/overlap.js), which counts dates and not shifts.
+   *
+   * `<=` AND NOT `<`, which is the boundary the whole rule turns on: a pair
+   * reading 21:00–21:00 was a 24-hour session while there was a flag to make it
+   * one, and is nothing at all without one. Zero minutes is not a request.
+   *
+   * `TOO_LONG` STOOD BELOW THIS AND IS GONE with the same commit. It caught a
+   * ticked 17:00–20:00 — twenty-seven hours — and nothing else; inside one
+   * calendar date the longest a session can be is 23 h 59 m, so the comparison
+   * it made can no longer come out true.
+   */
+  if (endMin <= startMin) {
     throw new OtValidationError(
       'END_BEFORE_START',
-      // "Tick \"ends next day\"" until 2026-09-10: the box it named came off the
-      // form on 2026-09-08 and off แก้ไขชั่วโมง on 2026-09-10, so the sentence
-      // sent whoever hit it looking for a control that is not on any screen.
-      // `endsNextDay` is derived from the two times now (`endsNextDayFor`), and
-      // what is left of this error is the API-level refusal.
-      'เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม — ถ้าเป็นกะข้ามคืน ต้องระบุว่าสิ้นสุดวันถัดไป',
+      'เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม — งานที่ทำข้ามเที่ยงคืนให้แยกยื่นเป็นสองใบ ใบละวัน',
     );
   }
-  if (endMin - startMin > MINUTES_PER_DAY) {
-    throw new OtValidationError('TOO_LONG', 'ช่วงเวลาเดียวต้องไม่เกิน 24 ชั่วโมง');
-  }
 
-  // Day 0 of the absolute timeline is workDate itself.
   const startAbs = startMin;
   const endAbs = endMin;
 
@@ -742,27 +767,37 @@ export function computeSession(session, options = {}) {
   let segments = [];
   let nonOtMinutes = 0;
 
+  /**
+   * ONE DATE FOR EVERY SEGMENT, and it is `workDate`.
+   *
+   * A `dayIndex` was worked out here from `a / MINUTES_PER_DAY` and fed
+   * `addDays`, because an overnight session put its two halves on two dates
+   * that could be two kinds of day. There is no second date since 2026-09-10,
+   * so the day type is read once and the minute of the day IS the absolute
+   * minute.
+   *
+   * The end of a segment used to print `24:00` rather than `00:00` when it
+   * landed exactly on a midnight — the paper form's ถึง column had to read
+   * "17:00 – 24:00" on the first night of an overnight shift or the row was
+   * unreadable. `endTime` is at most 23:59 now, so no cut can land there and
+   * the case is unreachable.
+   */
+  const { type: dayType, reason: dayReason } = readDayType(dayTypes, workDate);
+
   for (let i = 0; i < cuts.length - 1; i++) {
     for (const [a, b] of subtractIntervals(cuts[i], cuts[i + 1], holes)) {
-      const dayIndex = Math.floor(a / MINUTES_PER_DAY);
-      const dateStr = addDays(workDate, dayIndex);
-      const minuteOfDay = a - dayIndex * MINUTES_PER_DAY;
-      const { type, reason } = readDayType(dayTypes, dateStr);
-      const bucket = bucketFor(type === DAY_TYPES.HOLIDAY, minuteOfDay, policy);
+      const bucket = bucketFor(dayType === DAY_TYPES.HOLIDAY, a, policy);
       if (!bucket) { nonOtMinutes += b - a; continue; }
       segments.push({
-        date: dateStr,
+        date: workDate,
         start: formatTime(a),
-        // A segment ending exactly at midnight prints as 24:00, not 00:00 —
-        // the paper form's ถึง column has to read "17:00 – 24:00" for the
-        // first night of an overnight session, or the row is unreadable.
-        end: b % MINUTES_PER_DAY === 0 ? '24:00' : formatTime(b),
-        dayType: type,
+        end: formatTime(b),
+        dayType,
         /**
          * Why it was that kind of day. Read by `applyBirthdayTiers` below and
          * by nothing else in here — see DAY_REASONS.
          */
-        dayReason: reason,
+        dayReason,
         bucket,
         multiplier: BUCKET_MULTIPLIER[bucket],
         minutes: b - a,
@@ -936,7 +971,7 @@ export function computeSession(session, options = {}) {
       segments: [{
         date: workDate,
         start: formatTime(startAbs),
-        end: endAbs % MINUTES_PER_DAY === 0 ? '24:00' : formatTime(endAbs),
+        end: formatTime(endAbs),
         dayType: flatDayType,
         dayReason: flatDayReason,
         bucket,
@@ -965,7 +1000,6 @@ export function computeSession(session, options = {}) {
         normalHours: 0,
       },
       breakMinutes,
-      endsNextDay,
       // Neither rule ran, and `false` says so. Left to carry whatever an
       // earlier pass had put there, `belowMinimumFlagged` would ask HR to look
       // at a row for being short of a minimum it was never measured against.
@@ -1176,7 +1210,6 @@ export function computeSession(session, options = {}) {
       normalHours: 0,
     },
     breakMinutes,
-    endsNextDay,
     /**
      * [OPEN 4] Under the minimum, accepted at the hours actually worked — see
      * where it is set above. Always present, so a caller reads a boolean rather

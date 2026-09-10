@@ -38,7 +38,7 @@ router.get('/entries.csv', wrap(async (req, res) => {
     .lean();
 
   const headers = [
-    'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก', 'วันที่', 'จาก', 'ถึง', 'ข้ามคืน', 'ไม่พักเที่ยง',
+    'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก', 'วันที่', 'จาก', 'ถึง', 'ไม่พักเที่ยง',
     'OT วันปกติ (x1.5)', 'OT วันหยุด 8-17 (x1.5)', 'OT วันหยุด นอกเวลา (x3)',
     'รวมชั่วโมง', 'รายละเอียดงานที่ทำ', 'สถานะ', 'หัวหน้าอนุมัติเมื่อ', 'HR อนุมัติเมื่อ',
   ];
@@ -50,7 +50,6 @@ router.get('/entries.csv', wrap(async (req, res) => {
     e.workDate,
     e.startTime,
     e.endTime,
-    e.endsNextDay ? 'ใช่' : '',
     e.noBreakTaken ? 'ใช่' : '',
     fmt(e.buckets?.[BUCKETS.OT15_WEEKDAY]),
     fmt(e.buckets?.[BUCKETS.OT15_HOLIDAY]),

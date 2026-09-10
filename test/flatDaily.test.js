@@ -10,7 +10,7 @@ import {
 import { DEFAULT_POLICY } from '../src/config/policy.js';
 import {
   ENTERED_FIELDS, pickSession, sameSession, zeroOtHoursAllowed,
-  endsNextDayFor, FLAT_DAY_SPAN_MINUTES, FLAT_DAY_TIMES,
+  FLAT_DAY_SPAN_MINUTES, FLAT_DAY_TIMES,
 } from '../lib/entries.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -165,7 +165,10 @@ test('ติ๊กเหมาในวันทำงาน — แปดชั
 test('ช่อง ×3 เป็นศูนย์บนใบเหมาทุกใบ แม้จะเริ่มงานตอนกลางคืน', () => {
   for (const session of [
     { workDate: '2026-08-12', startTime: '20:00', endTime: '23:00' },
-    { workDate: '2026-08-08', startTime: '18:00', endTime: '06:00', endsNextDay: true },
+    // It was 18:00 → 06:00 ข้ามคืน here until 2026-09-10 — the latest start the
+    // engine would accept. 06:00–18:00 is the same twelve hours the other way
+    // up, and it still starts outside the core day.
+    { workDate: '2026-08-08', startTime: '06:00', endTime: '18:00' },
     { workDate: '2026-08-12', startTime: '08:00', endTime: '20:00' },
   ]) {
     const flat = run({ ...session, flatDaily: true });
@@ -252,25 +255,28 @@ test('แถวเดียว เวลาเป็นเวลาจริง 
 
 /**
  * AN OVERNIGHT เหมา DAY IS STILL ONE DAY, AND ONE ROW. The figure is per
- * REQUEST — a Saturday shift running into Sunday is eight hours in total, not
- * eight per date — and the row is dated `workDate`, the day that was bought.
- * Reading the far side would let the column depend on how late somebody stayed.
+ * REQUEST, however long the clock ran, and the row is dated `workDate`.
+ *
+ * IT WAS AN OVERNIGHT SHIFT THAT MADE THE POINT — *กะข้ามคืนที่ติ๊กเหมา —
+ * แปดชั่วโมงต่อใบ และแถวเดียวลงวันที่เริ่ม*, a Saturday 18:00 running to 06:00
+ * on the Sunday: eight hours in total rather than eight per date, in the
+ * Saturday's column, because reading the far side would have let the answer
+ * depend on how late somebody stayed. There is no far side since 2026-09-10.
+ * A long single-date shift makes the surviving half of the point: twelve hours
+ * on the clock, eight on the sheet, one row.
  */
-test('กะข้ามคืนที่ติ๊กเหมา — แปดชั่วโมงต่อใบ และแถวเดียวลงวันที่เริ่ม', () => {
-  const overnight = {
-    workDate: '2026-08-08', startTime: '18:00', endTime: '06:00', endsNextDay: true,
-  };
-  const plain = run(overnight);
-  const flat = run({ ...overnight, flatDaily: true });
+test('กะยาวที่ติ๊กเหมา — แปดชั่วโมงต่อใบ และแถวเดียวลงวันที่เริ่ม', () => {
+  const long = { workDate: '2026-08-08', startTime: '06:00', endTime: '18:00' };
+  const plain = run(long);
+  const flat = run({ ...long, flatDaily: true });
 
-  assert.equal(plain.totals.otHours, 12, '18:00 เสาร์ ถึง 06:00 อาทิตย์');
+  assert.equal(plain.totals.otHours, 11, '12 ชม. หักพักเที่ยงหนึ่งชั่วโมง');
 
   assert.equal(flat.totals.otHours, 8);
   assert.equal(flat.buckets[BUCKETS.OT15_HOLIDAY], 8);
   assert.equal(flat.segments.length, 1);
   assert.equal(flat.segments[0].date, '2026-08-08');
-  assert.equal(flat.endsNextDay, true, 'ใบยังบอกว่าข้ามคืน');
-  assert.equal(flat.flatDailyTrimmed, 4, '12 ชม. ในช่วง OT นับ 8');
+  assert.equal(flat.flatDailyTrimmed, 3, '11 ชม. ในช่วง OT นับ 8');
 });
 
 test('ไม่ติ๊ก — กฎนี้ไม่มีผลกับอะไรเลย', () => {
@@ -416,7 +422,6 @@ test('ช่องติ๊กถูกอ่านที่เดียว แ�
     workDate: '2026-08-12',
     startTime: '08:00',
     endTime: '20:00',
-    endsNextDay: false,
     noBreakTaken: false,
     flatDaily: false,
     description: 'เข้าเวรวันแม่',
@@ -468,16 +473,12 @@ test('ติ๊กแล้วล็อกเวลา 08:00–17:00 น. แล
   assert.match(form, /const tickDay = \(k, on\) => setForm/);
   assert.match(form, /\[k\]: true,\s*\r?\n\s*\.\.\.FLAT_DAY_TIMES,/);
   assert.match(form, /: \{ \.\.\.f, \[k\]: false \}/);
-  // AND THE PAIR ANSWERS ข้ามคืน — 2026-09-08, when the tick for it came off
-  // this form. Ticking เหมารายวัน over a 22:00–02:00 shift replaces the times
-  // with a pair that does not wrap; a `true` left standing beside them is
-  // `TOO_LONG` out of the engine, on a state nobody can now correct by hand.
-  assert.match(
-    form,
-    /endsNextDay: endsNextDayFor\(FLAT_DAY_TIMES\.startTime, FLAT_DAY_TIMES\.endTime\)/,
-    'ติ๊กแล้วเขียนเวลาให้ แต่ธงข้ามคืนไม่ได้ถูกคิดใหม่',
-  );
-  assert.equal(endsNextDayFor('08:00', '17:00'), false);
+  // IT ANSWERED ข้ามคืน AS WELL until 2026-09-10 — ticking เหมารายวัน over a
+  // 22:00–02:00 shift replaced the times with a pair that did not wrap, so the
+  // flag beside them had to be recomputed or the engine saw a 27-hour session.
+  // There is no flag to recompute; the pair is the whole of what a tick writes.
+  const formCode = form.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/endsNextDay/.test(formCode), 'ฟอร์มยังเขียน endsNextDay ตอนติ๊กเหมารายวัน');
   assert.match(form, /onChange=\{\(e\) => tickDay\('flatDaily', e\.target\.checked\)\}/);
 
   // เวลาเริ่ม IS SHUT TOO. It was the half HR kept on 2026-09-07 — *เปลี่ยน
@@ -494,7 +495,7 @@ test('ติ๊กแล้วล็อกเวลา 08:00–17:00 น. แล
   // A STORED FLAT ROW IS PUT BACK TO THE PAIR ON THE WAY IN — otherwise a row
   // filed while the boxes were free (08:00–20:00 was legal then) would open on
   // two greyed times no control on the screen can move.
-  assert.match(form, /\.\.\.\(flatDaily \? \{ \.\.\.FLAT_DAY_TIMES, endsNextDay: false \} : null\)/);
+  assert.match(form, /\.\.\.\(flatDaily \? \{ \.\.\.FLAT_DAY_TIMES \} : null\)/);
 });
 
 /**
@@ -541,8 +542,9 @@ test('ใบเหมา — ล็อกทั้งสองช่อง แ�
   // it was.
   //
   // THE ข้ามคืน TICK THAT USED TO BE GREYED OUT BESIDE THEM IS GONE —
-  // 2026-09-08, off the whole form rather than off flat days; see
-  // test/otFormChecks.test.js. What the reader gets instead is the amber line.
+  // 2026-09-08, off the whole form rather than off flat days, and the feature
+  // itself followed on 2026-09-10; see test/otFormChecks.test.js. The amber
+  // line that stood in for the tick went with it: there is nothing to report.
   const end = form.slice(form.indexOf('<label>เวลาสิ้นสุด (ถึง)</label>'));
   assert.match(end.slice(0, end.indexOf('</div>')), /disabled=\{form\.flatDaily\}/);
   assert.ok(
@@ -894,7 +896,7 @@ test('หน้ารออนุมัติ — แก้ไขชั่วโ
   // measured against that rather than against the stored row — otherwise every
   // such row opens dirty and arms the "unsaved changes" prompt on a pop-up
   // somebody opened to read.
-  assert.match(edit, /\.\.\.\(entry\.flatDaily \? \{ \.\.\.FLAT_DAY_TIMES, endsNextDay: false \} : null\)/);
+  assert.match(edit, /\.\.\.\(entry\.flatDaily \? \{ \.\.\.FLAT_DAY_TIMES \} : null\)/);
   assert.match(edit, /const opened = asOpened\(entry\)/);
   assert.match(edit, /const moved = form\.startTime !== opened\.startTime/);
   // …and the reviewer is told which times the stored row still carries.

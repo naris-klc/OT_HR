@@ -5954,11 +5954,6 @@ const POLICY_FIELDS = [
     ],
   },
   {
-    section: 1,
-    key: 'breakPerCalendarDay', open: 2, label: 'ทำงานข้ามคืน หักพักกี่ครั้ง', bool: true,
-    options: [[true, 'หักตามจำนวนวันที่คาบเกี่ยว'], [false, 'หักครั้งเดียวเสมอ']],
-  },
-  {
     section: 2,
     key: 'roundingMode', open: 3, label: 'วิธีการปัดเศษชั่วโมง OT',
     options: [

@@ -406,7 +406,6 @@ function pickSession(body) {
     workDate: String(body.workDate || '').slice(0, 10),
     startTime: normaliseTime(body.startTime),
     endTime: normaliseTime(body.endTime),
-    endsNextDay: Boolean(body.endsNextDay),
     noBreakTaken: Boolean(body.noBreakTaken),
   };
 }

@@ -23,6 +23,7 @@
     "migrate:roles": "node src/migrate-roles.js",
     "migrate:first-password": "node src/migrate-first-password.js",
     "migrate:hr-headed": "node src/migrate-hr-headed-departments.js",
+    "migrate:drop-ends-next-day": "node src/migrate-drop-ends-next-day.js",
     "refresh:signature-names": "node src/refresh-signature-names.js",
     "import:departments": "node src/import-departments.js",
     "rehome:demo-roster": "node src/rehome-demo-roster.js",

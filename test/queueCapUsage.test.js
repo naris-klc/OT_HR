@@ -68,7 +68,7 @@ let seq = 0;
 /** One computed entry, in the shape a lean read hands back. */
 function entry({
   id, employee = 'emp1', workDate = '2026-08-06', otHours = 3,
-  status = 'pending_mgr', startTime = '18:00', endTime = '21:00', endsNextDay = false,
+  status = 'pending_mgr', startTime = '18:00', endTime = '21:00',
   segments, createdAt = '2026-08-06T10:00:00.000Z', department,
 } = {}) {
   seq += 1;
@@ -80,7 +80,6 @@ function entry({
     workDate,
     startTime,
     endTime,
-    endsNextDay,
     status,
     createdAt,
     buckets: {
@@ -1310,7 +1309,12 @@ test('a queue holding two months measures each row against its own month', async
 });
 
 /**
- * A shift that opens on the last night of a month and closes in the next one.
+ * A STORED ROW WHOSE SEGMENTS FALL ON TWO DATES, straddling a month end.
+ *
+ * **No entry filed after 2026-09-10 can be shaped like this** — ทำงานข้ามคืน
+ * was removed and a session lives inside its own `workDate` — and the rule is
+ * still worth pinning, because rows filed BEFORE that day are in the database
+ * and are read by this arithmetic every time somebody opens the queue.
  *
  * The report divides the year by the stored `period`, which is `workDate`
  * sliced — so BOTH halves count in August, and the queue has to divide it the
@@ -1318,13 +1322,12 @@ test('a queue holding two months measures each row against its own month', async
  * NOT how the weekly window treats the same entry (see below): a week is a
  * range of dates, a month is a field.
  */
-test('a shift crossing month-end counts wholly in the month it started', async () => {
+test('a stored two-date row counts wholly in the month its workDate names', async () => {
   const overnight = entry({
     id: 'overnight',
     workDate: '2026-08-31',
     startTime: '22:00',
-    endTime: '02:00',
-    endsNextDay: true,
+    endTime: '23:59',
     otHours: 4,
     department: dept(40),
     segments: [
@@ -1430,16 +1433,19 @@ test('a weekly ceiling adds the week the row falls in, alongside the month', asy
 });
 
 /**
- * The same entry the month refuses to split, split by the week — because the
- * week is a range of dates and the two halves fell in two of them.
+ * The same shape of stored row the month refuses to split, split by the week —
+ * because the week is a range of dates and the two halves fell in two of them.
+ *
+ * Filed before 2026-09-10, like the one above; `weeksOfEntry` reads segment
+ * dates and must go on reading these correctly whatever the filing rules are
+ * today.
  */
-test('a shift crossing into a new week is measured against both weeks', async () => {
+test('a stored two-date row is measured against both weeks', async () => {
   const overnight = entry({
     id: 'overnight',
     workDate: '2026-08-09', // Sunday
     startTime: '22:00',
-    endTime: '02:00',
-    endsNextDay: true,
+    endTime: '23:59',
     otHours: 4,
     department: dept(40, 12),
     segments: [

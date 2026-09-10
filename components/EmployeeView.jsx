@@ -334,7 +334,6 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                 <div className="item-title">{e.description}</div>
                 <div className="hint">
                   {e.startTime}–{e.endTime}
-                  {e.endsNextDay && ' · ข้ามคืน'}
                   {e.noBreakTaken && ' · ไม่พักเที่ยง'}
                 </div>
                 {/* WHAT the row is, before WHO wrote it — the order the two
@@ -482,7 +481,6 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                       </td>
                       <td data-label="เวลา">
                         {e.startTime}–{e.endTime}
-                        {e.endsNextDay && <div style={{ fontSize: 12, color: 'var(--amber)' }}>ข้ามคืน</div>}
                         {/* THE SAME CELL, THE SAME FLAG, THE SAME MARK as
                             รออนุมัติ OT draws — `.cell-flag`, 2026-09-08. The
                             red was asked for on the reviewer's queue, and it
@@ -976,7 +974,6 @@ function EntryDetail({
           <Fact
             k="เวลาที่ขอ"
             v={`${e.startTime}–${e.endTime}`}
-            sub={e.endsNextDay ? 'ข้ามคืนไปวันถัดไป' : null}
           />
           <Fact k="พักเที่ยง" v={e.noBreakTaken ? 'ไม่พัก' : 'หักตามนโยบาย'} />
           <Fact k="ชั่วโมงตามนาฬิกา" v={`${hours(e.totals?.clockHours)} ชม.`} />

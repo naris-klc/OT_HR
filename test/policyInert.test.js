@@ -237,39 +237,25 @@ test('the increment note follows the rounding mode', () => {
   assert.equal(a, b, "'exact' must ignore the increment entirely");
 });
 
-test('the overnight-break note follows breakMode, checked against the engine', () => {
-  /**
-   * The only shape in which `breakPerCalendarDay` can show itself at all, and
-   * it takes some finding — which is itself worth pinning.
-   *
-   * Two lunch windows sit 24 hours apart and last an hour, so a session touches
-   * both only if it runs from inside one to inside the next: at least 23 hours,
-   * and no more than the 24 the engine allows. Saturday 12:50 to Sunday 12:10
-   * is 23h20m and clips ten minutes off each window.
-   *
-   * A WEEKEND, because on a workday 08:00–17:00 is not overtime in the first
-   * place — the lunch hour has already been left out of the buckets and there
-   * is nothing for either answer to deduct. The break rule only ever bites on a
-   * holiday, which is exactly what worked example B is.
-   *
-   * And 'exact', because floor/30 rounds the ten-minute difference away: the
-   * flag would move the hours and the block would put them back, and the test
-   * would report "no effect" about a rule that had one.
-   */
-  const session = {
-    workDate: '2026-08-08', startTime: '12:50', endTime: '12:10', endsNextDay: true,
-  };
-  const dayTypes = { '2026-08-08': 'holiday', '2026-08-09': 'holiday' };
-  const hours = (overrides) => computeSession(session, {
-    policy: { ...DEFAULT_POLICY, roundingMode: 'exact', ...overrides }, dayTypes,
-  }).totals.otHours;
-
-  for (const breakMode of ['lunchWindow', 'none', 'always', 'threshold']) {
-    const claimedInert = inertReason('breakPerCalendarDay', { ...DEFAULT_POLICY, breakMode }) !== null;
-    const moves = hours({ breakMode, breakPerCalendarDay: true })
-      !== hours({ breakMode, breakPerCalendarDay: false });
-    assert.equal(claimedInert, !moves, `breakMode=${breakMode}`);
-  }
+/**
+ * A TEST STOOD HERE AND HAS NO SUBJECT LEFT — 2026-09-10.
+ *
+ * *the overnight-break note follows breakMode, checked against the engine*
+ * walked all four break modes against `breakPerCalendarDay`, and finding a
+ * session in which the setting could show itself at all took some doing: two
+ * lunch windows sit 24 hours apart and last an hour, so a session had to run
+ * from inside one to inside the next — Saturday 12:50 to Sunday 12:10, 23h20m,
+ * clipping ten minutes off each. ทำงานข้ามคืน was removed that day, so no
+ * session can reach a second lunch hour, and the setting went out of
+ * `DEFAULT_POLICY` and off ตั้งค่าระบบ with it.
+ *
+ * What is left to pin is that it did not survive anywhere: a key with no
+ * default and no field would show as a row on the settings screen with nothing
+ * behind it.
+ */
+test('breakPerCalendarDay ไม่เหลือทั้งในนโยบายและในเหตุผลที่อธิบาย', () => {
+  assert.equal(DEFAULT_POLICY.breakPerCalendarDay, undefined);
+  assert.equal(inertReason('breakPerCalendarDay', DEFAULT_POLICY), null);
 });
 
 test('the birthday rule switched off takes a row down with it', () => {

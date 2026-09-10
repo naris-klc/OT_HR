@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-/* `parseTime` lives in `lib/` beside `endsNextDayFor` — the other function in
+/* `parseTime` lives in `lib/` — it is the function in
    this app that reads an `HH:mm` pair — and not here, because `npm test` is
    plain `node --test` with no JSX transform: a helper inside a component can
    only ever be checked as source text, and this one has real edge cases. */
@@ -64,7 +64,7 @@ import { Popover, PickerBox, usePicker } from './popover.jsx';
  *
  * ── THE VALUE CONTRACT IS THE NATIVE ONE, TO THE CHARACTER ─────────────────
  * `HH:mm`, zero-padded, 24-hour, `''` when empty — exactly what the input read
- * and wrote. `src/lib/otEngine.js` and `endsNextDayFor` compare these as strings, so
+ * and wrote. `src/lib/otEngine.js` compares these as strings, so
  * anything else would be a change to the engine's input and not to a control.
  *
  * `required` IS NOT CARRIED OVER, for the reason components/PickDate.jsx spells
@@ -190,7 +190,7 @@ function Wheel({ values, value, onPick, label, autoFocus = false }) {
     if (step) {
       e.preventDefault();
       // WRAPS, so 23:00 → ↓ → 00:00 is one press. An OT session that ends after
-      // midnight is ordinary here — `endsNextDayFor` exists for it — and a
+      // midnight is ordinary on the dial — the hour column wraps to 00 — and a
       // column that stopped at 23 would make the commonest late shift the
       // slowest thing to enter. ←/→ are NOT bound: the two wheels are two tab
       // stops now, and the header above them is where a reader who wants to

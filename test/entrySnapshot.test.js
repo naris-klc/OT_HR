@@ -15,7 +15,6 @@ const SESSION = {
   workDate: '2026-08-03',
   startTime: '17:00',
   endTime: '20:00',
-  endsNextDay: false,
   noBreakTaken: false,
   flatDaily: false,
   description: 'สอบเทียบชุด PM-3000',
@@ -30,7 +29,6 @@ test('every entered field on its own marks the entry as changed', () => {
     workDate: '2026-08-04',
     startTime: '18:00',
     endTime: '21:00',
-    endsNextDay: true,
     noBreakTaken: true,
     flatDaily: true,
     description: 'สอบเทียบชุด PM-4000',
@@ -45,9 +43,11 @@ test('every entered field on its own marks the entry as changed', () => {
 });
 
 test('a missing boolean and an explicit false are the same answer', () => {
-  const {
-    endsNextDay, noBreakTaken, flatDaily, ...withoutFlags
-  } = SESSION;
+  // `endsNextDay` was a third flag here until 2026-09-10 and left
+  // `ENTERED_FIELDS` with the feature. Two booleans still make the point: a
+  // payload that omits one and a stored row that holds `false` are the same
+  // answer, and `sameSession` must not read the difference as an edit.
+  const { noBreakTaken, flatDaily, ...withoutFlags } = SESSION;
   assert.equal(sameSession(SESSION, withoutFlags), true);
   assert.equal(sameValue(undefined, false), true);
   assert.equal(sameValue(undefined, true), false);

@@ -27,8 +27,10 @@ import {
  *      position to record. See §1ก.
  *   2. **Silence where there is a real gap.** "Every row agreed" and "nobody
  *      imported the file" must not produce the same screen.
- *   3. **An overnight row read against the clock face** rather than against one
- *      number line, which would make every ข้ามคืน request a false mismatch.
+ *   3. **A punch from a neighbouring date read against the clock face** rather
+ *      than against one number line. It was ข้ามคืน rows this protected until
+ *      2026-09-10; what is left of the danger is a late finish whose scan-out
+ *      lands after midnight, on tomorrow's date.
  *   4. **A row marked for working longer than it claimed.** Added 7 ก.ย. 2569,
  *      when the end stopped being a distance and became a direction: สแกนออก
  *      ตั้งแต่เวลาสิ้นสุดบนใบเป็นต้นไป = ทำครบตามขอ, and the row is quiet. The
@@ -59,7 +61,7 @@ import {
  */
 
 const entry = (over = {}) => ({
-  workDate: '2026-09-01', startTime: '17:30', endTime: '20:00', endsNextDay: false, ...over,
+  workDate: '2026-09-01', startTime: '17:30', endTime: '20:00', ...over,
 });
 const punch = (date, time) => ({ date, time });
 
@@ -667,28 +669,47 @@ test('สแกนของวันอื่นไม่ทำให้วั�
   assert.equal(check.state, SCAN_MATCH.NO_SCAN);
 });
 
-// ── 3. ใบข้ามคืนอ่านบนเส้นจำนวนเดียว ไม่ใช่บนหน้าปัดนาฬิกา ─────────────────
+// ── 3. สแกนของวันข้าง ๆ อ่านบนเส้นจำนวนเดียว ไม่ใช่บนหน้าปัดนาฬิกา ────────
 
-test('ใบข้ามคืน: สแกน 02:04 ของวันรุ่งขึ้น อยู่ห่างจากเวลาเลิก 02:00 แค่ 4 นาที', () => {
+/**
+ * §3 WAS ABOUT ใบข้ามคืน AND IS ABOUT THE LATE FINISH NOW — 2026-09-10.
+ *
+ * The fixture was 22:00 → 02:00 with the flag set, and the point was that
+ * 02:04 on the following date sits four minutes from a 02:00 end rather than
+ * 1436. No entry ends on another date any more, but a PUNCH still lands on one:
+ * somebody finishing at 23:50 reaches the reader at 00:05 tomorrow. The
+ * arithmetic that protected the wrapped row is what quotes that punch.
+ */
+test('สแกน 00:05 ของวันรุ่งขึ้น อยู่ห่างจากเวลาเลิก 23:50 แค่ 15 นาที', () => {
   /**
-   * ถ้าเทียบกันบนหน้าปัดนาฬิกา 02:04 กับ 02:00 จะกลายเป็นห่างกัน 1436 นาที และ
-   * ใบข้ามคืนทุกใบในระบบจะขึ้นเตือนทั้งหมด
+   * ถ้าเทียบกันบนหน้าปัดนาฬิกา 00:05 กับ 23:50 จะกลายเป็นห่างกัน 1425 นาที และ
+   * ใบที่เลิกดึกทุกใบจะขึ้นเตือนทั้งหมด
    */
   const check = checkEntryAgainstScans(
-    entry({ startTime: '22:00', endTime: '02:00', endsNextDay: true }),
-    [punch('2026-09-01', '21:55:00'), punch('2026-09-02', '02:04:00')],
+    entry({ startTime: '22:00', endTime: '23:50' }),
+    [punch('2026-09-01', '21:55:00'), punch('2026-09-02', '00:05:00')],
   );
   assert.equal(check.state, SCAN_MATCH.OK);
-  assert.equal(check.end.diff, 4);
+  assert.equal(check.end.diff, 15);
 });
 
-test('ใบข้ามคืนนับสแกนของเช้าวันรุ่งขึ้นว่าเป็น "มีข้อมูลของใบนี้"', () => {
+/**
+ * A ROW WITH NOTHING ON ITS OWN DATE IS ไม่ตรง, EVEN WITH A PUNCH NEXT MORNING.
+ *
+ * The test here read *ใบข้ามคืนนับสแกนของเช้าวันรุ่งขึ้นว่าเป็น "มีข้อมูลของใบนี้"* until
+ * 2026-09-10, and it was true of overnight rows only: they carried a second
+ * date, so the second morning's punches were their own. Every other row in the
+ * system has always been measured over `workDate` alone, and now every row is.
+ *
+ * So the 00:05 is evidence when the row has punches of its own (§3 above) and
+ * cannot by itself keep the row out of ไม่ตรง.
+ */
+test('สแกนของเช้าวันรุ่งขึ้นอย่างเดียว ไม่พอจะทำให้แถวนี้มีสแกน', () => {
   const check = checkEntryAgainstScans(
-    entry({ startTime: '22:00', endTime: '02:00', endsNextDay: true }),
-    [punch('2026-09-02', '02:04:00')],
+    entry({ startTime: '22:00', endTime: '23:50' }),
+    [punch('2026-09-02', '00:05:00')],
   );
-  assert.notEqual(check.state, SCAN_MATCH.NO_SCAN);
-  assert.equal(check.punchCount, 1);
+  assert.equal(check.state, SCAN_MATCH.NO_SCAN);
 });
 
 // ── 4. เหมารายวัน — เวลาไม่ตรงไม่เป็นไร แต่ต้องบอกว่าเป็นใบเหมา ────────────
@@ -887,8 +908,8 @@ test('แถวหนึ่งพกเวลาสแกนของทั้�
     punch('2026-09-01', '07:21:27'), // ส่งมาสลับลำดับ — ต้องออกมาเรียงตามนาฬิกา
   ]);
   assert.deepEqual(check.dayPunches, [
-    { time: '07:21', next: false, checkIn: true, early: false },
-    { time: '19:30', next: false, checkIn: false, early: false },
+    { time: '07:21', checkIn: true, early: false },
+    { time: '19:30', checkIn: false, early: false },
   ]);
   assert.equal(scanCheckInTime(check), '07:21');
   assert.equal(dayPunchLine(check), '19:30');
@@ -907,19 +928,29 @@ test('เวลาสแกนโชว์ทุกแถวที่มีส�
   assert.equal(dayPunchLine(ok), '20:04');
 });
 
-test('ใบข้ามคืน: สแกนของเช้าวันรุ่งขึ้นติด (+1) ไว้', () => {
-  // 02:04 ปนอยู่ในรายการเวลาเย็น โดยไม่มีอะไรกำกับ จะอ่านเป็นเช้ามืดของวันผิด
+/**
+ * `(+1)` STOOD HERE AND IS GONE — 2026-09-10.
+ *
+ * *ใบข้ามคืน: สแกนของเช้าวันรุ่งขึ้นติด (+1) ไว้* checked that a 02:04 from the
+ * second morning of a wrapped row printed with a marker, or it read as the
+ * small hours of the wrong morning. Only an overnight row ever put a punch from
+ * another date on this list, so nothing on the line wears a date now and every
+ * time on it is a `workDate` time.
+ *
+ * The punch from tomorrow is still EVIDENCE — it is quoted as the end scan, and
+ * §3 above pins that. It is simply not one of this day's punches.
+ */
+test('สแกนของเช้าวันรุ่งขึ้นถูกยกมาอ้างได้ แต่ไม่ขึ้นในบรรทัดเวลาของวันนี้', () => {
   const check = checkEntryAgainstScans(
-    entry({ startTime: '22:00', endTime: '02:00', endsNextDay: true }),
-    [punch('2026-09-01', '21:55:00'), punch('2026-09-02', '02:04:00')],
+    entry({ startTime: '22:00', endTime: '23:50' }),
+    [punch('2026-09-01', '21:55:00'), punch('2026-09-02', '00:05:00')],
   );
   assert.deepEqual(check.dayPunches, [
-    { time: '21:55', next: false, checkIn: true, early: false },
-    // เช้ามืดของ *วันรุ่งขึ้น* ไม่ใช่เวลาก่อน 04:00 ของวันนี้ — ใบข้ามคืนไม่เสียเวลาไหนไป
-    { time: '02:04', next: true, checkIn: false, early: false },
+    { time: '21:55', checkIn: true, early: false },
   ]);
-  assert.equal(scanCheckInTime(check), '21:55', '02:04 เป็นเช้าวันรุ่งขึ้น ไม่ใช่เวลาเริ่มของแถวนี้');
-  assert.equal(dayPunchLine(check), '02:04 (+1)');
+  assert.equal(check.end.time.slice(0, 5), '00:05', 'ฝั่งจบยกสแกนของวันรุ่งขึ้นมาอ้าง');
+  assert.equal(scanCheckInTime(check), '21:55');
+  assert.equal(dayPunchLine(check), null, 'เหลือแต่เวลาเริ่ม ไม่มีเวลาอื่นของวันนี้');
 });
 
 test('วันที่ไม่มีสแกนเลย ไม่มีบรรทัดเวลาให้โชว์', () => {
@@ -1002,12 +1033,13 @@ test('เวลาก่อน 04:00 ที่แถวนี้ยกมาอ�
 });
 
 test('วันที่มีแต่สแกนก่อน 04:00 น. เหลือเฉพาะเวลาที่แถวนี้ใช้', () => {
+  // เคยเป็นใบข้ามคืน 22:00–02:00 จนถึง 2026-09-10 — ใบที่เริ่มตีสามให้สิ่งเดียวกัน
   const check = checkEntryAgainstScans(
-    entry({ startTime: '22:00', endTime: '02:00', endsNextDay: true }),
-    [punch('2026-09-01', '01:12:00'), punch('2026-09-01', '03:40:00')],
+    entry({ startTime: '03:00', endTime: '03:40' }),
+    [punch('2026-09-01', '00:19:00'), punch('2026-09-01', '03:40:00')],
   );
   assert.equal(scanCheckInTime(check), null);
-  assert.equal(dayPunchLine(check), '03:40', 'ฝั่งจบยก 03:40 มาอ้าง — 01:12 ไม่มีใครใช้');
+  assert.equal(dayPunchLine(check), '03:40', 'ฝั่งจบยก 03:40 มาอ้าง — 00:19 ไม่มีใครใช้');
 });
 
 test('04:00 น. พอดี นับเป็นเวลาเริ่ม — เส้นแบ่งอยู่ที่ 4 ชั่วโมงจากเที่ยงคืน', () => {

@@ -70,18 +70,31 @@ test('C — Sat 8 Aug, 08:00–17:00, ไม่พักเที่ยง ticke
   assert.equal(r.breakMinutes, 0);
 });
 
-test('D — Fri 7 Aug 17:00 → Sat 8 Aug 07:00 → 7 h ×1.5 + 7 h ×3', () => {
-  const r = run({
-    workDate: '2026-08-07', startTime: '17:00', endTime: '07:00', endsNextDay: true,
-  });
-  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 7, 'Fri 17:00–24:00');
-  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 7, 'Sat 00:00–07:00');
-  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 0);
-  assert.equal(r.totals.otHours, 14);
-  assert.equal(r.breakMinutes, 0, 'overnight session crosses no lunch window — settles [OPEN 2]');
-  assert.equal(r.segments.length, 2);
-  assert.equal(r.segments[0].date, '2026-08-07');
-  assert.equal(r.segments[1].date, '2026-08-08');
+/**
+ * EXAMPLE D WAS THE OVERNIGHT ONE — Fri 7 Aug 17:00 → Sat 8 Aug 07:00, seven
+ * hours ×1.5 on the Friday and seven ×3 on the Saturday, fourteen in total. It
+ * cannot be filed at all since 2026-09-10, and this is what is left of it: the
+ * refusal, on the exact pair of times the example used.
+ *
+ * The session that replaced it in the tests below is `D2` — Sat 8 Aug
+ * 06:00–17:00 — which is the same SHAPE inside one date: it starts outside core
+ * hours, crosses 08:00, and therefore lands in two rate columns.
+ */
+test('D — the overnight example is refused, on its own two times', () => {
+  assert.throws(
+    () => run({ workDate: '2026-08-07', startTime: '17:00', endTime: '07:00' }),
+    (e) => e.code === 'END_BEFORE_START',
+  );
+});
+
+test('D2 — Sat 8 Aug 06:00–17:00 → 2 h ×3 + 8 h ×1.5, one lunch hour out', () => {
+  const r = run({ workDate: '2026-08-08', startTime: '06:00', endTime: '17:00' });
+  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 2, 'Sat 06:00–08:00, outside core hours');
+  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 8, 'Sat 08:00–17:00 less the lunch hour');
+  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 0);
+  assert.equal(r.totals.otHours, 10);
+  assert.equal(r.breakMinutes, 60, 'it crosses 12:00–13:00, which the overnight D never did');
+  assert.equal(r.segments.every((s) => s.date === '2026-08-08'), true, 'one date, always');
 });
 
 test('E — Sun 9 Aug, 06:00–10:00 → 2 h ×3 + 2 h ×1.5', () => {
@@ -121,12 +134,28 @@ test('a weekday session that straddles core hours splits correctly', () => {
   assert.equal(r.warnings[0].minutes, 9 * 60);
 });
 
-test('Sunday 22:00 → Monday 06:00 splits ×3 holiday / ×1.5 weekday', () => {
-  const r = run({
-    workDate: '2026-08-09', startTime: '22:00', endTime: '06:00', endsNextDay: true,
-  });
-  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 2, 'Sun 22:00–24:00');
-  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 6, 'Mon 00:00–06:00');
+/**
+ * IT SPLIT ×3 HOLIDAY / ×1.5 WEEKDAY ACROSS A MIDNIGHT — Sun 22:00 → Mon 06:00,
+ * two hours on the Sunday and six on the Monday. That was the clearest case for
+ * the day type changing under a running session, and it is exactly what stopped
+ * being possible on 2026-09-10.
+ *
+ * Somebody who works it now files two requests, and this is what the two of them
+ * come to: the same eight hours, in the same two columns, on the two dates that
+ * absorbed them.
+ */
+test('Sunday night into Monday is two requests, and they land in the same two columns', () => {
+  const sunday = run({ workDate: '2026-08-09', startTime: '22:00', endTime: '23:59' });
+  const monday = run({ workDate: '2026-08-10', startTime: '00:01', endTime: '06:00' });
+  assert.equal(sunday.buckets[BUCKETS.OT3_HOLIDAY], 1.5, 'Sun 22:00–23:59, floored to 30 min');
+  assert.equal(monday.buckets[BUCKETS.OT15_WEEKDAY], 5.5, 'Mon 00:01–06:00, floored to 30 min');
+});
+
+test('the one request that spans them is refused', () => {
+  assert.throws(
+    () => run({ workDate: '2026-08-09', startTime: '22:00', endTime: '06:00' }),
+    (e) => e.code === 'END_BEFORE_START',
+  );
 });
 
 // ── [OPEN 5] the 17:00 vs 17:01 boundary ────────────────────────────────────
@@ -306,11 +335,13 @@ test('[OPEN 3] ผ่อนปรน is read under floor alone, and never at the
 });
 
 test('[OPEN 3] ผ่อนปรน rounds each rate column, and the columns still sum', () => {
-  // Fri 7 Aug 22:00 → Sat 8 Aug 02:00 splits across the weekday and holiday
-  // columns; `roundingScope: 'bucket'` rounds each one, so the grace is applied
-  // per column and the three must still add up to the printed total.
+  // Sat 8 Aug 06:20–08:25 splits across the two holiday columns at the 08:00
+  // boundary; `roundingScope: 'bucket'` rounds each one, so the grace is applied
+  // per column and the three must still add up to the printed total. It read a
+  // Fri 22:20 → Sat 02:25 shift until 2026-09-10, splitting at a midnight
+  // instead — the boundary moved, what is being checked did not.
   const r = run(
-    { workDate: '2026-08-07', startTime: '22:20', endTime: '02:25', endsNextDay: true },
+    { workDate: '2026-08-08', startTime: '06:20', endTime: '08:25' },
     { roundingGraceMinutes: 10, belowMinimum: 'accept' },
   );
   const sum = Object.values(r.buckets).reduce((a, b) => a + b, 0);
@@ -544,8 +575,18 @@ test('[OPEN 4] accept: a 20-minute session still rounds away to nothing under fl
  * short column, and it is why the piles carry the hours twice (as worked, and as
  * rounding left them).
  */
+/**
+ * IT WAS Sun 23:40 → Mon 02:00 until 2026-09-10 — twenty minutes of Sunday in
+ * the ×3 column and two hours of Monday in the ×1.5 weekday one. The shape is
+ * what these tests are about, not the midnight: ONE SHORT COLUMN beside one
+ * that clears the minimum comfortably.
+ *
+ * Sun 07:40–10:00 is that shape inside one date. Twenty minutes before 08:00
+ * are ×3, two hours after it are ×1.5 — holiday now rather than weekday, which
+ * is the one assertion below that had to move with it.
+ */
 const SPLIT_SHIFT = {
-  workDate: '2026-08-09', startTime: '23:40', endTime: '02:00', endsNextDay: true,
+  workDate: '2026-08-09', startTime: '07:40', endTime: '10:00',
 };
 
 test('[OPEN 4] sheet is what the system ships on', () => {
@@ -594,17 +635,17 @@ test('[OPEN 4] bucket + raise: pads the short column only, and keeps the rows in
   const r = run(SPLIT_SHIFT, { minimumHoursScope: 'bucket', belowMinimum: 'raise' });
 
   assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 1, 'padded up from nought');
-  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 2, 'left exactly where rounding put it');
+  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 2, 'left exactly where rounding put it');
   assert.equal(r.totals.otHours, 3);
 
   // The padded column had rounded away entirely, so its row is rebuilt from the
   // stretch that was worked. Clock times stay as worked while the counted
   // minutes are the padded ones — the same split a flat break deduction makes.
   assert.equal(r.segments.length, 2);
-  assert.equal(r.segments[0].date, '2026-08-09', 'Sunday first, though it was padded last');
-  assert.equal(r.segments[0].start, '23:40');
+  assert.equal(r.segments[0].date, '2026-08-09', 'the early stretch first, though it was padded last');
+  assert.equal(r.segments[0].start, '07:40');
   assert.equal(r.segments[0].hours, 1);
-  assert.equal(r.segments[1].date, '2026-08-10');
+  assert.equal(r.segments[1].date, '2026-08-09');
 
   const raised = r.warnings.filter((w) => w.code === 'RAISED_TO_MINIMUM');
   assert.equal(raised.length, 1);
@@ -689,12 +730,15 @@ test('[OPEN 4] the two scopes agree on every session that lands in one column', 
 
 // ── [OPEN 1 / 2] break modes ────────────────────────────────────────────────
 
-test('[OPEN 1] threshold mode would wrongly deduct from example D', () => {
-  const r = run(
-    { workDate: '2026-08-07', startTime: '17:00', endTime: '07:00', endsNextDay: true },
-    { breakMode: 'threshold', breakThresholdHours: 5 },
-  );
-  assert.equal(r.totals.otHours, 13, 'this is why lunchWindow is the default — the doc says D is 14');
+test('[OPEN 1] threshold mode deducts an hour nobody took', () => {
+  // Fri 17:00–23:00 crosses no 12:00–13:00 window, so lunchWindow deducts
+  // nothing and threshold deducts a flat hour anyway. It was example D — the
+  // overnight one — that made this point until 2026-09-10; an evening that
+  // never goes near noon makes it just as well and can still be filed.
+  const session = { workDate: '2026-08-07', startTime: '17:00', endTime: '23:00' };
+  assert.equal(run(session).totals.otHours, 6, 'lunchWindow: nothing to deduct');
+  const r = run(session, { breakMode: 'threshold', breakThresholdHours: 5 });
+  assert.equal(r.totals.otHours, 5, 'this is why lunchWindow is the default');
 });
 
 test('[OPEN 1] always mode deducts a flat hour even from a short session', () => {
@@ -707,22 +751,20 @@ test('[OPEN 1] none mode never deducts', () => {
   assert.equal(r.totals.otHours, 9);
 });
 
-// Crossing two lunch windows takes a session of nearly 24 hours, which is the
-// engine's ceiling — Sat 12:30 → Sun 12:30 is exactly 24 h and clips 30 min off
-// each day's 12:00–13:00.
-test('[OPEN 2] a session spanning two lunch windows deducts from both by default', () => {
-  const r = run({ workDate: '2026-08-08', startTime: '12:30', endTime: '12:30', endsNextDay: true });
-  assert.equal(r.breakMinutes, 60, '30 min on Saturday + 30 min on Sunday');
-  assert.equal(r.totals.otHours, 23, '24 clock hours − 1 h of break');
-});
-
-test('[OPEN 2] breakPerCalendarDay=false caps it at one deduction', () => {
-  const r = run(
-    { workDate: '2026-08-08', startTime: '12:30', endTime: '12:30', endsNextDay: true },
-    { breakPerCalendarDay: false },
-  );
-  assert.equal(r.breakMinutes, 30, 'only Saturday’s window');
-  assert.equal(r.totals.otHours, 23.5);
+/**
+ * [OPEN 2] HAD TWO TESTS HERE AND HAS NONE — 2026-09-10.
+ *
+ * The question was whether a session crossing two 12:00–13:00 windows was
+ * deducted twice or once, and `breakPerCalendarDay` was the answer. Crossing
+ * two windows took a session of nearly 24 hours — Sat 12:30 → Sun 12:30 was the
+ * fixture — so the question died with ทำงานข้ามคืน and the setting went out of
+ * `DEFAULT_POLICY` with it. One date crosses one lunch hour at most, which is
+ * what `lunchWindows` now says in one line.
+ */
+test('[OPEN 2] one date can only cross one lunch window', () => {
+  const r = run({ workDate: '2026-08-08', startTime: '08:00', endTime: '17:00' });
+  assert.equal(r.breakMinutes, 60, 'the one hour, once');
+  assert.equal(DEFAULT_POLICY.breakPerCalendarDay, undefined, 'the setting is gone from the policy');
 });
 
 test('the break lands in the bucket that actually contains 12:00–13:00', () => {
@@ -735,10 +777,26 @@ test('the break lands in the bucket that actually contains 12:00–13:00', () =>
 
 // ── validation ──────────────────────────────────────────────────────────────
 
-test('end before start without endsNextDay is refused', () => {
+test('end before start is refused, and the sentence says what to do instead', () => {
   assert.throws(
     () => run({ workDate: '2026-08-05', startTime: '20:00', endTime: '17:00' }),
+    (e) => e.code === 'END_BEFORE_START' && /แยกยื่นเป็นสองใบ ใบละวัน/.test(e.message),
+  );
+});
+
+test('end EQUAL to start is refused too — it was a 24-hour session with the flag', () => {
+  assert.throws(
+    () => run({ workDate: '2026-08-05', startTime: '21:00', endTime: '21:00' }),
     (e) => e.code === 'END_BEFORE_START',
+  );
+});
+
+test('a session is never handed a second date to resolve', () => {
+  // `sessionDates` is what the caller resolves day types over, and a caller that
+  // resolved only `workDate` used to hand the engine a map with a hole in it.
+  assert.deepEqual(
+    sessionDates({ workDate: '2026-08-07', startTime: '17:00', endTime: '23:00' }),
+    ['2026-08-07'],
   );
 });
 
@@ -748,12 +806,16 @@ test('§5 — there is no evening ceiling', () => {
   assert.equal(r.warnings.length, 0);
 });
 
-test('a session longer than 24 hours is refused', () => {
-  // 06:00 → 07:00 next day is 25 hours.
-  assert.throws(
-    () => run({ workDate: '2026-08-08', startTime: '06:00', endTime: '07:00', endsNextDay: true }),
-    (e) => e.code === 'TOO_LONG',
-  );
+/**
+ * `TOO_LONG` STOOD HERE AND IS GONE — 2026-09-10. It caught a session of more
+ * than 24 hours, which took `endsNextDay` set on two times that did not wrap:
+ * 06:00 → 07:00 the next day was twenty-five. Inside one date the longest a
+ * session can be is 23 h 59 m, so nothing can reach the comparison and the code
+ * was removed rather than left as a branch no input satisfies.
+ */
+test('the longest session there is, is a day less a minute', () => {
+  const r = run({ workDate: '2026-08-08', startTime: '00:00', endTime: '23:59' });
+  assert.equal(r.totals.clockHours, 23.98);
 });
 
 // ── monthly rollup, HR summary, caps ────────────────────────────────────────
@@ -788,10 +850,13 @@ test('[OPEN 12] HR summary boxes: raw vs multiplied', () => {
   );
 });
 
-test('[OPEN 9] cap basis: example D counts 14 clock hours or 31.5 weighted', () => {
+test('[OPEN 9] cap basis: D2 counts 10 clock hours or 18 weighted', () => {
+  // It read the overnight example D — 14 clock hours, 31.5 weighted — until
+  // 2026-09-10. D2 is the same two columns inside one Saturday: 2 h ×3 and
+  // 8 h ×1.5, so 10 on the clock and 6 + 12 weighted.
   const s = summariseEntries([
-    run({ workDate: '2026-08-07', startTime: '17:00', endTime: '07:00', endsNextDay: true }),
+    run({ workDate: '2026-08-08', startTime: '06:00', endTime: '17:00' }),
   ]);
-  assert.equal(capUsage(s, DEFAULT_POLICY), 14);
-  assert.equal(capUsage(s, { ...DEFAULT_POLICY, capBasis: 'weighted' }), 31.5);
+  assert.equal(capUsage(s, DEFAULT_POLICY), 10);
+  assert.equal(capUsage(s, { ...DEFAULT_POLICY, capBasis: 'weighted' }), 18);
 });

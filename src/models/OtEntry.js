@@ -93,7 +93,6 @@ const snapshotSchema = new mongoose.Schema(
     workDate: String,
     startTime: String,
     endTime: String,
-    endsNextDay: Boolean,
     noBreakTaken: Boolean,
     /* เหมารายวัน. Optional like every field here — a snapshot written before
        2026-09-03 has no answer, and `sameValue` reads absent as false, which is
@@ -278,10 +277,21 @@ const otEntrySchema = new mongoose.Schema(
       index: true,
     },
 
-    // ── §12.2: sessions cross midnight ──────────────────────────────────────
+    // ── §12.2: wall-clock times, one calendar date ──────────────────────────
     // Wall-clock fields are the source of truth: no timezone can move them,
-    // and they map one-to-one onto a row of the paper form. `endsNextDay`
-    // replaces the old "end must be after start" rule.
+    // and they map one-to-one onto a row of the paper form.
+    //
+    // A THIRD FIELD STOOD HERE: `endsNextDay`, which replaced the rule that an
+    // end must be after its start and let a session run into tomorrow. HR had
+    // it removed on 2026-09-10 — *เคลียร์ทุกอย่างที่เกี่ยวกับฟีเจอร์ ทำงานข้ามคืน
+    // ออกจากระบบ ทั้งหมด* — so the old rule is the rule again and it is
+    // enforced by `computeSession`, which throws `END_BEFORE_START`. Somebody
+    // who worked past a midnight files one request per date.
+    //
+    // NOT DECLARED AND THEREFORE NOT WRITTEN, but a document stored before that
+    // day may still carry the key: mongoose leaves an undeclared field alone on
+    // a `lean()` read and drops it on the next save. `scripts/drop-ends-next-day.js`
+    // is what clears it out for good.
     /**
      * วันที่ the session STARTS. 'YYYY-MM-DD'.
      *
@@ -305,9 +315,8 @@ const otEntrySchema = new mongoose.Schema(
     workDate: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/, index: true },
     /** จาก — 'HH:MM'. */
     startTime: { type: String, required: true, match: /^\d{2}:\d{2}$/ },
-    /** ถึง — 'HH:MM'. May be earlier than startTime when endsNextDay is set. */
+    /** ถึง — 'HH:MM'. Must be later than startTime; the engine is what says so. */
     endTime: { type: String, required: true, match: /^\d{2}:\d{2}$/ },
-    endsNextDay: { type: Boolean, default: false },
 
     /** ไม่พักเที่ยง — skip the break deduction (§3). New in v1 per §12. */
     noBreakTaken: { type: Boolean, default: false },
@@ -690,7 +699,6 @@ otEntrySchema.methods.snapshot = function snapshot() {
     workDate: this.workDate,
     startTime: this.startTime,
     endTime: this.endTime,
-    endsNextDay: Boolean(this.endsNextDay),
     noBreakTaken: Boolean(this.noBreakTaken),
     flatDaily: Boolean(this.flatDaily),
     description: this.description,

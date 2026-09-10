@@ -2,7 +2,6 @@ import Holiday, { yearOf } from '@/src/models/Holiday.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { recomputeEntries } from '@/src/services/otService.js';
-import { previousDay } from '@/lib/holidays.js';
 
 /** Everyone reads the calendar — the submit form needs it to label the day. */
 export const GET = route(async (req) => {
@@ -37,6 +36,13 @@ export const POST = route(async (req) => {
     { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
   );
   // A date becoming a holiday changes which buckets its entries fall into.
-  const recomputed = await recomputeEntries({ workDate: { $in: [date, previousDay(date)] } }, user);
+  /**
+   * THE DAY ITSELF, AND ONLY IT. `previousDay(date)` was on this list until
+   * 2026-09-10: an overnight session begun the evening before spilled into the
+   * new holiday's buckets, so it needed replaying too. No session leaves its
+   * own date any more, so the day before a new holiday holds nothing this
+   * change can move.
+   */
+  const recomputed = await recomputeEntries({ workDate: date }, user);
   return json({ holiday, recomputed }, 201);
 });

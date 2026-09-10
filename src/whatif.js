@@ -283,7 +283,6 @@ async function run() {
       workDate: entry.workDate,
       startTime: entry.startTime,
       endTime: entry.endTime,
-      endsNextDay: entry.endsNextDay,
       noBreakTaken: entry.noBreakTaken,
       // เหมารายวัน, like the replay this tool prices — see the same list in
       // `recomputeEntries`. Left out, every flat day in the sample would be
