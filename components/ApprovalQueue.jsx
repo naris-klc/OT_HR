@@ -3624,8 +3624,16 @@ const breachLine = overCapLine;
  * Nothing was dropped in the move. The two numbers each carried are on the
  * chips; the difference between a breach that is a FACT and one that is a
  * PROJECTION, which `roomLine` spent three branches saying in words, is which
- * chip is red; and the sentence naming what the ceiling counts is
- * `pendingCapNote`, which the pop-up still prints under them.
+ * chip is red.
+ *
+ * ⚠ IT ENDED "…and the sentence naming what the ceiling counts is
+ * `pendingCapNote`, which the pop-up still prints under them" UNTIL 2026-09-10,
+ * AND THAT HALF WAS ALREADY FALSE WHEN IT WAS WRITTEN. This file has not
+ * imported `pendingCapNote` since the line came off the row — `capNote`, the
+ * local wrapper, went with it — so the pop-up prints the chips and nothing
+ * else. The function is alive and has exactly one caller, `CapCell` on
+ * ตรวจสอบประจำเดือน; a sentence claiming a second one is how somebody comes to
+ * change it believing two screens depend on it.
  */
 
 /** Past a ceiling — the one place this screen paints that, so the row and the

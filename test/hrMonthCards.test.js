@@ -315,8 +315,12 @@ test('every card is the same height — the ceiling column is a fixed track with
   // the reserve to apply to. This is the half of the fix that lives in the
   // component, and it is the half a later edit is most likely to "tidy" back
   // into a `&&`.
-  assert.match(hrCode, /<div className="cap-sub">\{note\}<\/div>/);
-  assert.doesNotMatch(hrCode, /\{note && <div className="cap-sub">/);
+  // `cap-sub` is still the class; `over` rides on top of it on a breach and
+  // changes only the colour and the weight, so the reserved height holds either
+  // way. What must not come back is the `&&` — that is what made cards two
+  // different heights in the first place.
+  assert.match(hrCode, /<div className=\{over \? 'cap-sub over' : 'cap-sub'\}>\{note\}<\/div>/);
+  assert.doesNotMatch(hrCode, /\{note && <div className=/);
 });
 
 /**

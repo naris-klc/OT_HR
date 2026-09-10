@@ -6994,6 +6994,40 @@ number** — it is that a width and the thing it was measured against have to mo
 together, which is what `test/hrMonthCards.test.js` now pins as a pair: the 64px
 and the fact that the cell holds exactly one button.
 
+#### The ceiling sub-line lost half its words, and gained a colour
+
+*"ปรับข้อความนี้ให้กระชับ … เป็น `รวมรออนุมัติ 19 / 40` และหากเกินเพดานให้เป็น
+สีแดง"*. It read `เพดานนับ 19 / 40 · รวมใบที่รออนุมัติ` — a lead word, a figure,
+a separator and a four-word qualifier, in 11.5px under a figure, on every row of
+the month.
+
+**Nothing was dropped but length,** and it is worth showing rather than
+asserting:
+
+  · `เพดานนับ` said *what counts this figure*. The heading above it already says
+    เพดาน and the `/ 40` beside it **is** the ceiling — naming it a third time on
+    the same line is a sentence describing its own column.
+  · `รวมใบที่รออนุมัติ` said *what is included*. `รวมรออนุมัติ` says exactly that
+    in the lead, where the reader already is, instead of after a `·` four words
+    later.
+
+**A branch disappeared with it.** The old lead had to switch to `รวมทั้งหมด` on
+a department with no ceiling, because `เพดานนับ` would have named a limit that
+does not exist. The new lead names no limit at all, so it is true either way —
+one sentence, one fewer thing to keep in step. `INCLUDES_PENDING`, the shared
+constant that held the qualifier, **was deleted**: its last caller folded it in,
+and a constant with no callers is a third place to look for a string written in
+one. The rule it enforced — *neither component may spell this sentence out* — did
+not go with it; `test/queueCapUsage.test.js` now guards the whole line instead of
+a fragment of it.
+
+**And on a breach the line is red**, `--danger-ink`, the same token as the figure
+above it. It was grey, and grey was wrong for a reason worth naming: on the
+commonest breach — approved hours still inside the ceiling, the pending ones
+taking it past — `รวมรออนุมัติ 45 / 40` is **the only number on the row that
+knows**. The alarm colour was on the half that was fine and the footnote voice on
+the half that was not.
+
 #### ⚠ ตรง IS GREEN AND ต้องตรวจ IS RED, and they were grey and amber for a few hours
 
 *"สีข้อความแจ้งเตือน ที่ติดปัญหาควรเป็นสีแดง ที่ไม่ผ่าน ควรเป็นสีเขียว"*, and the

@@ -9103,6 +9103,20 @@ th.why-col { width: 150px; }
    in it, not a figure, and mono costs it 39px it does not have — enough to
    break "รวมใบที่รออนุมัติ" across two lines in the middle of the phrase. */
 .cap-sub { font: 400 11.5px/1.45 var(--sans); color: var(--muted); }
+/* ── PAST THE CEILING, ON THE LINE THAT CARRIES THE FIGURE — 2026-09-10 ────
+
+   `.cap-sub` is a footnote voice and that is right for what this line usually
+   says: *the ceiling counts more than the number above me*. On a breach it is
+   not a footnote — `รวมรออนุมัติ 45 / 40` IS the over-ceiling figure, and on
+   the commonest breach (approved hours inside the limit, pending ones taking it
+   over) it is the only number on the row that knows. Grey, directly under a
+   figure already drawn in the alarm colour, put the alarm on the half that was
+   fine and the footnote on the half that was not.
+
+   `--danger-ink`, the same token the figure above it takes, so the two lines
+   are one warning rather than two opinions. Weight, not size: the line stays
+   11.5px because it is still the second thing read. */
+.cap-sub.over { color: var(--danger-ink); font-weight: 600; }
 
 /* HR's queue arrives all at once at month end. These are the controls that
    turn "every request in the company" back into "the ones I am deciding

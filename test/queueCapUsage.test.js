@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 
 import { capEntriesByEmployee, queueCapUsage } from '../src/services/otService.js';
 import {
-  CAP_STATUSES, INCLUDES_PENDING, NO_CAP, capChips, capColumn, capFigure, capPair,
+  CAP_STATUSES, NO_CAP, capChips, capColumn, capFigure, capPair,
   overCap, overCapLine, pendingCapNote, usageInMonth,
 } from '../lib/caps.js';
 import { latestPerSession, reportStatuses } from '../lib/reports.js';
@@ -328,10 +328,16 @@ test('a cap breached only by pending requests still colours the cell', () => {
   assert.equal(cap.capUsedHours, 35.5, 'the ceiling counts every request still alive');
   assert.equal(cap.exceeded, true, 'the cell would print 16.5 / 30 in black over a breached ceiling');
 
-  // And the cell says which figure the colour came from, in the queue's words.
+  // And the cell says which figure the colour came from.
+  //
+  // ⚠ IT READ `เพดานนับ 35.5 / 30 · รวมใบที่รออนุมัติ` UNTIL 2026-09-10, when
+  // HR asked for the line to be shortened by name. Nothing was dropped but
+  // length: `เพดานนับ` named a limit the `/ 30` beside it and the heading above
+  // it already name, and `รวมใบที่รออนุมัติ` said in four words after a `·`
+  // what the new lead says where the reader already is.
   assert.equal(
     pendingCapNote(cap.usedHours, cap.capUsedHours, cap.capHours),
-    `เพดานนับ 35.5 / 30 · ${INCLUDES_PENDING}`,
+    'รวมรออนุมัติ 35.5 / 30',
   );
 });
 
@@ -522,7 +528,18 @@ test('ตรวจสอบรายเดือน still opens on อนุม�
   assert.doesNotMatch(view, /capFigure\(cap\.usedHours, cap\.capHours\)/, 'the ceiling cell dropped its second half again');
   assert.doesNotMatch(stripComments(view), /ไม่กำหนด/, 'a department with no ceiling shows no hours again');
   // And both screens style the note with the one shared class.
-  assert.match(view, /className="cap-sub"/, 'the review screen styles the note its own way again');
+  // ⚠ `'cap-sub'` IN A TERNARY SINCE 2026-09-10, not a bare attribute: on a
+  // breach the line takes `over` as well, because `รวมรออนุมัติ 45 / 40` IS the
+  // over-ceiling figure and on the commonest breach — approved hours inside the
+  // limit, pending ones taking it past — it is the only number on the row that
+  // knows. What is checked is still the same thing: the shared class, not a
+  // second idea about how this note looks.
+  assert.match(view, /'cap-sub over' : 'cap-sub'/, 'the review screen styles the note its own way again');
+  assert.match(
+    readFileSync(join(ROOT, 'app/styles.css'), 'utf8'),
+    /\.cap-sub\.over \{ color: var\(--danger-ink\); font-weight: 600; \}/,
+    'the breach colour left the stylesheet',
+  );
 });
 
 /**
@@ -800,7 +817,11 @@ test('the figure may not wrap between a number and its ceiling — and the breac
  * which is the whole point of the sentence living in one place.
  */
 test('a department with a ceiling reads the same on both screens, character for character', () => {
-  const expected = 'เพดานนับ 35.5 / 40 · รวมใบที่รออนุมัติ';
+  // ⚠ IT READ `เพดานนับ 35.5 / 40 · รวมใบที่รออนุมัติ` UNTIL 2026-09-10, when HR
+  // asked for it to be shortened by name. Nothing was dropped but length —
+  // `เพดานนับ` named the limit the `/ 40` beside it already is, and the
+  // four-word qualifier after the `·` is now the lead word.
+  const expected = 'รวมรออนุมัติ 35.5 / 40';
 
   // ตรวจสอบรายเดือน at its default filter: shows 16.5, ceiling counts 35.5.
   assert.equal(pendingCapNote(16.5, 35.5, 40), expected);
@@ -818,10 +839,17 @@ test('a department with a ceiling reads the same on both screens, character for 
  * does not stop mattering because nobody set a limit on it. Only the first word
  * changes, and no slash appears anywhere.
  */
-test('a department with no ceiling says รวมทั้งหมด, and prints no slash at all', () => {
+test('a department with no ceiling needs no second wording, and prints no slash', () => {
   const note = pendingCapNote(16.5, 35.5, null);
 
-  assert.equal(note, 'รวมทั้งหมด 35.5 · รวมใบที่รออนุมัติ');
+  // ⚠ THE SECOND WORDING IS GONE AND THAT IS THE POINT OF THE NEW ONE. This
+  // test read *"says รวมทั้งหมด"* and checked
+  // `รวมทั้งหมด 35.5 · รวมใบที่รออนุมัติ`, because the old lead `เพดานนับ` had
+  // to be swapped on a department with no ceiling — it would have named a limit
+  // that does not exist. `รวมรออนุมัติ` names no limit, so it is true either
+  // way and the branch went with it. One sentence, one fewer thing to keep in
+  // step.
+  assert.equal(note, 'รวมรออนุมัติ 35.5');
   assert.ok(!note.includes('/'), 'a "/" reached a line with no ceiling on it');
   assert.ok(!note.includes('ไม่กำหนด'), '"ไม่กำหนด" was printed as if it were a figure');
   assert.ok(!note.includes('เพดาน'), 'a department with no ceiling was told about its ceiling');
@@ -843,7 +871,7 @@ test('an unset ceiling never becomes a ceiling of zero', () => {
   assert.equal(capPair(undefined, null), `0 / ${NO_CAP}`);
   assert.equal(capPair(16.499, 40), '16.5 / 40');
   // A TYPED zero is a real ceiling and still prints as one.
-  assert.equal(pendingCapNote(3, 9, 0), 'เพดานนับ 9 / 0 · รวมใบที่รออนุมัติ');
+  assert.equal(pendingCapNote(3, 9, 0), 'รวมรออนุมัติ 9 / 0');
 });
 
 /**
@@ -865,8 +893,8 @@ test('with nothing pending there is no second line, ceiling or no ceiling', () =
  */
 test('the queue feeds its own figures to the shared sentence, with and without a ceiling', async () => {
   for (const [capHours, expected] of [
-    [40, 'เพดานนับ 35.5 / 40 · รวมใบที่รออนุมัติ'],
-    [null, 'รวมทั้งหมด 35.5 · รวมใบที่รออนุมัติ'],
+    [40, 'รวมรออนุมัติ 35.5 / 40'],
+    [null, 'รวมรออนุมัติ 35.5'],
   ]) {
     const row = entry({ id: 'live', otHours: 11.5, workDate: '2026-08-20', department: dept(capHours) });
     const { find } = reader([
@@ -1059,8 +1087,15 @@ test('both screens take the wording from lib/caps.js rather than writing their o
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
   const review = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
 
-  assert.match(caps, /INCLUDES_PENDING = 'รวมใบที่รออนุมัติ'/, 'the shared label is gone');
-  assert.equal(INCLUDES_PENDING, 'รวมใบที่รออนุมัติ');
+  // ⚠ IT GUARDED A FRAGMENT AND NOW GUARDS THE SENTENCE. `INCLUDES_PENDING`
+  // — the constant this test used to name — was deleted on 2026-09-10 when its
+  // last caller folded the qualifier into its own lead word. The RULE is
+  // unchanged and so is the reason for it; what moved is that the wording is
+  // now one string inside `pendingCapNote` instead of a lead plus a shared
+  // suffix, so this checks the whole line rather than half of it.
+  assert.match(caps, /return `รวมรออนุมัติ \$\{capFigure\(capUsedHours, capHours\)\}`;/,
+    'the wording left lib/caps.js');
+  assert.ok(!caps.includes('INCLUDES_PENDING ='), 'the withdrawn constant came back');
 
   for (const [name, src] of [['ApprovalQueue', queue], ['HrView', review]]) {
     assert.match(src, /from '@\/lib\/caps\.js'/, `${name} no longer imports the shared wording`);
@@ -1068,7 +1103,7 @@ test('both screens take the wording from lib/caps.js rather than writing their o
     // renders (and both do); what it may not do is carry a second copy of it.
     assert.doesNotMatch(
       stripComments(src),
-      /'รวมใบที่รออนุมัติ'|"รวมใบที่รออนุมัติ"|>รวมใบที่รออนุมัติ</,
+      /'รวมรออนุมัติ|"รวมรออนุมัติ|>รวมรออนุมัติ/,
       `${name} spells the sentence out again — there are two idioms now`,
     );
   }

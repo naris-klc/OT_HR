@@ -2825,6 +2825,22 @@ function MonthAlerts({
 function CapCell({ cap }) {
   const capUsed = cap.capUsedHours ?? cap.usedHours;
   const note = pendingCapNote(cap.usedHours, capUsed, cap.capHours);
+  /**
+   * PAST THE CEILING — and it is `capUsed` that decides, never the printed
+   * figure. See the block above: what this cell PRINTS is the hours สถานะที่นับ
+   * selected, and what a ceiling COUNTS is every request still alive.
+   *
+   * ⚠ IT NOW COLOURS BOTH LINES, since 2026-09-10 — asked for by name,
+   * *"หากเกินเพดานให้เป็นสีแดง"*. The figure on top has been red on a breach
+   * all along; the line under it, which is the one actually carrying the
+   * over-ceiling number (`รวมรออนุมัติ 45 / 40`), was grey. So the sentence
+   * that says a department is past its limit was drawn in the voice this cell
+   * uses for a footnote, directly beneath a figure in the voice it uses for an
+   * alarm — and on the commonest breach, where the approved hours are still
+   * inside the ceiling and only the pending ones take it over, `45` was the
+   * only number on the row that knew, in grey.
+   */
+  const over = overCap(capUsed, cap.capHours);
 
   return (
     <>
@@ -2834,7 +2850,7 @@ function CapCell({ cap }) {
           department sets no ceiling. See the note on `capPair` in
           lib/caps.js for why the sentences on this screen keep the other
           form. */}
-      <span style={{ color: overCap(capUsed, cap.capHours) ? 'var(--danger-ink)' : 'inherit' }}>
+      <span style={{ color: over ? 'var(--danger-ink)' : 'inherit' }}>
         {capPair(cap.usedHours, cap.capHours)}
       </span>
       {/* ALWAYS DRAWN, EMPTY OR NOT, and that is the point of it.
@@ -2852,7 +2868,7 @@ function CapCell({ cap }) {
           `.cap-sub` rather than an inline style: คิวรออนุมัติ prints this same
           sentence about the same hours, and two screens that agree on the words
           should not disagree on the type. */}
-      <div className="cap-sub">{note}</div>
+      <div className={over ? 'cap-sub over' : 'cap-sub'}>{note}</div>
     </>
   );
 }
