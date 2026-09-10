@@ -145,29 +145,47 @@ test('สวิตช์สองตัวอยู่ในแถบเดี�
 });
 
 /**
- * ช่องเวลาสองช่องต้องอยู่บรรทัดเดียวกัน แม้ช่องหนึ่งจะมีบรรทัดห้อยอยู่ใต้มัน.
+ * ช่องเวลาสองช่องอยู่บรรทัดเดียวกัน และบรรทัด “ล็อก…” เป็นบรรทัดของทั้งแถว.
  *
- * `.row` is `align-items: flex-end` everywhere else in the app, which is right
- * where a row pairs a field with a BUTTON — the button lines up with the box
- * rather than with the label above it. Both items here are FIELDS, and on a
- * เหมารายวัน row เวลาสิ้นสุด grows a `.field-note` saying the pair is locked.
- * Aligned by their bottoms, that note lifted เวลาสิ้นสุด and its label a line
- * above เวลาเริ่ม — reported off the screen on 2026-09-10, and it read as two
- * staggered questions instead of one pair of times.
+ * TWO PRESSES ON ONE AFTERNOON, 2026-09-10, both reported off the screen.
  *
- * The two halves are asserted together on purpose: the override is only
- * meaningful while the shared rule disagrees with it, and the note is the only
- * reason the two fields are ever different heights. Lose either and this test
- * should be read again rather than deleted.
+ * FIRST, THE STAGGER. `.row` is `align-items: flex-end` everywhere else in the
+ * app, which is right where a row pairs a field with a BUTTON — the button lines
+ * up with the box rather than with the label above it. Both items here are
+ * FIELDS, and on a เหมารายวัน row a grey line saying the pair is locked hung
+ * inside the เวลาสิ้นสุด one. Aligned by their bottoms, that line lifted
+ * เวลาสิ้นสุด and its label a line above เวลาเริ่ม: two staggered questions
+ * instead of one pair of times.
+ *
+ * THEN THE LINE ITSELF CAME OUT OF THE COLUMN — *ให้มันตรงกับช่องเวลาเริ่ม*. It is
+ * about BOTH boxes (one tick shut the pair), so it is a line of the ROW: full
+ * width, starting where เวลาเริ่ม starts, rather than halfway across the panel
+ * under the box it is not about. The filing form took the same sentence out of
+ * the same column on 2026-09-09 and landed it on the right, because that row
+ * carries วันที่เริ่ม ahead of the two times — one rule, two answers, and
+ * test/otFormChecks.test.js owns that side of it.
+ *
+ * BOTH HALVES STAY ASSERTED. With the line out of the column the two fields are
+ * the same shape, so `flex-start` changes nothing to look at today — it is what
+ * makes the NEXT note under one field a note rather than a stagger, and the
+ * shared `.row` rule is asserted beside it because the override is only
+ * meaningful while the two disagree.
  */
-test('ช่องเวลาเริ่มกับเวลาสิ้นสุดอยู่บรรทัดเดียวกัน', () => {
+test('ช่องเวลาเริ่มกับเวลาสิ้นสุดอยู่บรรทัดเดียวกัน และบรรทัดล็อกอยู่ชิดซ้ายใต้ทั้งคู่', () => {
   assert.ok(css.includes('.quick-edit .row { align-items: flex-start; }'),
-    'สองช่องเวลากลับไปเรียงตามขอบล่าง — ใบเหมาจะเหลื่อมกันหนึ่งบรรทัด');
+    'สองช่องเวลากลับไปเรียงตามขอบล่าง — บรรทัดใต้ช่องไหนก็ทำให้เหลื่อมได้อีก');
   assert.ok(css.includes('.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }'),
     'กฎ .row ที่ร่วมกันเปลี่ยนไปแล้ว — ตรวจว่ายังต้องมีข้อยกเว้นของแผงนี้อยู่ไหม');
-  // และบรรทัดที่ทำให้สองช่องสูงไม่เท่ากัน ยังอยู่ใต้ช่องเวลาสิ้นสุด
-  const end = edit.slice(edit.indexOf('<label>เวลาสิ้นสุด</label>'));
-  assert.match(end.slice(0, end.indexOf('</div>')), /<span className="field-note">/);
+  assert.ok(css.includes('.quick-edit .row > .field-note { flex: 1 1 100%; }'),
+    'บรรทัดล็อกไม่ได้กินเต็มแถวแล้ว — จะไปยืนเป็นคอลัมน์ที่สามข้างช่องเวลา');
+
+  // และมันไม่ได้อยู่ในคอลัมน์ของช่องใดช่องหนึ่ง แต่เป็นลูกของแถว
+  const row = edit.slice(edit.indexOf('<div className="row">'));
+  const times = row.slice(0, row.indexOf('{(mayTickNoBreak'));
+  const end = times.slice(times.indexOf('<label>เวลาสิ้นสุด</label>'));
+  assert.ok(!end.slice(0, end.indexOf('</div>')).includes('field-note'),
+    'บรรทัดล็อกกลับเข้าไปอยู่ในคอลัมน์ของช่องเวลาสิ้นสุดอีกแล้ว');
+  assert.match(times, /\{form\.flatDaily && \(\s*\r?\n\s*<span className="field-note">/);
 });
 
 /**

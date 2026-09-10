@@ -8982,15 +8982,28 @@ table.mini tbody tr:hover { background: none; }
 
    `.row` is `align-items: flex-end` everywhere else in the app, which is right
    where a row pairs a field with a button: the button lines up with the box, not
-   with the label above it. Here the two items are two FIELDS, and one of them
-   grows a `.field-note` on a เหมารายวัน row — *ล็อก 08:00–17:00 น. แก้เวลาไม่ได้*.
-   Aligned by their bottoms, that note pushed เวลาสิ้นสุด and its label a line
-   higher than เวลาเริ่ม, so the panel read as two staggered questions rather than
-   one pair of times: reported from the screen on 2026-09-10.
+   with the label above it. Here both items are FIELDS, and on a เหมารายวัน row a
+   grey line — *ล็อก 08:00–17:00 น. แก้เวลาไม่ได้* — used to hang inside the
+   เวลาสิ้นสุด one. Aligned by their bottoms, that line pushed เวลาสิ้นสุด and its
+   label a line higher than เวลาเริ่ม, so the panel read as two staggered questions
+   rather than one pair of times: reported from the screen on 2026-09-10.
 
-   Aligned by their TOPS the labels meet, the boxes meet, and the note hangs off
-   the bottom of the taller one where it belongs — under the box it is about. */
+   THE LINE CAME OUT OF THE COLUMN LATER THE SAME DAY (the rule below), so today
+   the two fields are the same shape and this changes nothing to look at. It is
+   kept because it is the true statement about a row of two FIELDS, and it is what
+   makes the next note under one of them a note rather than a stagger. */
 .quick-edit .row { align-items: flex-start; }
+/* AND THE NOTE IS A LINE OF THE ROW, NOT OF A COLUMN — 2026-09-10, asked for
+   from the screen: *ให้มันตรงกับช่องเวลาเริ่ม*. It is about BOTH boxes — one tick
+   shut the pair — so it takes the whole width and starts where เวลาเริ่ม starts,
+   rather than beginning halfway across the panel under the box it is not about.
+   The row's own 12px `gap` is the space above it; no margin of its own.
+
+   The filing form took the same sentence out of the same column on 2026-09-09
+   and landed it on the RIGHT (`.field-note.lock-note`) — one rule, two answers:
+   the line sits under the boxes it is about, and that row carries วันที่เริ่ม
+   ahead of the two times while this one carries nothing else at all. */
+.quick-edit .row > .field-note { flex: 1 1 100%; }
 /* A strip under the two time fields, not two controls loose in the form. Both
    switches are about the times above them, and the fill says so — one step off
    the panel's own `--green-tint`, which is enough to group without drawing a

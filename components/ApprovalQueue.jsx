@@ -3150,12 +3150,29 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
             disabled={form.flatDaily}
             onChange={(v) => set({ endTime: v })}
           />
-          {form.flatDaily && (
-            <span className="field-note">
-              ล็อก {FLAT_DAY_TIMES.startTime}–{FLAT_DAY_TIMES.endTime} น. แก้เวลาไม่ได้
-            </span>
-          )}
         </div>
+        {/* WHY THE BOXES ARE GREY — A LINE OF ITS OWN, UNDER THE PAIR, AT THE
+            LEFT EDGE. 2026-09-10, asked for from the screen: *ให้มันตรงกับ
+            ช่องเวลาเริ่ม*.
+
+            IT SAT INSIDE THE เวลาสิ้นสุด FIELD UNTIL THEN, which put it under
+            the right-hand box and left of nothing — a grey sentence starting
+            halfway across the panel, reading as a note about เวลาสิ้นสุด. It is
+            about BOTH boxes: one tick shut the pair, and the pair is what it
+            names. So it comes out of the column, the way the filing form took
+            the same sentence out of its own on 2026-09-09 (`lock-note` in
+            app/styles.css, and the note over it).
+
+            LEFT HERE AND RIGHT THERE, FROM ONE RULE. The sentence sits under
+            the boxes it is about. On บันทึก OT that row is วันที่เริ่ม +
+            เวลาเริ่ม + เวลาสิ้นสุด, so the left edge would put it under the DATE;
+            here the row is the two times and nothing else, so the left edge is
+            exactly where เวลาเริ่ม starts. */}
+        {form.flatDaily && (
+          <span className="field-note">
+            ล็อก {FLAT_DAY_TIMES.startTime}–{FLAT_DAY_TIMES.endTime} น. แก้เวลาไม่ได้
+          </span>
+        )}
       </div>
 
       {/*
