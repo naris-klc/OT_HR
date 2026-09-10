@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { api, dayName, thaiDate, hours } from '@/lib/api.js';
-import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
+import { DESCRIPTION_MAX_CHARS, normaliseDescription } from '@/src/config/policy.js';
 import {
   submissionWindow, zeroOtHoursAllowed,
   endsNextDayFor, isFlatDailyPosition, isCompanyOffDay,
@@ -378,6 +378,33 @@ export default function OtForm({
   const [conflict, setConflict] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  /**
+   * ส่งขออนุมัติ WAS PRESSED WITH รายละเอียดงานที่ทำ STILL EMPTY.
+   *
+   * The box is still `required`, but the <form> below carries `noValidate`, so
+   * the browser no longer answers this with a bubble of its own. That bubble is
+   * the thing being got rid of, for the reasons the login screen was rid of its
+   * pair — see the note over `blanks` in components/App.jsx: it is drawn in the
+   * browser's chrome rather than on this page, worded by the browser and not by
+   * this app (*Please fill out this field.* on a screen that is otherwise
+   * entirely Thai), it vanishes at the next click, and it is the one mark here
+   * that no stylesheet in this repository can reach. Everything else in this app
+   * that says "this is wrong" is ink under the field it means. Now so is this.
+   *
+   * ONE FLAG AND NOT A MAP OF THEM, unlike that pair. This form has one box a
+   * press can get past: the date is a `.pick-one` button and the times are
+   * `PickTime`, none of which can be left blank, and เหตุผลการแก้ไข greys the
+   * save button while ฝ่ายบุคคล's is empty rather than letting the press through.
+   *
+   * IT HOLDS THE SENTENCE AND NOT A `true`, the way `weekdayRefusal` above
+   * does, and the sentence is `normaliseDescription`'s — the server's own
+   * refusal for this exact field, imported rather than retyped. A rule written
+   * out twice is two rules that can disagree, and this one would disagree in the
+   * worst way: the box would say one thing and the 400 that follows another.
+   */
+  const [descriptionRefusal, setDescriptionRefusal] = useState('');
+  const descriptionRef = useRef(null);
   const timer = useRef(null);
 
   /**
@@ -602,6 +629,24 @@ export default function OtForm({
 
   async function submit(e) {
     e.preventDefault();
+
+    /**
+     * The same call the write path makes, on the way in rather than on the way
+     * back: it trims, because a box holding a space is empty as far as the paper
+     * is concerned — F-HR-027 would print a blank where the work should be.
+     *
+     * MARKED AND FOCUSED, not only marked. The mark says which box and the line
+     * under it says what to do, and neither moves the cursor; a keyboard left
+     * several Tabs from the fix is the one half of the browser's bubble that was
+     * worth keeping.
+     */
+    const description = normaliseDescription(form.description);
+    if (description.error) {
+      setDescriptionRefusal(description.error);
+      descriptionRef.current?.focus();
+      return;
+    }
+
     setBusy(true);
     setError('');
     try {
@@ -1275,17 +1320,37 @@ export default function OtForm({
           </span>
         </label>
         <textarea
+          ref={descriptionRef}
+          className={descriptionRefusal ? 'invalid' : undefined}
+          aria-invalid={descriptionRefusal ? true : undefined}
+          aria-describedby={descriptionRefusal ? `${formId}-description-refusal` : undefined}
           value={form.description}
-          onChange={(e) => set('description', e.target.value)}
+          /* The mark comes off on the keystroke and not on blur: its whole claim
+             is "this box is empty", and that stops being true at the first
+             character. Holding it until focus moves leaves the page arguing with
+             what the person can see. */
+          onChange={(e) => { set('description', e.target.value); setDescriptionRefusal(''); }}
           maxLength={DESCRIPTION_MAX_CHARS}
           placeholder="เช่น สอบเทียบชุด PM-3000"
           required
         />
-        <span style={{ fontSize: 12, color: over ? 'var(--danger-ink)' : 'var(--muted)' }}>
-          {over
-            ? `ข้อความเดิมยาวเกินกำหนด กรุณาตัดให้เหลือไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษรก่อนบันทึก`
-            : `ไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษร — เท่าที่ช่องในใบ F-HR-027 พิมพ์ได้พอดี`}
-        </span>
+        {/* THREE STATES, ONE LINE. Empty-when-pressed and too-long cannot both be
+            true of the same box, and two sentences stacked under one field read
+            as two problems. The blank one wears `.field-note error` — the class
+            the login screen's two boxes wear, the app's warm red under a border
+            in the cool one, which is the pairing the note over `.field
+            input.invalid` in app/styles.css explains. */}
+        {descriptionRefusal ? (
+          <span className="field-note error" id={`${formId}-description-refusal`}>
+            {descriptionRefusal}
+          </span>
+        ) : (
+          <span style={{ fontSize: 12, color: over ? 'var(--danger-ink)' : 'var(--muted)' }}>
+            {over
+              ? `ข้อความเดิมยาวเกินกำหนด กรุณาตัดให้เหลือไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษรก่อนบันทึก`
+              : `ไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษร — เท่าที่ช่องในใบ F-HR-027 พิมพ์ได้พอดี`}
+          </span>
+        )}
       </div>
 
       {/* Asked on every correction of a stored request, not only ฝ่ายบุคคล's.
@@ -1548,7 +1613,13 @@ export default function OtForm({
    */
 
   return (
-    <form id={formId} className="card" onSubmit={submit}>
+    /* `noValidate` switches off the browser's own refusal — the bubble reading
+       *Please fill out this field.*, in the browser's language rather than this
+       app's. The check it was doing is in `submit` above, which marks the box
+       and writes the reason underneath it. THE `required` ATTRIBUTES STAY: they
+       are what a screen reader announces about a field before anybody presses
+       anything, and `noValidate` is not on them but on the form's own answer. */
+    <form id={formId} className="card" onSubmit={submit} noValidate>
       {/* THE APP'S OWN ⓘ, wearing the glyph `AppBar` gave it: the same 17px
           circle that carries a `?` on every form field — same ink, same focus
           ring, same keys — because "there is something to explain here" is one

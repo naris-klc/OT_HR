@@ -279,6 +279,78 @@ test('แผงเป็น portal ผ่าน Popover — ไม่วาง�
   assert.match(common, /import \{ Popover, PopFoot, useSheet \} from '\.\/popover\.jsx';/);
 });
 
+/**
+ * บนมือถือแผ่นของดรอปดาวน์ต้องเป็นแผ่นใบเดียวกับเมนู เพิ่มเติม — 2026-09-10.
+ *
+ * WHAT WAS WRONG, and the test above is where it hid. `.pop.one-pop` takes
+ * `.pop`'s skin off — right on a computer, where the `<ul>` inside already
+ * draws `.pick-menu` and leaving both on paints a panel round a panel. At the
+ * bottom of a phone the same subtraction left the SHEET drawing nothing: the
+ * list's own rounded card floated 14px in from both edges with its bottom
+ * corners still round, and ปิด sat below it over the นำทาง bar — next to a
+ * เพิ่มเติม menu flush to the edge with a heading over 52px rows. Two panels
+ * that are supposed to be one, which is what `popover.jsx`'s header warns
+ * about, arrived at from the CSS end rather than the placement end.
+ *
+ * THE DIVISION IS THE DRAWER'S: the shell is the sheet and the list is its
+ * scroll area, the way `.nav-sheet` is `NavDrawer`'s. So this test is about
+ * `.pop.sheet.one-pop` and NOT about `.one-menu` — the list may still not
+ * restate its own fill, edge, shadow, corner or height, which is the rule
+ * ".one-menu ไม่ทาสีแผงใหม่" above holds and which keeps this panel and
+ * ค้นหาพนักงาน's from drifting apart.
+ */
+test('บนมือถือ ดรอปดาวน์เปิดเป็นแผ่นแบบเดียวกับเมนูของแถบล่าง', () => {
+  const rule = (sel) => {
+    const at = css.indexOf(`${sel} {`);
+    assert.ok(at > 0, `ไม่มีกฎ ${sel}`);
+    return css.slice(at, css.indexOf('}', at));
+  };
+
+  // The shell wears the sheet again: fill, edge and the two shadows `.pop`
+  // carries. Everything else about the shape — the inset, the padding, the top
+  // corners, the rise and the 88dvh cap — is `.pop.sheet`'s and is NOT restated,
+  // or there would be a second copy of the sheet to keep in step.
+  const shell = rule('.pop.sheet.one-pop');
+  assert.match(shell, /background: var\(--card-lift\)/);
+  assert.match(shell, /border: 1px solid var\(--line-lift\); border-bottom: 0;/);
+  assert.match(shell, /box-shadow: 0 2px 8px -2px var\(--shadow-soft\), 0 14px 34px var\(--shadow-soft\);/);
+  // `border-bottom` is the shell's own — a sheet has no bottom edge to draw —
+  // so the ban is on the SHAPE, and `bottom:` is left off it for that reason.
+  for (const prop of ['border-radius', 'padding', 'inset', 'max-height', 'animation']) {
+    assert.ok(!shell.includes(prop), `.pop.sheet.one-pop ประกาศ ${prop} เอง — รูปร่างของแผ่นเป็นของ .pop.sheet`);
+  }
+
+  // …and the list gives its own panel up inside it, and its own height with it:
+  // ทุกแผนก with eighteen departments under it fills the sheet rather than
+  // scrolling inside a 264px card inside a sheet.
+  const list = rule('.pop.sheet.one-pop .pick-menu');
+  assert.match(list, /flex: 1 1 auto; min-height: 0; max-height: none;/);
+  assert.match(list, /background: none; border: 0; border-radius: 0; box-shadow: none;/);
+
+  // 52 and not 44 — the bar menu's own number, for the bar menu's own reason.
+  assert.match(rule('.pop.sheet.one-pop .pick-menu li'), /min-height: 52px/);
+  assert.match(css, /\.nav-sheet button \{[\s\S]*?min-height: 52px/);
+
+  // BOTH OF THEM INSIDE THE PHONE BLOCK. A sheet exists below 860px and nowhere
+  // else, and these rules landing at any width would strip the floating panel's
+  // list of the skin it is supposed to have.
+  const before = css.slice(0, css.indexOf('.pop.sheet.one-pop {'));
+  assert.match(
+    before.slice(before.lastIndexOf('@media'), before.lastIndexOf('@media') + 32),
+    /@media \(max-width: 860px\)/,
+    'กฎของแผ่นหลุดออกนอกบล็อกมือถือ',
+  );
+
+  // The heading, which is the one thing added rather than moved. On a sheet
+  // only: a floating panel opens under the box it belongs to with the label
+  // still on screen, and repeating it there would be the same word twice.
+  assert.match(source, /\{sheet && <div className="nav-sheet-head">\{label\}<\/div>\}/);
+  // เพิ่มเติม's own class, not a second copy of that type — and it is held out
+  // of the scroll by the rule the drawer already needed.
+  assert.match(read('components/App.jsx'), /<div className="nav-sheet-head">\{slot\.label\}<\/div>/);
+  assert.match(css, /\.pop\.sheet > \.drawer-who, \.pop\.sheet > \.nav-sheet-head, \.pop\.sheet > \.pop-foot \{ flex: none; \}/);
+});
+
 // ── the highlight, which is what the request was about ──────────────────────
 
 test('แถวที่เลือกอยู่ใช้สีเขียวของธีม ไม่ใช่แถบน้ำเงินของระบบ', () => {

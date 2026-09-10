@@ -3678,6 +3678,27 @@ export function PickOne({
             className="one-pop"
             matchWidth
           >
+          {/* THE FIELD'S OWN NAME OVER ITS ROWS, ON A SHEET ONLY — asked for on
+              2026-09-10 as *"อยากให้โชว์แบบการกดเมนูตัวเลือกในแถบบาร์"*, and it
+              is the one thing a sheet has to say that a floating panel does not.
+              A dropdown that opens four pixels under its box is attached to the
+              label above it and can be read off the screen; a sheet is pinned to
+              the bottom edge with a scrim over the page, so the box that opened
+              it — สถานะ, แผนก, เดือน — is behind the dark part by the time the
+              rows are on screen, and three sheets of Thai options look alike.
+
+              `.nav-sheet-head` AND NOT A CLASS OF ITS OWN. It is the same
+              sentence in the same place that เพิ่มเติม's sheet puts its slot
+              name — `BarSlot` in components/App.jsx — and the whole of what was
+              asked for is that these two be one panel. A second copy of that
+              type is a second thing to keep in step.
+              `.pop.sheet > .nav-sheet-head` already holds it out of the scroll
+              in the panel's flex column, for the drawer's sake, and holds this.
+
+              NOT ON THE FLOATING PANEL, where the label is still on the screen
+              a few pixels above the list and this would be the same word
+              twice. */}
+          {sheet && <div className="nav-sheet-head">{label}</div>}
           <ul
             id={`${id}-list`}
             role="listbox"

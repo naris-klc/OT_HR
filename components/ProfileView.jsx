@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { isSigner } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
@@ -20,7 +20,7 @@ const ROLE_LABEL = {
  * matches against, so a self-service edit would silently restate submitted
  * forms. They are shown read-only, with a line saying who to ask.
  */
-export default function ProfileView({ user, onPasswordChanged, onLogout }) {
+export default function ProfileView({ user, jumpTo = null, onPasswordChanged, onLogout }) {
   return (
     /* `profile-page` is not a layout — `.stack` is still doing that. It is the
        handle the stylesheet needs to give THESE cards 24px of padding without
@@ -37,8 +37,18 @@ export default function ProfileView({ user, onPasswordChanged, onLogout }) {
           landing tab sends somebody, and since the first-login screen was
           deleted it is the only screen that explains what their current
           password is. The form is the same one either way — the flag adds the
-          two sentences that screen used to carry. */}
-      <ChangePassword pending={user.mustChangePassword} onDone={onPasswordChanged} />
+          two sentences that screen used to carry.
+
+          `jump` is that same arrival seen from the other end: the strip names
+          เปลี่ยนรหัสผ่าน and this card is the fourth one down the page, so it
+          scrolls itself onto the screen rather than leaving somebody to find
+          it. Nothing else on this page sets it — walking here from the avatar
+          or the sidebar lands at the top, where ข้อมูลของคุณ is. */}
+      <ChangePassword
+        pending={user.mustChangePassword}
+        jump={jumpTo === 'password'}
+        onDone={onPasswordChanged}
+      />
       {/* On mobile the sidebar — and with it the ออกจากระบบ button — is not on
           screen, and the appbar avatar now opens this page instead of signing
           out. This is the only sign-out there, so it is not hidden on desktop
@@ -258,7 +268,39 @@ const NO_AUTOFILL = {
  * as soon as the flag does. Passing nothing is fine — the form then simply says
  * it worked.
  */
-export function ChangePassword({ onDone, pending = false }) {
+export function ChangePassword({ onDone, pending = false, jump = false }) {
+  /**
+   * THE CARD SCROLLS ITSELF INTO VIEW WHEN SOMETHING SENT SOMEBODY HERE FOR
+   * IT — set by `jumpTo` on ProfileView, which is set by เปลี่ยนรหัสผ่าน on
+   * the reminder strip and by nothing else.
+   *
+   * On the frame after mount, not during it: this component is mounted by
+   * the tab switch that the press causes, so at the moment the effect runs
+   * the cards above it — ข้อมูลของคุณ, ธีมสีหน้าจอ and, for a หัวหน้า,
+   * ผู้รักษาการแทน — have not been laid out yet, and a scroll measured then
+   * lands on a page that is about to grow underneath it. Same shape as the
+   * jump into a row on ตรวจสอบรายเดือน; see `jump` in components/HrView.jsx.
+   *
+   * SMOOTH, EXCEPT WHERE SOMEBODY HAS ASKED FOR LESS MOTION. `matchMedia`
+   * for the same reason that file gives: an imperative scroll has no CSS to
+   * honour `prefers-reduced-motion` for it.
+   *
+   * How far down it lands is `.profile-password`'s `scroll-margin-top`, in
+   * the stylesheet that owns the app bar it has to clear.
+   */
+  const cardRef = useRef(null);
+  useEffect(() => {
+    if (!jump) return;
+    const still = typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    window.requestAnimationFrame(() => {
+      cardRef.current?.scrollIntoView({
+        block: 'start',
+        behavior: still ? 'auto' : 'smooth',
+      });
+    });
+  }, [jump]);
+
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -321,7 +363,7 @@ export function ChangePassword({ onDone, pending = false }) {
   }
 
   return (
-    <div className="card">
+    <div className="card profile-password" ref={cardRef}>
       <h2>เปลี่ยนรหัสผ่าน</h2>
       <div className="hint">
         {/* The line the deleted first-login screen used to carry, drawn for the

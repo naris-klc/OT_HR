@@ -891,7 +891,20 @@ QC→`PROD2` · WH→`WH-FG` · ADM→`HRD`) พร้อมใบ OT 22 ใบ�
   สองช่องจึงเข้าไม่ได้ทั้งที่ทุกตัวถูก
 - **แถบเตือนบนหน้าแรกของบทบาทนั้น** “คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่”
   พร้อมปุ่มที่พาไป ข้อมูลส่วนตัว (`PasswordReminder` ใน `components/App.jsx`)
-  วาดครั้งเดียวบนหน้าแรก กฎเดียวกับแถบสำรองข้อมูลและประกาศวันหยุด
+  วาดครั้งเดียวบนหน้าแรก กฎเดียวกับแถบสำรองข้อมูลและประกาศวันหยุด ·
+  **ตั้งแต่ 2026-09-10 ปุ่มไม่ได้พาไปแค่*หน้า* แต่ลงจอดที่การ์ด เปลี่ยนรหัสผ่าน เลย**
+  เดิมมันเรียก `goTab('profile')` เฉย ๆ ซึ่งลงที่หัวหน้า — ข้อมูลของคุณ · ธีมสีหน้าจอ
+  (· ผู้รักษาการแทน ถ้าเป็นหัวหน้า) อยู่เหนือฟอร์ม บนมือถือคือต้องเลื่อนอีกจอครึ่ง
+  ไปตามหาสิ่งที่เพิ่งกด · ตอนนี้การกด**พกชื่อการ์ดไปด้วย** (`profileJump` บน Shell
+  → `jumpTo` บน `ProfileView` → `jump` บน `ChangePassword`) การ์ดเลื่อนตัวเองเข้ามา
+  ในเฟรมถัดจากที่ถูกวาด (การ์ดเหนือมันยังไม่ถูกจัดวางในจังหวะที่ effect ทำงาน
+  การเลื่อนที่วัดตอนนั้นจะลงสั้นไป) และหยุด**ใต้แถบหัวจอ ไม่ใช่มุดอยู่ข้างใต้** ด้วย
+  `scroll-margin-top` ของ `.profile-password` — เล็งไว้ที่ 62 + 14 เท่ากับที่หัวข้อ
+  ในคู่มือใช้ · **วัดจริงได้ 6px ไม่ใช่ 14** เพราะการ์ดเหนือมันหดลงราว 8px หลังเฟรม
+  ที่เล็ง การ์ดจึงจบสูงกว่าที่เล็งไว้ 8px ซึ่งยังอ่านว่าเริ่มใต้แถบอยู่ดี ·
+  เคารพ `prefers-reduced-motion` เพราะการเลื่อนแบบสั่งมือไม่มี CSS ให้เคารพแทน ·
+  **เข้าหน้านี้จากรูปโปรไฟล์หรือเมนูข้างยังลงที่หัวหน้าเหมือนเดิม** ธงถูกล้างทุกครั้ง
+  ที่ออกจากแท็บ กฎเดียวกับ `adminSection` ของ ตั้งค่าระบบ
 - **ข้อความเหนือฟอร์ม เปลี่ยนรหัสผ่าน บนหน้า ข้อมูลส่วนตัว** ซึ่งรับช่วงประโยคที่
   หน้าที่ถูกลบเคยพูดไว้ด้วย — ว่า “รหัสผ่านเดิม” คือรหัสพนักงานของตัวเอง สำหรับคนที่
   ไม่เคยมีใครบอกและได้แต่เดา · ทั้งสองที่ปิดทิ้งไม่ได้ เพราะเป็น*สถานะ* ไม่ใช่ข้อความ
@@ -1997,7 +2010,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     136 files, run by `npm test`. Six named below as a
+test/                     137 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2010,9 +2023,15 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2470 tests
-across 136 files**, measured 2026-09-10 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2486 tests
+across 137 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2470 tests across 136 files" until ot-hardening-and-slips was merged a THIRD
+time later the same day — five more commits, one new file
+(`otFormBlankDescription`) and sixteen cases across four files. The branch
+measured itself at "2463 tests across 136 files" on a tree that had never seen
+the แผนก filter on ตรวจสอบประจำเดือน, so neither side's figure survived the join;
+2470 + 16 = 2486 is the one taken after it. And it read
 "2464 tests across 136 files" until **ปุ่ม บันทึกเป็นไฟล์ PDF กลับมาทำงาน** later
 the same day — four new cases and NO new file, in `printPdf` and `manualScreen`,
 because both faults were in behaviour those two files already speak for; **and
@@ -3049,6 +3068,46 @@ depth, with the headings that say whose work each one is.
 **เพิ่มเติม was already a bottom sheet and was checked rather than changed.**
 Walked: full width, `bottom: 0`, over a scrim, with a ปิด button and the slot's
 name over the rows.
+
+#### And the pickers only looked like one — found on 2026-09-10, in a photograph
+
+*"การเลือกดรอปดาวตัวเลือกในมือถือ อยากให้โชว์แบบการกดเมนูตัวเลือกในแถบบาร์"*, with
+the สถานะ filter and the เพิ่มเติม menu side by side. **The paragraph above was
+true of the COMPONENT and false of the drawing.** `PickOne` opened the same
+`Popover` in the same sheet form — and `.pop.one-pop` takes `.pop`'s skin off,
+which is right on a computer, where the `<ul>` inside already draws `.pick-menu`
+and leaving both on paints a second panel round the first. Down at the bottom of
+a phone the same subtraction left the SHEET drawing nothing at all: what was on
+the screen was the list's own rounded card floating 14px in from both edges with
+its bottom corners still round, and ปิด adrift below it over the นำทาง bar,
+beside a เพิ่มเติม menu flush to the edge with a heading over 52px rows.
+
+**The skin went back on the shell and came off the list**, which is the division
+เพิ่มเติม already had. `.pop.sheet` is the sheet — full width, `bottom: 0`,
+square at the bottom, rounded at the top, capped at `88dvh` — and the list inside
+it is the scroll area, the way `.nav-sheet` is the drawer's. It keeps no height
+of its own either, so ทุกแผนก with eighteen departments under it fills the sheet
+instead of scrolling inside a 264px card inside a sheet. Rows go to **52px**,
+which is the bar menu's own number and its own reason: a menu read with a thumb,
+where the rows are the whole of what the sheet is for.
+
+**The heading is the one thing added rather than moved.** A floating panel opens
+four pixels under the box it belongs to with the label still on the screen; a
+sheet is pinned to the bottom edge with a scrim over the page, so the box that
+opened it is behind the dark part and สถานะ, แผนก and เดือน are three sheets of
+Thai options that look alike. `.nav-sheet-head` draws it — เพิ่มเติม's own class
+and not a second copy of that type — and only when `useSheet()` is true.
+
+**Nothing about the floating panel moved, and no rule in the new block names
+`.one-menu`.** `test/queueDropdown.test.js` holds the LIST to `.pick-menu`'s
+fill, edge, shadow, corner and height on both screens, which is what keeps this
+panel and ค้นหาพนักงาน's from drifting apart; the subject here is the SHELL,
+`.pop.sheet.one-pop`, and what the list gives up inside it. Walked on the
+**built app** (`VERIFY_DIST_DIR=.next-verify` · `next start -p 3001`, :3000
+serving throughout) at 390px, ธีมมืด, with both panels photographed: the shell
+measures 0→390 with a 16px top corner, a square bottom, `.pop`'s two shadows and
+`padding: 14px 14px 0`; the `<ul>` inside is transparent, `border: 0`,
+`box-shadow: none`, `max-height: none`; a row is 52px.
 
 #### The drawer was 814px tall on a 780px screen — found in the walk
 
@@ -11335,8 +11394,14 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2470 tests**, about 4 s, measured 2026-09-10 across 136
-  files. It read **"2464 tests"** until ปุ่ม บันทึกเป็นไฟล์ PDF was repaired
+- `npm test` — **2486 tests**, about 3 s, measured 2026-09-10 across 137
+  files, all green. It read **"2470 tests … across 136"** until
+  ot-hardening-and-slips was merged a THIRD time the same day — five more
+  commits, one new file (`otFormBlankDescription`) and sixteen cases across
+  four files. The branch's own **"2463 tests … across 136"** was measured on a
+  tree that had never seen ตรวจสอบประจำเดือน's แผนก filter, so neither side's figure
+  survived this join either; 2470 + 16 = 2486 is the one measured after it.
+  Before that it read **"2464 tests"** until ปุ่ม บันทึกเป็นไฟล์ PDF was repaired
   later the same day — four cases, no new file: `printPdf` gained the rule that
   a PDF is finished when its trailer is on disk and not when the path exists,
   and `manualScreen` gained the paper the manual is printed on. And it read
@@ -11349,8 +11414,8 @@ build แล้ว
   `filingLead`. The branch's own **"2399, all green"** was measured with another
   round's work stashed out of the way and never saw ใบขึ้นตั้งแต่ตอนที่ยื่น beside
   it; main's **2378** never saw any of the seven. **Neither side's figure has
-  survived either join, which is now twice, and the reason is the same both
-  times**: two people measuring different trees on the same afternoon. The figure
+  survived any of the three joins, and the reason is the same every
+  time**: two people measuring different trees on the same afternoon. The figure
   on this line is the one measured after the merge, and it is the only one that
   was. Before that it read **"2372 tests … measured 2026-09-08"** until the FIRST
   merge of this same branch, where main's **2372** never saw the ไม่พักเที่ยง
@@ -11359,19 +11424,20 @@ build แล้ว
   until สวัสดิการวันเกิด began working itself out; `birthdayTick` was rewritten
   whole, which is a file that lost more cases than it gained, and no file was
   added or removed.
-  **"All green" is not claimed on this line any more, and the reason is not this
-  round.** 31 cases across five CSS-source files — `logCardMobile`,
-  `complianceCardMobile`, `detailSheetCompact`, `batchBarSticky` and
-  `detailModalFooter` — plus one apiece in `tablePager` and `withdrawalRowLayout`
-  fail in this checkout, and every one of them fails on `d72fa77` with nothing
-  edited, so they were failing before anything here was touched. They read
-  `app/styles.css`; none of them reads a line this round changed. **Nobody has
-  looked at them yet and this line is where that is written down**, rather than a
-  figure that says green over a suite that is not. It read **"32 cases … and
-  `docsMatchCode`"** until this merge: that thirty-second failure was AGENTS.md's
-  own `node_modules/next/dist/` references going unresolved in a checkout with no
-  dependencies installed, not a document disagreeing with the tree, and it does
-  not fail where `npm install` has run. It read **"2398 … across 132"** until คิวรออนุมัติ was made กระชับ —
+  **"All green" is back on this line, and the reason is not this round either.**
+  It read **"31 cases across five CSS-source files … fail in this checkout"** —
+  `logCardMobile`, `complianceCardMobile`, `detailSheetCompact`, `batchBarSticky`
+  and `detailModalFooter`, plus one apiece in `tablePager` and
+  `withdrawalRowLayout` — until this merge, where all seven run green. They run
+  green on `b72ddbe` as well, with nothing edited, so whatever repaired them
+  landed before the join rather than in it, and which round did it has not been
+  traced. The paragraph is kept rather than deleted because a suite that stood
+  red while the line above it said nothing is the part worth remembering. It
+  read **"32 cases … and `docsMatchCode`"** before that: the thirty-second
+  failure was AGENTS.md's own `node_modules/next/dist/` references going
+  unresolved in a checkout with no dependencies installed, not a document
+  disagreeing with the tree, and it does not fail where `npm install` has run.
+  It read **"2398 … across 132"** until คิวรออนุมัติ was made กระชับ —
   `เพดานนับ` off the ceiling column, the `รายละเอียด` button off every row, and
   the row itself made the thing you press. ONE new case for the last of those,
   because the other three changes each had an existing test saying the opposite,

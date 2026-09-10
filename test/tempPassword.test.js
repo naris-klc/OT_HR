@@ -553,7 +553,15 @@ test('signing in reaches the app, and the flag is said in ink instead', () => {
   //    working password.
   assert.match(app, /function PasswordReminder\(/);
   assert.match(app, /tab === home && user\.mustChangePassword && \(/);
-  assert.match(app, /<PasswordReminder onOpenProfile=\{\(\) => goTab\('profile'\)\}/);
+  assert.match(app, /<PasswordReminder onOpenProfile=\{openPasswordChange\}/);
+  // And that press names the CARD, not just the tab — ข้อมูลส่วนตัว opens at
+  // ข้อมูลของคุณ and เปลี่ยนรหัสผ่าน is the fourth card down it. See the jump
+  // section in test/profileActions.test.js for the landing itself.
+  assert.match(
+    app,
+    /function openPasswordChange\(\) \{\s*setProfileJump\('password'\);\s*goTab\('profile'\);/,
+    'the strip sends somebody to the page without saying which card it meant',
+  );
 
   // Nothing on the way in writes to the flag: it is cleared by typing a new
   // password and by nothing else, least of all by arriving.
@@ -563,7 +571,7 @@ test('signing in reaches the app, and the flag is said in ink instead', () => {
   // including the sentence the deleted screen carried, which named the issued
   // password outright for whoever was told nothing and guessed.
   const profile = strip(readFileSync(join(ROOT, 'components/ProfileView.jsx'), 'utf8'));
-  assert.match(profile, /<ChangePassword pending=\{user\.mustChangePassword\}/);
+  assert.match(profile, /<ChangePassword\s+pending=\{user\.mustChangePassword\}/);
   assert.match(profile, /\{pending && <>[^]*ซึ่งคือรหัสพนักงานของคุณ/);
   assert.match(profile, /\{pending && !ok && \(/);
 });
