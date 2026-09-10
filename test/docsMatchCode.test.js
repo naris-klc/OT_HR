@@ -41,6 +41,7 @@ const DOCS = [
   'AGENTS.md',
   'CLAUDE.md',
   'docs/features.md',
+  'docs/design.md',
   'docs/contingency.md',
   'docs/network.md',
 ];

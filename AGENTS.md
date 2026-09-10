@@ -13,6 +13,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 The project rules below are ours. The block above is Next.js's own and is
 rewritten by `next dev`; nothing here depends on it.
 
+## คุยกับผู้ใช้เป็นภาษาไทยเสมอ — Thai is the language of this project
+
+**ตอบผู้ใช้เป็นภาษาไทยทุกครั้ง** สั่งไว้ 2026-09-11 · ข้อความคอมมิต เอกสารใน
+`docs/` และทุกคำที่ขึ้นบนจอก็เป็นภาษาไทยอยู่แล้ว — ตามให้เหมือนกัน
+
+ที่ยังเป็นอังกฤษได้คือของที่เป็นอังกฤษอยู่แล้วในไฟล์นั้น: ชื่อตัวแปร ชื่อเทสต์
+บางไฟล์ และร้อยแก้วในเอกสารฉบับนี้ · การเขียนภาษาอังกฤษปนในย่อหน้าไทยเพราะมันสั้น
+กว่านั้นไม่ใช่เหตุผล
+
 ## ทรีนี้ไม่ใช่ของคุณคนเดียว — Another agent is editing these files while you read this
 
 **Assume at every moment that another session has uncommitted work in this
@@ -179,6 +188,82 @@ rm -rf .next-verify
 
 `.next-*/` is git-ignored. Deploying is the user's call, not a step you take on
 the way to finishing something.
+
+## จอใหม่ไม่ได้เริ่มจากศูนย์ — Ask first, agree first, then inherit
+
+**The user decides the UX, and they decide it before the first line of JSX
+exists.** Said in as many words on 2026-09-11. A screen is not a place to try
+something and see; it is the one part of this system HR looks at every day, and
+it already has a settled look that a guess quietly forks.
+
+### Before you write UI code
+
+1. **Ask, and keep asking until the design has no gaps left in it.** Not one
+   round of questions out of politeness — as many as it takes. Name what you do
+   not know: which state the screen is in when it is empty, what the thing is
+   called in Thai, what happens at 390px, what prints, which of two flows the
+   button belongs to. A question costs a message. A screen built on a guess is
+   thrown away twice — once by the user, and once by the tests that pinned the
+   behaviour it guessed at.
+2. **Get an explicit yes, then build.** Describe what you are about to build in
+   words — the layout, the states, what each control does — and wait for the
+   answer. "I'll build it and you can tell me what to change" is not agreement,
+   and neither is a draft in code offered as a question.
+3. **Never take silence, a shrug, or a related answer as approval** for a
+   decision the user has not actually made.
+
+### Inherit before you invent
+
+This app has ONE theme and it is enforced by tests, not by taste. A new screen
+is assembled from what the old screens are made of, and only what genuinely has
+no precedent is designed at all.
+
+- **`components/common.jsx`** is the shared kit and nearly every screen imports
+  from it (`from './common.jsx'`): `Modal`, `ConfirmDialog`, `Section`, `Fact`,
+  `Field`, `Empty`, `Alert`, `StatusChip`, `ShowMore`. A screen that hand-rolls
+  its own dialog, its own empty state or its own status pill is exactly the
+  failure this rule is here to stop — the second one of those is the moment the
+  app has two styles.
+- **`components/popover.jsx`** — `Popover`, `PickerBox`, `usePicker`,
+  `useSheet`: every dropdown and the draggable bottom sheet.
+  `test/noNativeSelect.test.js` fails a build that reaches for the browser's
+  own `<select>` instead.
+- **`components/icons.jsx`** — `Icon` and `ICON_NAMES`, one inline SVG set.
+  There is no second icon set and no icon font.
+- **`components/nav.jsx`** — `useBackHandler`, the app's own back stack, which
+  is what makes the phone's back gesture close a sheet instead of leaving the
+  page.
+- **`app/styles.css`** — every colour is a token on `:root`, both themes come
+  from `light-dark()` and `data-theme`. **No rule in that stylesheet writes a
+  raw colour of its own**, and `test/theme.test.js` fails the build if one
+  appears; it also measures real colour pairs for AA contrast in both themes.
+
+**When there is genuinely no precedent, the new thing goes in the shared kit,
+not in the screen that needed it first.** Add it to `components/common.jsx`
+beside the others and let the second screen import it. Copying a block from
+another component is where two versions that slowly disagree come from — and
+the copy is never the one that gets fixed.
+
+**Reuse is a design constraint, not a refactor to do later.** If a screen cannot
+be built from the kit without a fight, that is a design question to take back to
+the user — not a licence to build a parallel one.
+
+### Before you call a screen done
+
+Both themes · 390px wide · Ctrl+P · the safe area at the bottom edge · and the
+main breakpoint is 860px, below which the app is meant to read as a phone app
+(bottom bar, FAB, tables that become cards, 44px targets), not as a shrunken
+desktop.
+
+**`docs/design.md` is where the rules themselves live, and it is the first thing
+to read before designing anything**: which token means what and when each is
+used, the breakpoints that already exist, what the phone layout owes the reader,
+and the checklist above in full. `docs/plan-design-system.md` is the reasoning
+that asked for that file, plus the inventory behind it and the one rule it argues
+is genuinely missing — how many words a screen may carry.
+
+**Neither is an invitation to build a design system. The one they describe is
+already built**, and rebuilding it is the specific mistake they exist to prevent.
 
 ## A commit that changes behaviour must find the paragraphs that describe it
 
