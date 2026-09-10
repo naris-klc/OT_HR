@@ -2010,7 +2010,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     140 files, run by `npm test`. Six named below as a
+test/                     141 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2023,9 +2023,17 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2521 tests
-across 140 files**, measured 2026-09-10 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2532 tests
+across 141 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2521 tests across 140 files … measured 2026-09-10" until **ผลเทียบสแกน
+ขึ้นมาเป็นการ์ดของตัวเองบนหน้า ตรวจสอบประจำเดือน**, which added
+`monthScanColumn` and eleven cases. Two files that had pinned the OLD shape of
+that screen were rewritten rather than extended — `hrMonthCards`, whose two
+tests about the pair of row buttons became two about the row itself, and
+`monthDepartmentFilter`, which now also holds the release rule for the card's
+own filter. Neither gained a case, which is why 2521 + 11 = 2532 with no
+arithmetic left over. And it read
 "2470 tests across 136 files" until ot-hardening-and-slips was merged a THIRD
 time later the same day — five more commits, one new file
 (`otFormBlankDescription`) and sixteen cases across four files. The branch
@@ -5376,14 +5384,53 @@ was to already know it was there and open people one at a time; on a roster of a
 hundred and sixty that is not a thing anybody does, so the feature was built and
 unreadable.
 
-So the card carries the month's answer, and it **names the people**:
+So the card carries the month's answer.
+
+> **It named the people, in a list capped at twelve, and it lived inside the
+> ไฟล์สแกนนิ้วมือ card — until 2026-09-10.** It read:
+>
+> ```
+> ผลเทียบกับใบ OT ของเดือนนี้  (7 ใบ · ตาม “สถานะที่นับ” ที่เลือกไว้ด้านบน)
+> 1 แถวไม่ครบ · 1 แถวเวลาเริ่มไม่ตรง · 1 แถวไม่ตรง (ไม่มีสแกนนิ้ว) · 1 แถวเกินเวลา · 1 แถวเป็นใบเหมารายวัน
+> ดูได้ที่ปุ่ม ดู / แก้ไขรายการ ของคนเหล่านี้ในตารางด้านล่าง
+> สมชาย ใจดี (PM00112) — เวลาไม่ตรง 2 · สมหญิง รักงาน (PM-0620) — เวลาไม่ตรง 1 · ไม่มีสแกน 1
+> ```
+>
+> **TWO THINGS BROKE IT, AND THE SECOND IS THE ONE THAT MATTERED.** The list
+> capped at twelve, so a month with thirty flagged people was named less than
+> half and there was no way to reach the rest. And the same morning, the card
+> it lived in was made to **fold shut on every visit** — right for นำเข้าไฟล์,
+> a deed done once a month, and wrong for the comparison, which is the answer
+> to *"is this month safe to sign"* and had just become two presses deep.
+>
+> And **the sentence in the middle names a button that no longer exists**: the
+> pencil at the end of every row went the same day, and the row itself is what
+> opens the person now.
+
+Since 2026-09-10 it is `components/ScanCompareCard.jsx`, a card of its own
+directly under `MonthAlerts` and above everything on the screen a reader can
+press — and the pile has three ways out of it instead of a list of names:
 
 ```
-ผลเทียบกับใบ OT ของเดือนนี้  (7 ใบ · ตาม “สถานะที่นับ” ที่เลือกไว้ด้านบน)
-1 แถวไม่ครบ · 1 แถวเวลาเริ่มไม่ตรง · 1 แถวไม่ตรง (ไม่มีสแกนนิ้ว) · 1 แถวเกินเวลา · 1 แถวเป็นใบเหมารายวัน
-ดูได้ที่ปุ่ม ดู / แก้ไขรายการ ของคนเหล่านี้ในตารางด้านล่าง
-สมชาย ใจดี (PM00112) — เวลาไม่ตรง 2 · สมหญิง รักงาน (PM-0620) — เวลาไม่ตรง 1 · ไม่มีสแกน 1
+ผลเทียบกับไฟล์สแกนนิ้วมือ — สิงหาคม 2569
+⚠ ต้องตรวจ 3 แถว  (2 คน จาก 7 ใบ)
+1 ไม่ครบ · 1 เวลาเริ่มไม่ตรง · 1 ไม่ตรง (ไม่มีสแกนนิ้ว) · 1 เกินเวลา · 1 เหมารายวัน · 4 ตรง
+[ ดูเฉพาะคนที่ต้องตรวจ (2 คน) ]
 ```
+
+  · **the คอลัมน์สแกน on every row of the table**, so the finding is beside the
+    person rather than in a paragraph above them;
+  · **ดูเฉพาะคนที่ต้องตรวจ**, which narrows the table to exactly that pile —
+    a filter has no cap, which is what the list of twelve could not manage;
+  · and the row marks themselves, one press away, unchanged.
+
+**A THIRD STATE EXISTS AND IT IS THE LOUDEST THING ON THE SCREEN.** A month with
+no scan file at all now says `ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ` in 16px — because
+from a table with no marks on it, "nobody has imported the file" and "every row
+agrees" are indistinguishable, and one of them is a month nobody has checked.
+It does **not** stop anybody approving: the comparison points at rows, it does
+not hold a gate (decided 2026-09-10, docs/plan-monthly-review-approve-inline.md
+§5.3).
 
 **เกินเวลา is on the count line and NOT in the list of names.** The names answer
 *who do I have to go and look at*, and nobody has to look at a row where the
@@ -6799,7 +6846,7 @@ controls decide.
 | งวด…ยังเปิดอยู่ · ไฟล์สแกนนิ้วมือ | two cards **between** the controls and the table | **one line above** the controls |
 | the controls and the table | two cards, 16px of page between them | **two sections of one card**, divided by a rule |
 | the export row | three long buttons | **พิมพ์ / ส่งออก ▾**, one button and a menu |
-| every row's two buttons | `ดู / แก้ไขรายการ` · `พิมพ์ F-HR-027` spelled out | **two icons** (a word again on a phone) |
+| every row's two buttons | `ดู / แก้ไขรายการ` · `พิมพ์ F-HR-027` spelled out | **two icons** (a word again on a phone) — *and see §4, where the first of the two stopped being a button at all later the same day* |
 
 **1 — the two cards became one line, and neither lost anything.** The งวด
 headline is the line it always led with; its *why* is one press away behind
@@ -6849,10 +6896,24 @@ about the person on the row. The word did not leave the document: `aria-label`
 carries it for a screen reader, `title` for a pointer, and the visible
 `.act-label` is hidden with `clip-path` — **never `display: none`**, which would
 take it out of the accessibility tree and leave `aria-label` as the button's
-only name. The glyph follows the permission the label already followed: a
-**pencil** for the two บทบาท that may correct a row, an **eye** for the four that
-may only read one, because a pencil offered to a หัวหน้างาน is a promise the
-route answers 403 to.
+only name.
+
+> **⚠ THE FIRST OF THE TWO IS NOT A BUTTON ANY MORE — later the same day.** It
+> read *"The glyph follows the permission the label already followed: a*
+> ***pencil*** *for the two บทบาท that may correct a row, an* ***eye*** *for the
+> four that may only read one, because a pencil offered to a หัวหน้างาน is a
+> promise the route answers 403 to."* — and one round later the ask was
+> *"ตัดปุ่มแก้ไขออก โดยให้กดที่รายชื่อนั้นเพื่อเข้าไปดูรายละเอียดและแก้ไขแทน"*.
+>
+> **The whole `<tr>` opens the person now** (`.row-open`, a `tabIndex`, Enter
+> and Space, and the same `closest()` guard คิวรออนุมัติ uses so a press on a
+> button inside the row does not also open the sheet). `openRowLabel` still
+> decides the wording and still keeps its promise — it is the row's `title`
+> instead of a button's face. **พิมพ์ F-HR-027 stayed**, because it is the one
+> act on the row that is *not* "open this person" and there is nowhere else on
+> the screen to print one sheet from.
+>
+> The width the pencil gave up is roughly what the new **คอลัมน์สแกน** took.
 
 **Measured on the running app** (2026-09-10, `.next-verify` on :3001, light
 theme, กันยายน 2569): desktop at 1400px and phone at 390px both drawn, the menu
@@ -8207,7 +8268,8 @@ months that have no pager. Which of the two a month gets is decided by
 ```
 ┌─────────────────────────────────┐
 │ ผู้ดูแลระบบ              3      │ ← five cards, and five is all the layout
-│ [ ดู / แก้ไขรายการ ] [ พิมพ์ ]  │   holds: no max-height, no overflow-y
+│ ⚠ เวลาไม่ตรง 2                  │   holds: no max-height, no overflow-y
+│ [ พิมพ์ F-HR-027 ]              │   the card itself opens the person
 │ ฝ่ายบุคคล              2.5      │
 └─────────────────────────────────┘
    [‹]      หน้า 1 / 5       [›]      ← the pager, on months of MORE than five
@@ -8220,6 +8282,14 @@ months that have no pager. Which of the two a month gets is decided by
                                         (วันเกิดของเดือนนี้ closed this screen
                                          until 2026-09-03 — see below)
 ```
+
+> It read `[ ดู / แก้ไขรายการ ] [ พิมพ์ ]` on the card's second line until
+> 2026-09-10, when the first of the two stopped being a button — the card
+> itself is the press now, the same way the row is on a desktop. The line it
+> gave up is where the **คอลัมน์สแกน** is drawn, which on a phone is a row of
+> the card grid (`'who cap' / 'scan scan' / 'act act'`) rather than a column:
+> a warning that shows on a desktop and not on a phone is a warning half the
+> readers never see.
 
 **The page bounds the distance, and nothing bounds the height.** Five cards, the
 pager and the total are a length a phone scrolls in one gesture, so there is no
@@ -11675,8 +11745,13 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2521 tests**, about 3 s, measured 2026-09-10 across 140
-  files, all green. It read **"2470 tests … across 136"** until
+- `npm test` — **2532 tests**, about 3 s, measured 2026-09-10 across 141
+  files, all green. It read **"2521 tests … across 140"** until ผลเทียบสแกน
+  became a card of its own on ตรวจสอบประจำเดือน — one new file
+  (`monthScanColumn`, eleven cases) and two files rewritten in place rather
+  than extended, `hrMonthCards` and `monthDepartmentFilter`, both of which had
+  pinned the shape of a screen this round deliberately changed. Before that it
+  read **"2470 tests … across 136"** until
   ot-hardening-and-slips was merged a THIRD time the same day — five more
   commits, one new file (`otFormBlankDescription`) and sixteen cases across
   four files. The branch's own **"2463 tests … across 136"** was measured on a

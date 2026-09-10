@@ -1480,6 +1480,15 @@
     display: none;
   }
 
+  /* คอลัมน์สแกน is screen furniture too, and the reason is the same one
+     lib/scanMatch.js states about itself: it is a WARNING, not an arithmetic.
+     Nothing in that column moves an hour, a bucket or a ceiling, so it has no
+     business on a document that goes to payroll — and a `เวลาไม่ตรง 2` printed
+     beside a figure invites whoever reads the paper to believe the figure was
+     adjusted for it. Both cells, so the heading does not print over an empty
+     column. */
+  .hr-table th.scan-col, .hr-table td.scan-col { display: none; }
+
   /* One exception to the no-fill rule: the ประจำเดือน banner and the two rate
      columns under it. The tint is what marks off this month's figures from the
      roster beside them, so it is the sheet, not decoration. */

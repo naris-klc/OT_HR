@@ -8683,6 +8683,52 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
    asked of it — this column is hidden below 860px (see the phone block), so a
    pointer is the only thing that ever reaches it. */
 .hr-table th.edits-col, .hr-table td.edits-col { text-align: center; }
+/* ── คอลัมน์สแกน — WHAT THE MACHINE SAYS ABOUT ONE PERSON'S MONTH ──────────
+
+   Centred rather than right-aligned, for `edits-col`'s reason and out of the
+   same argument: what sits under this heading is a badge, not a figure read
+   down a column, and `td.num` would put it against the right edge of a heading
+   one short word wide.
+
+   IT IS NOT ALWAYS DRAWN. `showScanCol` in components/HrView.jsx takes the
+   whole column off a month with no scan file — sixty cells of `—` read as sixty
+   people the machine disagrees with, and the card above says the true thing
+   once instead. */
+.hr-table th.scan-col, .hr-table td.scan-col { text-align: center; white-space: nowrap; }
+
+/* ตรง — A ROW THE MACHINE AGREES WITH, SAID AS QUIETLY AS IT DESERVES.
+   It has to be SAID: a blank cell on a month that WAS compared is
+   indistinguishable from a blank cell on a month that was not, and those are
+   opposite answers. Grey and small is how a fact that needs no action looks. */
+.hr-table td.scan-col .scan-ok { font: 400 12px/1.4 var(--sans); color: var(--muted-2); }
+
+/* THE PILE THAT NEEDS A PERSON. Amber, and stacked when a row carries both
+   counts — `เวลาไม่ตรง 2` over `ไม่มีสแกน 1` is two facts about one month, and
+   run together on one line at this width they wrap mid-phrase. */
+.hr-table td.scan-col .scan-flag {
+  display: inline-flex; flex-direction: column; gap: 1px; align-items: center;
+}
+.hr-table td.scan-col .scan-flag .n {
+  font: 600 12px/1.4 var(--sans); color: var(--amber-ink);
+}
+
+/* ── ทั้งแถวกดได้ — 2026-09-10 ─────────────────────────────────────────────
+
+   The pointer and the focus ring are the whole of what says this row is
+   pressable; the `title` and the row's own `tabIndex` are in the JSX. Written
+   to match `.queue-table tbody tr.row-open` declaration for declaration,
+   because a row that means "open this" on two screens must look like it on
+   both — and the hover fill each table already had is what does the rest. */
+.hr-table tbody tr.row-open { cursor: pointer; }
+.hr-table tbody tr.row-open:focus-visible { outline-offset: -2px; }
+/* รวมทั้งหมด NEEDS NO RULE OF ITS OWN HERE, and that is worth saying out loud
+   because a `cursor: default` on it is the obvious thing to reach for: the
+   class is written per row in the JSX and the total row never carries it, so
+   there is no pointer on it to undo. A rule here would also be the first
+   desktop declaration `.total-row` has ever had — everything else about that
+   row is the phone block's — and test/hrMonthCards.test.js checks exactly
+   that. */
+
 
 .hr-table td.edits-col .edits-pill {
   display: inline-flex; flex-direction: column;
@@ -13481,8 +13527,14 @@ table.mini tbody tr:hover { background: none; }
   .hr-table tbody tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 108px;
+    /* `scan` BETWEEN THE NAME AND THE BUTTON, full width — 2026-09-10.
+       It is read after "who and how many hours" and before "what do I do about
+       it", which is the order the row is read in on a desktop too. A card with
+       nothing to report draws the row at its content height, which for the
+       quiet `ตรง` line is about sixteen pixels. */
     grid-template-areas:
       'who cap'
+      'scan scan'
       'act act';
     align-items: start; gap: 10px 12px;
     /* 15px, the same padding `.card` takes at this width — see `.stack-table`,
@@ -13508,6 +13560,12 @@ table.mini tbody tr:hover { background: none; }
   .hr-table tbody td.count-col,
   .hr-table tbody td.edits-col,
   .hr-table tbody td.pad-col { display: none; }
+  /* `scan-col` IS NOT IN THAT LIST, and it is the first column added to this
+     table in a long while that is not. The five above are figures the card
+     either repeats elsewhere (รวม ชม. = สะสม) or can do without on a phone;
+     this one is a WARNING, and a warning that appears on the desktop and not on
+     the phone is a warning half the readers never see. It takes a row of the
+     card grid to itself — see `grid-template-areas` above. */
   /* รวม ชม. is the same figure as สะสม, which the card already prints beside
      the name. It comes back for รวมทั้งหมด below, which has no ceiling cell. */
   .hr-table tbody tr:not(.total-row) td.total-col { display: none; }
@@ -13516,6 +13574,15 @@ table.mini tbody tr:hover { background: none; }
     grid-area: who; min-width: 0;
     font: 600 15.5px/1.4 var(--sans);
   }
+
+  /* Left-aligned on the card and centred in the table, which is not an
+     inconsistency: in a column the badge is centred under its own heading;
+     on a card there is no heading and it reads as a line of the card, which
+     starts where every other line of the card starts. */
+  .hr-table tbody td.scan-col {
+    grid-area: scan; text-align: left; white-space: normal;
+  }
+  .hr-table tbody td.scan-col .scan-flag { flex-direction: row; gap: 10px; }
 
   .hr-table tbody td.cap-col {
     grid-area: cap; text-align: right; white-space: nowrap;
@@ -13589,29 +13656,21 @@ table.mini tbody tr:hover { background: none; }
     min-width: 0; white-space: normal;
   }
 
-  /* TWO GHOSTS SIDE BY SIDE ARE TWO EQUAL OFFERS, and these are not equal:
-     ดู / แก้ไขรายการ is what somebody opened this month to do, and พิมพ์ is
-     what they do afterwards, sometimes.
+  /* ── THE act-open ACCENT STOOD HERE, AND WHAT IT ARGUED IS SETTLED ────
 
-     So the first takes the `.btn.outline` voice — the green of the filled
-     button drawn as a line and a wash instead of a fill. That voice is written
-     down in the buttons section with a warning on it: reach for it in a row
-     that already has a filled button, because outlined secondaries beside no
-     primary are two second places. This is the other case it names — outlined
-     as the FIRST place, with a plain ghost under it — and it is the reason the
-     rule was kept when its last caller went away.
+     Two rules gave ดู / แก้ไขรายการ the `.btn.outline` voice on the phone card,
+     because two ghosts side by side are two equal offers and these were not
+     equal: one was what somebody opened the month to do, the other was พิมพ์.
 
-     Declared here and not by putting `outline` in the JSX: a desktop table
-     cell is not a card, the two buttons there sit in a 258px column among nine
-     other columns of figures, and one of them in green would be the only
-     coloured thing on a screen that is otherwise all numbers. */
-  .hr-table tbody td.act-col .row-actions .btn.act-open {
-    background: var(--green-tint); color: var(--green-accent);
-    border-color: var(--green); font-weight: 600;
-  }
-  .hr-table tbody td.act-col .row-actions .btn.act-open:active {
-    background: var(--green-bg); border-color: var(--green-lift);
-  }
+     THE ARGUMENT WON AND TOOK THE BUTTON WITH IT. On 2026-09-10 the primary of
+     the two stopped being a button at all — the ROW opens the person now
+     (`.hr-table tbody tr.row-open`) — so there is one button left in this cell
+     and nothing for it to be unequal to. A colour that says "press me first"
+     on the only thing pressable is decoration.
+
+     `--green-accent` IS STILL A TOKEN AND STILL DOCUMENTED, and `.btn.outline`
+     is still written down in the buttons section with its warning. This is the
+     caller going away, not the voice. */
 
   /* ══ แผงเปลี่ยนหน้า — ONE MECHANISM, AND THE PAGE DOES THE SCROLLING ════
 

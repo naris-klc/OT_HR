@@ -135,64 +135,87 @@ test('รวม ชม. is dropped because สะสม is the same figure, not 
   assert.match(phone, /\.hr-table tbody tr\.total-row td\.total-col \{[\s\S]*?grid-area: cap;/);
 });
 
-// ── the buttons, which are why this screen moved ─────────────────────────────
+// ── the row is the control, and the one button that is not the row ──────────
 
-test('both buttons are on every card, side by side, at a thumb-sized target', () => {
-  const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
-  // The first button's LABEL moved into `openRowLabel` on 2026-09-03: four
-  // บทบาท read this screen and only ฝ่ายบุคคล/ผู้ดูแลระบบ may correct a row, so
-  // the other two get "ดูรายการ" rather than an offer the route answers 403 to.
-  // Both names are pinned at the helper, and what matters here is that the cell
-  // asks it rather than writing one of them out.
-  assert.match(cell, /\{openRowLabel\(mayCorrect\)\}/);
+test('the whole row opens the person, and it is the same press คิวรออนุมัติ uses', () => {
+  // ── ASKED FOR BY NAME, 2026-09-10 ──────────────────────────────────────────
+  //
+  //   *"ตัดปุ่มแก้ไขออก โดยให้กดที่รายชื่อนั้นเพื่อเข้าไปดูรายละเอียดและแก้ไขแทน"*
+  //
+  // It read "both buttons are on every card, side by side, at a thumb-sized
+  // target" and "the two buttons are not two equal offers" until that day. Both
+  // were about ดู / แก้ไขรายการ, which is not a button any more: the pencil at
+  // the end of every row (an `.icon-btn.act-open` above 860px, a worded
+  // `.btn.outline` on the card below it) is gone, and the `<tr>` carries the
+  // press.
+  //
+  // WHAT THE OLD PAIR ARGUED IS SETTLED RATHER THAN REVERSED. "Two ghosts side
+  // by side are two equal offers and these are not equal" was right, and the
+  // way it is answered now is that there is one of them.
+  assert.ok(!hrView.includes('act-open'), 'the pencil button is back on ตรวจสอบประจำเดือน');
+  assert.ok(!hrView.includes("'pencil'"), 'the pencil glyph is back on the row');
+  assert.ok(!/\.btn\.act-open\s*[,{:]/.test(css), 'the accent outlived the button it was for');
+
+  // The row says what it opens, and `openRowLabel` still decides the wording:
+  // four บทบาท read this screen and only ฝ่ายบุคคล/ผู้ดูแลระบบ may correct a
+  // row, so the other two are promised "ดูรายการ" rather than an offer the
+  // route answers 403 to. The label moved from a button's face to the row's
+  // `title`; it did not change.
   assert.match(hrView, /const openRowLabel = \(mayCorrect\) => \(mayCorrect \? 'ดู \/ แก้ไขรายการ' : 'ดูรายการ'\);/);
-  assert.match(cell, /พิมพ์ F-HR-027/);
+  assert.match(hrView, /title=\{openRowLabel\(mayCorrect\)\}/);
 
-  assert.match(phone, /\.hr-table tbody td\.act-col \{[\s\S]*?grid-area: act;/);
-  // `flex: 1 1 0` and nowrap: a basis of 50% plus the gap is wider than the
-  // card, and the second button drops onto its own line on a narrow phone.
-  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \{ flex-wrap: nowrap; gap: 8px; \}/);
-  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \{\s*flex: 1 1 0;[\s\S]*?min-height: 44px;/);
+  // A tab stop, Enter and Space — a row-shaped control is still a control, and
+  // `preventDefault` because Space scrolls the page when nothing claims it.
+  assert.match(hrView, /tabIndex=\{0\}/);
+  assert.match(hrView, /if \(ev\.key !== 'Enter' && ev\.key !== ' '\) return;/);
+  assert.match(hrView, /if \(ev\.target !== ev\.currentTarget\) return;/);
+
+  // ⚠ THE GUARD IS THE POINT OF THE HANDLER, and it is copied from
+  // components/ApprovalQueue.jsx to the character. `closest` asks the element
+  // actually pressed, so a press on the <svg> inside พิมพ์ is caught — which a
+  // check on `ev.target.tagName` is not. Without it, every button inside the
+  // row would open this person's list on its way to doing its own job.
+  assert.match(
+    hrView,
+    /if \(ev\.target\.closest\?\.\('button, input, a, label, select, textarea'\)\) return;/,
+  );
+  const queue = read('components/ApprovalQueue.jsx');
+  assert.ok(
+    queue.includes("closest?.('button, input, a, label, select, textarea')"),
+    'the two screens no longer guard a pressable row the same way',
+  );
+
+  // The pointer and the focus ring, matching the queue's own two declarations.
+  assert.match(css, /\.hr-table tbody tr\.row-open \{ cursor: pointer; \}/);
+  assert.match(css, /\.hr-table tbody tr\.row-open:focus-visible \{ outline-offset: -2px; \}/);
+  // รวมทั้งหมด is not a person and opens nothing — and it needs no rule to say
+  // so, because the class is written per row and that row never carries it.
+  const totalRow = hrView.slice(hrView.indexOf('<tr className="total-row">'));
+  assert.ok(!totalRow.slice(0, totalRow.indexOf('</tr>')).includes('row-open'));
 });
 
-test('the two buttons are not two equal offers', () => {
-  // ดู / แก้ไขรายการ is what somebody opened the month to do; พิมพ์ is what
-  // they do afterwards, sometimes. Two ghosts side by side say neither.
-  //
-  // ⚠ THEY BECAME ICONS ABOVE 860px ON 2026-09-10 — `icon-btn`, a glyph each,
-  // because twenty-nine rows of the same two Thai labels down the right of a
-  // table was the loudest thing on a screen reported as ดูยากและรก. The class
-  // that carries the argument below is unchanged and so is the argument: the
-  // FIRST of the two is not the equal of the second, and `act-open` is still
-  // what says so.
-  assert.match(hrView, /className="btn ghost sm icon-btn act-open"/);
-  // The word did not leave the document, only the screen — and only up there.
-  // `aria-label` and `title` carry it for a screen reader and a pointer, and
-  // the phone card draws it again (below).
-  assert.match(hrView, /<span className="act-label">\{openRowLabel\(mayCorrect\)\}<\/span>/);
-  assert.match(hrView, /title=\{openRowLabel\(mayCorrect\)\}/);
-  assert.match(hrView, /<Icon name=\{mayCorrect \? 'pencil' : 'eye'\} \/>/);
+test('พิมพ์ F-HR-027 stayed, because it is the one act that is not "open this person"', () => {
+  const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
+  // It is not a duplicate of the row press: it prints one employee's sheet
+  // without leaving the month, and there is nowhere else on this screen to
+  // print one from. Folding it into the row would mean opening a person and
+  // coming back out to get the paper.
+  assert.match(cell, /พิมพ์ F-HR-027/);
   assert.match(hrView, /<Icon name="printer" \/>/);
-  // ⚠ HIDDEN, NOT REMOVED. `display: none` would take the label out of the
-  // accessibility tree and leave `aria-label` as the button's only name.
+  assert.ok(!cell.includes('act-open'));
+
+  // ⚠ HIDDEN, NOT REMOVED, above 860px. `display: none` would take the label
+  // out of the accessibility tree and leave `aria-label` as the only name.
   assert.match(css, /\.hr-table \.icon-btn \.act-label \{[\s\S]*?clip-path: inset\(50%\);/);
   // …and the phone card puts the words back, because down there this cell is
   // the foot of a person's card rather than a column of a table.
   assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \.act-label \{/);
-  assert.match(
-    phone,
-    /\.btn\.act-open \{\s*background: var\(--green-tint\); color: var\(--green-accent\);\s*border-color: var\(--green\)/,
-  );
-  // A token, not a hex. `--green-accent` is the one green that stays saturated
-  // in the dark theme — the button has no fill and no icon, so its colour is
-  // the whole of what makes it the first of the two — and it is written down as
-  // an exception in the token block rather than inlined here, where
-  // test/theme.test.js would refuse it and a reader would find no reason.
-  assert.match(css, /--green-accent: light-dark\(#0F8A46, #34D399\);/);
-  // The accent belongs to the card, not to the button: on a desktop these two
-  // sit in a 258px column among nine of figures, and one of them in green
-  // would be the only coloured thing on the screen.
-  assert.ok(!desktop.includes('act-open'), 'the accent leaked out of the phone block');
+
+  // `.row-actions` around ONE button looks like over-fitting until you read the
+  // phone block: it is what gives that button its full card width and its 44px.
+  assert.match(phone, /\.hr-table tbody td\.act-col \{[\s\S]*?grid-area: act;/);
+  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \{ flex-wrap: nowrap; gap: 8px; \}/);
+  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \{\s*flex: 1 1 0;[\s\S]*?min-height: 44px;/);
 });
 
 test('the card spacing and the sub-line take the values the queue card already uses', () => {
@@ -286,7 +309,12 @@ test('five to a page, and the page is the whole of the mechanism', () => {
   // is not drawn at all — the fold under the third card moves the end of the
   // range. One class, one question (is this row on the phone's screen), two
   // mechanisms that never both exist. See the fold's own test below.
-  assert.match(hrView, /\$\{i < from \|\| i >= cardsTo \? 'off-page' : ''\}/);
+  // `row-open` LEADS THE CLASS LIST SINCE 2026-09-10 and `off-page` follows it
+  // with a leading space, because the row itself is what opens the person now —
+  // the pencil that used to do it is gone. Three independent facts, one
+  // attribute: this row opens somebody, this row is off the phone's page, this
+  // row was just jumped to from the dropdown.
+  assert.match(hrView, /`row-open\$\{i < from \|\| i >= cardsTo \? ' off-page' : ''\}/);
   assert.match(hrCode, /const cardsTo = folding && !showAllCards \? CARD_FOLD : to;/);
   // A CLASS AND NOT `shown.slice`, which is the shorter way to draw five cards
   // and draws five ROWS with it. The desktop has no pager — `.pager-row` is
@@ -322,7 +350,11 @@ test('the fold under the third card exists only where the pager does not', () =>
   // The row is drawn only then, and it is a ROW — `.hr-table tbody` is the flex
   // column the cards live in, so anything that sits in that column has to be one.
   assert.match(hrCode, /\{folding && \(\s*<tr className="cards-more-row">/);
-  assert.match(hrCode, /<td className="pager-col" colSpan=\{10\}>/);
+  // `colCount` AND NOT `10` SINCE 2026-09-10: the คอลัมน์สแกน is drawn only on
+  // a month that has a scan file, so this table is eleven columns wide or ten
+  // and every full-width row in it has to ask rather than assume.
+  assert.match(hrCode, /<td className="pager-col" colSpan=\{colCount\}>/);
+  assert.match(hrCode, /const colCount = showScanCol \? 11 : 10;/);
   // The count is on the button in BOTH states, like the birthday fold below it.
   assert.match(hrView, /ดูพนักงานทั้งหมด \(\$\{shown\.length\} ราย\)/);
   assert.match(hrView, /ย่อรายการ — แสดง \$\{CARD_FOLD\} รายแรก/);
@@ -446,7 +478,7 @@ test('the pager sits under the fifth card, above the total, and disables its end
   // button that goes back.
   assert.ok(!/\{current > 1 && \(\s*<button/.test(row), 'ก่อนหน้า is hidden at page 1 instead of disabled');
   assert.match(row, /<div className="pager-say" aria-live="polite">/);
-  assert.match(row, /colSpan=\{10\}/);
+  assert.match(row, /colSpan=\{colCount\}/);
 
   // THE ORDER OF THE WHOLE SCREEN: five cards, the pager directly under the
   // fifth of them, then รวมทั้งหมด. The pager belongs to the cards —

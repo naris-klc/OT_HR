@@ -482,6 +482,27 @@ export default function HrView({
   }, [scan]);
 
   /**
+   * IS THERE A คอลัมน์สแกน AT ALL — and the answer is about the MONTH, not the
+   * reader.
+   *
+   * `readsScans` already settled who may see punch data. This is the second
+   * half: a month with no file imported has nothing to put in the column, and a
+   * column of `—` sixty rows deep is worse than no column — it reads as sixty
+   * people the machine disagrees with, or as sixty rows nobody checked, and a
+   * reader cannot tell which. The card above says the true thing once
+   * (`ยังไม่ได้เทียบ`) and the table stays out of it.
+   *
+   * WHICH MAKES THE TABLE ELEVEN COLUMNS WIDE OR TEN, and every full-width row
+   * in it has to know. `colCount` is that number in one place; writing `11` at
+   * four call sites is how a `colSpan` ends up one short of the header and the
+   * pager sits under the wrong edge of the table.
+   */
+  const showScanCol = readsScans && Boolean(scan?.punchCount);
+  const colCount = showScanCol ? 11 : 10;
+  /** The blank tail of รวมทั้งหมด — every column after รวม ชม. */
+  const padCols = showScanCol ? 5 : 4;
+
+  /**
    * `onlyFlagged` NARROWS THE SAME LIST ค้นหา NARROWS, and after it.
    *
    * Both are screen filters over a month already fetched, so the order they are
@@ -1511,6 +1532,13 @@ export default function HrView({
                     <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
                     <th className="num total-col">รวม ชม.</th>
                     <th className="num count-col">รายการ</th>
+                    {/* สแกน — ONLY ON A MONTH THAT HAS A FILE TO COMPARE
+                        AGAINST, and only for the people the punch log belongs
+                        to. See `showScanCol`.
+
+                        NOT `num`, for `edits-col`'s reason: what sits under it
+                        is a centred badge, not a figure read down a column. */}
+                    {showScanCol && <th className="scan-col">สแกน</th>}
                     {/* NOT `num`, since 2026-09-07: the cells under it hold a
                         centred pill rather than a figure read down a column,
                         and `td.num, th.num` right-aligns both. The heading now
@@ -1581,7 +1609,52 @@ export default function HrView({
                          both mechanisms because both answer the same question —
                          is this row on the phone's screen — and the desktop
                          still reads neither. */
-                      className={`${i < from || i >= cardsTo ? 'off-page' : ''}${flash === row.employee._id ? ' row-flash' : ''}`.trim() || undefined}
+                      className={`row-open${i < from || i >= cardsTo ? ' off-page' : ''}${flash === row.employee._id ? ' row-flash' : ''}`}
+                      /* ── THE WHOLE ROW OPENS THE PERSON — 2026-09-10 ──────
+
+                         Asked for in those words: *"ตัดปุ่มแก้ไขออก โดยให้กดที่
+                         รายชื่อนั้นเพื่อเข้าไปดูรายละเอียดและแก้ไขแทน"*. The
+                         pencil that used to stand at the end of every row is
+                         gone; the row itself is the control now.
+
+                         WHAT THAT BUYS is the width back. `.act-col` held two
+                         buttons on twenty-nine rows — fifty-eight targets down
+                         the right of a table, of which the first was pressed by
+                         everybody and the second by almost nobody — and the
+                         cell it sat in was as wide as both. The คอลัมน์สแกน
+                         moved into roughly the room the pencil gave up.
+
+                         SAME PATTERN AS คิวรออนุมัติ, deliberately: `.row-open`
+                         with a `tabIndex`, Enter and Space, a `title`, and the
+                         SAME guard. Two screens where a row means "open this"
+                         must mean it the same way, and the guard is the part
+                         that is easy to get wrong.
+
+                         THE GUARD IS THE POINT OF THE HANDLER. `closest` asks
+                         the element that was actually pressed, so a press on
+                         the `<svg>` inside พิมพ์ is caught too — which a check
+                         on `ev.target.tagName` is not. Without it, ประวัติการ
+                         แก้ไข and พิมพ์ would each open this person's list on
+                         their way to doing their own job.
+
+                         `row-open` IS UNCONDITIONAL and `openRowLabel` is what
+                         differs: ฝ่ายบุคคล and ผู้ดูแลระบบ arrive at a list they
+                         may correct, การเงิน and the three signers at the same
+                         list read-only. Both are worth opening; only one of
+                         them was ever worth a pencil. */
+                      tabIndex={0}
+                      title={openRowLabel(mayCorrect)}
+                      onClick={(ev) => {
+                        if (ev.target.closest?.('button, input, a, label, select, textarea')) return;
+                        setOpened(row.employee);
+                      }}
+                      onKeyDown={(ev) => {
+                        if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                        if (ev.target !== ev.currentTarget) return;
+                        // Space scrolls the page when it is not claimed.
+                        ev.preventDefault();
+                        setOpened(row.employee);
+                      }}
                     >
                       <td className="who-col">
                         {/* `|| '—'` — the same stand-in every other name in
@@ -1617,6 +1690,46 @@ export default function HrView({
                           </div>
                         )}
                       </td>
+                      {/* ── สแกน — WHAT THE MACHINE SAYS ABOUT THIS PERSON'S
+                             MONTH ────────────────────────────────────────────
+
+                          Read out of `flaggedBy`, which holds ONLY the people
+                          with something to look at. So absence here is not
+                          silence: on a month that has a file (`showScanCol` is
+                          the guard), absence means every row of theirs agreed,
+                          and the cell says so quietly rather than leaving a
+                          blank that reads as "not checked".
+
+                          THE WORDS ARE THE ONES THE CARD ABOVE USED BEFORE IT
+                          BECAME A FILTER — `เวลาไม่ตรง n` and `ไม่มีสแกน n`,
+                          from `groupScanChecksByPerson`, which counts per
+                          person and does not split ไม่ครบ from เวลาเริ่มไม่ตรง.
+                          The split exists (the card prints it for the month)
+                          and the per-row verdict is one click deep, on that
+                          person's own list, where the punch time is printed
+                          beside the request that claimed it. A badge here
+                          naming one of the two would be a badge that is wrong
+                          on the rows carrying the other.
+
+                          ใบเหมารายวัน IS NOT ON THIS CELL. `flaggedBy` is built
+                          from a list that has already dropped the people whose
+                          only marked rows are flat days — a flat day is a fact,
+                          not an errand, and putting its owner in the คนที่ต้อง
+                          ตรวจ column is the mistake the amber chip made once. */}
+                      {showScanCol && (
+                        <td className="scan-col">
+                          {(() => {
+                            const flag = flaggedBy.get(String(row.employee._id));
+                            if (!flag) return <span className="scan-ok">ตรง</span>;
+                            return (
+                              <span className="scan-flag">
+                                {flag.mismatch > 0 && <span className="n">เวลาไม่ตรง {flag.mismatch}</span>}
+                                {flag.noScan > 0 && <span className="n">ไม่มีสแกน {flag.noScan}</span>}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                      )}
                       {/* A row of hours says nothing about whether they are the
                           ones the employee filed. This is where a month that
                           was corrected after the fact announces itself, before
@@ -1678,55 +1791,40 @@ export default function HrView({
                           rather than off the right edge of a sideways scroll.
                           See `.hr-table tbody td.act-col` in app/styles.css. */}
                       <td className="act-col">
-                        {/* ── TWO ICONS, AND THEY WERE TWO WORDED BUTTONS ──
+                        {/* ── ONE BUTTON, AND IT WAS TWO ────────────────────
 
-                            Reported 2026-09-10: *"หน้านี้ดูยากและรกมาก"*. Every
-                            row carried `ดู / แก้ไขรายการ` and `พิมพ์ F-HR-027`
-                            spelled out — on a month of twenty-nine that is
-                            fifty-eight button labels down the right of the
-                            table, the same two words repeating, and it was the
-                            noisiest thing on the screen by a distance. Twenty
-                            of those characters are identical from row to row;
-                            none of them is a fact about the person on the row.
+                            ดู / แก้ไขรายการ stood here — a pencil above 860px,
+                            a worded button on the card below it — until
+                            2026-09-10, when it was asked for by name:
+                            *"ตัดปุ่มแก้ไขออก โดยให้กดที่รายชื่อนั้นเพื่อเข้าไป
+                            ดูรายละเอียดและแก้ไขแทน"*. The row opens the person
+                            now (`row-open` on the `<tr>` above) and a button
+                            that duplicated the row it sits in would be two
+                            controls for one act.
 
-                            THE LABEL IS NOT LOST, IT MOVED OFF THE SCREEN AND
-                            INTO THE PLACES A LABEL IS ASKED FOR. `aria-label`
-                            carries the full wording for a screen reader, and
-                            `title` puts it back under a desktop pointer. That
-                            is the same trade the pager's chevrons made on
-                            2026-08-26, on this screen, for the same reason.
+                            ⚠ พิมพ์ IS NOT THAT BUTTON AND DOES NOT GO WITH IT.
+                            It is the one thing on this row that is NOT "open
+                            this person": F-HR-027 for one employee, printed
+                            without leaving the month. Folding it into the row
+                            press would mean a reader who wanted the sheet had
+                            to open the person and come back out, and there is
+                            nowhere else on this screen to print one from.
 
-                            ⚠ AND IT IS THE PHONE CARD THAT PAYS. Below 860px
-                            this cell is the foot of a person's card and had two
-                            wide, worded, 44px buttons on it — which is what a
-                            card wants and what a table does not. So the phone
-                            block puts the words BACK: `.act-col .row-actions
-                            .btn` keeps its 44px there and `.act-label` is drawn
-                            again below 860px. One markup, two readings, which
-                            is what this table has done since the card list was
-                            written.
+                            SO THE CELL KEEPS ITS WRAPPER. `.row-actions` around
+                            a single button reads as an over-fitting until you
+                            look at the phone block, where it is what gives that
+                            button its 44px and its full card width — and at the
+                            next thing that lands in this cell, which will be
+                            beside พิมพ์ rather than instead of it.
 
-                            `act-open` still names the primary action rather
-                            than leaving the phone card's accent on
-                            `:first-child`, which would follow whichever button
-                            somebody moves here next. */}
+                            THE LABEL IS NOT LOST. `aria-label` carries the full
+                            wording for a screen reader, `title` puts it back
+                            under a desktop pointer, and `.act-label` is drawn
+                            again below 860px where this cell is the foot of a
+                            person's card rather than a column of a table. The
+                            same trade the pager's chevrons made on 2026-08-26,
+                            on this screen, for the same reason. */}
                         <div className="row row-actions">
-                          <button
-                            className="btn ghost sm icon-btn act-open"
-                            onClick={() => setOpened(row.employee)}
-                            aria-label={`${openRowLabel(mayCorrect)} — ${row.employee.name}`}
-                            title={openRowLabel(mayCorrect)}
-                          >
-                            {/* THE GLYPH SAYS WHICH OF THE TWO THIS READER GETS.
-                                `mayCorrect` already decides the wording — see
-                                `openRowLabel` — and a pencil offered to a
-                                หัวหน้างาน or a การเงิน would be a promise the
-                                route answers 403 to, which README §สิทธิ์ names
-                                as the one thing a screen may not do. An eye is
-                                what ดูรายการ looks like. */}
-                            <Icon name={mayCorrect ? 'pencil' : 'eye'} />
-                            <span className="act-label">{openRowLabel(mayCorrect)}</span>
-                          </button>
                           <button
                             className="btn ghost sm icon-btn"
                             onClick={() => setPrinting({ employeeId: row.employee._id })}
@@ -1746,7 +1844,7 @@ export default function HrView({
                       pager below is one: `.hr-table tbody` is the flex column
                       that holds the cards on a phone, and anything that is to
                       sit in that column with the list's own rhythm has to be a
-                      row of it. `colSpan={10}` like every other full-width row
+                      row of it. `colSpan={colCount}` like every other full-width row
                       here, and the phone block is where it is drawn at all —
                       above 860px `.cards-more-row` is `display: none`, because
                       up there the table draws all sixty rows and there is
@@ -1761,7 +1859,7 @@ export default function HrView({
                       press to find out what it does. */}
                   {folding && (
                     <tr className="cards-more-row">
-                      <td className="pager-col" colSpan={10}>
+                      <td className="pager-col" colSpan={colCount}>
                         <button
                           type="button"
                           className="btn ghost sm cards-more"
@@ -1848,7 +1946,7 @@ export default function HrView({
                     {/* Ten, like every other row in this table — see the
                         `pad-col` note below. Not in the hidden-by-name list in
                         the phone block, so it draws. */}
-                    <td className="pager-col" colSpan={10}>
+                    <td className="pager-col" colSpan={colCount}>
                       <div className="pager-say" aria-live="polite">
                         <div className="pager-controls">
                           {/* `disabled` rather than hidden. A control that
@@ -1926,7 +2024,9 @@ export default function HrView({
                       see the note in DepartmentView. The frozen name column has
                       to exist in this row too, or scrolling sideways leaves a
                       hole in it exactly where the month's own total is. The
-                      trailing `pad-col` keeps the cell count at ten. */}
+                      trailing `pad-col` keeps the cell count level with the
+                      header, which is `colCount` and not always ten since the
+                      คอลัมน์สแกน arrived. */}
                   <tr className="total-row">
                     {/* THE FIGURES BELOW ARE THE MONTH'S, ALWAYS. They come from
                         `data.grandTotal`, which the server computed over every
@@ -1959,7 +2059,7 @@ export default function HrView({
                     <td className="num rate-col b-15h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
                     <td className="num rate-col b-3h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>
                     <td className="num total-col"><strong>{hours(data.grandTotal.otHours)}</strong></td>
-                    <td className="pad-col" colSpan={4} />
+                    <td className="pad-col" colSpan={padCols} />
                   </tr>
                 </tbody>
               </table>

@@ -1,0 +1,246 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+/**
+ * ผลเทียบกับไฟล์สแกนนิ้วมือ — THE CARD, THE COLUMN, AND THE THREE STATES.
+ *
+ * ── WHAT WENT WRONG AND WHY THIS FILE EXISTS ────────────────────────────────
+ *
+ * The comparison shipped on 2026-09-07 inside components/ScanImport.jsx, which
+ * was the right home for it right up until 2026-09-10, when that card was made
+ * to fold shut on every visit. The fold was a good change for นำเข้าไฟล์ — a
+ * deed done once a month — and it took the comparison down with it, which is
+ * not a deed at all. It is the answer to *"is this month safe to sign"*, and a
+ * screen that hides that answer behind two presses is a screen that does not
+ * state it.
+ *
+ * So the two were split, and the three things below are what the split has to
+ * keep true:
+ *
+ *   1. **The card is drawn above everything pressable**, not inside a fold.
+ *   2. **A month with no scan file says so LOUDLY**, and does not look like a
+ *      month that came back clean. These are opposite answers that a table with
+ *      no marks on it renders identically, and it is the failure this whole
+ *      round is guarding against.
+ *   3. **The comparison is narrowed by the same three controls the table is.**
+ *      A card reading `17 แถวต้องตรวจ` standing over a table narrowed to ผลิต3
+ *      is two questions answered in one place with nothing saying so.
+ *
+ * ── AND ONE RULE THAT IS NOT ABOUT LAYOUT AT ALL ────────────────────────────
+ *
+ * Decided 2026-09-10 (docs/plan-monthly-review-approve-inline.md §5.3): a month
+ * with no scan file is still a month that can be signed. lib/scanMatch.js says
+ * of itself that it is *"a WARNING, not an arithmetic"* — it points at rows, it
+ * does not hold a gate — and turning the comparison into a precondition would
+ * promote it to a rule nobody asked for, and make a month whose file arrives
+ * late a month that cannot be closed.
+ */
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const read = (f) => readFileSync(join(ROOT, f), 'utf8');
+
+const card = read('components/ScanCompareCard.jsx');
+const hrView = read('components/HrView.jsx');
+const scanImport = read('components/ScanImport.jsx');
+const scansRoute = read('app/api/scans/route.js');
+const matchQuery = read('lib/scanMatchQuery.js');
+const css = read('app/styles.css');
+const printCss = read('app/print.css');
+const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+
+// ── 1. one request, and the screen owns it ──────────────────────────────────
+
+test('HrView asks for the scans; the import card is handed the answer', () => {
+  // TWO CARDS ON ONE SCREEN READ ONE ANSWER. Left as it was, the summary would
+  // ask on mount and the panel would ask again the moment somebody unfolded it
+  // — two readings seconds apart, over a collection an import is writing to.
+  // A card saying `17 แถวต้องตรวจ` above a panel saying something else is a
+  // screen a reader cannot trust about either figure.
+  assert.match(hrView, /const \[scan, setScan\] = useState\(null\);/);
+  assert.match(hrView, /async function loadScan\(\)/);
+  assert.ok(!scanImport.includes('api.get('), 'ScanImport is fetching the month again');
+
+  // The panel reads them off the prop rather than out of state of its own.
+  assert.match(scanImport, /const batches = scan\?\.batches \?\? null;/);
+  assert.match(scanImport, /const punchCount = scan\?\.punchCount \?\? null;/);
+  assert.match(scanImport, /scan = null,/);
+
+  // An import moves no figure in the table — a punch is not an hour — so there
+  // is no `load()`. What it DOES move is the comparison, and that is the whole
+  // of what `onImported` re-reads.
+  assert.match(scanImport, /onImported\?\.\(\);/);
+  assert.match(hrView, /<ScanImport period=\{period\} scan=\{scan\} onImported=\{loadScan\} \/>/);
+});
+
+test('the expensive half is asked for only when there is something to compare', () => {
+  // `punchCount` is on the cheap half. Paying for the comparison to be told all
+  // zeroes is what the two-step ask avoids — the reasoning is ScanImport's own,
+  // moved here with the request.
+  assert.match(hrView, /const first = await api\.get\(base\);/);
+  assert.match(hrView, /first\.punchCount\s*\?\s*await api\.get\(`\$\{base\}&compare=1/);
+});
+
+// ── 2. the same three narrowings as the table ───────────────────────────────
+
+test('the comparison is counted over the month the table is showing', () => {
+  // ประจำเดือน and สถานะที่นับ were always forwarded. `department` arrived with
+  // this round and closes the last gap in the rule the แผนก filter states about
+  // itself: every figure on this screen is that department's.
+  assert.match(hrView, /const base = `\/scans\?period=\$\{period\}\$\{deptParam\}`;/);
+  assert.match(hrView, /status=\$\{encodeURIComponent\(statusFilter\)\}/);
+  assert.match(hrView, /\}, \[period, statusFilter, dept, scope, readsScans\]\);/);
+
+  // …and the route honours it through the one function that decides this for
+  // every monthly document, rather than reading `q.department` raw. That
+  // function refuses a แผนก that cannot exist (`{ $in: [] }`), which a raw
+  // string does not.
+  assert.match(scansRoute, /import \{ reportStatuses, departmentScope \} from '@\/lib\/reports\.js';/);
+  assert.match(scansRoute, /department: departmentScope\(user, q\)\.department,/);
+  assert.match(matchQuery, /export async function compareMonthAgainstScans\(\{ period, statuses, department = null \}\)/);
+  assert.match(matchQuery, /if \(department\) filter\.department = department;/);
+});
+
+test('a stale month never sits under a heading that has moved on', () => {
+  // August's comparison left on screen under a September heading is the mistake
+  // the import card's own month-change effect was written to prevent, arriving
+  // through a different door.
+  assert.match(hrView, /setScan\(null\);\s*\n\s*loadScan\(\);/);
+  // …and the card draws NOTHING while the answer is in flight, so the gap is
+  // not a flash of ยังไม่ได้เทียบ on a month that is fine.
+  assert.match(card, /if \(loading\) return null;/);
+});
+
+// ── 3. who may see it at all ────────────────────────────────────────────────
+
+test('the punch log is ฝ่ายบุคคล’s, on the screen as well as at the route', () => {
+  // A record of when people were at the door is a different fact about a person
+  // from the OT they filed. การเงิน read every แผนก's month and a หัวหน้า reads
+  // their own team's; neither is offered this, whatever their บทบาท.
+  assert.match(hrView, /const readsScans = mayCorrect && scope !== 'team';/);
+  assert.match(hrView, /if \(!readsScans\) return;/);
+  assert.match(hrView, /\{readsScans && \(\s*<ScanCompareCard/);
+  assert.match(scansRoute, /requireRole\(user, 'admin', 'hr'\);/);
+});
+
+// ── 4. the three states, and the loud one ───────────────────────────────────
+
+test('a month with no scan file says so, and does not look like a clean month', () => {
+  // ⚠ THE WHOLE POINT OF THE CARD. "No marks on any row" is what both states
+  // look like from the table, and one of them means the month reconciles while
+  // the other means nobody has imported the file. Only this sentence separates
+  // them, which is why it is the largest thing on the screen.
+  assert.match(card, /if \(!punchCount\) \{/);
+  assert.match(card, /<div className="scan-none">ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ<\/div>/);
+  assert.match(card, /ไม่ได้แปลว่าทุกแถวตรง/);
+  assert.match(css, /\.scan-none \{ font: 600 16px\/1\.35 var\(--sans\); color: var\(--ink\); \}/);
+
+  // AND IT DOES NOT BLOCK ANYTHING — §5.3. The comparison points at rows; it
+  // does not hold a gate. A month whose file arrives late is not a month that
+  // may not be signed, and the card says that out loud rather than leaving a
+  // reader to discover it by finding the controls still work.
+  assert.match(card, /การเทียบสแกนเป็นการชี้ให้ดู ไม่ใช่เงื่อนไขการอนุมัติ/);
+
+  // One press from the sentence to the thing that answers it.
+  assert.match(hrView, /onOpenImport=\{\(\) => setScanOpen\(true\)\}/);
+});
+
+test('the tally is HR’s own words, and the facts are told apart from the errands', () => {
+  // The four badges are read from `SCAN_BADGE` rather than written out, so the
+  // card and the row chip cannot come to name one finding two ways.
+  assert.match(card, /import \{ SCAN_BADGE \} from '@\/lib\/scanMatch\.js';/);
+  for (const key of ['SHORT', 'START_OFF', 'NO_SCAN', 'OVER']) {
+    assert.ok(card.includes(`SCAN_BADGE.${key}`), `the card stopped reading SCAN_BADGE.${key}`);
+  }
+
+  // ไม่ครบ AND เวลาเริ่มไม่ตรง ARE PRINTED APART. `mismatch` holds both, and a
+  // card printing `2 แถวไม่ครบ` over one of each names the pile after half of
+  // itself — a mistake this comparison has already made once and paid for.
+  assert.match(card, /counts\.short/);
+  assert.match(card, /counts\.startOff/);
+
+  // เกินเวลา · เหมารายวัน · ตรง are facts, counted outside the pile that needs a
+  // person (*ข้อเท็จจริง ป้ายเทา ไม่นับกองที่ต้องตรวจ*, 2026-09-07). Said in
+  // grey AND in words, because a colour is not a sentence.
+  assert.match(card, /className="quiet"/);
+  assert.match(css, /\.scan-tally \.quiet \{ color: var\(--muted\); \}/);
+  assert.match(card, /เป็นข้อเท็จจริง/);
+  assert.match(card, /ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน/);
+});
+
+// ── 5. the column on the row ────────────────────────────────────────────────
+
+test('คอลัมน์สแกน is drawn only on a month that has a file behind it', () => {
+  // Sixty cells of `—` read as sixty people the machine disagrees with, or as
+  // sixty rows nobody checked, and a reader cannot tell which. The card says
+  // the true thing once instead and the table stays out of it.
+  assert.match(hrView, /const showScanCol = readsScans && Boolean\(scan\?\.punchCount\);/);
+  assert.match(hrView, /\{showScanCol && <th className="scan-col">สแกน<\/th>\}/);
+  assert.match(hrView, /\{showScanCol && \(\s*<td className="scan-col">/);
+
+  // Eleven columns or ten, and every full-width row asks rather than assumes.
+  assert.match(hrView, /const colCount = showScanCol \? 11 : 10;/);
+  assert.match(hrView, /const padCols = showScanCol \? 5 : 4;/);
+  assert.ok(!hrView.includes('colSpan={10}'), 'a full-width row still assumes ten columns');
+});
+
+test('a row the machine agrees with says so, quietly — it is not left blank', () => {
+  // `flaggedBy` holds ONLY the people with something to look at, so absence has
+  // to be spoken. On a month that WAS compared, a blank cell is
+  // indistinguishable from a month that was not — and those are opposite
+  // answers, which is the same trap the card's own first state is about.
+  assert.match(hrView, /return <span className="scan-ok">ตรง<\/span>;/);
+  assert.match(css, /\.hr-table td\.scan-col \.scan-ok \{ font: 400 12px\/1\.4 var\(--sans\); color: var\(--muted-2\); \}/);
+
+  // The flagged cell carries the two counts `groupScanChecksByPerson` keeps,
+  // in the words the card used before it became a filter.
+  assert.match(hrView, /เวลาไม่ตรง \{flag\.mismatch\}/);
+  assert.match(hrView, /ไม่มีสแกน \{flag\.noScan\}/);
+  assert.match(css, /\.hr-table td\.scan-col \.scan-flag \.n \{\s*font: 600 12px\/1\.4 var\(--sans\); color: var\(--amber-ink\);/);
+
+  // ใบเหมารายวัน is NOT on this cell: `groupScanChecksByPerson` has already
+  // dropped the people whose only marked rows are flat days. A flat day is a
+  // fact, not an errand.
+  assert.ok(!hrView.includes('flag.flatDaily'), 'flat days are back in the errand column');
+});
+
+test('the phone card shows the warning too, and the paper shows none of it', () => {
+  // ⚠ IT IS NOT IN THE HIDDEN-BY-NAME LIST, and it is the first column added to
+  // this table in a long while that is not. The five hidden there are figures
+  // the card repeats elsewhere or can do without; this is a WARNING, and one
+  // that appears on a desktop but not on a phone is a warning half the readers
+  // never see.
+  const hidden = phone.slice(phone.indexOf('.hr-table tbody td.dept-col,'));
+  assert.ok(!hidden.slice(0, 400).includes('td.scan-col'), 'the warning is hidden on a phone');
+  assert.match(phone, /grid-template-areas:\s*\n\s*'who cap'\s*\n\s*'scan scan'\s*\n\s*'act act';/);
+  assert.match(phone, /\.hr-table tbody td\.scan-col \{\s*grid-area: scan;/);
+
+  // ON PAPER IT IS GONE. Nothing in that column moves an hour, a bucket or a
+  // ceiling — lib/scanMatch.js is a warning, not an arithmetic — so it has no
+  // business on a document that goes to payroll, where a `เวลาไม่ตรง 2` beside
+  // a figure invites a reader to believe the figure was adjusted for it.
+  assert.match(printCss, /\.hr-table th\.scan-col, \.hr-table td\.scan-col \{ display: none; \}/);
+});
+
+// ── 6. the filter the card owns ─────────────────────────────────────────────
+
+test('ดูเฉพาะคนที่ต้องตรวจ narrows the table, and ล้างตัวกรอง lets it go', () => {
+  // It is on the CARD and not in `.queue-tools` because what it narrows by
+  // exists only while a comparison does, and a control that vanishes out of a
+  // bar of four is a bar that changes shape by itself.
+  assert.match(card, /onToggleFlagged && flagged > 0/);
+  assert.match(card, /ดูเฉพาะคนที่ต้องตรวจ \(\$\{flagged\} คน\)/);
+  assert.match(card, /aria-pressed=\{onlyFlagged\}/);
+
+  // ⚠ AND THAT IS PAID FOR HERE. A filter that hides rows while the filter bar
+  // shows nothing amiss is how somebody comes to believe this month has eleven
+  // employees in it. Decided 2026-09-10, plan §5.7.
+  assert.match(hrView, /\{\(find \|\| dept \|\| onlyFlagged \|\| statusFilter !== DEFAULT_STATUS\) && \(/);
+  assert.match(hrView, /setOnlyFlagged\(false\);\s*\n\s*\}\}/);
+
+  // A screen filter, applied after ค้นหา over a month already fetched — so it
+  // moves no total and costs no request, exactly like the search box.
+  assert.match(hrView, /return matched\.filter\(\(row\) => flaggedBy\.has\(String\(row\.employee\?\._id\)\)\);/);
+});
