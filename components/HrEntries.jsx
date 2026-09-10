@@ -8,7 +8,7 @@ import {
   StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail, isProxyFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
-import { describeBreaches } from '@/lib/caps.js';
+import { describeBreaches, OVER_CEILING_REASON_APPROVE } from '@/lib/caps.js';
 import { SCAN_MATCH_TOLERANCE_MINUTES, summariseScanChecks } from '@/lib/scanMatch.js';
 import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
@@ -91,8 +91,16 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
       // reconciling a month against evidence, and an employee reading their own
       // history cannot answer it. Nothing on the row changes — see the flag's
       // own note in app/api/entries/route.js.
+      // `decide=check` — may THIS reader confirm each row, and if not, why not.
+      // Decided by `approvalPermission` on the server, the same decider the
+      // approve route asks. It is what closes the loop opened on
+      // ตรวจสอบประจำเดือน, where a person the scan comparison flagged cannot be
+      // ticked: the way through such a row is to open it and look, and without
+      // a way to settle it here that was a walk to รออนุมัติ OT and back — the
+      // *"สลับหน้าไปมา"* this whole round was asked to end.
       const res = await api.get(
-        `/entries?employee=${employee._id}&period=${period}&replaced=hide&scope=report&scan=check`,
+        `/entries?employee=${employee._id}&period=${period}&replaced=hide&scope=report`
+        + '&scan=check&decide=check',
       );
       setEntries(res.entries);
       setScanChecked(Boolean(res.scanChecked));
@@ -150,6 +158,59 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
    * their own request with. The server decides which of the two acts it is and
    * logs `void` rather than `cancel`; this screen only has to ask.
    */
+  /**
+   * ยืนยันใบนี้ — one row, from the screen that is showing why it was doubted.
+   *
+   * ── WHY A SECOND PLACE TO APPROVE IS NOT A DUPLICATE ─────────────────────
+   *
+   * คิวรออนุมัติ decides rows a reviewer has not seen before. This decides a row
+   * somebody came here BECAUSE of: the punch times are printed beside the
+   * request that claimed them, two lines up, and the whole point of opening
+   * this list was to read them. Sending that reader to another screen to act on
+   * what they just read is the round trip this round exists to delete.
+   *
+   * ── THE REASON GOES THROUGH `window.prompt`, AND THAT IS DELIBERATE ───────
+   *
+   * A row over its department's ceiling owes a sentence — the same rule
+   * `overCeilingRefusal` enforces on the route and the batch dialog collects in
+   * a textarea. Here it is one row and one line, inside a screen that is ALREADY
+   * a full-page sub-view with an editor of its own behind `แก้ไข`; a third modal
+   * layer over a table inside a tab is a stack this app has nowhere else, and
+   * `Modal` would be the fourth thing on screen competing for an Escape key.
+   *
+   * ⚠ WHAT IT COSTS, said plainly: a prompt cannot be styled, cannot show the
+   * ceiling that was passed, and on a phone it is the browser's own sheet. So a
+   * row that owes a sentence is deliberately the SMALL case here — the batch
+   * dialog on ตรวจสอบประจำเดือน is where a ceiling is explained properly, with
+   * `describeBreaches` naming every limit — and this is the one-row escape
+   * hatch beside it. If ceiling rows ever become the common path through this
+   * screen, this is the line that has to change.
+   *
+   * Cancelling the prompt cancels the approval. An empty string would be
+   * refused by the route anyway; refusing it here means the reader is not told
+   * about a rule by watching a request fail.
+   */
+  async function confirmEntry(entry) {
+    let note;
+    if (entry.decide?.needsReason) {
+      note = window.prompt([
+        OVER_CEILING_REASON_APPROVE,
+        'เหตุผลนี้จะถูกบันทึกไว้ในประวัติของใบ และแสดงบนรายงานสรุป OT ส่งบัญชี',
+      ].join('\n\n'));
+      if (!note || !note.trim()) return;
+    }
+    try {
+      await api.post(`/entries/${entry._id}/approve`, note ? { note: note.trim() } : undefined);
+      await load();
+      // ⚠ THE MONTH BEHIND THIS SCREEN JUST MOVED. `onChanged` is what re-reads
+      // it — the row's status, the totals, and `approvable`, which is what
+      // decides whether this person can be ticked on the table underneath.
+      // Without it a reader would come back out to a tick-box still greyed for
+      // a row they have just settled.
+      onChanged?.();
+    } catch (err) { setError(err.message); }
+  }
+
   async function voidEntry(entry) {
     try {
       await api.post(`/entries/${entry._id}/cancel`, { note: 'ถอนใบวันเกิดที่ระบบสร้าง' });
@@ -544,6 +605,48 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           On a read-only screen the true sentence is about the
                           screen, and it is already said by the absence of a
                           correction path anywhere on it. See `mayEdit` above. */}
+                      {/* ── ยืนยัน — THE ROUND TRIP THIS ROUND EXISTS TO DELETE
+
+                          Drawn only on a row still at the ฝ่ายบุคคล step, and
+                          only where the SERVER said this reader may sign it:
+                          `e.decide` is `approvalPermission`'s verdict, carried
+                          beside the row by `decide=check`. Nothing here tests a
+                          status and decides for itself — §6 (one ใบ, two
+                          people) is inside that verdict and no filter in a
+                          browser can see it.
+
+                          ⚠ THIS IS WHERE A FLAGGED PERSON GETS SETTLED. The
+                          table this list opens from refuses to tick anybody the
+                          scan comparison flagged, on purpose: the way through
+                          such a row is to open it and read the punch times
+                          printed two cells to the left. Until this button
+                          existed, that was a walk to รออนุมัติ OT, a hunt for
+                          the same row, and a walk back.
+
+                          A REFUSED ROW SAYS SO IN WORDS rather than showing a
+                          dead control. `.cell-sub.th` is this cell's own voice
+                          for a statement about the row — the same one
+                          แก้ไขไม่ได้ uses a few lines down — and the sentence is
+                          the route's own, so the screen and a 409 cannot read
+                          as two different rules.
+
+                          NOT `mayEdit`-GATED. Confirming is not correcting: the
+                          route decides who may sign, and `decide` is `null` for
+                          anybody it did not offer it to. */}
+                      {e.decide && (e.decide.ok ? (
+                        <button
+                          className="btn ghost sm with-icon"
+                          onClick={() => confirmEntry(e)}
+                          title={e.decide.needsReason
+                            ? 'ใบนี้เกินเพดาน — ต้องระบุเหตุผลก่อนยืนยัน'
+                            : 'ยืนยันใบนี้ · จะเข้าสู่รายงานส่งออกทันที'}
+                        >
+                          <Icon name="check" className="btn-icon" />
+                          ยืนยัน{e.decide.needsReason ? ' *' : ''}
+                        </button>
+                      ) : (
+                        <span className="cell-sub th" title={e.decide.why}>ยืนยันไม่ได้</span>
+                      ))}
                       {!mayEdit ? null : closed ? (
                         <span className="cell-sub th">แก้ไขไม่ได้</span>
                       ) : (

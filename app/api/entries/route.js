@@ -10,14 +10,14 @@ import {
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
   capFor, takeCapped, submissionWindowRefusal, entryCompany,
-  zeroOtHoursAllowed, byEmployeeThenLatest,
+  zeroOtHoursAllowed, byEmployeeThenLatest, mayCorrectEntries,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import { resolveScope, visibleEmployeeClause } from '@/lib/delegationQuery.js';
-import { nobodyCanSign } from '@/lib/delegation.js';
+import { nobodyCanSign, approvalPermission } from '@/lib/delegation.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
-import { blockedMessage } from '@/lib/caps.js';
+import { blockedMessage, needsOverCeilingReason } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 import { scanChecksFor } from '@/lib/scanMatchQuery.js';
@@ -28,7 +28,7 @@ export const GET = route(async (req) => {
   const user = await requireAuth(req);
   const {
     status, period, employee, department, from, to, limit, replaced, scope, usage, withdrawal,
-    scan,
+    scan, decide,
   } = query(req);
 
   /**
@@ -277,6 +277,54 @@ export const GET = route(async (req) => {
     const { checks, hasScans } = await scanChecksFor(entries);
     scanChecked = hasScans;
     for (const entry of entries) entry.scanCheck = checks.get(String(entry._id)) || null;
+  }
+
+  /**
+   * `decide=check` — MAY THIS READER CONFIRM THIS ROW, AND IF NOT, WHY NOT.
+   *
+   * Added 2026-09-10 for ตรวจสอบใบของพนักงาน, the list that opens when somebody
+   * presses a row on ตรวจสอบประจำเดือน. That screen learned to confirm several
+   * people at once the same day, and it deliberately REFUSES to tick a person
+   * whose scan comparison flagged something: the way through such a row is to
+   * open the person and look. Without this flag that was a dead end — the only
+   * way to settle a flagged row was to cross to รออนุมัติ OT, find it again, and
+   * come back, which is the *"สลับหน้าไปมา"* the whole round was asked to end.
+   *
+   * ── IT IS `approvalPermission`, NOT A STATUS TEST, FOR THE THIRD TIME ─────
+   *
+   * The same decider the approve route asks and the same one
+   * `GET /api/reports/monthly/[period]` asks for `approvable`. §6 lives inside
+   * that answer — one ใบ needs two people, so whoever signed the หัวหน้า step is
+   * out of the ฝ่ายบุคคล step of that same request — and it is a fact about one
+   * entry and one reader together that no filter over `status` can see.
+   *
+   * ── THE REFUSAL TRAVELS WITH THE VERDICT ─────────────────────────────────
+   *
+   * `why` is the sentence the route itself would answer with. A greyed control
+   * with no explanation is the failure `actionable` was written to fix on
+   * คิวรออนุมัติ — press, nothing happens, no idea what to do instead — and
+   * here the likeliest reason is §6, which is not something a reader can deduce
+   * from a disabled button.
+   *
+   * ── ฝ่ายบุคคล AND ผู้ดูแลระบบ ONLY, AND `delegations: []` ────────────────
+   *
+   * The three signers and การเงิน sign the `pending_mgr` step, which belongs to
+   * รออนุมัติ OT; offering them a control here would be offering a 409. And for
+   * an `isHr` reader at `pending_hr` the claim is never consulted, so a
+   * delegation could not change one of these answers if it were fetched — the
+   * HR confirmation queue is nobody's to lend.
+   */
+  if (decide === 'check' && entries.length && mayCorrectEntries(user)) {
+    for (const entry of entries) {
+      if (entry.status !== 'pending_hr') { entry.decide = null; continue; }
+      const may = approvalPermission({ user, entry, delegations: [] });
+      entry.decide = {
+        ok: may.ok,
+        why: may.ok ? '' : may.error,
+        /** Whether confirming it will demand a sentence — same rule as the batch. */
+        needsReason: may.ok ? needsOverCeilingReason(entry) : false,
+      };
+    }
   }
 
   /**

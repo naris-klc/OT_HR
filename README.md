@@ -2010,7 +2010,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     143 files, run by `npm test`. Six named below as a
+test/                     144 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2023,9 +2023,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2562 tests
-across 143 files**, measured 2026-09-10 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2569 tests
+across 144 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2562 tests across 143 files … measured 2026-09-10" until **ยืนยันทีละใบจากใน
+หน้ารายคน**, which added `monthRowConfirm` and seven cases and no component at
+all — one query parameter on a route that already existed. And it read
 "2549 tests across 142 files … measured 2026-09-10" until **ตรวจสอบประจำเดือน
 ยืนยันได้เองทีละหลายคน** — `monthBatchApprove` and thirteen cases, plus eight
 rewritten across `hrMonthCards`, `monthScanColumn` and `monthApprovable`. Every
@@ -6960,6 +6963,38 @@ so it says `สมชาย ใจดี — ไม่สำเร็จ 2 จ�
 the row, which opens. Afterwards **both** readings of the month are re-asked:
 `load()` for the totals and a fresh `approvable`, and `loadScan()` because the
 comparison is counted over สถานะที่นับ and just moved.
+
+#### ยืนยันทีละใบ จากในหน้ารายคน — the half that makes §5.2 honest
+
+Refusing to tick a flagged person is only defensible if there is somewhere to
+settle them, and until the last commit of this round there was not: the reader
+opened the person, read the punch times printed beside the request that claimed
+them, decided the row was fine — and then had to cross to รออนุมัติ OT, find the
+same row among everybody else's, act there, and come back. **§5.2 would have
+manufactured more page-switching than it prevented.**
+
+So ตรวจสอบใบของพนักงาน — the list a row opens onto — grew a **ยืนยัน** button per
+row, and `GET /api/entries` grew one query parameter to feed it: `decide=check`,
+which hangs `approvalPermission`'s verdict beside each row. **Three screens now
+ask that one function** — this list, the monthly report's `approvable`, and the
+approve route itself — which is the whole reason §6 cannot be got wrong on any
+of them. A row this reader may not sign says `ยืนยันไม่ได้` in words, carrying
+the route's own refusal in its `title`, rather than showing a dead control.
+
+The two halves are one feature: **the batch is the fast path for rows nothing is
+wrong with, and this is the considered path for the rest.** Either alone leaves
+the screen worse than it was.
+
+> **⚠ A ceiling row here asks for its sentence through `window.prompt`**, which
+> is worth saying out loud because it is the one place in this round that is
+> not properly designed. This list is already a full-page sub-view with an
+> editor of its own behind แก้ไข; a third modal layer over a table inside a tab
+> is a stack this app has nowhere else. The cost is real — a prompt cannot show
+> which ceiling was passed, and on a phone it is the browser's own sheet — so a
+> ceiling row is deliberately the SMALL case here, with the batch dialog (where
+> `describeBreaches` names every limit) as the place that explains one properly.
+> If ceiling rows ever become the common path through this screen, that is the
+> line to change first.
 
 #### The confirm dialog is its own, and the plan said it should not be
 
@@ -11901,8 +11936,10 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2562 tests**, about 4 s, measured 2026-09-10 across 143
-  files, all green. It read **"2549 tests … across 142"** until
+- `npm test` — **2569 tests**, about 4 s, measured 2026-09-10 across 144
+  files, all green. It read **"2562 tests … across 143"** until a row could be
+  confirmed from inside ตรวจสอบใบของพนักงาน (`monthRowConfirm`, seven cases, no
+  new component). Before that it read **"2549 tests … across 142"** until
   ตรวจสอบประจำเดือน learned to confirm several people at once — one new file
   (`monthBatchApprove`, thirteen cases) and eight assertions rewritten
   elsewhere, none of them a new question. Before that it read
