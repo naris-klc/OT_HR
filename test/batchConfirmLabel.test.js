@@ -101,7 +101,7 @@ test('reading a row is still allowed while it is ticked', () => {
   const cell = bar.slice(bar.indexOf("selected.has(e._id) ? ("));
   assert.ok(!cell.includes('รายละเอียด'), 'ปุ่มรายละเอียดกลับมาอยู่ในเซลล์ปุ่มอีกแล้ว');
   // The row's handler is above the branch and outside every cell.
-  const row = bar.slice(bar.indexOf('{shown.map(('), bar.indexOf("selected.has(e._id) ? ("));
+  const row = bar.slice(bar.indexOf('{pageRows.map(('), bar.indexOf("selected.has(e._id) ? ("));
   assert.ok(row.includes('setDetail(e);'), 'แถวไม่ได้เปิดรายละเอียดแล้ว — ติ๊กแล้วอ่านใบไม่ได้เลย');
 });
 

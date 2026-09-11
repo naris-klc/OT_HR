@@ -30,12 +30,16 @@ import { dirname, join } from 'node:path';
  * ─────────────────────────────────────────────────────────────────────────────
  * ONE COMPONENT FOR BOTH, AND WHAT IT IS NOT
  *
- * `TablePager` is drawn under both tables. `HrView`'s `.pager-row` is a third
- * pager and is deliberately NOT folded into it: that one is a `<td>` inside a
- * `<tbody>`, `display: none` above 860px, laid out as a two-row grid for a
- * 280px card. What all three share is the VOICE — `‹`, `หน้า A / B`,
- * `แสดง n–m จาก T รายการ`, a 38px square — and they share it by naming the same
- * classes, not by one component drawing every case.
+ * `TablePager` is drawn under FOUR tables, and this file reads all of them:
+ * the two on บันทึกประวัติระบบ (§1–8), ประวัติเวอร์ชันนโยบาย (§9) and
+ * คิวรออนุมัติ (§11). It read "both tables" until 2026-09-11, when the queue
+ * took one — the sentence had already outlived ประวัติเวอร์ชันนโยบาย.
+ *
+ * `HrView`'s `.pager-row` is the one pager deliberately NOT folded into it:
+ * that one is a `<td>` inside a `<tbody>`, `display: none` above 860px, laid
+ * out as a two-row grid for a 280px card. What all of them share is the VOICE —
+ * `‹`, `หน้า A / B`, `แสดง n–m จาก T รายการ`, a 38px square — and they share it
+ * by naming the same classes, not by one component drawing every case.
  *
  * Run with: npm test
  */
@@ -104,10 +108,14 @@ test('the two halves are laid out as two halves', () => {
 
 // ── 2. จำนวนรายการต่อหน้า ────────────────────────────────────────────────────
 
-test('the four sizes are 10 · 20 · 50 · 100, and ten is what a table opens on', () => {
+test('the four sizes are 10 · 20 · 50 · 100, and บันทึกประวัติระบบ opens on ten', () => {
   assert.match(commonCode, /export const PAGE_SIZES = \[10, 20, 50, 100\];/);
-  // Both callers open on the first of them. A table that opened on 100 would
-  // be the un-paged table it replaced on the first paint.
+  // Both tables HERE open on the first of them. A log opened on 100 would be
+  // the un-paged table it replaced on the first paint.
+  //
+  // WHICH SIZE A TABLE OPENS ON IS THE SCREEN'S CHOICE, not the kit's: the list
+  // offered is the same four everywhere, and คิวรออนุมัติ opens on 20 because
+  // it is read to be emptied rather than searched — §11.
   assert.equal(logsCode.match(/useState\(10\)/g)?.length, 2,
     'a table opens on some other page size than the one the selector lists first');
   assert.equal(logsCode.match(/const \[pageSize, setPageSize\] = useState\(10\);/g)?.length, 2);
@@ -536,4 +544,141 @@ test('ไม่มีการตัดท้าย still stands, because it was
   assert.match(logs, /ทุกรายการในช่วงที่เลือกอยู่ในหน้าใดหน้าหนึ่ง/);
   assert.ok(!/หน้านี้แสดงครบทุกรายการในช่วงที่เลือก/.test(logsCode),
     'the screen still claims to show every row at once, which the pager made false');
+});
+
+// ── 11. คิวรออนุมัติ ─────────────────────────────────────────────────────────
+
+/**
+ * THE FOURTH TABLE, AND THE FIRST ONE WHERE PAGING MEETS A SELECTION.
+ *
+ * รออนุมัติ OT · รออนุมัติ · รออนุมัติแทน · ใบที่ยังไม่มีใครเซ็น are one
+ * component, so the band arrives on all four at once. What is particular about
+ * it is the batch: this screen carries ticks, a bar that counts them and a
+ * เลือกทั้งหมด, and every one of those is counted against the FILTERED PILE and
+ * not against the page — **A PAGE IS NOT A FILTER**. The cases below are mostly
+ * that one rule, asserted from four directions, because it is the rule a later
+ * change would break without any of it looking wrong.
+ */
+
+const queue = read('components/ApprovalQueue.jsx');
+const queueCode = strip(queue);
+
+test('the queue draws the shared band, once, from the shared kit', () => {
+  assert.equal(queueCode.match(/<TablePager\b/g)?.length, 1,
+    'คิวรออนุมัติ draws more than one band — one table has one foot');
+  assert.match(queueCode, /^\s*StatusChip, TablePager, TeamMark, editsOf, shownWarnings, usePageReset,$/m,
+    'the pager is not imported from ./common.jsx — a second copy is how two bands begin to disagree');
+  // No `sizes` prop: this table is offered the same four as every other one.
+  assert.ok(!/<TablePager[\s\S]*?sizes=/.test(queueCode),
+    'the queue narrowed its own size list — 10 · 20 · 50 · 100 is the app\'s answer');
+  assert.match(queueCode, /const \[pageSize, setPageSize\] = useState\(20\);/);
+});
+
+test('the page decides the rows and nothing else — A PAGE IS NOT A FILTER', () => {
+  /**
+   * `pageRows` EXISTS TWICE IN THIS FILE: where it is cut, and where the
+   * `<tbody>` maps it. A third mention is this rule being broken — a count, an
+   * empty state or a selection built out of the page a reader happens to be on.
+   */
+  assert.equal(queueCode.match(/pageRows/g)?.length, 2,
+    'something other than the table reads pageRows — a count, a tick or an empty state now means "on this page"');
+  assert.match(queueCode, /\{pageRows\.map\(\(e\) => \(/);
+  // The four things the batch is built from, every one of them on the pile.
+  assert.match(queueCode, /const actionable = useMemo\(\s*\(\) => shown\.filter\(/);
+  assert.match(queueCode, /const picked = shown\.filter\(\(e\) => selected\.has\(e\._id\)\);/);
+  assert.match(queueCode, /total=\{shown\.length\}/);
+  assert.match(queueCode, /\{shown\.length === 0 && \(/);
+});
+
+test('a tick survives a page turn, and does not survive a filter', () => {
+  // The pruning effect keys on `shown` — the pile after the FILTERS. Keyed on
+  // `pageRows` it would empty the batch bar on every press of ›, which is the
+  // one way this screen could quietly drop a row somebody had chosen.
+  assert.match(queueCode, /const live = new Set\(shown\.map\(\(e\) => e\._id\)\);/);
+  assert.ok(!/const live = new Set\(pageRows/.test(queueCode),
+    'the selection is pruned to the page — pressing › now unticks everything above it');
+});
+
+test('the reset is the filters, never the queue itself', () => {
+  assert.match(queueCode, /usePageReset\(setPage, \[q, dept, per, st, applicant, pageSize\]\);/);
+  // `load()` runs after every signature. Keyed on the rows, the press that
+  // approves row 41 would put the reader back on page 1.
+  assert.ok(!/usePageReset\(setPage, \[(entries|shown)/.test(queueCode),
+    'approving a row throws the reader back to page 1');
+});
+
+test('the page is clamped before the slice here too', () => {
+  // Approving the last row of the last page is the ordinary end of this screen,
+  // and an unclamped slice draws an empty table under หน้า 4 / 3 for it.
+  assert.match(queueCode, /const pageCount = Math\.max\(1, Math\.ceil\(shown\.length \/ pageSize\)\);/);
+  assert.match(queueCode, /const at = Math\.min\(Math\.max\(page, 1\), pageCount\);/);
+  assert.match(queueCode, /const pageRows = shown\.slice\(\(at - 1\) \* pageSize, at \* pageSize\);/);
+  assert.match(queueCode, /page=\{at\}/);
+});
+
+test('the band is drawn on one page, and withheld on none and on not-yet', () => {
+  assert.match(queueCode, /\{shown\.length > 0 && \(\s*<TablePager/);
+  // Inside the `entries` branch, so nothing is drawn under กำลังโหลด…
+  const loading = queueCode.indexOf('<Empty>กำลังโหลด…</Empty>');
+  assert.ok(loading > 0 && loading < queueCode.indexOf('<TablePager'),
+    'the band is drawn beside the loading line — an empty table claiming to be page 1 of 1');
+});
+
+test('nothing is refetched by pressing ›, and the screen is not emptied', () => {
+  // The queue is already in hand — one reply, capped at MAX_LIST_LIMIT — so the
+  // slice is synchronous. A refetch here is the collapse §8 was repaired for.
+  assert.ok(!/useKeptFetch/.test(queueCode),
+    'the queue reads through the server-paged hook — its rows are already in the browser');
+  assert.ok(!/onPage=\{[^}]*load/.test(queueCode));
+  assert.match(queueCode, /onPage=\{goPage\}/);
+});
+
+test('ถัดไป lands the reader at the top of the new page, from the handler', () => {
+  /**
+   * THE ONE PLACE THIS APP SCROLLS ON A PAGE PRESS BESIDES `HrView`, and §8 is
+   * why that needs saying out loud: on บันทึกประวัติระบบ a scroll would be the
+   * bug back. A queue is different — it is read top to bottom and signed row by
+   * row, and page 4 arriving at page 3's scroll depth begins in the middle.
+   */
+  assert.match(queueCode, /function goPage\(next\) \{\s*setPage\(next\);\s*listRef\.current\?\.scrollIntoView\(\{ block: 'start' \}\);\s*\}/);
+  assert.equal(queueCode.match(/scrollIntoView/g)?.length, 1,
+    'a second scroll call is on คิวรออนุมัติ — this screen moves the page in exactly one place');
+  // FROM THE HANDLER. An effect on `page` would fire on the reset above too,
+  // dragging the table into view on every letter typed into ค้นหา.
+  assert.ok(!/useEffect\([^)]*\)[\s\S]{0,200}?scrollIntoView/.test(queueCode),
+    'the scroll moved into an effect — typing in ค้นหา now jerks the page');
+  assert.match(queueCode, /<div className="table-wrap queue-list" ref=\{listRef\}>/);
+});
+
+test('the landing clears whatever is stuck over the list at that moment', () => {
+  // Desktop: the app bar, and `.batch-bar` under it while a batch is being
+  // built. Phone: the app bar and `.queue-mobile-bar`, which is taller while
+  // picking. Sized per state rather than for the worst one — a margin holding
+  // 58px for a bar that is not drawn is most of a row of empty ground.
+  assert.match(css, /\.table-wrap\.queue-list \{ scroll-margin-top: calc\(62px \+ 14px\); \}/);
+  assert.match(css, /\.card:has\(> \.batch-bar\) \.table-wrap\.queue-list \{ scroll-margin-top: calc\(62px \+ 58px \+ 14px\); \}/);
+  assert.match(css, /\.card:has\(> \.queue-mobile-bar\) \.table-wrap\.queue-list \{ scroll-margin-top: calc\(62px \+ 49px \+ 12px\); \}/);
+  assert.match(css, /\.card:has\(> \.queue-mobile-bar\.picking\) \.table-wrap\.queue-list \{ scroll-margin-top: calc\(62px \+ 59px \+ 12px\); \}/);
+  // The number lives in the stylesheet that owns the bars, never in the JSX.
+  assert.ok(!/scroll-margin|62px/.test(queueCode),
+    'a sticky bar\'s height is being measured in the component');
+});
+
+test('the band brings its own inset, because .card.flush has none', () => {
+  assert.match(queueCode, /className="queue-pager no-print"/,
+    'the band prints — a dropdown asking for more rows, on paper that already has them all');
+  assert.match(band, /\.table-pager\.queue-pager \{ padding: 12px 18px 16px; \}/);
+  // 12 at phone width, where the rows are cards `tbody` insets by 12, and the
+  // band gives its margin back because that padding is already the air over it.
+  assert.match(band, /\.table-pager\.queue-pager \{ padding: 12px 12px 16px; margin-top: 0; \}/);
+  // The base rule is untouched — the log tables keep their 8 and their edges.
+  assert.match(css, /\.table-pager \{[^}]*margin-top: 8px;/);
+});
+
+test('the pager names the queue it is under, and the queue is named once', () => {
+  // `label` reaches three aria-labels: the size box and both chevrons. A name
+  // the heading does not use is a name the reader cannot match to anything.
+  assert.match(queueCode, /const queueName = delegatedOnly \? 'รออนุมัติ · ทีมที่รับช่วง'/);
+  assert.match(queueCode, /<span className="t-name">\{queueName\}<\/span>/);
+  assert.match(queueCode, /label=\{queueName\}/);
 });

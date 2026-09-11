@@ -629,14 +629,20 @@ export default function HrView({
    * ones that are. Both read `shown`, which is the month AFTER ค้นหา and
    * ดูเฉพาะคนที่ต้องตรวจ — the rows a reader can actually see.
    *
-   * ⚠ `shown` AND NOT `pageRows` — §5.4, and this is where this screen
-   * DELIBERATELY DIFFERS FROM คิวรออนุมัติ. That queue's rule is *"ติ๊กอยู่ได้
-   * เท่าที่แถวยังอยู่บนจอ"* because its pager is a real filter. Here the pager
-   * is a phone-only CSS window (`off-page`) over a list the desktop draws
-   * whole, and `CARD_PAGE` says so about itself in capitals: **A PAGE IS NOT A
-   * FILTER**. One button on two screen sizes has to mean one thing, so
-   * เลือกทั้งหมด takes every row the FILTERS left, and writes the count on its
-   * own label so a phone reader seeing five knows they are ticking twenty-four.
+   * ⚠ `shown` AND NOT `pageRows` — §5.4. Here the pager is a phone-only CSS
+   * window (`off-page`) over a list the desktop draws whole, and `CARD_PAGE`
+   * says so about itself in capitals: **A PAGE IS NOT A FILTER**. One button on
+   * two screen sizes has to mean one thing, so เลือกทั้งหมด takes every row the
+   * FILTERS left, and writes the count on its own label so a phone reader
+   * seeing five knows they are ticking twenty-four.
+   *
+   * IT READ "this is where this screen DELIBERATELY DIFFERS FROM คิวรออนุมัติ …
+   * because its pager is a real filter" UNTIL 2026-09-11. That queue had no
+   * pager at all when the sentence was written — *"ติ๊กอยู่ได้เท่าที่แถวยังอยู่
+   * บนจอ"* was always about its FILTERS — and it has a real one now, this same
+   * `TablePager`, built so that a tick crosses it. The two screens answer this
+   * question the same way. What still differs is the MECHANISM, which is a fact
+   * about the two layouts and not about the rule.
    */
   const canPick = React.useMemo(() => shown.filter(pickable), [shown, flaggedBy]);
   const chosen = React.useMemo(

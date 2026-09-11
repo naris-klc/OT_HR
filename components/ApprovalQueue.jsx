@@ -25,7 +25,7 @@ import {
   Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
   RateHead, ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, ShowMore, SignatureFacts,
-  StatusChip, TeamMark, editsOf, shownWarnings,
+  StatusChip, TablePager, TeamMark, editsOf, shownWarnings, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
@@ -236,6 +236,15 @@ export default function ApprovalQueue({
    * doing its ordinary job of asking "are you sure", not the name of a step.
    */
   const verb = 'อนุมัติ';
+  /**
+   * WHAT THIS QUEUE IS CALLED — written once because two things say it now: the
+   * heading, and the `label` on the pager under the table, which is what a
+   * screen reader hears on จำนวนรายการต่อหน้า and on ก่อนหน้า / ถัดไป. A label
+   * naming a queue the heading calls something else names nothing the reader
+   * can see.
+   */
+  const queueName = delegatedOnly ? 'รออนุมัติ · ทีมที่รับช่วง'
+    : isHr ? 'รออนุมัติ OT' : 'รออนุมัติ';
   /**
    * WHICH STATUSES THIS SCREEN ASKS THE SERVER FOR — one place, read by the
    * fetch, by the สถานะ dropdown and by the empty states.
@@ -681,6 +690,77 @@ export default function ApprovalQueue({
    * a filter is the wrong thing to keep around near a filter the screen sets.
    */
 
+  /**
+   * ── หน้า ──────────────────────────────────────────────────────────────────
+   *
+   * OVER `shown`, IN THE BROWSER, AND NOTHING IS REFETCHED BY PRESSING ›.
+   * The queue arrives whole — one reply, `MAX_LIST_LIMIT` rows at the outside,
+   * and โหลดทั้งหมด above is what raises that ceiling when the server cut the
+   * list. So there is no `useKeptFetch` here and no `.is-paged` fade: the rows
+   * the next page needs are already in hand and the slice is synchronous.
+   *
+   * 20 AND NOT 10. This screen is read to be CLEARED. Ten rows puts a page turn
+   * between every third signature; fifty leaves the ticks at the top out of
+   * sight by the time the last one is made. 10 · 20 · 50 · 100 are all on the
+   * box — `PAGE_SIZES`, the same four every other table in the app offers.
+   *
+   * ⚠ A PAGE IS NOT A FILTER, AND ON THIS SCREEN THAT IS THE WHOLE RULE.
+   * `pageRows` decides ONE thing — which rows the table draws. เลือกทั้งหมด,
+   * the heading tick-box's indeterminate state, the batch bar's count and its
+   * hours, the two empty panels and the sentence naming how many rows a filter
+   * is hiding are every one of them counted against `shown` and `actionable`,
+   * which are the whole filtered pile. A reader who ticks eight rows, presses ›
+   * and ticks four more is holding twelve, and the bar says twelve.
+   *
+   * THE ONE EFFECT THAT DOES TAKE TICKS AWAY KEYS ON `shown` — see it above,
+   * under "A tick survives only as long as its row is on screen". `shown` and
+   * not `pageRows` is what makes that sentence mean "as long as no filter has
+   * hidden it" rather than "as long as it is on the page you are looking at",
+   * and it is why a page turn keeps a selection while ค้นหา empties it.
+   */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  /**
+   * THE FILTERS, NOT THE DATA. `load()` runs again after every signature and
+   * after every batch, and a reset keyed on `entries` would throw a reader who
+   * was on page 3 back to page 1 for the row they just approved — the press
+   * undoing itself.
+   */
+  usePageReset(setPage, [q, dept, per, st, applicant, pageSize]);
+  const pageCount = Math.max(1, Math.ceil(shown.length / pageSize));
+  /**
+   * CLAMPED BEFORE THE SLICE, not only in the sentence. `TablePager` clamps
+   * what it PRINTS; an unclamped slice under it is an empty table beneath a
+   * band reading หน้า 4 / 2 — which is exactly what approving the last row of
+   * the last page would draw, on a screen whose whole job is emptying itself.
+   */
+  const at = Math.min(Math.max(page, 1), pageCount);
+  const pageRows = shown.slice((at - 1) * pageSize, at * pageSize);
+
+  /**
+   * ถัดไป PUTS THE READER AT THE TOP OF THE NEW PAGE, and this is one of the
+   * two pagers in the app that moves the page at all — `goPage` in
+   * components/HrView.jsx is the precedent, and test/tablePager.test.js bans
+   * the call on the other two, where the report behind it was a jump nobody
+   * asked for. Here it is asked for: a queue is read top to bottom and signed
+   * row by row, and landing on page 4 at the scroll depth of page 3's last row
+   * is landing in the middle of a list with the start of it behind you.
+   *
+   * FROM THE HANDLER AND NOT FROM AN EFFECT. An effect keyed on `page` would
+   * fire on the reset above too, dragging the table into view every time
+   * somebody typed a letter into ค้นหา.
+   *
+   * How far below the app bar it lands is `.table-wrap.queue-list`'s
+   * `scroll-margin-top` in app/styles.css — in the stylesheet that owns the
+   * sticky bars it has to clear, because their heights are what the number is
+   * made of.
+   */
+  const listRef = useRef(null);
+  function goPage(next) {
+    setPage(next);
+    listRef.current?.scrollIntoView({ block: 'start' });
+  }
+
   /** How much of this queue is somebody else's team. */
   const coveredCount = useMemo(
     () => (entries || []).filter((e) => covered.some(
@@ -976,10 +1056,7 @@ export default function ApprovalQueue({
                 on `รออนุมัติ` still reads, whereas one on `· 2 รายการ` would
                 eat the only figure on the line. See `.card-head:has(...)` in
                 app/styles.css. */}
-            <span className="t-name">
-              {delegatedOnly ? 'รออนุมัติ · ทีมที่รับช่วง'
-                : isHr ? 'รออนุมัติ OT' : 'รออนุมัติ'}
-            </span>
+            <span className="t-name">{queueName}</span>
             {/* THE SAME COUNT AS THE CHIP BELOW, and only one of the two is ever
                 on screen — this one under 860px, the chip above it. Two
                 renderings rather than one moved, for the reason the chip's own
@@ -1549,7 +1626,7 @@ export default function ApprovalQueue({
         <Empty>กำลังโหลด…</Empty>
       ) : (
         <>
-        <div className="table-wrap">
+        <div className="table-wrap queue-list" ref={listRef}>
           {/* `queue-table` carries the column geometry — see the block in
               app/styles.css. Eleven columns in a card that is rarely wider than
               1100px cannot all size themselves: left to it, every one was
@@ -1618,7 +1695,7 @@ export default function ApprovalQueue({
               </tr>
             </thead>
             <tbody>
-              {shown.map((e) => (
+              {pageRows.map((e) => (
                 /**
                  * ── THE ROW IS THE BUTTON — 2026-09-09 ─────────────────────
                  *
@@ -2071,6 +2148,42 @@ export default function ApprovalQueue({
             </tbody>
           </table>
         </div>
+        {/*
+          ── แถบเปลี่ยนหน้า, AND WHY IT IS OUTSIDE THE WRAP ───────────────────
+
+          `.table-wrap` scrolls sideways to 1262px on a narrow desktop — the
+          same fact the sentence below is placed out here for — and controls
+          inside it would begin off the left edge of what the reader can see.
+
+          DRAWN WHENEVER THERE ARE ROWS, INCLUDING WHEN THEY FIT ON ONE PAGE.
+          `แสดง 1–7 จากทั้งหมด 7 รายการ` with both chevrons dead is a statement
+          about the queue and takes one line to make; a band that appears only
+          past row 21 is a control the reader has to discover at the worst
+          moment to discover it. Withheld on NONE, where the two panels below
+          have already said what the emptiness means, and withheld while the
+          list has not arrived, for the reason the table itself is.
+
+          `page={at}` and not `page={page}` — the clamped one, so the band and
+          the slice under it can never name different pages.
+
+          `no-print`, the same mark `.queue-mobile-bar` carries: a dropdown and
+          two chevrons are a way of asking for more rows, and paper has already
+          been handed every row it is going to get. Ctrl+P here prints the page
+          on screen — this screen has never been a print route, `.queue-table`
+          is not one of the three tables app/print.css reshapes for paper, and
+          the sheet HR prints is F-HR-027.
+        */}
+        {shown.length > 0 && (
+          <TablePager
+            className="queue-pager no-print"
+            label={queueName}
+            page={at}
+            pageSize={pageSize}
+            total={shown.length}
+            onPage={goPage}
+            onPageSize={setPageSize}
+          />
+        )}
         {/*
           WHAT AN EMPTY TABLE MEANS, IN WORDS, UNDER THE HEADINGS THAT STAY.
 
