@@ -363,9 +363,19 @@ export const GET = route(async (req, { params }) => {
      * changes nothing (a deduplicated set deduplicates to itself) and keeps
      * these calls identical to every other one.
      */
+    /**
+     * ใบทั้งเดือนของคนนี้ — every live ใบ, whatever สถานะที่นับ is set to.
+     *
+     * `capByEmployee` is ALREADY this month's full set: `capEntriesByEmployee`
+     * queries `CAP_STATUSES` rather than the filter, `MONTH_USAGE_SELECT`
+     * carries `status`, and it is already awaited once for the whole screen.
+     * So `monthStatus` below costs NO extra read — it is a second question
+     * asked of rows the ceiling column had fetched anyway.
+     */
+    const live = capByEmployee.get(String(group.employee?._id)) || [];
     const cap = capColumn({
       shown: group.entries,
-      live: capByEmployee.get(String(group.employee?._id)) || [],
+      live,
       capHours,
       policy,
     });
@@ -376,6 +386,33 @@ export const GET = route(async (req, { params }) => {
       department: group.department,
       entryCount: group.entries.length,
       pendingCount: group.entries.filter((e) => e.status !== 'approved').length,
+      /**
+       * ── คอลัมน์ รายการ แยกตามขั้นที่ใบค้างอยู่ — AND IT IGNORES สถานะที่นับ ──
+       *
+       * *"ตรงคอลัมน์ รายการ ให้แสดงเป็นข้อมูลสถานะ เช่น อนุมัติ 5 / รอหัวหน้า 2
+       * / รอ 3"*, 2026-09-11, followed by the question that decided the basis:
+       * *"แล้วใบที่ค้างจะแสดงยังไง"*.
+       *
+       * COUNTED OVER `live`, NOT OVER `group.entries`. Every other figure on
+       * this row is what สถานะที่นับ selected; this one is the person's whole
+       * month. At อนุมัติแล้วเท่านั้น a filtered tally would report
+       * `รอหัวหน้า 0 · รอ HR 0` on somebody with fifteen ใบ outstanding — true
+       * of the filter and a lie about the person, and unreadable as either.
+       *
+       * IT IS THE เพดาน COLUMN'S OWN ARGUMENT, one column over: *a
+       * department's remaining allowance is not a display preference*. Neither
+       * is which step a month is stuck at.
+       *
+       * ⚠ SO THE THREE DO NOT ADD UP TO `entryCount` AT A NARROW FILTER, ON
+       * PURPOSE. The screen draws the slots the filter does not count in
+       * `--muted-2` instead of hiding them, so the gap is visible rather than
+       * silent — see `.count-status .out` in app/styles.css.
+       */
+      monthStatus: {
+        approved: live.filter((e) => e.status === 'approved').length,
+        pendingMgr: live.filter((e) => e.status === 'pending_mgr').length,
+        pendingHr: live.filter((e) => e.status === 'pending_hr').length,
+      },
       /**
        * Rows at the ฝ่ายบุคคล step, whoever is reading.
        *

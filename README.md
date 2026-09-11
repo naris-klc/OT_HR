@@ -2011,7 +2011,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     145 files, run by `npm test`. Six named below as a
+test/                     146 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2024,9 +2024,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2621 tests
-across 145 files**, measured 2026-09-11 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2631 tests
+across 146 files**, measured 2026-09-11 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2621 tests across 145 files" until **คอลัมน์ รายการ แยกใบตามสถานะ** later the
+same day — `monthCountStatus` is the file and eight of the ten cases are its
+own; the other two are `monthBatchApprove`'s, from the round before it. It read
 "2610 tests across 144 files" until **สถานะที่นับ ได้แถว รอ HR เท่านั้น และ
 รอหัวหน้าเท่านั้น** the same day — `monthStatusFilter` is the file, five cases
 over the one control, and **six of the eleven were already on disk unmeasured**:
@@ -11862,6 +11865,42 @@ build แล้ว
 
 **Verified**
 
+- **คอลัมน์ `รายการ` แยกใบตามขั้นที่มันค้างอยู่ — และนับทั้งเดือนจริง
+  ไม่ใช่เฉพาะที่ตัวกรองนับ** — 2026-09-11 · ขอมาว่า *ตรงคอลัมน์ รายการ ให้แสดง
+  เป็นข้อมูลสถานะ เช่น อนุมัติ 5 / รอหัวหน้า 2 / รอ 3 · ช่วยออกแบบหน่อยทำยังไงให้
+  ความสูงของแถวไม่เพิ่ม* แล้วตามด้วยคำถามที่ตัดสินรูปร่างของมัน — *แล้วใบที่ค้าง
+  จะแสดงยังไง*
+  · **งบความสูงคือสองบรรทัด และมันมีอยู่แล้ว** — แถวสูงเท่าเซลล์ที่สูงที่สุด
+  ซึ่งวันนี้คือ `พนักงาน` (ชื่อ + รหัสใต้ชื่อ) และ `สะสม / เพดาน` (สองบรรทัด)
+  บรรทัดที่สองของคอลัมน์นี้จึงฟรี · **บรรทัดที่สามต่างหากที่ทำให้ทุกแถวสูงขึ้น
+  พร้อมกัน** · สิ่งที่จ่ายค่าบรรทัดนี้คือ `ค้าง n` ที่ถูกถอดออก — มันคือข้อมูล
+  เดียวกันที่หยาบกว่า: เลขส้มเลขเดียวแปลว่า *ยังไม่อนุมัติ* ซึ่งเหมาใบที่รอหัวหน้า
+  กับใบที่รอผู้อ่านคนนี้เข้าด้วยกัน
+  · **นับทั้งเดือนจริง ทุกตัวกรอง** — ถ้านับตามตัวกรอง ที่ `อนุมัติแล้วเท่านั้น`
+  มันจะรายงาน `รอหัวหน้า 0 · รอ HR 0` บนคนที่มีใบค้างสิบห้าใบ ซึ่งจริงสำหรับตัวกรอง
+  แต่**เป็นคำโกหกเกี่ยวกับคนคนนั้น** และแยกไม่ออกจากเดือนที่เสร็จจริง ๆ ·
+  เป็นเหตุผลเดียวกับที่คอลัมน์ `เพดาน` ข้าง ๆ ใช้กับตัวเองอยู่แล้ว
+  · **ไม่มีการอ่านฐานเพิ่มแม้แต่ครั้งเดียว** — `capEntriesByEmployee` ดึงใบที่ยัง
+  มีชีวิตทุกใบมาอยู่แล้วเพื่อลงสีคอลัมน์ `เพดาน` และ `MONTH_USAGE_SELECT` มี
+  `status` ติดมาด้วย · `monthStatus` เป็นคำถามที่สองที่ถามกับแถวชุดเดิม
+  · **⚠️ สามช่องจึงไม่บวกกันได้เท่าเลขรวมที่ตัวกรองแคบ ๆ และตั้งใจ** — ช่องที่
+  ตัวกรองไม่ได้นับวาดด้วย `--muted-2` ไม่ใช่ซ่อนทิ้ง · ช่องว่างระหว่างสองเลขนั้น
+  *คือ*ข้อมูล (คนนี้มีใบค้างอยู่ และคุณกำลังไม่ได้มองมัน) และการซ่อนจะทิ้งมันไป
+  พร้อมกับทำให้คอลัมน์เปลี่ยนรูปทุกครั้งที่เลื่อนตัวกรอง
+  · **สีไม่ใช่ตัวเดียวที่แบกความหมาย** — หัวคอลัมน์ถือคำว่า `อนุมัติ · หัวหน้า · HR`
+  อยู่เหนือช่องของมันเอง ในหมึกเดียวกับ `.chip.st-*` ที่แอปวาดอยู่แล้ว
+  (`--green-dark` · `--amber` · `--info`) · หัวตารางสูงขึ้นครั้งเดียว เซลล์สูงขึ้น
+  ทุกแถว — นั่นคือเหตุผลที่คำอยู่ข้างบน · ศูนย์วาดเป็น `–` ไม่ใช่ `0`
+  · **คอลัมน์ได้ความกว้างเป็นครั้งแรก 96px** (เดิม `auto` ราว 46) · จัดกึ่งกลาง
+  ไม่ใช่ชิดขวาแบบ `.num` เพราะเซลล์เลิกเป็นตัวเลขตัวเดียวแล้ว — `สแกน` กับ `แก้ไข`
+  บนตารางเดียวกันก็กึ่งกลางด้วยเหตุผลนี้
+  · **ใต้ 860px ไม่ต้องออกแบบ** คอลัมน์นี้เป็นหนึ่งในเจ็ดที่การ์ดมือถือตัดทิ้ง
+  · **เทสต์ 2631/2631 ผ่าน** — `test/monthCountStatus.test.js` ไฟล์ใหม่ แปดเคส
+  ตรึงฐานที่นับ · ตรึงว่าไม่มีการอ่านฐานรอบสอง · ตรึงว่า `ค้าง n` ไม่กลับมา ·
+  ตรึงว่าคำอธิบายไม่หลุดลงไปอยู่ในเซลล์ · บิลด์ผ่านบน distDir แยก
+  · ⚠ **ยังไม่ได้เดินด้วยตาบนหน้าจอ** — ความกว้าง 96px คำนวณจากขนาดตัวอักษร
+  ยังไม่ได้วัดของจริง และยังไม่ได้ดูว่า `พนักงาน` กับ `แผนก` ยังไม่แตกบรรทัด
+
 - **คอลัมน์ปุ่มบน ตรวจสอบประจำเดือน วาดเสมอ — กดไม่ได้ก็เป็น disable ·
   และปุ่มในคอลัมน์ตารางชิดขวาทุกตาราง** — 2026-09-11 · แจ้งมาจากหน้าจอพร้อมภาพว่า
   *ทำไมตารางไม่มีปุ่มให้อนุมัติตามที่คุยกัน ที่บอกว่าถึงกดไม่ได้ก็ให้แสดงเป็น disable
@@ -13035,8 +13074,10 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2621 tests**, about 4 s, measured 2026-09-11 across 145
-  files, all green. It read **"2610 tests … across 144"** until สถานะที่นับ
+- `npm test` — **2631 tests**, about 4 s, measured 2026-09-11 across 146
+  files, all green. It read **"2621 tests … across 145"** until คอลัมน์ รายการ
+  was split by status the same day — `monthCountStatus` is the file, eight
+  cases. Before that it read **"2610 tests … across 144"** until สถานะที่นับ
   gained its two single-status rows the same day — `monthStatusFilter` is the
   file, five cases, and six of the eleven were already on disk unmeasured.
   Before that it read **"2599 tests … across 144"** until คิวรออนุมัติ
