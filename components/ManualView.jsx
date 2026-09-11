@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ROLE_LABEL_TH, approverRolesFor, isSigner, readsCompanyReports, roleLabel,
 } from '@/lib/roles.js';
@@ -3384,6 +3384,21 @@ export default function ManualView({ user, navGroups = [], barSlots = [] }) {
      state to register any more: the หัวข้อ overlay is gone, and the page is
      what the reader sees when nothing is open. */
   useBackHandler(printing, () => setPrinting(false));
+
+  /**
+   * เปิดที่อยู่ของหัวข้อขึ้นมาใหม่ — หน้านี้ต้องเลื่อนเอง
+   *
+   * กดในสารบัญ เบราว์เซอร์เลื่อนให้เองอยู่แล้ว (ดู THE RAIL ข้างบน) แต่ตอน
+   * "เปิด `#sec-approve` ขึ้นมาสด ๆ" — กด reload หรือรับลิงก์ที่ส่งต่อกันมา —
+   * จังหวะที่เบราว์เซอร์มองหาหัวข้อนั้น หน้ายังเป็น "กำลังโหลด…" ของ `App` ที่
+   * รอ `/auth/me` อยู่ หัวข้อเพิ่งมามีตอนนี้ ที่อยู่จึงถูกทั้งใบ (`:target`
+   * ติดด้วย) แต่ไม่มีอะไรเลื่อน · หนึ่งครั้งตอน mount เท่านั้น การกดหัวข้อถัด ๆ
+   * ไปเป็นงานของลิงก์เหมือนเดิม
+   */
+  useEffect(() => {
+    const id = window.location.hash.replace(/^#/, '');
+    if (/^sec-[a-z]+$/.test(id)) document.getElementById(id)?.scrollIntoView();
+  }, []);
 
   if (printing) {
     return (
