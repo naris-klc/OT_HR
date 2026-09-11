@@ -3635,10 +3635,14 @@ export function PickOne({
      AND IT IS OPTIONAL, SINCE 2026-09-01. `allLabel` names a row that means "do
      not narrow this" and carries `''` to say so — which only exists where `''`
      is a value the caller can actually hold. สถานะที่นับ on ตรวจสอบรายเดือน is
-     the first caller where it is not: its three rows are three different
-     questions about the month and one of them is always the answer, so a fourth
-     row carrying `''` would be a filter setting the screen cannot be in. Left
-     out, and the list is the options and nothing else. */
+     the first caller where it is not: every one of its rows is a real answer
+     about the month and one of them is always in force, so an extra row
+     carrying `''` would be a filter setting the screen cannot be in. Left out,
+     and the list is the options and nothing else.
+
+     (It read "its THREE rows are three different questions … so a FOURTH row"
+     until 2026-09-11, when สถานะที่นับ went to five. The count was never what
+     the rule turned on — see test/monthStatusFilter.test.js for the list.) */
   const hasAll = allLabel != null;
   const rows = hasAll ? [{ value: '', label: allLabel }, ...(options || [])] : [...(options || [])];
   const current = String(value ?? '');

@@ -2011,7 +2011,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     144 files, run by `npm test`. Six named below as a
+test/                     145 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2024,9 +2024,15 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2610 tests
-across 144 files**, measured 2026-09-11 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2621 tests
+across 145 files**, measured 2026-09-11 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2610 tests across 144 files" until **สถานะที่นับ ได้แถว รอ HR เท่านั้น และ
+รอหัวหน้าเท่านั้น** the same day — `monthStatusFilter` is the file, five cases
+over the one control, and **six of the eleven were already on disk unmeasured**:
+rounds between those two sentences added cases to existing files without
+re-measuring this figure, which is the same gap this parenthesis has had to
+close twice before. It read
 "2599 tests across 144 files" until **คิวรออนุมัติ แบ่งหน้าแล้ว** later the same
 day — eleven cases went into `tablePager`, which is §11 of that file and reads
 คิวรออนุมัติ; NO new file, and the two cases that anchor on the queue's
@@ -8251,7 +8257,26 @@ on this database 2026-09-09, **225 รอ HR and 73 รอหัวหน้า,
 inches above it said `มีใบรออนุมัติค้างอยู่ 298 ใบ` and พิมพ์ใบขออนุมัติ OT
 ทุกคน would have printed the 225. อนุมัติแล้วเท่านั้น is still the first row of
 สถานะที่นับ and still means exactly what it meant; what moved is which of the
-three the screen holds when it opens.
+rows the screen holds when it opens.
+
+> This sentence read "**which of the THREE the screen holds**" until
+> 2026-09-11, when สถานะที่นับ gained รอ HR เท่านั้น and รอหัวหน้าเท่านั้น and
+> became five. The default did not move again — it is still อนุมัติแล้ว + รอ HR,
+> now the fourth row rather than the middle one.
+
+**And the same month is the reason the two new rows exist.** Three rows that all
+answered *how much of this month counts* could not answer *which step is it
+waiting on* — and on a month of 225 รอ HR, 73 รอหัวหน้า and no `approved`, the
+two combined settings and ทั้งหมด draw very nearly the same table. รอ HR
+เท่านั้น is the one that leaves HR looking at its own queue: every row in it is
+a row this screen's ยืนยัน button may act on, so the tick column is offered for
+all of them. รอหัวหน้าเท่านั้น is its opposite and has no tick column at all,
+for the reason อนุมัติแล้วเท่านั้น has none — there is no `pending_hr` row in
+it. Neither is a new rule: `canPick` counts the rows rather than reading the
+filter, so both fall out of what was already there. The route was not touched —
+`reportStatuses` has always kept `pending_hr` on its own; there was simply no
+control that could say it. `test/monthStatusFilter.test.js` pins the five rows,
+their order, and that every value survives that function intact.
 
 **The price is that ตรวจสอบประจำเดือน and คิวรออนุมัติ no longer lead with the
 same figure at their defaults**, which they were deliberately made to do on
@@ -11765,6 +11790,28 @@ build แล้ว
 
 **Verified**
 
+- **`สถานะที่นับ` บน ตรวจสอบประจำเดือน ได้แถว `รอ HR เท่านั้น` กับ
+  `รอหัวหน้าเท่านั้น` — สามแถวเป็นห้าแถว** — 2026-09-11 · ขอมาพร้อมภาพแถบตัวกรองว่า
+  *เพิ่มตัวกรองสถานะ "รอ HR"* · แถว `รอหัวหน้าเท่านั้น` ตกลงเพิ่มมาคู่กันในคำตอบเดียวกัน
+  · **สามแถวเดิมตอบคำถามเดียวกันหมด** คือ *เดือนนี้นับเท่าไหร่* ลิสต์จึงมีแต่กว้างขึ้น
+  เรื่อย ๆ · แถวสถานะเดี่ยวตอบคนละคำถาม คือ *เดือนนี้ค้างอยู่ที่ขั้นไหน* ซึ่งจอไม่มีทาง
+  ถามได้เลย — บนฐานจริง สิงหาคม 2569 คือ `รอ HR` 225 · `รอหัวหน้า` 73 · `approved`
+  ศูนย์ใบ สองแถวชุดรวมกับ `ทั้งหมด` จึงวาดตารางเกือบเหมือนกันทั้งสามแถว
+  · **ลำดับเลิกเรียงจากแคบไปกว้าง และนั่นคือประเด็น** — สถานะเดี่ยวสามแถวก่อน
+  ตามลำดับที่ใบเดินผ่าน แล้วค่อยเป็นชุดรวมสองแถว
+  · **เราต์ไม่ถูกแตะเลย** `reportStatuses` รับ `pending_hr` เดี่ยว ๆ มาตลอด
+  ที่ไม่มีคือตัวควบคุมที่พูดมันได้
+  · **คอลัมน์ช่องติ๊กขยับเองสองทางโดยไม่มีกฎใหม่** — `รอหัวหน้าเท่านั้น` ไม่มีคอลัมน์
+  ด้วยเหตุผลเดียวกับ `อนุมัติแล้วเท่านั้น` ส่วน `รอ HR เท่านั้น` มีครบทุกแถว ·
+  `canPick` นับแถวอยู่แล้ว ไม่ได้อ่านตัวกรอง
+  · **คอลัมน์ `สะสม / เพดาน` ไม่ขยับ** และ `รายงาน OT ประจำทีม` ได้แถวใหม่ไปด้วย
+  เพราะเป็นคอมโพเนนต์เดียวกัน
+  · **เทสต์ 2621/2621 ผ่าน** — `test/monthStatusFilter.test.js` เป็นไฟล์ใหม่ ห้าเคส
+  ตรึงลำดับและตรึงว่าทุกค่าวิ่งผ่าน `reportStatuses` แล้วออกมาครบ · บิลด์ผ่านบน
+  distDir แยก (`:3000` ไม่ถูกแตะ)
+  · ⚠ **ยังไม่ได้เดินด้วยตาบนหน้าจอ** — ที่ตรึงไว้คือเทสต์ที่อ่านซอร์ส กับยอดที่นับ
+  จากฐานจริง
+
 - **ช่อง เวลาเริ่ม กับ เวลาสิ้นสุด ในแผง แก้ไขชั่วโมง กลับมาอยู่บรรทัดเดียวกัน**
   — 2026-09-10 บ่าย · แจ้งมาจากหน้าจอ: บนใบ **เหมารายวัน** ช่องเวลาสิ้นสุดกับป้ายของมัน
   ลอยสูงกว่าช่องเวลาเริ่มอยู่หนึ่งบรรทัด · **สาเหตุคือบรรทัดที่ห้อยอยู่ใต้ช่องเดียว** —
@@ -12885,8 +12932,11 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2610 tests**, about 4 s, measured 2026-09-11 across 144
-  files, all green. It read **"2599 tests … across 144"** until คิวรออนุมัติ
+- `npm test` — **2621 tests**, about 4 s, measured 2026-09-11 across 145
+  files, all green. It read **"2610 tests … across 144"** until สถานะที่นับ
+  gained its two single-status rows the same day — `monthStatusFilter` is the
+  file, five cases, and six of the eleven were already on disk unmeasured.
+  Before that it read **"2599 tests … across 144"** until คิวรออนุมัติ
   gained the shared pager later the same day — eleven cases into `tablePager`,
   §11 of that file, and no new file. Before that it read
   **"2598 tests … across 144"** until the วันเกิด
