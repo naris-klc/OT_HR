@@ -4075,6 +4075,16 @@ td > .approver-line { margin-top: 5px; }
    day was about. The paragraph above is kept because it is the account of how
    this box came to be a `<Field>`, which is still what it is. */
 
+/* ── WHERE ถัดไป LANDS ON ทะเบียนพนักงาน ───────────────────────────────────
+   `goPage` in components/AdminView.jsx scrolls this wrap back into view on
+   every page press, and what has to be cleared above it is `.appbar` — 62px,
+   sticky at 0 and never leaving — and nothing else. ONE NUMBER WHERE
+   คิวรออนุมัติ NEEDS FOUR: that screen stacks `.batch-bar` and
+   `.queue-mobile-bar` under the app bar and has to be sized per state; this one
+   has no sticky bar of its own at any width, so the phone reads the same rule.
+   14px of clearance, the landing `.manual-sec` and `.profile-password` take. */
+.table-wrap.roster-list { scroll-margin-top: calc(62px + 14px); }
+
 /* ── ค้นหาบนตรวจสอบรายเดือน ────────────────────────────────────────────────
    The same box as ทะเบียนพนักงาน's, and since 2026-09-10 it is the first field
    of a `.queue-tools` bar rather than a row of its own.
@@ -9342,6 +9352,21 @@ th.act-col { width: 258px; }
    which is how a column ends up sized by neither. */
 .hr-table td.dept-col { white-space: normal; }
 
+/* ── WHERE ถัดไป LANDS ON สรุป OT ส่งบัญชี ──────────────────────────────────
+   One number, and the same one at both widths: nothing on that screen is
+   `position: sticky` except `.appbar`. Each company sheet is its own card with
+   its own band, so this is the landing for the sheet that was pressed, not for
+   the top of the report. */
+.table-wrap.acct-list { scroll-margin-top: calc(62px + 14px); }
+
+/* ── แถวที่ไม่ได้อยู่บนหน้านี้ ─────────────────────────────────────────────────
+   ⚠ HIDDEN, NOT CUT, AND `app/print.css` PUTS THEM BACK. `.acct-table` is
+   reshaped into a multi-page document for `Ctrl+P`, thead repeated on every
+   sheet — so a page cut in JavaScript would hand accounting whichever fifty
+   rows the screen was left on. The row stays in the document and the screen
+   simply stops drawing it. */
+.acct-table tbody tr.off-page { display: none; }
+
 /* ── สรุป OT ส่งบัญชี — SEVEN COLUMNS THAT ALL SAY HOW WIDE THEY ARE ────────
 
    ⚠ ONLY FOUR OF THEM DID UNTIL 2026-09-11 — the shared `th.who-col` 168 and
@@ -11042,10 +11067,20 @@ table.mini tbody tr:hover { background: none; }
    a control. So the pager is removed here and `.off-page` is deliberately
    given NO rule at all, which is what leaves every row drawn.
 
-   `.off-page` HAS NO DECLARATION ANYWHERE ABOVE THIS LINE, and that is load-
-   bearing rather than an omission: one `display: none` written here by mistake
-   takes fifty-five people out of the desktop month. `test/hrMonthCards.test.js`
-   asserts its absence for exactly that reason.
+   NO RULE ABOVE THIS LINE MAY REACH `.hr-table`'s `.off-page`, and that is
+   load-bearing rather than an omission: one `display: none` written here by
+   mistake takes fifty-five people out of the desktop month.
+   `test/hrMonthCards.test.js` asserts it for exactly that reason.
+
+   ⚠ IT READ "`.off-page` HAS NO DECLARATION ANYWHERE ABOVE THIS LINE" UNTIL
+   2026-09-11, and on that day สรุป OT ส่งบัญชี took the same mechanism — see
+   `.acct-table tbody tr.off-page` above, which hides the rows this page does
+   not show at EVERY width. That screen's table is also a printed document, so
+   a `.slice()` would have cut the paper copy to whatever the screen was left
+   on; hiding rows that are still in the markup is the answer to both problems
+   at once, and the class the app already had a word for. What is still banned
+   here is what was ever dangerous: a rule that reaches THIS table, and any
+   bare `.off-page` selector, which reaches every table there is.
 
    Stated as a plain `display: none` and NOT as an inline style in the
    component: an inline style beats the media query and the pager would never
@@ -16079,12 +16114,19 @@ table.mini tbody tr:hover { background: none; }
    there to say. */
 .table-pager.roomy { margin-top: 16px; }
 
-/* ── AND ON คิวรออนุมัติ, WHICH HAS NO CARD PADDING TO SIT IN ────────────────
-   `.card.flush` is `padding: 0` — the toolbars, the table and the two empty
-   panels each bring their own inset — so a band dropped in there would put its
-   dropdown against the card's left edge and its chevrons against the bottom
-   one. 18px is what `.queue-tools` and the table's own cells take, so all three
-   line up down the left.
+/* ── AND ON A CARD THAT HAS NO PADDING TO SIT IN ─────────────────────────────
+   `.card.flush` is `padding: 0` — the toolbars, the table and the panels each
+   bring their own inset — so a band dropped in there would put its dropdown
+   against the card's left edge and its chevrons against the bottom one. 18px is
+   what `.queue-tools`, `.card.flush > .card-head` and the tables' own cells
+   take, so everything lines up down the left.
+
+   NAMED FOR THE CARD AND NOT FOR THE SCREEN. It was `.queue-pager` for the few
+   hours between คิวรออนุมัติ's band and สรุป OT ส่งบัญชี's, and the second
+   caller is what the name had to answer for: two screens whose cards are
+   `.card.flush` need the same inset, and a `.acct-pager` repeating these three
+   numbers is the second copy that stops agreeing. `.queue-pager` still exists
+   below, holding the ONE declaration that is genuinely about the queue.
 
    THE HAIRLINE IS DELIBERATELY NOT INSET WITH THEM. A border spans the padding
    box, so it still runs edge to edge the way the row rules above it do and the
@@ -16096,14 +16138,18 @@ table.mini tbody tr:hover { background: none; }
    cut off. `margin-top` is the base rule's 8 — `tbody tr:last-child td` drops
    the last row's own border, so those 8px are the whole gap between the last
    row and the rule. */
-.table-pager.queue-pager { padding: 12px 18px 16px; }
+.table-pager.flush-pager { padding: 12px 18px 16px; }
 @media (max-width: 860px) {
-  /* 12, because the rows are cards at this width and `.queue-table tbody` insets
-     them by 12 — the band is the foot of the LIST and lines up with it, not with
-     the toolbar above. That padding is also 12px of air under the last card, so
+  /* 12 at this width, which is `.queue-tools`' own phone padding and the inset
+     `.queue-table tbody` gives the cards it stacks. */
+  .table-pager.flush-pager { padding: 12px 12px 16px; }
+  /* AND THE ONE LINE THAT IS THE QUEUE'S ALONE. Its rows are cards down here and
+     `.queue-table tbody` already leaves 12px of air under the last of them, so
      the band gives its own `margin-top` back; kept, the rule would float 20px
-     below the thing it closes. */
-  .table-pager.queue-pager { padding: 12px 12px 16px; margin-top: 0; }
+     below the thing it closes. `.acct-table` stays a table at this width — a
+     frozen first column and a sideways scroll — so its last row ends on a
+     border and the base 8px is the gap that band wants. */
+  .table-pager.queue-pager { margin-top: 0; }
 }
 
 /* ── แสดง [ 10 ▾ ] รายการต่อหน้า ─────────────────────────────────────────

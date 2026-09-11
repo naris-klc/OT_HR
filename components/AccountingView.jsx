@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   api, hours, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES,
   accountingLabel,
@@ -11,7 +11,7 @@ import { zeroRowReason } from '@/lib/otMode.js';
 import { cyclePeriods, cycleTag, shortMonth } from '@/lib/accountingCycle.js';
 import {
   Alert, BirthdayNote, Empty, ExportMenu, OverCeilingFigure, OverCeilingNote, PickOne,
-  RateHead, UnaccountedHours,
+  RateHead, TablePager, UnaccountedHours, usePageReset,
 } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -335,15 +335,19 @@ export default function AccountingView() {
           {company === 'all' && data.companies.length > 1 && (
             <AllCompanies data={data} />
           )}
+          {/* `บริษัทที่ N` WAS A PROP AND IT IS GONE, 2026-09-11 — asked for as
+              *"เอาคำว่า บริษัทที่ ออกจากหัวตาราง"*. It was computed here rather
+              than from the map index so that เดมเทค stayed "บริษัทที่ 2" on its
+              own tab; what nobody could say was what the READER was meant to do
+              with the number. The sheet is identified by `PM · ไพรมัส` and by
+              its legal name under that, both of which mean something outside
+              this screen — an ordinal means something only against a list, and
+              on a single-company tab there is no list to count against. The
+              same sentence came off the รวมทุกบริษัท rows earlier the same day,
+              on the grounds that this kicker still carried it; it no longer
+              does, and nothing in the app carries it now. */}
           {shown.map((c) => (
-            <CompanySheet
-              key={c.key}
-              company={c}
-              periods={periods}
-              // Numbered against the full list, not the one บริษัท leaves on
-              // screen, so เดมเทค is "บริษัทที่ 2" on its own tab as well.
-              index={data.companies.findIndex((x) => x.key === c.key) + 1}
-            />
+            <CompanySheet key={c.key} company={c} periods={periods} />
           ))}
         </>
       )}
@@ -365,8 +369,61 @@ export default function AccountingView() {
  * in a second table beside it, so a figure is always read down the column it
  * belongs to.
  */
-function CompanySheet({ company, periods, index }) {
+function CompanySheet({ company, periods }) {
   const t = company.totals;
+  /**
+   * ── หน้า ──────────────────────────────────────────────────────────────────
+   *
+   * ⚠ THE ROWS OFF THE PAGE ARE STILL DRAWN, AND HIDDEN WITH CSS. This is the
+   * one table in the app that is paged this way, and the reason is `Ctrl+P`:
+   * `app/print.css` reshapes `.acct-table` into a multi-page document with its
+   * `thead` repeated on every sheet, which is a route accounting uses. A page
+   * cut with `.slice()` would print whichever twenty rows the reader happened
+   * to have open — a payroll sheet that is silently short. Asked directly on
+   * 2026-09-11 and answered *"ครบทุกแถวเหมือนเดิม"*.
+   *
+   * So `off-page` is the only thing a page decides here, and the rule that
+   * takes it off the screen is undone inside `@media print`. **A PAGE IS NOT A
+   * FILTER** needs no enforcing on this screen as a result: every row is in the
+   * document, the `<tfoot>` summary is the company's and not the page's because
+   * it was never built from the rows at all, and the two chips in the head
+   * count `totals`.
+   *
+   * 50 AND NOT 20. A month is usually one page — twenty-three people had OT in
+   * the month this was built against — so the band mostly says `แสดง 1–23
+   * จากทั้งหมด 23 คน` and stays out of the way; the months it does cut are the
+   * ones nobody wanted to scroll anyway.
+   */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  /**
+   * KEYED ON THE DATA HERE, WHICH IS THE OPPOSITE OF คิวรออนุมัติ'S ANSWER —
+   * and the difference is that nothing on this screen edits a row. The rows
+   * change when the month changes, when งวดสองเดือน is turned on, or when
+   * แสดงพนักงานที่ไม่มี OT is ticked, and all three mean the reader is now
+   * looking at a different list: page 3 of it is not the page they were on.
+   * `periods` is in the list because the two months can be swapped without the
+   * count moving.
+   */
+  usePageReset(setPage, [periods.join(','), company.rows.length, pageSize]);
+  const pageCount = Math.max(1, Math.ceil(company.rows.length / pageSize));
+  const at = Math.min(Math.max(page, 1), pageCount);
+  const from = (at - 1) * pageSize;
+
+  /**
+   * ถัดไป lands at the top of THIS sheet's table — there are two of them on
+   * บริษัท · ทั้งหมด and each has its own band, so a page press must not move
+   * the reader to the other company's. From the handler and not from an effect,
+   * for the reason the other two bands that scroll give: an effect on `page`
+   * fires on the reset above as well. The distance from the app bar is
+   * `.table-wrap.acct-list`'s `scroll-margin-top`; nothing else on this screen
+   * is sticky.
+   */
+  const listRef = useRef(null);
+  function goPage(next) {
+    setPage(next);
+    listRef.current?.scrollIntoView({ block: 'start' });
+  }
   /**
    * งวดสองเดือน — คู่ 1.50/3.00 ต่อเดือน มาก่อนสามช่องถัง แล้วจึง รวม ชม.
    *
@@ -389,7 +446,6 @@ function CompanySheet({ company, periods, index }) {
             on. The full legal name stays underneath it — the figures are still
             signed for by a company, not by a code. */}
         <div>
-          <div className="kicker-sm">บริษัทที่ {index}</div>
           <div className="t">
             {company.accountingCode && (
               <span style={{ color: 'var(--muted)' }}>{company.accountingCode} · </span>
@@ -415,12 +471,17 @@ function CompanySheet({ company, periods, index }) {
         <Empty>ไม่มีรายการที่อนุมัติแล้วของบริษัทนี้</Empty>
       ) : (
         <>
-          <div className="table-wrap">
-            {/* `acct-table` — card layout below 860px. Seven columns put รวม ชม.
-                and the whole หมายเหตุ column off the right of a phone, which on
-                this screen means the ค้างอนุมัติ warning — the one line that
-                says a figure is not final — was the least reachable thing on
-                it. */}
+          <div className="table-wrap acct-list" ref={listRef}>
+            {/* `acct-table` — BELOW 860px THIS IS STILL A TABLE: `width:
+                max-content`, พนักงาน frozen at the left and the rest scrolling
+                sideways under it, on column caps of its own (112 / 88 / 140).
+                The comment here read *"card layout below 860px"* until
+                2026-09-11; the seven columns are read ACROSS on this screen —
+                a figure means something only beside the three next to it — and
+                a card per person breaks exactly that. What the freeze buys is
+                that the หมายเหตุ column, which carries the ค้างอนุมัติ warning
+                — the one line saying a figure is not final — is reachable by
+                scrolling with the name still on screen. */}
             <table className="acct-table">
               {/* สองชั้นเมื่อเป็นงวดสองเดือน แถวเดียวเหมือนเดิมเมื่อเดือนเดียว
                   — `span` เป็น 1 ตอนนั้น หัวทุกช่องจึงกลับไปเป็นเซลล์ธรรมดา */}
@@ -446,8 +507,16 @@ function CompanySheet({ company, periods, index }) {
                 {many && <tr>{monthRateHeads(periods)}</tr>}
               </thead>
               <tbody>
-                {company.rows.map((row) => (
-                  <tr key={row.employee.id}>
+                {/* `off-page` AND NOT A SLICE — see the note on `page` above.
+                    The class is the whole of the paging on this table: it is
+                    `display: none` on screen and `display: table-row` again
+                    inside `@media print`, so the sheet that reaches accounting
+                    is the whole month however the screen was left. */}
+                {company.rows.map((row, i) => (
+                  <tr
+                    key={row.employee.id}
+                    className={i >= from && i < from + pageSize ? undefined : 'off-page'}
+                  >
                     <td className="who-col">
                       {row.employee.name}
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>
@@ -539,6 +608,33 @@ function CompanySheet({ company, periods, index }) {
               </tfoot>
             </table>
           </div>
+          {/*
+            OUTSIDE `.table-wrap`, which scrolls sideways at this width and
+            would start the controls off the left edge of what is on screen —
+            and `no-print`, which on this table is not merely tidiness: the
+            band is the one thing here that would be a LIE on paper, a box
+            offering to show more rows beside a sheet that already carries all
+            of them.
+
+            `flush-pager` is the inset a band needs inside a `.card.flush`,
+            whose own padding is 0 — the same rule คิวรออนุมัติ brought in on
+            2026-09-11, named for the card rather than for the screen so the
+            second caller is a class and not a copy.
+
+            The `<tfoot>` summary above is untouched by any of this: รวมแผนก and
+            รวมทั้งหมด are built from `company.departments` and `company.totals`,
+            never from the rows, so they say the same thing on every page.
+          */}
+          <TablePager
+            className="flush-pager no-print"
+            label={`สรุป OT ส่งบัญชี · ${company.shortTh}`}
+            unit="คน"
+            page={at}
+            pageSize={pageSize}
+            total={company.rows.length}
+            onPage={goPage}
+            onPageSize={setPageSize}
+          />
         </>
       )}
     </div>
@@ -595,11 +691,18 @@ function AllCompanies({ data }) {
                     tall, twice, to say what fits on one.
 
                     บริษัทที่ N WENT AND THE LEGAL NAME STAYED. The ordinal is
-                    what the row's own position already says, and the sheet for
-                    that company carries it as a kicker further down the screen
-                    (see `CompanySheet`); the legal name is the one thing on
-                    this row that is not derivable from looking at it, and this
-                    is the table that goes on the covering note. */}
+                    what the row's own position already says; the legal name is
+                    the one thing on this row that is not derivable from looking
+                    at it, and this is the table that goes on the covering note.
+
+                    ⚠ THIS SENTENCE ALSO READ "and the sheet for that company
+                    carries it as a kicker further down the screen (see
+                    `CompanySheet`)" FOR HALF A DAY. That kicker was taken off
+                    the same afternoon — *"เอาคำว่า บริษัทที่ ออกจากหัวตาราง"* —
+                    so nothing in the app numbers the companies now. Which does
+                    not weaken the reason above: it was only ever half of it,
+                    and the half that mattered was that the ORDINAL is not the
+                    thing a reader cannot work out. */}
                 <td className="who-col">
                   {c.accountingCode ? `${c.accountingCode} · ` : ''}{c.shortTh}
                   {/* `.cell-tail` and not `.cell-sub`: the same quiet 12px, on

@@ -2500,6 +2500,64 @@ function Employees({ user }) {
   /** The rows the table draws. `rows` stays the register, for the count. */
   const shown = React.useMemo(() => searchPeople(rows, find), [rows, find]);
 
+  /**
+   * ── หน้า ──────────────────────────────────────────────────────────────────
+   *
+   * OVER `shown`, WHICH IS THE SEARCH RESULT, NOT OVER `rows`. **A PAGE IS NOT
+   * A FILTER**: the line on the bar above still reads `แสดง 9 จาก 214 คน` off
+   * the register, because that sentence is about what ค้นหาพนักงาน is hiding,
+   * and this band's is about which slice of those 9 is on screen. Both are kept
+   * — asked for in as many words on 2026-09-11 — and they answer two different
+   * questions with the same verb.
+   *
+   * IN THE BROWSER, AND NOTHING IS REFETCHED BY PRESSING ›. `/employees?all=1`
+   * has no limit, so `rows` is the entire register and the slice is
+   * synchronous. The same reason the search box above is allowed to be
+   * client-side.
+   *
+   * 20, the app's ordinary opening size — the four on the box are `PAGE_SIZES`,
+   * 10 · 20 · 50 · 100, the same four every other table offers.
+   */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  /**
+   * THE SEARCH, NOT THE REGISTER. `load()` runs again after every แก้ไข, every
+   * รีเซ็ตรหัสผ่าน and every CSV import; keyed on `rows` a reader who was on
+   * page 3 would be thrown back to page 1 by the row they had just edited —
+   * the press undoing itself. Typing in ค้นหาพนักงาน is the one thing that
+   * SHOULD reset, because page 3 of a list that just became nine names long is
+   * an empty table.
+   */
+  usePageReset(setPage, [find, pageSize]);
+  const pageCount = Math.max(1, Math.ceil(shown.length / pageSize));
+  /**
+   * CLAMPED BEFORE THE SLICE, not only in the sentence. `TablePager` clamps
+   * what it PRINTS; an unclamped slice under it is an empty table beneath a
+   * band reading หน้า 4 / 2 — which is what deleting the last row of the last
+   * page, or a search narrowing under a reader, would draw.
+   */
+  const at = Math.min(Math.max(page, 1), pageCount);
+  const pageRows = shown.slice((at - 1) * pageSize, at * pageSize);
+
+  /**
+   * ถัดไป PUTS THE READER AT THE TOP OF THE LIST, the way คิวรออนุมัติ and
+   * HrView's own pager do. A register is read down the rows, and landing on
+   * page 4 at the scroll depth of page 3's last row is landing in the middle of
+   * a list with the start of it behind you.
+   *
+   * FROM THE HANDLER AND NOT FROM AN EFFECT. An effect keyed on `page` would
+   * fire on the reset above too, dragging the table into view on every letter
+   * typed into ค้นหาพนักงาน.
+   *
+   * How far below the app bar it lands is `.table-wrap.roster-list`'s
+   * `scroll-margin-top` in app/styles.css — one number here, where คิวรออนุมัติ
+   * needs four, because nothing on this screen is sticky except the app bar.
+   */
+  const listRef = useRef(null);
+  function goPage(next) {
+    setPage(next);
+    listRef.current?.scrollIntoView({ block: 'start' });
+  }
 
   async function load() {
     try {
@@ -3305,7 +3363,8 @@ function Employees({ user }) {
           ไม่พบพนักงานที่ตรงกับ “{find}” — ค้นได้จากรหัสพนักงานและชื่อ-สกุลเท่านั้น
         </Empty>
       ) : (
-      <div className="table-wrap">
+      <>
+      <div className="table-wrap roster-list" ref={listRef}>
         <table className="stack-table">
           <thead>
             <tr>
@@ -3314,7 +3373,7 @@ function Employees({ user }) {
             </tr>
           </thead>
           <tbody>
-            {shown.map((p) => (
+            {pageRows.map((p) => (
               <tr key={p._id}>
                 <td className="stack-code" style={{ whiteSpace: 'nowrap' }}>{p.code}</td>
                 <td className="stack-name">{p.name}</td>
@@ -3414,6 +3473,42 @@ function Employees({ user }) {
           </tbody>
         </table>
       </div>
+      {/*
+        ── แถบเปลี่ยนหน้า, AND WHY IT IS OUTSIDE THE WRAP ─────────────────────
+
+        `.table-wrap` scrolls sideways on a narrow desktop — nine columns — and
+        controls inside it would begin off the left edge of what is visible.
+
+        DRAWN WHENEVER THERE ARE ROWS, INCLUDING WHEN THEY FIT ON ONE PAGE.
+        `แสดง 1–7 จากทั้งหมด 7 คน` with both chevrons dead is a statement about
+        the register and takes one line to make; a band that appeared only past
+        row 21 is a control a reader has to discover at the worst moment to
+        discover it. Withheld on NONE, where an empty roster is either the
+        `Empty` above — a search that matched nobody — or a list that has not
+        arrived yet, and a band claiming หน้า 1 / 1 over either is chrome around
+        a sentence.
+
+        `คน` AND NOT `รายการ`: a row here is a person, the chip on the bar above
+        counts in คน, and the two sentences on this screen are read one under
+        the other.
+
+        NO `className`: this table sits in an ordinary `.card`, whose 18px of
+        padding is already under the band — the inset คิวรออนุมัติ needs is for
+        `.card.flush`, which has none, and `roomy` is for a band closing a
+        section rather than a card.
+      */}
+      {shown.length > 0 && (
+        <TablePager
+          label="ทะเบียนพนักงาน"
+          unit="คน"
+          page={at}
+          pageSize={pageSize}
+          total={shown.length}
+          onPage={goPage}
+          onPageSize={setPageSize}
+        />
+      )}
+      </>
       )}
 
       {adding && (
