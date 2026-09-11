@@ -30,12 +30,12 @@ import { dirname, join } from 'node:path';
  * ─────────────────────────────────────────────────────────────────────────────
  * ONE COMPONENT FOR BOTH, AND WHAT IT IS NOT
  *
- * `TablePager` is drawn under FIVE tables, and this file reads all of them:
+ * `TablePager` is drawn under SIX tables, and this file reads all of them:
  * the two on บันทึกประวัติระบบ (§1–8), ประวัติเวอร์ชันนโยบาย (§9),
- * คิวรออนุมัติ (§11) and ทะเบียนพนักงาน (§12). It read "both tables" until
- * 2026-09-11, when the queue took one — the sentence had already outlived
- * ประวัติเวอร์ชันนโยบาย — and "FOUR" for the few hours between that band and
- * the roster's.
+ * คิวรออนุมัติ (§11), ทะเบียนพนักงาน (§12) and สรุป OT ส่งบัญชี (§13). It read
+ * "both tables" until 2026-09-11, when the queue took one — the sentence had
+ * already outlived ประวัติเวอร์ชันนโยบาย — then "FOUR" and "FIVE" as the
+ * roster and the accounting sheet followed it the same afternoon.
  *
  * `HrView`'s `.pager-row` is the one pager deliberately NOT folded into it:
  * that one is a `<td>` inside a `<tbody>`, `display: none` above 860px, laid
@@ -687,12 +687,23 @@ test('the landing clears whatever is stuck over the list at that moment', () => 
 });
 
 test('the band brings its own inset, because .card.flush has none', () => {
-  assert.match(queueCode, /className="queue-pager no-print"/,
+  /**
+   * `flush-pager` IS NAMED FOR THE CARD AND NOT FOR THE SCREEN, and it was
+   * `queue-pager` for the few hours between this band and สรุป OT ส่งบัญชี's
+   * (§13). Both cards are `.card.flush`, which is `padding: 0`; a second class
+   * repeating these three numbers is the copy that stops agreeing.
+   */
+  assert.match(queueCode, /className="flush-pager queue-pager no-print"/,
     'the band prints — a dropdown asking for more rows, on paper that already has them all');
-  assert.match(band, /\.table-pager\.queue-pager \{ padding: 12px 18px 16px; \}/);
-  // 12 at phone width, where the rows are cards `tbody` insets by 12, and the
-  // band gives its margin back because that padding is already the air over it.
-  assert.match(band, /\.table-pager\.queue-pager \{ padding: 12px 12px 16px; margin-top: 0; \}/);
+  assert.match(band, /\.table-pager\.flush-pager \{ padding: 12px 18px 16px; \}/);
+  assert.match(band, /\.table-pager\.flush-pager \{ padding: 12px 12px 16px; \}/);
+  // AND ONE DECLARATION IS STILL THE QUEUE'S ALONE: its rows are cards at phone
+  // width and `.queue-table tbody` already leaves 12px under the last of them,
+  // so the band gives its own margin back. `.acct-table` is still a table down
+  // there and keeps the base 8.
+  assert.match(band, /\.table-pager\.queue-pager \{ margin-top: 0; \}/);
+  assert.ok(!/\.table-pager\.queue-pager \{ padding/.test(band),
+    'the queue took its padding back — two .card.flush screens, one inset');
   // The base rule is untouched — the log tables keep their 8 and their edges.
   assert.match(css, /\.table-pager \{[^}]*margin-top: 8px;/);
 });
@@ -810,4 +821,104 @@ test('the band takes the card\'s own padding, and adds no rule to the sheet', ()
     'the roster band took a class — its card already has the padding one would add back');
   assert.ok(!/\.table-pager\.roster/.test(css),
     'a rule was written for a band that needed none');
+});
+
+// ── 13. สรุป OT ส่งบัญชี ─────────────────────────────────────────────────────
+
+/**
+ * THE SIXTH TABLE, AND THE ONLY ONE WHOSE PAGE IS NOT A SLICE.
+ *
+ * ⚠ `Ctrl+P` ON THIS SCREEN PRINTS THIS TABLE. `app/print.css` reshapes
+ * `.acct-table` into a multi-page document — 8pt, `table-layout: auto`, the
+ * `thead` repeated at the top of every sheet, `tfoot` forced back to a normal
+ * row group so the grand total prints once — and that is a route accounting
+ * uses. A page cut with `.slice()` would hand them whichever fifty rows the
+ * screen happened to be left on, with nothing on the paper saying so: a payroll
+ * sheet that is silently short. Asked on 2026-09-11 and answered
+ * *"ครบทุกแถวเหมือนเดิม"*.
+ *
+ * So the rows off the page are DRAWN AND HIDDEN, with `.off-page` — the class
+ * ตรวจสอบรายเดือน already uses for the same idea — and `@media print` puts them
+ * back. The cases below are mostly that one fact, from both files, because the
+ * obvious later "tidy-up" is to replace the class with a slice and the screen
+ * looks identical afterwards.
+ */
+
+const acct = read('components/AccountingView.jsx');
+const acctCode = strip(acct);
+const printCss = read('app/print.css');
+
+test('the sheet draws the shared band, once, per company', () => {
+  assert.equal(acctCode.match(/<TablePager\b/g)?.length, 1,
+    'more than one band in this file — each company sheet draws the one inside itself');
+  assert.match(acctCode, /^\s*RateHead, TablePager, UnaccountedHours, usePageReset,$/m,
+    'the pager is not imported from ./common.jsx');
+  assert.ok(!/<TablePager[\s\S]*?sizes=/.test(acctCode),
+    'the sheet narrowed its own size list — 10 · 20 · 50 · 100 is the app\'s answer');
+  // 50: a month is usually one page, so the band mostly reports the length of
+  // the list rather than cutting it.
+  assert.match(acctCode, /const \[pageSize, setPageSize\] = useState\(50\);/);
+  assert.match(acctCode, /unit="คน"/);
+  // The label names the company, because บริษัท · ทั้งหมด draws two of these.
+  assert.match(acctCode, /label=\{`สรุป OT ส่งบัญชี · \$\{company\.shortTh\}`\}/);
+});
+
+test('⚠ the page is a class on a row, never a slice — the sheet prints whole', () => {
+  assert.ok(!/\.slice\(/.test(acctCode),
+    'a slice appeared in สรุป OT ส่งบัญชี — Ctrl+P would print one page of the month');
+  assert.match(acctCode, /\{company\.rows\.map\(\(row, i\) => \(/);
+  assert.match(acctCode, /className=\{i >= from && i < from \+ pageSize \? undefined : 'off-page'\}/);
+  // Screen hides it; paper does not.
+  assert.match(css, /\.acct-table tbody tr\.off-page \{ display: none; \}/);
+  assert.match(printCss, /\.acct-table tbody tr\.off-page \{ display: table-row !important; \}/);
+  // And the band itself must not reach the paper at all.
+  assert.match(acctCode, /className="flush-pager no-print"/);
+});
+
+test('the summary in the foot is the company\'s, on every page', () => {
+  /**
+   * A PAGE IS NOT A FILTER, and on this screen it is free: รวมแผนก and
+   * รวมทั้งหมด are built from `company.departments` and `company.totals`, which
+   * the route computed over the whole month — they were never counted from the
+   * rows, so no page can move them. Same for the two chips in the head.
+   */
+  assert.match(acctCode, /\{company\.departments\.map\(\(d\) => \(/);
+  assert.match(acctCode, /total=\{company\.rows\.length\}/);
+  assert.ok(!/\{t\.headcount\}[\s\S]{0,40}pageSize/.test(acctCode));
+});
+
+test('the reset is keyed on the data here, and that is the right answer on this screen', () => {
+  /**
+   * THE OPPOSITE OF §11's ANSWER, and the difference is that nothing on this
+   * screen edits a row. The rows change when the month changes, when งวดสอง
+   * เดือน is turned on, or when แสดงพนักงานที่ไม่มี OT is ticked — all three
+   * mean a different list, and page 3 of it is not where the reader was.
+   */
+  assert.match(acctCode, /usePageReset\(setPage, \[periods\.join\(','\), company\.rows\.length, pageSize\]\);/);
+  assert.match(acctCode, /const pageCount = Math\.max\(1, Math\.ceil\(company\.rows\.length \/ pageSize\)\);/);
+  assert.match(acctCode, /const at = Math\.min\(Math\.max\(page, 1\), pageCount\);/);
+  assert.match(acctCode, /page=\{at\}/);
+});
+
+test('ถัดไป lands on the sheet that was pressed, not on the report', () => {
+  assert.match(acctCode, /function goPage\(next\) \{\s*setPage\(next\);\s*listRef\.current\?\.scrollIntoView\(\{ block: 'start' \}\);\s*\}/);
+  assert.match(acctCode, /<div className="table-wrap acct-list" ref=\{listRef\}>/);
+  assert.equal(acctCode.match(/scrollIntoView/g)?.length, 1);
+  assert.ok(!/useEffect\([^)]*\)[\s\S]{0,200}?scrollIntoView/.test(acctCode),
+    'the scroll moved into an effect — it would fire on every month change too');
+  assert.match(css, /\.table-wrap\.acct-list \{ scroll-margin-top: calc\(62px \+ 14px\); \}/);
+});
+
+test('บริษัทที่ N is gone from the head, and the prop with it', () => {
+  // *"เอาคำว่า บริษัทที่ ออกจากหัวตาราง"*, 2026-09-11. The ordinal meant
+  // something only against a list, and a single-company tab has none.
+  // `acctCode`, not `acct`: the account of WHY it went is written into a
+  // comment beside the map, and a ban that could not survive being explained
+  // would be a ban on the explanation.
+  // The shape, not the word: `บริษัทที่เลือกไว้` on the export menu is the same
+  // eight characters meaning something else entirely.
+  assert.ok(!/บริษัทที่\s*\{/.test(acctCode), 'the ordinal came back to สรุป OT ส่งบัญชี');
+  assert.match(acctCode, /function CompanySheet\(\{ company, periods \}\)/);
+  assert.match(acctCode, /<CompanySheet key=\{c\.key\} company=\{c\} periods=\{periods\} \/>/);
+  assert.ok(!/findIndex/.test(acctCode), 'the index is still being computed for nobody');
 });

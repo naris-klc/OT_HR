@@ -2024,9 +2024,11 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2630 tests
+and the engine know nothing about Next.js, so the whole suite — **2636 tests
 across 145 files**, measured 2026-09-11 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2630 tests across 145 files" until **สรุป OT ส่งบัญชี แบ่งหน้าแล้ว** later the
+same day — six cases as §13 of `tablePager`, no new file. And it read
 "2621 tests across 145 files" until **ทะเบียนพนักงาน แบ่งหน้าแล้ว** the same day
 — seven cases as §12 of `tablePager`, no new file, and **two of the nine were
 already on disk unmeasured**: `monthStatusFilter`'s round landed between the two
@@ -8103,7 +8105,7 @@ everybody feels.
 > moment the box is answered. The inset rule is scoped to `.queue-tools` and
 > `test/filterBar.test.js` fails if it ever reaches `.form-grid`.
 
-### แถบเปลี่ยนหน้าเดียวทั้งแอป — คิวรออนุมัติ และ ทะเบียนพนักงาน แบ่งหน้าแล้ว — 2026-09-11
+### แถบเปลี่ยนหน้าเดียวทั้งแอป — คิวรออนุมัติ · ทะเบียนพนักงาน · สรุป OT ส่งบัญชี แบ่งหน้าแล้ว — 2026-09-11
 
 **ขอมาเป็นประโยคเดียว:** *"ตารางหน้า รออนุมัติ OT เพิ่ม pagination รูปแบบเดียว
 กับที่ app ใช้อยู่แล้ว"* — และคำว่า *รูปแบบเดียวกับที่ app ใช้อยู่แล้ว* คือ**ทั้ง
@@ -8176,11 +8178,18 @@ everybody feels.
 ถูกวาดเฉพาะตอนมีติ๊กเท่านั้น — ระยะที่เผื่อไว้ให้มันจะกลายเป็นพื้นที่ว่างเกือบหนึ่ง
 แถวเต็ม ๆ เหนือแถวแรกของทุกหน้าที่พลิกโดยไม่มีติ๊ก ซึ่งคือส่วนใหญ่
 
-**แถบพกระยะขอบของตัวเองมาด้วย** (`.table-pager.queue-pager`) เพราะการ์ดของจอนี้คือ
-`.card.flush` ที่ `padding: 0` — 18px บนเดสก์ท็อปให้ตรงกับ `.queue-tools` และเซลล์
-ของตาราง, 12px ใต้ 860px ให้ตรงกับการ์ดที่ `tbody` เยื้องไว้ · **เส้นคั่นตั้งใจไม่
+**แถบพกระยะขอบของตัวเองมาด้วย** (`.table-pager.flush-pager`) เพราะการ์ดของจอนี้คือ
+`.card.flush` ที่ `padding: 0` — 18px บนเดสก์ท็อปให้ตรงกับ `.queue-tools`,
+`.card.flush > .card-head` และเซลล์ของตาราง, 12px ใต้ 860px · **เส้นคั่นตั้งใจไม่
 เยื้องตาม** เพราะขอบกินถึงขอบกล่อง มันจึงยังพาดเต็มความกว้างเหมือนเส้นใต้แถวข้างบน
 และตัวควบคุมนั่งอยู่ข้างใน
+
+> **คลาสนี้ชื่อ `.queue-pager` อยู่ไม่กี่ชั่วโมง** จนกระทั่ง สรุป OT ส่งบัญชี ซึ่ง
+> การ์ดเป็น `.card.flush` เหมือนกัน มาเป็นผู้เรียกรายที่สอง — ชื่อที่ผูกกับจอทำให้
+> ทางเดียวที่เหลือคือ `.acct-pager` ที่เขียนเลขสามตัวเดิมซ้ำ ซึ่งคือสำเนาที่จะเริ่ม
+> ไม่ตรงกันวันหนึ่ง · `.queue-pager` ยังอยู่ ถือประกาศเดียวที่เป็นของคิวจริง ๆ คือ
+> `margin-top: 0` ใต้ 860px เพราะแถวของคิวเป็นการ์ดที่ `tbody` เว้นใต้ใบสุดท้ายไว้
+> 12px แล้ว ส่วน `.acct-table` ยังเป็นตารางที่ความกว้างนั้น จึงใช้ 8px ของกฎกลาง
 
 #### และตารางเดียวกันลงใต้ ทะเบียนพนักงาน — วันเดียวกัน
 
@@ -8216,6 +8225,53 @@ everybody feels.
 หน้า 3 จะเด้งคนแก้กลับหน้า 1 ทุกครั้ง · **ไม่ขึ้นตอนค้นแล้วไม่เจอใคร** เพราะ
 `ไม่พบพนักงานที่ตรงกับ "…"` พูดไปแล้ว และแถบที่เขียนว่า `หน้า 1 / 1` ใต้ประโยคนั้น
 คือกรอบรอบประโยค
+
+#### และใต้ สรุป OT ส่งบัญชี — แถบเดียวกัน แต่หน้าไม่ใช่การตัดแถว
+
+**ขอมาคู่กับการถอด `บริษัทที่ N`:** *"หน้ารายงานการเงิน เอาคำว่า บริษัทที่ ออก
+จากหัวตาราง แล้วเพิ่ม pagination"* · ครึ่งแรกคือบรรทัด `.kicker-sm` เหนือชื่อ
+บริษัท ที่ถูกถอดทั้งบรรทัดพร้อมพร็อพ `index` และ `findIndex` ที่ป้อนมัน —
+**ตอนนี้ไม่มีที่ไหนในแอปพูดลำดับของบริษัทอีกแล้ว** ซึ่งเป็นสิ่งที่ตั้งใจ: เลข
+ลำดับมีความหมายได้ก็ต่อเมื่อมีรายการให้นับ และบนแท็บบริษัทเดียวไม่มีรายการนั้น
+
+#### ⚠ Ctrl+P บนจอนี้พิมพ์ตารางนี้ — หน้าจึงเป็นคลาส ไม่ใช่ `.slice()`
+
+**นี่คือตารางเดียวในแอปที่แบ่งหน้าด้วยการซ่อนแถว ไม่ใช่การตัดรายการ** และเหตุผล
+อยู่ใน `app/print.css`: `.acct-table` ถูกจัดรูปใหม่เป็นเอกสารหลายหน้ากระดาษ —
+8pt, `table-layout: auto`, `thead` วาดซ้ำทุกหน้า, `tfoot` ถูกบังคับกลับเป็น
+row group ธรรมดาเพื่อให้ยอดรวมพิมพ์ครั้งเดียว — และนั่นคือเส้นทางที่บัญชีใช้จริง
+
+ถามตรง ๆ ก่อนเขียนว่าสั่งพิมพ์แล้วควรได้อะไร คำตอบคือ **"ครบทุกแถวเหมือนเดิม"**
+ถ้าตัดด้วย `.slice()` ใบที่ส่งให้บัญชีจะมีเฉพาะห้าสิบแถวที่คนเปิดค้างไว้ **โดยไม่มี
+อะไรบนกระดาษบอกว่าขาด** — ใบเงินเดือนที่สั้นไปอย่างเงียบ ๆ
+
+| | |
+|---|---|
+| แถวที่ไม่ได้อยู่บนหน้านี้ | ยังถูกวาดลง DOM ครบ ติดคลาส `off-page` |
+| บนจอ | `.acct-table tbody tr.off-page { display: none; }` |
+| บนกระดาษ | `@media print` คืนเป็น `display: table-row !important` |
+| ตัวแถบเอง | `no-print` — กล่องขอแถวเพิ่มข้างใบที่มีครบแล้วคือคำโกหก |
+
+**`off-page` ไม่ใช่คลาสใหม่** ตรวจสอบรายเดือน ใช้ชื่อนี้อยู่ก่อนแล้วด้วยกลไก
+เดียวกัน (วาดครบ ซ่อนที่ไม่ได้อยู่บนหน้า) ต่างกันที่ที่นั่นซ่อนเฉพาะใต้ 860px ·
+ย่อหน้าใน `app/styles.css` ที่เคยเขียนว่า *"`.off-page` ไม่มีกฎที่ไหนเหนือบรรทัด
+นี้"* ถูกแก้ในคอมมิตเดียวกัน — สิ่งที่ยังห้ามคือกฎที่ไปถึง `.hr-table` และ
+selector `.off-page` เปล่า ๆ ซึ่งกินทุกตารางในแอป
+
+**และเพราะหน้าไม่ได้ตัดแถวออกจากรายการ A PAGE IS NOT A FILTER บนจอนี้จึงฟรี**
+`<tfoot>` (รวมแผนก และ รวมทั้งหมด) สร้างจาก `company.departments` กับ
+`company.totals` ไม่เคยสร้างจากแถว ป้ายสองใบบนหัวการ์ดก็อ่านจาก `totals`
+
+**เริ่มที่ 50 ไม่ใช่ 20** เดือนหนึ่งมักจบในหน้าเดียว — เดือนที่ใช้ทดสอบมีคนได้ OT
+23 คน — แถบจึงส่วนใหญ่ทำหน้าที่บอกว่า *ทั้งหมดมีเท่านี้* และเดือนที่มันตัดจริงคือ
+เดือนที่ไม่มีใครอยากเลื่อนอยู่แล้ว
+
+**แถบหนึ่งอันต่อหนึ่งใบบริษัท** บนแท็บ ทั้งหมด มีสองใบ แต่ละใบถือ `page` ของ
+ตัวเอง และ `goPage` เลื่อนขึ้นหัวตาราง**ของใบที่ถูกกด** ไม่ใช่ยอดรายงาน
+
+**`usePageReset` ผูกกับข้อมูลที่นี่ ซึ่งตรงข้ามกับคำตอบของคิวรออนุมัติ** —
+ต่างกันตรงที่จอนี้ไม่มีอะไรแก้แถวเลย แถวเปลี่ยนเมื่อเปลี่ยนเดือน เปิดงวดสองเดือน
+หรือติ๊ก แสดงพนักงานที่ไม่มี OT ซึ่งทั้งสามแปลว่ากำลังดูคนละรายการ
 
 
 ### นโยบายการพิมพ์ใบขออนุมัติ OT — which rows reach the paper
@@ -11060,9 +11116,12 @@ reported at the top of the screen ("ยังมีรายการค้า�
 the หมายเหตุ column, but never added in. A sheet that reached accounting with
 unconfirmed hours on it would be a payroll error, not a filter preference.
 
-*It is partitioned by company.* One table per entity, labelled บริษัทที่ 1 and
-บริษัทที่ 2, plus a รวมทุกบริษัท table for the covering note when both are
-submitted together. The partition is decided in one place —
+*It is partitioned by company.* One table per entity, each headed by its
+accounting code and short name (`PM · ไพรมัส`) over its legal name, plus a
+รวมทุกบริษัท table for the covering note when both are submitted together.
+(It read "labelled บริษัทที่ 1 and บริษัทที่ 2" until 2026-09-11, when that
+kicker was taken off — *"เอาคำว่า บริษัทที่ ออกจากหัวตาราง"*. Nothing in the app
+numbers the companies now.) The partition is decided in one place —
 `companyOf()` — as stored field → code prefix → `DEFAULT_COMPANY`, so a
 database that predates `npm run migrate:company` (where `company` is unset)
 still splits correctly instead of filing everybody under one entity.
@@ -11220,10 +11279,12 @@ now `PM · ไพรมัส · Primus Instrument Co., Ltd.`, the tail in `.cel
 shared class beside `.cell-sub`, which is the same quiet 12px `--muted` note
 UNDER a line; this one sits beside it and is `--sans`, because `.cell-sub` is
 mono for employee codes and a legal name is not one. **`บริษัทที่ N` went and the
-legal name stayed**: the ordinal is what the row's own position already says and
-the company's own sheet carries it as a kicker further down, while the legal
-name is the one thing on the row that cannot be read off it — and this is the
-table that goes on the covering note.
+legal name stayed**: the ordinal is what the row's own position already says,
+while the legal name is the one thing on the row that cannot be read off it —
+and this is the table that goes on the covering note. (That reason also read
+"and the company's own sheet carries it as a kicker further down" until later
+the SAME DAY, when the kicker went too. The half that mattered is the other
+half: an ordinal is not the thing a reader cannot work out.)
 
 **Its six columns declare widths too, and for the same reason the seven above
 do.** Only บริษัท (the shared 168) and the three rate columns did; measured in a
@@ -13010,8 +13071,10 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2630 tests**, about 4 s, measured 2026-09-11 across 145
-  files, all green. It read **"2621 tests … across 145"** until ทะเบียนพนักงาน
+- `npm test` — **2636 tests**, about 4 s, measured 2026-09-11 across 145
+  files, all green. It read **"2630 tests … across 145"** until สรุป OT ส่งบัญชี
+  took the band later the same day — six cases as §13 of `tablePager`, no new
+  file. Before that it read **"2621 tests … across 145"** until ทะเบียนพนักงาน
   took the shared pager the same day — seven cases as §12 of `tablePager`, no
   new file, and two of the nine were already on disk unmeasured. Before that it
   read **"2610 tests … across 144"** until สถานะที่นับ

@@ -1618,6 +1618,14 @@
     display: table-header-group;
   }
 
+  /* ⚠ THE PAGE THE SCREEN WAS LEFT ON MEANS NOTHING HERE — 2026-09-11.
+     สรุป OT ส่งบัญชี pages its table by hiding rows rather than by cutting the
+     list (`.acct-table tbody tr.off-page` in app/styles.css), for this rule's
+     sake: the document below is the month, and a reader who had page 2 open
+     must not hand accounting a sheet with the first fifty people missing. The
+     band itself is `no-print`, so nothing on paper claims a page at all. */
+  .acct-table tbody tr.off-page { display: table-row !important; }
+
   /* ⚠ AND tfoot IS FORCED BACK TO A NORMAL ROW GROUP, which is the one rule
      here that goes against the browser's default rather than with it.
      `tfoot` defaults to `table-footer-group`, so a browser repeats it at the

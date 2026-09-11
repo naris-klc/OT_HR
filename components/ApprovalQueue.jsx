@@ -2175,7 +2175,7 @@ export default function ApprovalQueue({
         */}
         {shown.length > 0 && (
           <TablePager
-            className="queue-pager no-print"
+            className="flush-pager queue-pager no-print"
             label={queueName}
             page={at}
             pageSize={pageSize}

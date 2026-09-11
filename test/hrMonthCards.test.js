@@ -675,11 +675,28 @@ test('the pager sits under the fifth card, above the total, and disables its end
   // The disabled ends wear what every other disabled button in this app wears.
   assert.ok(!/pager-controls \.btn:disabled/.test(phone), 'the pager opted out of the app’s disabled treatment');
 
-  // And the desktop hides the whole row while leaving `.off-page` unstyled —
-  // one `display: none` written there by mistake takes fifty-five people out of
-  // the desktop month.
+  /**
+   * And the desktop hides the whole row while leaving THIS TABLE'S `.off-page`
+   * unstyled — one `display: none` written there by mistake takes fifty-five
+   * people out of the desktop month.
+   *
+   * IT READ `!desktop.includes('.off-page {')` UNTIL 2026-09-11, which banned
+   * the string rather than the rule. `.off-page` stopped being this screen's
+   * private class that day: สรุป OT ส่งบัญชี pages `.acct-table` by the same
+   * mechanism — every row drawn, the ones off the page hidden — because its
+   * table is also a printed document and a `.slice()` would cut the paper copy
+   * short. Two tables, one word for "not on this page", and each says which
+   * rows it means.
+   *
+   * So the ban is now the two shapes that would actually reach this table: a
+   * bare `.off-page` selector, which reaches every table in the app, and any
+   * rule that names `.hr-table`.
+   */
   assert.match(desktop, /\.hr-table tbody tr\.pager-row \{ display: none; \}/);
-  assert.ok(!desktop.includes('.off-page {'), 'the paging reached the desktop table');
+  assert.ok(!/(^|[\s,])\.off-page\s*\{/m.test(desktop),
+    'an unqualified .off-page rule — it reaches every table in the app, this one included');
+  assert.ok(!/\.hr-table[^{,]*\.off-page\s*\{/.test(desktop),
+    'the paging reached the desktop table');
 });
 
 test('the pager is drawn on every month, including the ones that fit', () => {
