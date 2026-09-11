@@ -76,6 +76,29 @@ export default function ScanCompareCard({
   onToggleFlagged = null,
   /** Open the import card — the one thing to do about state 1. */
   onOpenImport = null,
+  /**
+   * Is the import drawer open on the screen right now?
+   *
+   * ⚠ THIS CARD GETS OUT OF THE WAY WHEN IT IS — 2026-09-11, *"ปุ่มนำเข้าไฟล์
+   * สแกน ซ้ำซ้อนหลายที่เยอะจัง"*, against a screenshot with three of them
+   * stacked in 150px: the head's ไฟล์สแกน ▲, this card's นำเข้าไฟล์สแกน,
+   * and the drawer's own นำเข้าไฟล์สแกน (.txt) — of which only the last one
+   * opens a file dialog. The other two open a drawer that was already open, so
+   * pressing either did nothing at all.
+   *
+   * SO THE POINTER STANDS DOWN WHEN THE THING IT POINTS AT IS ON SCREEN. State
+   * 1 draws nothing while the drawer is open (decided the same day: the drawer
+   * says นำเข้าแล้ว 0 จาก 4 ไฟล์ one line lower, which is the same fact with
+   * the file picker beside it), and the ยังไม่ได้นำเข้าของบริษัท… line in
+   * states 2 and 3 keeps its sentence and loses its button.
+   *
+   * ⚠ AND IT IS A PROP AND NOT A TERNARY AT THE CALLER. `onOpenImport` reads
+   * `{() => setScanOpen(true)}` in components/HrView.jsx and a test pins that
+   * literal, for the reason the block over it gives: this button OPENS and does
+   * not toggle. What changes here is what this card DRAWS, which is this card's
+   * to decide.
+   */
+  importOpen = false,
 }) {
   /**
    * A month still loading claims nothing. The state this card exists to name is
@@ -126,6 +149,10 @@ export default function ScanCompareCard({
    * information rather than restating the headline.
    */
   if (!punchCount) {
+    // Nothing to point at while the thing being pointed at is open — see
+    // `importOpen`. The drawer one line below says the same thing and holds the
+    // button that answers it.
+    if (importOpen) return null;
     return (
       <div className="scan-compare no-print">
         <Alert kind="info" mark={false}>
@@ -234,7 +261,10 @@ export default function ScanCompareCard({
               {' — '}แถวของบริษัทนั้นยังไม่ได้ถูกเทียบกับอะไร และไม่ได้นับอยู่ในตัวเลขข้างล่าง
               {' · '}ยืนยันได้ตามปกติ
             </span>
-            {onOpenImport && (
+            {/* The sentence stays whatever the drawer is doing — it names
+                which half of the month these numbers are not about. The BUTTON
+                goes while the drawer is open: it opens what is open. */}
+            {onOpenImport && !importOpen && (
               <button type="button" className="btn ghost sm" onClick={onOpenImport}>
                 นำเข้าไฟล์สแกน
               </button>

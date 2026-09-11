@@ -1471,6 +1471,11 @@ export default function HrView({
                  also close it would be a second answer to a question the head's
                  own `scan-toggle` already owns. */
               onOpenImport={() => setScanOpen(true)}
+              /* …and it draws neither that button nor the ยังไม่ได้เทียบ row
+                 itself while the drawer is open, which is the state the
+                 2026-09-11 screenshot caught: two controls that open a drawer,
+                 stacked above the drawer, open. */
+              importOpen={scanOpen}
             />
           )}
 

@@ -7037,7 +7037,9 @@ to open the person, and since earlier the same day the row itself is what opens.
 > **A month with no scan file at all is NOT blocked** — decided the same day.
 > The comparison points at rows; it does not hold a gate, and a month whose
 > file arrives late is not a month that cannot be closed. The notice in the card
-> says `ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ — ไม่ได้แปลว่าทุกแถวตรง · ยืนยันได้ตามปกติ`
+> says `ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ — ไม่ได้แปลว่าทุกแถวตรง · ยืนยันได้ตามปกติ` — unless
+> the import drawer is open on the same screen, in which case that row is not
+> drawn at all and the drawer says it (§หัวลิ้นชักเป็นแถวเดียว below)
 > instead, because from a table with no marks on it that state and "every row
 > agrees" are indistinguishable. *(It read "in the largest type on the page"
 > until 2026-09-11 — it is one row now; see §คอลัมน์สแกน above.)*
@@ -7703,7 +7705,10 @@ cost every item a line.
 1. **The heading and its figures are one baseline-aligned row.** `ไฟล์สแกนนิ้วมือ`
    is two words on a line as wide as the card, sitting over the line that says
    everything about the drawer — the month, how many of the four arrived, how
-   many scans. One line back for nothing.
+   many scans. One line back for nothing. *(That row holds `อ่านต่อ` and the
+   file picker as well since later the same day — §หัวลิ้นชักเป็นแถวเดียว
+   below, which is also where `.scan-head-text` stopped being a flex of its
+   own.)*
 2. **The four slots are a 2×2 grid.** They spent four lines and a fifth of the
    width; the thing they describe **is** a grid — two machines × two companies —
    so two columns is half the height and the shape of the fact at once. One
@@ -7731,6 +7736,62 @@ first line looks wrong.
 **ยืนยันนำเข้า and ยกเลิก come up onto the title row** in `.scan-line` — the same
 row ผลเทียบ's first state uses, one sentence with its controls on the right — and
 below 640px the stylesheet hands both the full width at 44px.
+
+#### หัวลิ้นชักเป็นแถวเดียว — and one press per state, not three
+
+**2026-09-11, an hour after the round above:** *"ปุ่ม อ่านต่อ สำหรับคำอธิบาย ย้ายไป
+อยู่แถวเดียวกับ หัวข้อ และปรับคำอธิบายให้กระชับขึ้น แต่ได้ใจความสำคัญครบถ้วน"*, and, with a
+screenshot of the open drawer: *"ปุ่มนำเข้าไฟล์สแกน ซ้ำซ้อนหลายที่เยอะจัง"*.
+
+**1 — `อ่านต่อ` is in the head row; what it opens is not.** `Disclosure`
+renders ONE wrapper holding both its body and its toggle, and this head needs
+them in two places. `display: contents` on `.scan-drawer-head > .disclosure`
+hands both to the head's flex row and `order` seats them: the toggle after the
+figures, `นำเข้าไฟล์สแกน (.txt)` at the far end, and the five explanatory
+bullets on a full-width line under all of it. It is the mechanism
+`.manual-intro-head` uses for the same shape on คู่มือ.
+
+> **`.scan-head-text` is `display: contents` now and was `flex: 1`.** It held
+> the heading and the figures as a row *inside* the head's row, which is one
+> nested flex too many the moment a third item has to sit beside them: a
+> control in the inner box wraps with the figures, and outside it wraps against
+> a block rather than against words. Dissolved, everything in the head is an
+> item of one row that wraps — and at 390px it breaks wherever it has to,
+> nothing shortened and nothing truncated. The `<div>` stays because that is
+> what the markup asserts; the file picker takes a 44px line of its own below
+> 640px, being the one thing in this drawer a finger has to hit.
+
+**2 — the explanation is shorter and still five facts.** Each bullet answers a
+question somebody has asked out loud — does importing move my numbers, how many
+files is a month, how does it know which machine and which company, what happens
+if I import the same day twice, why is there no in/out — so all five stayed. What
+went is the second telling of each: the clauses that restated the count line
+above them, the list of what *รายงานทุกใบ* means, and a claim and its own proof
+sitting one line apart as two bullets (*ระบบดูออกเองว่าไฟล์ไหนเป็นของเครื่องไหน
+บริษัทไหน* was the tail of one bullet and the next bullet was how it does
+that). `test/monthScanColumn.test.js` counts the `<li>`s and names the eight
+phrases, because *กระชับ* is not *ตัดออก* and the next round of it will be asked
+for by somebody who cannot see this paragraph.
+
+**3 — nothing offers to open a drawer that is open.** Three controls said
+`นำเข้าไฟล์สแกน` within 150px of each other in that screenshot: `ไฟล์สแกน ▲`
+on the card head, the button in `ScanCompareCard`'s blue row, and the drawer's
+own `นำเข้าไฟล์สแกน (.txt)` — and only the last one opens a file dialog. The
+other two open the drawer, which was already open, so pressing either did
+nothing at all.
+
+The card takes `importOpen` and gets out of the way while it is true: state 1
+(`ยังไม่ได้เทียบ…`) draws nothing, because the drawer one line below says
+`นำเข้าแล้ว 0 จาก 4 ไฟล์` with the picker beside it; the
+`ยังไม่ได้นำเข้าของ…` row in states 2 and 3 keeps its sentence — it names the
+half of the month those numbers are not about — and loses only its button. Shut
+the drawer and both are back, one press from the problem to the thing that
+answers it.
+
+> **The head's `ไฟล์สแกน ▾` stays, and it is the only one that never moves.**
+> It is the way in from every state, including the green one where no notice
+> offers anything — a reader re-importing a file in a month that came back
+> clean has no other door.
 
 ### สี่จอรายงานเป็นการ์ดใบเดียวกัน — 2026-09-10
 
