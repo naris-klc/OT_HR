@@ -2176,6 +2176,19 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    under it would put two on one seam. */
 .month-notices:empty + .scan-drawer { border-top: 0; }
 
+/* ── สรุปสถานะงวด — a `.box`, and the band's other notices are too ─────────
+
+   ⚠ IT HAD NO GROUND OF ITS OWN UNTIL 2026-09-11: `display: flex` down a
+   column, the ⚠ and the headline tinted `--amber-ink` by a `.outstanding`
+   class, the tick `--green` by a `.clear` one, and nothing behind either.
+
+   *"เปลี่ยนแจ้งเตือนนี้ … ให้เป็นสไตล์เดียวกับแจ้งเตือนด้านล่าง"* — the cream band
+   สรุป OT ส่งบัญชี and สรุปแผนก carry, which is `.box.warn` unmodified and is
+   THE SAME SENTENCE ABOUT THE SAME QUEUE said one screen later. The palette,
+   the fill, the border and the 13.5/1.6 all come from `.box` now; `warn` and
+   `ok` are chosen in the JSX and the two hand-tinted classes are gone with the
+   colours they carried. What is left here is only what a notice with a fold
+   needs on top of a box. */
 .period-strip { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
 /* ── ผลเทียบกับไฟล์สแกนนิ้วมือ — the summary card above the strip ──────────
@@ -2260,39 +2273,26 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    headline wrapped across two more, and รายละเอียด landed on a fourth. It is a
    sentence with a glyph at the front and a link at the end, so it wraps the way
    a sentence does — the mark stays with the first word and the link follows the
-   last one. */
-.period-strip .strip-line { font: 400 13px/1.5 var(--sans); color: var(--muted); }
-.period-strip .strip-head { font: 600 13px/1.5 var(--sans); color: var(--ink); }
+   last one.
+
+   THAT IS WHY รายละเอียด COULD MOVE ONTO THIS LINE AT ALL on 2026-09-11
+   (*"กระชับให้แสดงใน 1 แถว"*): the row it came from was a second flex row, and
+   the thing that had to be avoided was making it a third flex ITEM. As a word
+   in the sentence it costs nothing at any width.
+
+   NO COLOUR AND NO SIZE OF ITS OWN — `.box.warn` / `.box.ok` set both, and a
+   `13px` restated here would be a second opinion about the size of a band this
+   screen shares with สรุปแผนก. Only the weight is this rule's business. */
+.period-strip .strip-head { font-weight: 600; }
 /* Non-breaking space either side of the glyph, in CSS rather than in the JSX:
    the mark and the first word are one unit and must not be split. */
-.period-strip .strip-mark { font-size: 13px; margin-right: 4px; }
-/* รายละเอียด and ไฟล์สแกนนิ้วมือ, one row under the headline, lined up under
-   its first word (the ⚠ is 13px + 4px). Wraps to two lines before it squeezes. */
-.period-strip .strip-actions { display: flex; flex-wrap: wrap; gap: 2px 18px; padding-left: 17px; }
-.period-strip.outstanding .strip-mark,
-.period-strip.outstanding .strip-head { color: var(--amber-ink); }
-.period-strip.clear .strip-mark { color: var(--green); }
-/* The detail, and the scan panel's toggle, are the same control twice — a
-   quiet inline verb, not a button. `.btn.ghost` here would put two more
-   bordered slabs on the line this round exists to empty. */
-.strip-more {
-  background: none; border: 0; padding: 0; cursor: pointer;
-  font: 500 12.5px/1.5 var(--sans); color: var(--green-dark);
-  text-decoration: underline; text-underline-offset: 2px;
-}
-.strip-more:hover { color: var(--green); }
-/* NO `:focus-visible` RULE HERE. The base ring in the pressed-state section is
-   already `outline: 2px solid var(--green); outline-offset: 2px` on everything,
-   and test/pressChrome.test.js fails the build for restating it — a copy is not
-   wrong the day it is written, it is wrong the day the base ring changes and
-   nine controls do not. Only the radius the ring rounds to is this rule's
-   business, and a text button has none to declare. */
-.period-strip .strip-detail {
-  padding: 8px 12px; border-left: 2px solid var(--line);
-  background: var(--neutral-wash); border-radius: 0 var(--radius) var(--radius) 0;
-}
-.period-strip .strip-detail .hint { margin-bottom: 0; }
-.period-strip.outstanding .strip-detail { border-left-color: var(--amber-line); }
+.period-strip .strip-mark { margin-right: 4px; }
+/* ⚠ `.strip-more` AND `.strip-detail` WERE HERE AND ARE GONE — 2026-09-11.
+   An underlined verb that opened a panel under the row, and the panel. The row
+   says the whole of itself now (*"ให้กระชับ ได้ใจความในแถวเดียว … เลยไม่ต้องกด
+   ซ่อนแสดงรายละเอียด"*), so there is no control and nothing for it to open. The
+   full-card shape of this component never used either rule; it prints the same
+   content as ordinary `.hint` lines. */
 
 /* ══ THE CONTROLS AND THE ROWS THEY DECIDE, IN ONE CARD ═════════════════════
 

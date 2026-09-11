@@ -298,3 +298,93 @@ test('the card prints the consequence, not the whole sentence, under the headlin
   const card = read('components/PeriodStatus.jsx');
   assert.match(card, /state\.outstanding\.length > 1 \? `\$\{item\.short\} — \$\{item\.why\}` : item\.why/);
 });
+
+/**
+ * ── แถบ สรุปสถานะงวด — หนึ่งแถว และเป็นกล่องแบบเดียวกับที่อีกสองจอใช้ ────────
+ *
+ * 11 ก.ย. 2569: *"เปลี่ยนแจ้งเตือนนี้ และกระชับให้แสดงใน 1 แถว … ให้เป็นสไตล์
+ * เดียวกับแจ้งเตือนด้านล่าง"* พร้อมภาพแถบครีมของ สรุปแผนก —
+ * *ยังมีรายการค้างอนุมัติ 8 รายการ … ซึ่งไม่ถูกนับในสรุปนี้*
+ *
+ * เป็นประโยคเรื่องคิวเดียวกัน พูดก่อนหน้านั้นหนึ่งจอ จึงไม่มีเหตุผลที่จะเป็นวัตถุ
+ * คนละทรง
+ */
+test('แถบงวดเป็น .box และเลือกจานสีตามสถานะ ไม่ได้ทาสีเอง', () => {
+  const card = read('components/PeriodStatus.jsx');
+  const css = read('app/styles.css');
+
+  assert.match(card, /className=\{`period-strip box \$\{state\.clear \? 'ok' : 'warn'\}`\}/);
+
+  // จานสีที่ยืมมาต้องมีอยู่จริง และเป็นจานเดียวกับที่แถบของ สรุปแผนก ใส่
+  assert.match(css, /^\.box\.warn \{ background: var\(--amber-bg\);/m);
+  assert.match(css, /^\.box\.ok \{ background: var\(--green-bg\);/m);
+  assert.match(read('components/DepartmentView.jsx'), /className="box warn no-print"/);
+
+  /* ⚠ สองคลาสที่เคยทาสีด้วยมือต้องหายไปจริง ไม่ใช่แค่ไม่ถูกใส่ — ยึดต้นบรรทัด
+     เพราะคอมเมนต์ที่อธิบายว่ามันถูกถอดออกไปแล้ว เอ่ยชื่อมันอยู่ */
+  assert.ok(!/^\.period-strip\.(outstanding|clear)/m.test(css), 'กฎสีที่ทาเองยังอยู่');
+  /* เฉพาะทรง `compact` ซึ่งเป็นทรงเดียวที่มีคนเรียกใช้ · ทรงการ์ดเต็มใบด้านล่าง
+     ยังแจก `.clear`/`.outstanding` อยู่ และไม่มีกฎสีรองรับแล้ว — ไม่ได้แก้ในรอบนี้
+     เพราะไม่มีจอไหนวาดมัน และการแก้จอที่ไม่มีใครเห็นคือการเดา */
+  const compact = card.slice(card.indexOf('if (compact) {'), card.indexOf('card period-status'));
+  assert.ok(!compact.includes("'clear' : 'outstanding'"), 'ยังแจกคลาสสีเอง');
+
+  // และแถบไม่พูดเรื่องขนาดตัวอักษรหรือสีซ้ำ `.box` เป็นคนบอก
+  for (const rule of ['.period-strip .strip-head', '.period-strip .strip-mark']) {
+    const at = css.indexOf(`${rule} {`);
+    assert.ok(at > 0, `หากฎ ${rule} ไม่เจอ`);
+    const body = css.slice(at, css.indexOf('}', at));
+    assert.ok(!/font:|color:/.test(body), `${rule} ออกความเห็นเรื่องสีหรือขนาดซ้ำ`);
+  }
+});
+
+test('แถวเดียวพูดครบ ไม่มีอะไรถูกพับไว้', () => {
+  const card = read('components/PeriodStatus.jsx');
+  const css = read('app/styles.css');
+
+  /* 11 ก.ย. 2569 สองก้าว: *"กระชับให้แสดงใน 1 แถว"* ย้ายคำกริยาเข้าไปในประโยค
+     แล้ว *"ให้กระชับ ได้ใจความในแถวเดียว กันกับแจ้งเตือน เลยไม่ต้องกดซ่อนแสดง
+     รายละเอียด"* เอาคำกริยาออกไปด้วย
+
+     ⚠ สิ่งที่ฝาพับปิดไว้มีแค่ประโยคผลที่ตามมาหนึ่งวรรค กับตัวเลขของเดือนก่อน —
+     สองอย่างที่เป็น *เหตุผล* ว่าทำไมหัวข้อถึงสำคัญ และทั้งคู่สั้นกว่าตัวควบคุม
+     ที่ปิดมันไว้ */
+  assert.ok(!card.includes('className="strip-actions"'), 'ยังมีแถวที่สองอยู่');
+  assert.ok(!card.includes('className="strip-more"'), 'ยังมีปุ่มพับอยู่');
+  // `setOpen(` กับวงเล็บ ไม่ใช่ชื่อเปล่า ๆ — คอมเมนต์ที่บันทึกว่ามันถูกถอดออก
+  // เอ่ยชื่อ `setOpen]` อยู่ในบรรทัดของมันเอง
+  assert.ok(!card.includes('setOpen('), 'ยังมีสถานะพับอยู่');
+  assert.ok(!/^\.period-strip \.strip-(actions|detail)/m.test(css), 'กฎของส่วนที่ถูกพับยังอยู่');
+  assert.ok(!/^\.strip-more \{/m.test(css), 'กฎของปุ่มพับยังอยู่');
+
+  // ทุกอย่างอยู่ในกล่องประโยคเดียวกัน
+  const line = card.slice(card.indexOf('<div className="strip-line">'));
+  const body = line.slice(0, line.indexOf('</div>'));
+  assert.match(body, /className="strip-mark"/);
+  assert.match(body, /className="strip-head"/);
+  // ผลที่ตามมา — `why` ตัวเดียวเมื่อมีกองเดียว เพราะหัวข้อถือตัวเลขไปแล้ว
+  assert.match(body, /state\.outstanding\.length > 1 \? item\.text : item\.why/);
+  // ควรตรวจก่อนพิมพ์ ตามหลังกองที่ค้าง และไม่เคยขึ้นหัวข้อ
+  assert.match(body, /ควรตรวจก่อนพิมพ์ \(ไม่ได้ค้างใคร\)/);
+  // เดือนก่อน พร้อมทางไป — เอ่ยชื่อช่อง ไม่ใช่ทิศทาง
+  assert.match(body, /<strong>เดือนก่อน · \{periodLabel\(previousPeriod\(period\)\)\}<\/strong>/);
+  assert.match(body, /\{lastMonthShorts\} — เลือกที่ช่อง ประจำเดือน/);
+
+  /* ⚠ ประโยคของเดือนก่อนถูกสร้างครั้งเดียว ทรงการ์ดเต็มใบอ่านตัวเดียวกัน — สอง
+     `.map(...).join(' และ ')` คือสำเนาที่สองที่ถูกแก้ และสำเนาแรกที่ไม่ถูกแก้ */
+  assert.equal((card.match(/lastMonthShorts/g) || []).length, 3);
+  assert.match(card, /const lastMonthShorts = lastMonth/);
+});
+
+test('รายละเอียดของเดือนก่อนยังครบ ไม่ได้ถูกตัดทิ้งตอนย่อ', () => {
+  // "กระชับ" ไม่ใช่ "ตัดออก" · สามบรรทัดที่เคยอยู่หลังฝาพับต้องยังอยู่ในแถว
+  const card = read('components/PeriodStatus.jsx');
+  const line = card.slice(card.indexOf('<div className="strip-line">'));
+  // ⚠ ตัดคอมเมนต์ทิ้งก่อน — ย่อหน้าที่อธิบายว่าวรรคไหนถูกตัดออก เอ่ยวรรคนั้นอยู่
+  const body = line.slice(0, line.indexOf('</div>')).replace(/\{?\/\*[\s\S]*?\*\/\}?/g, '');
+  for (const piece of ['item.why', 'item.text', 'lastMonthShorts', 'previousPeriod(period)']) {
+    assert.ok(body.includes(piece), `${piece} หายไปจากแถว`);
+  }
+  // ที่ตัดคือ "เพื่อตรวจก่อนพิมพ์" ซึ่งเป็นเหตุผลของทั้งแจ้งเตือน ไม่ต้องพูดซ้ำข้างใน
+  assert.ok(!body.includes('เพื่อตรวจก่อนพิมพ์'), 'ยังพูดซ้ำว่าแจ้งเตือนนี้มีไว้ทำไม');
+});

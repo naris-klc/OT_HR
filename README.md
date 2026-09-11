@@ -7533,6 +7533,65 @@ tint is two washes arguing. The children's own vertical margins are zeroed
 (`.month-notices > *`) so the column's `gap` is the only rhythm — three of the
 four carried margins from the days they floated on the page.
 
+#### แถบ งวด… เป็นกล่องแบบเดียวกับ ค้างอนุมัติ และเหลือแถวเดียว
+
+**2026-09-11:** *"เปลี่ยนแจ้งเตือนนี้ และกระชับให้แสดงใน 1 แถว … ให้เป็นสไตล์
+เดียวกับแจ้งเตือนด้านล่าง"*, with the cream band สรุปแผนก and สรุป OT ส่งบัญชี
+carry over their totals in the picture — *ยังมีรายการค้างอนุมัติ 8 รายการ … ซึ่ง
+ไม่ถูกนับในสรุปนี้*.
+
+**It is the same sentence about the same queue, said one screen earlier**, so it
+had no business being a differently-shaped object. `.period-strip` had no ground
+of its own until that day: a flex column, the ⚠ and the headline tinted
+`--amber-ink` by an `.outstanding` class and the tick `--green` by a `.clear`
+one. It is a **`.box`** now — the app's four-palette band, worn unmodified by
+both of those screens — and the two hand-tinted classes are gone with the colours
+they carried.
+
+**Both states take a palette: `warn` while something is outstanding, `ok` when
+nothing is.** A green band is the answer to the question this component exists to
+ask before somebody prints; leaving the clear month blank would put *checked,
+nothing pending* and *not loaded* back to looking identical, which is the failure
+the component was written against in the first place.
+
+**⚠ Nothing is folded away in it any more, and there is no verb either.** It was
+a headline row, a `.strip-actions` row under it and a panel behind
+**รายละเอียด** — three lines tall before anything was opened, in a band whose
+other notices are one. It came out in two steps the same day: *"กระชับให้แสดงใน
+1 แถว"* moved the verb into the sentence, and *"ให้กระชับ ได้ใจความในแถวเดียว
+กันกับแจ้งเตือน เลยไม่ต้องกดซ่อนแสดงรายละเอียด"* took the verb away as well.
+
+**The fold was not protecting much.** What it hid was one consequence clause
+(`ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา`) and last month's count — two facts,
+both of them the reason the headline matters, and both shorter than the control
+that hid them. A notice whose whole point is *read this before you print*, that
+makes the reader press to find out why, is one half of them will not finish.
+
+The row now reads:
+
+> ⚠ **งวด กันยายน 2569 — มีใบรออนุมัติค้างอยู่ 8 ใบ** · ยังไม่มีชื่อผู้อนุมัติในใบ OT
+> ที่พิมพ์ออกมา · **เดือนก่อน · สิงหาคม 2569** มีใบรออนุมัติค้างอยู่ 298 ใบ —
+> เลือกที่ช่อง ประจำเดือน
+
+**Everything in it is text in one flow, not flex items** — which is the whole
+reason it fits. As separate items this row broke *between the items* at 390px:
+the glyph took a line to itself, the headline wrapped across two more, the verb
+landed on a fourth. Written as a sentence it wraps the way a sentence wraps.
+
+**Two phrases were cut and only two.** `เพื่อตรวจก่อนพิมพ์` — which is what the
+entire notice is for, and does not need saying again inside it — and the word
+`เดือนนั้น`, because the clause already names the month. Every counted fact that
+was behind the fold is in the row. `why` and not `text` after the headline, for
+the reason the old panel used it: the headline four words back already carries
+the count, and printing both read as a bug rather than as emphasis. Two
+outstanding kinds at once get their `short` back, because then the headline holds
+two counts and two bare consequences after it would be a matching exercise.
+
+> **`lastMonthShorts` is built once and read by both shapes.** The full-card
+> shape gives last month two lines and the row gives it a clause — that is
+> layout. The sentence is one, and a second `.map(…).join(' และ ')` in the other
+> branch is the copy that gets fixed while the first one does not.
+
 ### สี่จอรายงานเป็นการ์ดใบเดียวกัน — 2026-09-10
 
 **Reported the same afternoon as the declutter above, in one sentence:**
