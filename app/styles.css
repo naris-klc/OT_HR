@@ -2176,6 +2176,37 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    under it would put two on one seam. */
 .month-notices:empty + .scan-drawer { border-top: 0; }
 
+/* ── ไฟล์สแกนนิ้วมือ — ONE LINE OF HEAD, AND THE FOUR SLOTS IN TWO COLUMNS ──
+
+   *"ปรับการแสดงผลส่วนนี้ให้กระชับ แต่ยังได้รายละเอียดครบถ้วน และใช้พื้นที่อย่าง
+   คุ้มค่าที่สุด"* (2026-09-11).
+
+   The heading is two words on a line the width of the card, with the line that
+   says everything about the drawer — the month, how many of the four arrived,
+   how many scans — underneath it. Baseline-aligned on one row they read as one
+   sentence and give the line back. `wrap` because at 390px they are two lines
+   again, which is the right answer there. */
+.scan-head-text {
+  flex: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
+  min-width: 0;
+}
+
+/* ── ⚠ TWO COLUMNS, BECAUSE THE THING IT DESCRIBES IS A GRID ───────────────
+
+   Two machines × two companies. Four stacked rows spent four lines and about a
+   fifth of a drawer 900px wide; this is half the height and the shape of the
+   fact at the same time.
+
+   `minmax(0, 1fr)` and not `1fr`: a filled slot's line is a filename and four
+   figures, and a `1fr` track refuses to be narrower than its content, which
+   would push the second column off the card rather than wrap the first.
+
+   ONE COLUMN AGAIN AT 640px — see the phone block. Two columns of a sentence
+   that wraps three times each is worse than four rows, which is the layout this
+   replaces. */
+.scan-slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 22px; }
+.scan-slot { margin: 0; }
+
 /* ── สรุปสถานะงวด — a `.box`, and the band's other notices are too ─────────
 
    ⚠ IT HAD NO GROUND OF ITS OWN UNTIL 2026-09-11: `display: flex` down a
@@ -2264,6 +2295,14 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
      sentence: below 640px it takes the second line whole. */
   .scan-line { align-items: stretch; }
   .scan-line .btn { flex: 1 1 100%; min-height: 44px; }
+  /* ตรวจก่อนนำเข้า puts ยืนยัน and ยกเลิก in a `.row` on that same line since
+     2026-09-11; the rule above reaches the buttons and not the box holding
+     them, so the box has to be told to take the width as well or the two
+     44px buttons sit in a shrink-to-fit span. */
+  .scan-line > .row { flex: 1 1 100%; }
+  /* Two columns of a sentence that wraps three times each is worse than the
+     four rows this replaced. */
+  .scan-slots { grid-template-columns: 1fr; }
   .scan-tally { gap: 4px 12px; font-size: 12.5px; }
 }
 

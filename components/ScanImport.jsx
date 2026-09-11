@@ -188,10 +188,16 @@ export default function ScanImport({
        now, between the notices and the filter bar. A drawer with a `.card` root
        nested in a card is the shape this element can no longer be in. */
     <section className="scan-drawer no-print">
+      {/* ── ⚠ THE TITLE AND ITS FIGURES ARE ONE LINE — 2026-09-11 ───────────
+          *"ปรับการแสดงผลส่วนนี้ให้กระชับ แต่ยังได้รายละเอียดครบถ้วน และใช้พื้นที่
+          อย่างคุ้มค่าที่สุด"*. They were a heading with a `.hint` under it, and
+          the heading is two words on a line 900px wide — a line spent saying
+          what the drawer is called, over a line that says everything about it.
+          One baseline-aligned row costs nothing and gives a line back. */}
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ flex: 1 }}>
+        <div className="scan-head-text">
           <h3 style={{ margin: 0 }}>ไฟล์สแกนนิ้วมือ</h3>
-          <div className="hint" style={{ margin: '2px 0 0' }}>
+          <div className="hint" style={{ margin: 0 }}>
             {periodLabel(period)}
             {/* HOW MANY OF THE FOUR, NOT HOW MANY FILES. A month brings one file
                 per machine per company, so "นำเข้าแล้ว 3 ไฟล์" is a number a
@@ -201,14 +207,23 @@ export default function ScanImport({
                 server built; `batches.length` is the fallback for a month
                 answered before the grid existed. */}
             {grid
+              /* ⚠ `(ไม่ต้องครบก็ได้)` MOVED UP HERE ON 2026-09-11, out of the
+                 four rows below that each carried it as `(ไม่บังคับ)`. It is a
+                 fact about the MONTH — HR, 2026-09-04: a machine may not have
+                 been emptied, a company may have had nobody on it — so saying
+                 it four times, once per empty row, was the same sentence
+                 repeated at the reader until it stopped being read. Said once,
+                 beside the count it qualifies. */
               ? ` · นำเข้าแล้ว ${grid.slots.length - grid.missing.length} จาก ${grid.slots.length} ไฟล์`
+                + ' (ไม่ต้องครบก็ได้)'
                 + ` · ${punchCount ?? 0} รายการสแกน`
               /* "จาก 4" IS A MAP, NOT A TARGET. HR said on 2026-09-04 that a
                  month does not have to have all four — a machine may not have
-                 been emptied, a company may have had nobody on it. So the empty
-                 rows read ยังไม่ได้นำเข้า (ไม่บังคับ) and nothing on this card
-                 counts them as outstanding: the comparison below runs on
-                 whatever arrived. */
+                 been emptied, a company may have had nobody on it. So nothing
+                 on this card counts the empty rows as outstanding — the
+                 comparison below runs on whatever arrived — and the line above
+                 says so in the qualifier beside the count. It was said on each
+                 empty row instead until 2026-09-11. */
               : batches !== null && (
                 batches.length
                   ? ` · นำเข้าแล้ว ${batches.length} ไฟล์ · ${punchCount ?? 0} รายการสแกน`
@@ -289,8 +304,52 @@ export default function ScanImport({
       {pending && (
         <div style={{ marginTop: 10 }}>
           <Alert kind={!readable ? 'error' : (mismatch || pending.summary.errorCount ? 'warn' : 'ok')}>
-            <strong>ตรวจก่อนนำเข้า</strong> — {pending.file.name}
-            {' · '}{pending.summary.lineCount} บรรทัด
+            {/* ── ⚠ FOUR LINES BECAME TWO — 2026-09-11 ──────────────────
+                *"ปรับการแสดงผลส่วนนี้ให้กระชับ แต่ยังได้รายละเอียดครบถ้วน"*. It was
+                a title line, a figures line, a machine-and-encoding line and a
+                skipped-lines line, each a clause long, in a panel that is only
+                ever on screen for the few seconds between choosing a file and
+                pressing ยืนยัน.
+
+                THE SPLIT IS NOW WHAT THE READER IS CHECKING FOR, not what kind
+                of datum each is. **The first line is the file's own account of
+                itself** — name, scans, people, dates — which is what somebody
+                holding four exports reads to know they picked the right one.
+                **The second is how it was read** — machine, encoding, and the
+                lines that did not become scans — which only matters when the
+                first line looks wrong.
+
+                `บรรทัด` MOVED DOWN THERE and is no longer always printed. It
+                was beside the filename, one number over from `รายการสแกน`, and
+                the two differ only by the header lines a scanner writes; two
+                near-identical figures at the top of a panel is a subtraction
+                nobody asked the reader to do. It is on the second line now,
+                where the skipped count that explains the difference is. */}
+            <div className="scan-line">
+              <span>
+                <strong>ตรวจก่อนนำเข้า</strong> — {pending.file.name}
+                {readable && (
+                  <>
+                    {' · '}<strong>{pending.summary.punchCount}</strong> รายการสแกน ·
+                    {' '}<strong>{pending.summary.peopleCount}</strong> คน ·
+                    {' '}{scanDateRange(pending.summary)}
+                  </>
+                )}
+              </span>
+              {/* THE TWO BUTTONS COME UP ONTO THIS ROW rather than taking a
+                  fourth line of their own. `.scan-line` is the same row
+                  ผลเทียบ's first state uses — one sentence, its control on the
+                  right — and below 640px it hands both of them the full width
+                  at 44px, which is the stylesheet's rule and not this panel's. */}
+              <span className="row" style={{ gap: 8 }}>
+                <button className="btn" disabled={!readable || sending} onClick={confirm}>
+                  {sending ? 'กำลังนำเข้า…' : 'ยืนยันนำเข้า'}
+                </button>
+                <button className="btn ghost" disabled={sending} onClick={() => setPending(null)}>
+                  ยกเลิก
+                </button>
+              </span>
+            </div>
 
             {!readable ? (
               <div style={{ marginTop: 6 }}>
@@ -298,16 +357,20 @@ export default function ScanImport({
                 {' '}ที่ส่งออกจากเครื่องสแกนนิ้วมือหรือไม่
               </div>
             ) : (
-              <>
-                <div style={{ marginTop: 6 }}>
-                  <strong>{pending.summary.punchCount}</strong> รายการสแกน ·
-                  {' '}<strong>{pending.summary.peopleCount}</strong> คน ·
-                  {' '}{scanDateRange(pending.summary)}
-                </div>
-                <div className="hint" style={{ margin: '4px 0 0' }}>
-                  {formatLabel(pending.summary.format)} · อ่านเป็น {pending.encoding}
-                </div>
-              </>
+              <div className="hint" style={{ margin: '4px 0 0' }}>
+                {formatLabel(pending.summary.format)} · อ่านเป็น {pending.encoding}
+                {' · '}{pending.summary.lineCount} บรรทัด
+                {/* Every line that did not become a scan, counted — and the
+                    first few of them quoted below, because "3 บรรทัดถูกข้าม" is
+                    a number somebody has to open the file to check, while the
+                    header line printed here answers itself. */}
+                {pending.summary.skippedCount > 0
+                  && ` · ข้าม ${pending.summary.skippedCount} บรรทัดที่ไม่ใช่การสแกน (เช่น หัวไฟล์)`}
+                {pending.summary.errorCount > 0
+                  && ` · อ่านไม่ออก ${pending.summary.errorCount} บรรทัด`}
+                {pending.summary.duplicateCount > 0
+                  && ` · ซ้ำกันเองในไฟล์ ${pending.summary.duplicateCount} บรรทัด`}
+              </div>
             )}
 
             {/* The month check, and it is a warning rather than a refusal: a
@@ -315,21 +378,6 @@ export default function ScanImport({
                 that spills into the next month is ordinary. */}
             {mismatch && <div style={{ marginTop: 6 }}><strong>{mismatch}</strong></div>}
 
-            {/* Every line that did not become a scan, counted — and the first
-                few of them quoted, because "3 บรรทัดถูกข้าม" is a number
-                somebody has to open the file to check, while the header line
-                printed here answers itself. */}
-            {(pending.summary.skippedCount > 0 || pending.summary.errorCount > 0
-              || pending.summary.duplicateCount > 0) && (
-              <div className="hint" style={{ margin: '6px 0 0' }}>
-                {pending.summary.skippedCount > 0
-                  && `ข้าม ${pending.summary.skippedCount} บรรทัดที่ไม่ใช่การสแกน (เช่น หัวไฟล์) `}
-                {pending.summary.errorCount > 0
-                  && `· อ่านไม่ออก ${pending.summary.errorCount} บรรทัด `}
-                {pending.summary.duplicateCount > 0
-                  && `· ซ้ำกันเองในไฟล์ ${pending.summary.duplicateCount} บรรทัด`}
-              </div>
-            )}
             {pending.parsed.errors.length > 0 && (
               <ShowMore
                 as="ul"
@@ -339,15 +387,6 @@ export default function ScanImport({
                 render={(e) => <li key={e.line}>บรรทัด {e.line}: “{e.text}” — {e.error}</li>}
               />
             )}
-
-            <div className="row" style={{ marginTop: 10, gap: 8 }}>
-              <button className="btn" disabled={!readable || sending} onClick={confirm}>
-                {sending ? 'กำลังนำเข้า…' : 'ยืนยันนำเข้า'}
-              </button>
-              <button className="btn ghost" disabled={sending} onClick={() => setPending(null)}>
-                ยกเลิก
-              </button>
-            </div>
           </Alert>
         </div>
       )}
@@ -505,8 +544,22 @@ export default function ScanImport({
       */}
       {grid && (
         <div style={{ marginTop: 10 }}>
-          {grid.slots.map((s) => (
-            <div key={`${s.format}|${s.company}`} className="hint" style={{ margin: '4px 0 0' }}>
+          {/* ── ⚠ TWO COLUMNS, BECAUSE THE THING IT DESCRIBES IS A GRID ──────
+              *"ใช้พื้นที่อย่างคุ้มค่าที่สุด"*, 2026-09-11. Four stacked rows down the
+              left of a drawer 900px wide spent four lines and about a fifth of
+              the width. The thing they describe IS a grid — two machines × two
+              companies — so two columns is both half the height and the shape
+              of the fact. One column again below 640px, where two would be two
+              half-sentences.
+
+              WHAT IT SAYS IS UNCHANGED. `○` for an empty slot and not a red
+              mark — a month in progress is the ordinary state of this drawer —
+              and every figure a filled slot carried it still carries. What left
+              each empty row is `(ไม่บังคับ)`, which is a fact about the month
+              and is now said once, beside the count in the head. */}
+          <div className="scan-slots">
+            {grid.slots.map((s) => (
+              <div key={`${s.format}|${s.company}`} className="hint scan-slot">
               {s.batch ? '✓' : '○'} <strong>{s.machineLabel} · {companyLabel(s.company)}</strong>
               {s.batch ? (
                 <>
@@ -524,9 +577,10 @@ export default function ScanImport({
                   {s.batch.unknownCodes?.length > 0
                     && ` · ${s.batch.unknownCodes.length} รหัสไม่อยู่ในทะเบียน`}
                 </>
-              ) : ' — ยังไม่ได้นำเข้า (ไม่บังคับ)'}
-            </div>
-          ))}
+              ) : ' — ยังไม่ได้นำเข้า'}
+              </div>
+            ))}
+          </div>
 
           {/* Imported and one of the four it is not. `buildScanSlots` refuses to
               count these into a slot, so this is the only place they appear —

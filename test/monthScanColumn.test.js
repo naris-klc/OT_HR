@@ -456,3 +456,48 @@ test('ดูเฉพาะคนที่ต้องตรวจ narrows the t
   // moves no total and costs no request, exactly like the search box.
   assert.match(hrView, /return matched\.filter\(\(row\) => flaggedBy\.has\(String\(row\.employee\?\._id\)\)\);/);
 });
+
+
+test('ลิ้นชัก ไฟล์สแกนนิ้วมือ กระชับลง โดยไม่มีข้อเท็จจริงไหนหายไป', () => {
+  /* *"ปรับการแสดงผลส่วนนี้ให้กระชับ แต่ยังได้รายละเอียดครบถ้วน และใช้พื้นที่อย่างคุ้มค่าที่สุด"* (11 ??.?. 2569) */
+
+  // 1. หัวข้อกับบรรทัดตัวเลขอยู่บรรทัดเดียวกัน
+  //    สองคำบนบรรทัดกว้างเท่าการ์ด คือบรรทัดที่จ่ายไปกับการบอกชื่อลิ้นชัก
+  assert.match(scanImport, /<div className="scan-head-text">/);
+  assert.match(css, /\.scan-head-text \{[^}]*flex: 1; display: flex; flex-wrap: wrap; align-items: baseline;/);
+
+  // 2. สี่ช่องเป็นสองคอลัมน์ — สิ่งที่มันอธิบายคือตาราง
+  assert.match(scanImport, /<div className="scan-slots">/);
+  assert.match(css, /\.scan-slots \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); /);
+  // กลับเป็นคอลัมน์เดียวบนจอแคบ
+  assert.match(css.slice(css.indexOf('@media (max-width: 640px)')), /\.scan-slots \{ grid-template-columns: 1fr; \}/);
+
+  /* 3. `(ไม่บังคับ)` พูดครั้งเดียว ไม่ใช่สี่ครั้ง — เป็นข้อเท็จจริงของ *เดือน*
+        (HR 4 ก.ย. 2569: เครื่องอาจยังไม่ได้ถ่ายข้อมูล บริษัทหนึ่งอาจไม่มีใครเลย)
+        การพูดซ้ำทุกแถวที่ว่างคือประโยคเดิมที่ย้ำจนคนเลิกอ่าน */
+  assert.ok(!scanImport.includes('ยังไม่ได้นำเข้า (ไม่บังคับ)'), 'ยังพูดซ้ำทุกแถว');
+  assert.match(scanImport, /' \(ไม่ต้องครบก็ได้\)'/);
+  assert.match(scanImport, /: ' — ยังไม่ได้นำเข้า'\}/);
+
+  // 4. แผง ตรวจก่อนนำเข้า เหลือสองบรรทัด และปุ่มมาอยู่แถวเดียวกับชื่อไฟล์
+  // ตัดจากจุดเริ่มของแผง ไม่ใช่จากหัวข้อ — `.scan-line` ที่ห่อหัวข้อกับปุ่มไว้
+  // อยู่เหนือหัวข้อขึ้นไปหนึ่งบรรทัด
+  const panel = scanImport.slice(scanImport.indexOf('{pending && ('));
+  const upto = panel.slice(0, panel.indexOf('</Alert>'));
+  assert.match(upto, /<div className="scan-line">/);
+  assert.match(upto, /ยืนยันนำเข้า/);
+  assert.match(upto, /ยกเลิก/);
+  // ปุ่มมีชุดเดียว ไม่ได้ทิ้งแถวเดิมไว้ข้างล่าง
+  assert.equal((upto.match(/ยืนยันนำเข้า/g) || []).length, 1, 'มีปุ่มยืนยันสองชุด');
+
+  /* 5. ⚠ ข้อเท็จจริงครบเท่าเดิมทุกตัว — "กระชับ" ไม่ใช่ "ตัดออก"
+        `บรรทัด` ย้ายลงไปอยู่บรรทัดที่สอง ข้าง ๆ ยอดที่ถูกข้าม ซึ่งเป็นตัวที่อธิบาย
+        ว่าทำไมมันไม่เท่ากับ `รายการสแกน` — สองตัวเลขที่ต่างกันนิดเดียวอยู่ติดกัน
+        บนหัวแผง คือการลบที่ไม่มีใครขอให้คนอ่านทำ */
+  for (const piece of ['pending.file.name', 'summary.punchCount', 'summary.peopleCount',
+    'scanDateRange(pending.summary)', 'formatLabel(pending.summary.format)', 'pending.encoding',
+    'summary.lineCount', 'summary.skippedCount', 'summary.errorCount', 'summary.duplicateCount',
+    '{mismatch}']) {
+    assert.ok(upto.includes(piece), `${piece} หายไปจากแผงตรวจก่อนนำเข้า`);
+  }
+});

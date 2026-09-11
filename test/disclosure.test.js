@@ -671,7 +671,15 @@ test('a live figure is not an explanation, and is left on the screen', () => {
    * works and everything about this month. Folding one hides the answer behind
    * the question.
    */
-  assert.match(sourceOf('components/ScanImport.jsx'), /<div className="hint" style=\{\{ margin: '2px 0 0' \}\}>/);
+  /* ⚠ IT WAS PINNED AS `style={{ margin: '2px 0 0' }}` UNTIL 2026-09-11, when
+     the heading and this line were put on one baseline-aligned row
+     (`.scan-head-text`) and the margin went with the stacking. The RULE is not
+     the markup: the month's own figures stand outside the fold. */
+  const scanImport = sourceOf('components/ScanImport.jsx');
+  const figures = scanImport.indexOf('className="scan-head-text"');
+  assert.ok(figures > 0, 'บรรทัดตัวเลขของเดือนหายไปจากหัวลิ้นชัก');
+  assert.ok(figures < scanImport.indexOf('<Disclosure'), 'ตัวเลขของเดือนถูกพับไปกับคำอธิบาย');
+  assert.match(scanImport.slice(figures, scanImport.indexOf('<Disclosure')), /นำเข้าแล้ว \$\{/);
   assert.match(sourceOf('components/HrView.jsx'), /<div className="hint">\r?\n\s*ไม่นับ \{data\.supersededCount\}/);
   assert.match(
     sourceOf('components/HrEntries.jsx'),

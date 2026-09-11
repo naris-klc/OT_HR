@@ -7644,6 +7644,45 @@ two counts and two bare consequences after it would be a matching exercise.
 > layout. The sentence is one, and a second `.map(…).join(' และ ')` in the other
 > branch is the copy that gets fixed while the first one does not.
 
+#### ลิ้นชัก ไฟล์สแกนนิ้วมือ — กระชับ โดยไม่มีข้อเท็จจริงไหนหายไป
+
+**2026-09-11:** *"ปรับการแสดงผลส่วนนี้ให้กระชับ แต่ยังได้รายละเอียดครบถ้วน และ
+ใช้พื้นที่อย่างคุ้มค่าที่สุด"*.
+
+**Four changes, none of which drops a fact:**
+
+1. **The heading and its figures are one baseline-aligned row.** `ไฟล์สแกนนิ้วมือ`
+   is two words on a line as wide as the card, sitting over the line that says
+   everything about the drawer — the month, how many of the four arrived, how
+   many scans. One line back for nothing.
+2. **The four slots are a 2×2 grid.** They spent four lines and a fifth of the
+   width; the thing they describe **is** a grid — two machines × two companies —
+   so two columns is half the height and the shape of the fact at once. One
+   column again below 640px, where two would be two half-sentences.
+3. **`(ไม่บังคับ)` is said once instead of four times.** It is a fact about the
+   **month** — HR, 2026-09-04: a machine may not have been emptied, a company may
+   have had nobody on it — and repeating it on every empty row is the same
+   sentence said at the reader until it stops being read. It is `(ไม่ต้องครบก็ได้)`
+   beside the count in the head now, and the empty rows read `— ยังไม่ได้นำเข้า`.
+4. **ตรวจก่อนนำเข้า went from four lines to two, with its buttons on the first.**
+
+**The preview's split is now what the reader is checking for, not what kind of
+datum each line holds.** The first line is the file's own account of itself —
+name, scans, people, dates — which is what somebody holding four exports reads to
+know they picked the right one. The second is **how it was read** — machine,
+encoding, and the lines that did not become scans — which only matters when the
+first line looks wrong.
+
+> **`บรรทัด` moved down and is no longer always printed.** It sat beside the
+> filename, one number over from `รายการสแกน`, and the two differ only by the
+> header lines a scanner writes — two near-identical figures at the top of a
+> panel is a subtraction nobody asked the reader to do. It is on the second line
+> now, beside the skipped count that explains the difference.
+
+**ยืนยันนำเข้า and ยกเลิก come up onto the title row** in `.scan-line` — the same
+row ผลเทียบ's first state uses, one sentence with its controls on the right — and
+below 640px the stylesheet hands both the full width at 44px.
+
 ### สี่จอรายงานเป็นการ์ดใบเดียวกัน — 2026-09-10
 
 **Reported the same afternoon as the declutter above, in one sentence:**
