@@ -538,7 +538,23 @@ test('the หัวข้อ overlay is gone, and the sections are the page', ()
  */
 test('the rail links, and a link lands below the app bar rather than under it', () => {
   assert.match(manual, /<a key=\{s\.key\} className="manual-rail-a" href=\{`#sec-\$\{s\.key\}`\}>/);
-  assert.ok(!manualCode.includes('scrollIntoView'), 'the rail is scrolling the page by hand');
+  /* IT BANNED `scrollIntoView` ANYWHERE IN THE FILE UNTIL 2026-09-11, when a
+     reader pressed a หัวข้อ in the rail and landed on `#admin` — the tab moved
+     into the URL that morning and `sec-approve` is not a tab key (the fix and
+     the report are in test/screenInUrl.test.js). Half of that fix is the
+     sentence at the head of this very test, which nothing had ever delivered:
+     `#sec-approve` OPENED FRESH — a reload, or a link somebody was sent —
+     cannot be scrolled to by the browser, because at the moment it looks for
+     the หัวข้อ the page is still App's "กำลังโหลด…" waiting on `/auth/me`. So
+     ManualView scrolls once on mount, and the ban stays where it was always
+     aimed: the rail, whose links are the browser's own job. */
+  const rail = codeOnly(manual.slice(
+    manual.indexOf('function Rail({ sections })'),
+    manual.indexOf('export default function ManualView'),
+  ));
+  assert.ok(!rail.includes('scrollIntoView'), 'the rail is scrolling the page by hand');
+  assert.equal(codeOnly(manual).split('scrollIntoView').length - 1, 1,
+    'one place scrolls this screen by hand — the arrival on a fresh `#sec-...` and nothing else');
   const css = read('app/styles.css');
   assert.match(css, /\.manual-sec \{ scroll-margin-top: calc\(62px \+ 14px\); \}/,
     'a jump now lands with the section heading under the sticky app bar');
