@@ -1082,7 +1082,17 @@ function NavDrawer({ groups, tab, user, initials, onGo, onLogout }) {
 function Shell({ session, onRefresh, onLogout }) {
   const { user } = session;
   const home = defaultTab(user.role);
-  const [tab, setTab] = useState(home);
+  /**
+   * URL มาก่อนหน้าเริ่มต้นของบทบาท — นี่คือสิ่งที่ทำให้ reload ค้างหน้าเดิม
+   *
+   * อ่านได้ตอนเรนเดอร์เพราะ Shell ไม่เคยถูกเรนเดอร์บนเซิร์ฟเวอร์เลย: `App`
+   * ข้างบนวาด "กำลังโหลด…" จนกว่า `/auth/me` จะตอบ ซึ่งเป็น effect ฝั่ง
+   * ไคลเอนต์ล้วน จึงไม่มี markup ของเซิร์ฟเวอร์ให้ขัดกัน ต่างจาก `matchMedia`
+   * ที่ท้ายฟังก์ชันนี้ ซึ่งอ่านตอนเรนเดอร์ไม่ได้ด้วยเหตุผลนั้นพอดี
+   *
+   * ค่าที่ได้ยังไม่ผ่านการตรวจสิทธิ์ — `reachable` ข้างล่างเป็นคนปัดทิ้ง
+   */
+  const [tab, setTab] = useState(() => tabFromHash() || home);
   const [counts, setCounts] = useState({
     pendingMgr: 0, pendingHr: 0, pendingMgrDelegated: 0, delegatedTeams: 0,
   });
@@ -1191,11 +1201,14 @@ function Shell({ session, onRefresh, onLogout }) {
   }, []);
 
   /** Switch tabs, remembering where we came from. Bounded, because a trail
-      longer than a few steps stops matching anyone's idea of "back". */
+      longer than a few steps stops matching anyone's idea of "back".
+      หนึ่งครั้งที่เรียก = หนึ่งก้าวในประวัติของเบราว์เซอร์ด้วย ตั้งแต่
+      2026-09-11 — `trail` กับประวัติของเบราว์เซอร์จึงยาวเท่ากันเสมอ */
   function goTab(next) {
     if (next === tab) return;
     setTrail((t) => [...t.slice(-7), tab]);
     setTab(next);
+    writeHash(next, true);
   }
 
   /**
@@ -1249,15 +1262,24 @@ function Shell({ session, onRefresh, onLogout }) {
 
   const canGoBack = subDepth > 0 || trail.length > 0;
 
+  /**
+   * ปุ่ม ‹ บนแถบบน — และตั้งแต่ 2026-09-11 ปุ่ม back ของเบราว์เซอร์ก็เดินทาง
+   * เส้นเดียวกันนี้ (ดู `popstate` ข้างล่าง) ปุ่มสองปุ่มที่ถอยคนละอย่างคือ
+   * ปุ่มที่คนเลิกเชื่อทั้งคู่
+   *
+   * ชั้นแท็บไม่ได้ `setTab` เองอีกต่อไป แต่สั่ง `history.back()` แล้วปล่อยให้
+   * `popstate` เป็นคนขยับจอ — ถ้าถอยเองตรง ๆ ประวัติของเบราว์เซอร์จะค้างอยู่
+   * ข้างหน้าหนึ่งก้าว แล้วปุ่ม back ของเครื่องจะพาไปข้างหน้าแทนที่จะถอยหลัง
+   * ก้าวที่มีอยู่จริงเสมอ เพราะทุกก้าวใน `trail` ถูก push ไว้โดย `goTab`
+   *
+   * ส่วนหน้าย่อยที่เปิดทับ (ฟอร์ม ชีต ใบพิมพ์) ไม่ได้ push อะไรไว้ จึงปิดตรงนี้
+   * เหมือนเดิม ไม่แตะประวัติ
+   */
   function goBack() {
     const open = subViews.current;
     if (open.length) { open[open.length - 1](); return; }
-    if (trail.length) {
-      setTab(trail[trail.length - 1]);
-      setTrail((t) => t.slice(0, -1));
-      return;
-    }
-    setTab(home);
+    if (trail.length) { window.history.back(); return; }
+    if (tab !== home) { setTab(home); writeHash(home, false); }
   }
 
   /**
@@ -1599,8 +1621,81 @@ function Shell({ session, onRefresh, onLogout }) {
    */
   if (user.role === 'admin') tabs.push({ key: 'logs', label: 'บันทึกประวัติระบบ', icon: 'shield', group: 'system', bar: 'more' });
 
+  // ── URL กับหน้าจอ พูดตรงกันเสมอ ───────────────────────────────────────────
+
+  /**
+   * ทุกจอที่บทบาทนี้ไปถึงได้ — `tabs` บวกสองจอที่มีชื่อใน `PAGE` แต่ไม่เคยเป็น
+   * แท็บ (ดูบันทึกเหนือ `PAGE`) ทุกบทบาทเปิดสองจอนั้นได้ จึงไม่มีเงื่อนไข
+   */
+  const reachable = [...tabs.map((t) => t.key), 'profile', 'manual'];
+
+  /**
+   * กฎข้อเดียวที่ทำให้ URL กับจอพูดตรงกัน — และมันวิ่งตั้งแต่เฟรมแรก
+   *
+   * **จอชนะที่อยู่เสมอ ไม่ใช่กลับกัน** ที่อยู่คือภาพสะท้อนของ `tab` ตัวที่วาด
+   * จริง ๆ อยู่ ดังนั้นเมื่อสองอย่างไม่ตรงกัน สิ่งที่ถูกแก้คือที่อยู่
+   *
+   * สามกรณีที่มันต้องทำงาน:
+   *
+   * · **เปิดแอปเปล่า ๆ** ไม่มี hash ให้อ่าน `tab` เป็นหน้าเริ่มต้นของบทบาท —
+   *   ถ้าไม่เขียนตอนนี้ URL จะว่างจนกว่าจะมีการกดเปลี่ยนแท็บสักครั้ง แล้ว
+   *   คนที่กด reload ก่อนกดอะไรเลยก็ยังเด้ง
+   * · **`#admin` ในมือพนักงาน** มาได้สามทาง: ลิงก์ที่ส่งต่อกันมา · URL เก่าที่
+   *   ค้างในแท็บเบราว์เซอร์ตั้งแต่ก่อนเปลี่ยนบทบาท · และการล็อกอินคนละคนบน
+   *   เครื่องเดียวกัน ทั้งสามทางลงที่หน้าเริ่มต้นเหมือนกัน แล้วรอบถัดไปของ
+   *   effect นี้เป็นคนล้างที่อยู่ตาม
+   * · **hash ที่สะกดผิดหรือไม่ใช่คีย์แท็บเลย** `tabFromHash` คืน `null` จอจึง
+   *   เป็นหน้าเริ่มต้นอยู่แล้ว เหลือแค่ที่อยู่ที่ยังโกหกอยู่
+   *
+   * **`replaceState` ไม่ใช่ `pushState` ทุกกรณีในนี้** เพราะไม่มีอันไหนเป็นก้าว
+   * ที่ใครเดิน — กด back แล้วต้องไม่วนกลับมาเจอ `#admin` ที่ปัดทิ้งไปแล้ว
+   */
+  useEffect(() => {
+    if (!reachable.includes(tab)) { setTab(home); return; }
+    if (tabFromHash() !== tab) writeHash(tab, false);
+  }, [tab, reachable.join(' '), home]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * ปุ่ม back ของเบราว์เซอร์ และการปัดกลับบนมือถือ
+   *
+   * ลำดับเดียวกับปุ่ม ‹ เป๊ะ ๆ: หน้าย่อยที่เปิดทับปิดก่อน แล้วค่อยถอยแท็บ
+   *
+   * **ตอนปิดหน้าย่อย ต้อง push ก้าวที่เบราว์เซอร์เพิ่งถอยมาคืนไป** เพราะหน้าย่อย
+   * ไม่มีก้าวของตัวเองในประวัติ ถ้าไม่คืน การกด back เพื่อปิดชีตหนึ่งครั้งจะกิน
+   * ก้าวของแท็บไปด้วย แล้วการกดครั้งถัดไปจะกระโดดข้ามไปสองจอ
+   *
+   * `trail` ถูกป้อนตามทิศที่เดิน: ถอยมาเจอจอที่อยู่บนยอด `trail` พอดีคือการ
+   * *ถอย* จึงป็อปทิ้ง — ส่วนปุ่ม forward ของเบราว์เซอร์พาไปจอที่ไม่ใช่ยอดนั้น
+   * ซึ่งเป็นการ *เดินหน้า* จอที่เพิ่งออกมาจึงถูกซ้อนเข้าไปเหมือน `goTab`
+   */
+  useEffect(() => {
+    function onPop() {
+      const open = subViews.current;
+      if (open.length) {
+        writeHash(tab, true);
+        open[open.length - 1]();
+        return;
+      }
+      const next = tabFromHash() || home;
+      /* จอไม่ต้องขยับ แต่ที่อยู่อาจต้องแก้: การพิมพ์ hash มั่ว ๆ ต่อท้ายเอง
+         เป็นการเดินในเอกสารเดิม ไม่มีการ mount ใหม่ effect ข้างบนจึงไม่ได้
+         วิ่ง และ URL จะค้างเป็นคำที่ไม่ใช่จอไหนเลย */
+      if (next === tab) { writeHash(tab, false); return; }
+      setTrail((t) => (t[t.length - 1] === next ? t.slice(0, -1) : [...t.slice(-7), tab]));
+      setTab(next);
+    }
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [tab, home]);
+
   async function logout() {
     await api.post('/auth/logout');
+    /* คนต่อไปที่ล็อกอินบนแท็บนี้เริ่มที่หน้าเริ่มต้นของตัวเอง ไม่ใช่จอสุดท้าย
+       ของคนก่อน — `reachable` ปัดจอที่เขาไม่มีสิทธิ์อยู่แล้ว แต่จอที่บทบาท
+       เดียวกันเปิดได้จะติดมาเงียบ ๆ */
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     onLogout();
   }
 
@@ -2189,6 +2284,45 @@ function MyForm() {
       <PrintForm period={period} />
     </div>
   );
+}
+
+/**
+ * ── หน้าจอที่เปิดอยู่ อยู่ใน URL ตั้งแต่ 2026-09-11 ────────────────────────
+ *
+ * `#monthly` คือแท็บ `monthly` เท่านั้น ไม่มีอย่างอื่นอยู่ในนั้น — ไม่ใช่หน้า
+ * ย่อยที่เปิดทับ ไม่ใช่เดือนที่เลือก ไม่ใช่ตัวกรอง ของพวกนั้นยังเป็น state ของ
+ * จอนั้น ๆ เหมือนเดิมและหายไปตอน reload · ที่ขอมาคือ "กด reload แล้วให้ค้าง
+ * หน้าจอเดิม" และแท็บคือหน่วยที่ตอบคำถามนั้น
+ *
+ * **นี่ไม่ใช่ URL routing ที่ปฏิเสธไปเมื่อ 2026-09-10** (ข้อ ข. ใน
+ * `docs/plan-design-system.md`) ไม่มี `next/link` ไม่มี `useRouter` ไม่มีเราต์
+ * ฝั่งเซิร์ฟเวอร์เพิ่มสักตัว — `app/page.js` ยังเรนเดอร์ `components/App.jsx`
+ * ใบเดียวที่ `/` เหมือนเดิม hash ไม่เคยถูกส่งไปถึงเซิร์ฟเวอร์
+ *
+ * **สิทธิ์ไม่ได้อยู่ในนี้** ใครก็พิมพ์ `#admin` ได้ และมันไม่ให้อะไรเลย — แท็บที่
+ * บทบาทนี้ไม่มีจะถูกปัดกลับหน้าเริ่มต้น (ดู `reachable` ใน Shell) และทุก
+ * เอนด์พอยต์ยังตรวจสิทธิ์ของตัวเองอยู่แล้ว หน้าจอไม่เคยเป็นด่าน
+ */
+function tabFromHash() {
+  if (typeof window === 'undefined') return null;
+  const key = decodeURIComponent(window.location.hash.replace(/^#/, '')).trim();
+  // คีย์แท็บทุกตัวเป็นตัวพิมพ์เล็กล้วน — อย่างอื่นคือ hash ของคนอื่นหรือของเก่า
+  return /^[a-z]+$/.test(key) ? key : null;
+}
+
+/**
+ * เขียนแท็บลง URL
+ *
+ * `push` คือความต่างทั้งหมดระหว่าง "ก้าวใหม่" กับ "แก้ที่อยู่ให้ตรงกับจอ":
+ * การกดเปลี่ยนแท็บเป็นก้าว ปุ่ม back ของเบราว์เซอร์จึงถอยกลับมาได้ · ส่วนการ
+ * เขียนตอน mount และการปัดแท็บที่ไม่มีสิทธิ์กลับหน้าเริ่มต้น ไม่ใช่ก้าว —
+ * ถ้า push จะกลายเป็นว่ากด back หนึ่งทีแล้ว *ไม่มีอะไรเกิดขึ้น*
+ */
+function writeHash(next, push) {
+  if (typeof window === 'undefined') return;
+  const at = { tab: next };
+  if (push) window.history.pushState(at, '', `#${next}`);
+  else window.history.replaceState(at, '', `#${next}`);
 }
 
 function defaultTab(role) {
