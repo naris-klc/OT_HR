@@ -384,7 +384,7 @@ test('กดที่แถวเปิดรายละเอียด แต�
   // ไม่ประกาศตัวเองเป็นปุ่ม — <tr role="button"> ทำให้เซลล์ทั้งสิบเอ็ดหายไปจาก
   // การอ่านด้วยโปรแกรมช่วยอ่าน ซึ่งแพงกว่าที่ได้มา
   const bare = strip(queue);
-  const row = bare.slice(bare.indexOf('{shown.map(('), bare.indexOf('<td className="check">'));
+  const row = bare.slice(bare.indexOf('{pageRows.map(('), bare.indexOf('<td className="check">'));
   assert.ok(row.length > 0 && row.length < 1200, 'สไลซ์ของแถวเลื่อนไปแล้ว');
   assert.doesNotMatch(row, /role="button"/, 'แถวประกาศตัวเป็นปุ่ม ตารางจึงหายไปทั้งตาราง');
   // และมีสิ่งที่บอกว่ากดได้ ไม่ใช่แถวที่กดได้แบบเงียบ ๆ

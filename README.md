@@ -2024,10 +2024,14 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2598 tests
+and the engine know nothing about Next.js, so the whole suite — **2609 tests
 across 144 files**, measured 2026-09-11 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"2561 tests across 143 files … measured 2026-09-10" until **reload ค้างหน้าจอ
+"2598 tests across 144 files … measured 2026-09-11" until **คิวรออนุมัติ
+แบ่งหน้าแล้ว** later the same day — eleven cases went into `tablePager`, which
+is §11 of that file and reads คิวรออนุมัติ; NO new file, and the two cases that
+anchor on the queue's `<tbody>` moved with it rather than being added to. And it
+read "2561 tests across 143 files … measured 2026-09-10" until **reload ค้างหน้าจอ
 เดิม** — `screenInUrl` is the 144th file and twelve of the cases; **the other
 25 were already on disk when that sentence was written**, added by rounds
 between 2026-09-10 and 2026-09-11 that did not re-measure this figure. It is
@@ -7094,11 +7098,19 @@ difference. The 72px it gives back is what lets the 160 actually arrive. All
 three are `.hr-table`-scoped: the shared numbers are measured against
 คิวรออนุมัติ's own crowd of columns and are not touched.
 
-#### เลือกทั้งหมด crosses the pager, and on คิวรออนุมัติ it does not
+#### เลือกทั้งหมด crosses the pager — and since 2026-09-11 it does on คิวรออนุมัติ too
 
-That queue's rule is *ติ๊กอยู่ได้เท่าที่แถวยังอยู่บนจอ*, because its pager is a
-real filter. Here the pager is a **phone-only CSS window** (`off-page`) over a
-list the desktop draws whole — `CARD_PAGE` says so about itself in capitals,
+> **It read "and on คิวรออนุมัติ it does not" until 2026-09-11**, and the reason
+> it gave was that *"its pager is a real filter"*. **That was never true of a
+> screen which had no pager at all.** What that queue's rule
+> *ติ๊กอยู่ได้เท่าที่แถวยังอยู่บนจอ* has always meant is *as long as no FILTER
+> has hidden the row* — the sentence borrowed the word "pager" for the filter
+> bar. The queue has a real pager now, the same `TablePager` band, and it was
+> built so that a tick crosses it. **The two screens agree; only the mechanism
+> differs** — see §แถบเปลี่ยนหน้าเดียวทั้งแอป below.
+
+Here the pager is a **phone-only CSS window** (`off-page`) over a list the
+desktop draws whole — `CARD_PAGE` says so about itself in capitals,
 **A PAGE IS NOT A FILTER** — so one button on two screen sizes has to mean one
 thing. It takes every row the FILTERS left and writes the count on its own label
 (`เลือกทั้งหมด (24 คน)`), so a phone reader seeing five knows they are ticking
@@ -7942,6 +7954,85 @@ everybody feels.
 > **placeholder** — the one thing a form label must not be, because it leaves the
 > moment the box is answered. The inset rule is scoped to `.queue-tools` and
 > `test/filterBar.test.js` fails if it ever reaches `.form-grid`.
+
+### แถบเปลี่ยนหน้าเดียวทั้งแอป — คิวรออนุมัติ แบ่งหน้าแล้ว — 2026-09-11
+
+**ขอมาเป็นประโยคเดียว:** *"ตารางหน้า รออนุมัติ OT เพิ่ม pagination รูปแบบเดียว
+กับที่ app ใช้อยู่แล้ว"* — และคำว่า *รูปแบบเดียวกับที่ app ใช้อยู่แล้ว* คือ**ทั้ง
+งาน**: `TablePager` ใน `components/common.jsx` มีมาตั้งแต่ 2026-09-08 พร้อม CSS
+ของตัวเองครบทั้งเดสก์ท็อปและมือถือ ไม่มีแถบใหม่ให้ออกแบบ ไม่มีคลาสใหม่ให้ตั้งชื่อ
+มีแค่สี่ข้อที่จอนี้ตอบไม่เหมือนสองจอก่อนหน้า เพราะจอนี้มี**ช่องติ๊ก**
+
+**แถบเดียวขึ้นทั้งสี่แท็บพร้อมกัน** — รออนุมัติ OT · รออนุมัติ · รออนุมัติแทน ·
+ใบที่ยังไม่มีใครเซ็น เป็นคอมโพเนนต์ตัวเดียวกัน (`components/ApprovalQueue.jsx`)
+ที่ `components/App.jsx` เรียกด้วยพร็อพคนละชุด แก้ที่เดียวจึงได้ทั้งสี่
+
+| ข้อที่ต้องตอบ | คำตอบ | เพราะ |
+|---|---|---|
+| **ติ๊กไว้แล้วกด `›` ติ๊กยังอยู่ไหม** | **อยู่** | ติ๊กแปดใบ พลิกหน้า ติ๊กอีกสี่ แล้วกด อนุมัติ ครั้งเดียวได้สิบสอง — ดูหัวข้อถัดไป |
+| **เริ่มที่กี่แถวต่อหน้า** | **20** (เลือกได้ 10 · 20 · 50 · 100) | จอนี้อ่านเพื่อ**เคลียร์** สิบแถวคือพลิกหน้าทุกสามลายเซ็น ห้าสิบแถวคือตอนเซ็นใบสุดท้ายมองไม่เห็นติ๊กที่อยู่บนสุดแล้ว |
+| **กดแล้วหน้าจอขยับไหม** | **เลื่อนขึ้นหัวตาราง** | คิวอ่านจากบนลงล่างทีละแถว หน้า 4 ที่มาถึงด้วยความสูงเดิมของท้ายหน้า 3 คือการเริ่มอ่านตรงกลาง |
+| **นับเป็นหน่วยอะไร** | `รายการ` | ค่าตั้งต้นของแถบอยู่แล้ว และเป็นคำที่แถบเลือกด้านล่างใช้อยู่ (`เลือกไว้ 3 รายการ`) |
+
+#### A PAGE IS NOT A FILTER — และบนจอนี้คือกฎทั้งหมด
+
+**`pageRows` ตัดสินสิ่งเดียว: ตารางวาดแถวไหน** ทุกจำนวนที่เหลือบนจอนับจาก `shown`
+กับ `actionable` ซึ่งคือ**กองที่ตัวกรองเหลือไว้ทั้งกอง** — เลือกทั้งหมด, สถานะ
+ครึ่งติ๊กของช่องบนหัวตาราง, `เลือกไว้ n รายการ รวม x ชม.` บนแถบล่าง, ประโยคที่บอก
+ว่าตัวกรองซ่อนอยู่กี่ใบ และเงื่อนไขของแผงว่างทั้งสองแบบ · `test/tablePager.test.js`
+ตรึงข้อนี้ด้วยการนับว่า **คำว่า `pageRows` ปรากฏในไฟล์ได้สองครั้งเท่านั้น** คือ
+ตอนตัดกับตอนที่ `<tbody>` วนมัน ครั้งที่สามคือกฎข้อนี้ถูกละเมิด
+
+**และเอฟเฟกต์ที่ริบติ๊กคืนยังผูกกับ `shown` เหมือนเดิม** — นั่นคือสิ่งเดียวที่ทำให้
+ประโยค *ติ๊กอยู่ได้เท่าที่แถวยังอยู่บนจอ* แปลว่า *เท่าที่ยังไม่มีตัวกรองมาซ่อนมัน*
+ไม่ใช่ *เท่าที่ยังอยู่บนหน้าที่กำลังดู* · พิมพ์ใน ค้นหา แล้วติ๊กหาย ถูกต้อง ·
+กด `›` แล้วติ๊กหาย คือบั๊ก
+
+#### สามอย่างที่ต้องระวังตอนเอาแถบไปวางใต้ตารางคิว
+
+**หนึ่ง — หนีบเลขหน้าก่อนตัด ไม่ใช่แค่ตอนพิมพ์** `TablePager` หนีบเฉพาะตัวเลขที่
+มันพิมพ์ออกมา จอนี้เป็นจอที่**ลบแถวของตัวเองทิ้งเรื่อย ๆ** อนุมัติใบสุดท้ายของ
+หน้าสุดท้ายแล้วปล่อยให้ `page` ค้างที่ 4 คือตารางว่างใต้แถบที่เขียนว่า `หน้า 4 / 3`
+จึงคำนวณ `at` แล้วค่อย `slice` และส่ง `page={at}` กลับเข้าแถบ
+
+**สอง — `usePageReset` รับตัวกรอง ไม่ใช่ข้อมูล** `load()` ทำงานใหม่หลังทุกลายเซ็น
+และหลังทุกแบตช์ ถ้าผูกกับ `entries` การกดอนุมัติแถวที่ 41 จะเด้งคนอ่านกลับหน้า 1
+ทุกครั้ง — คือการกดที่ลบผลของตัวเอง
+
+**สาม — แถบอยู่นอก `.table-wrap`** กล่องนั้นเลื่อนออกข้างได้ถึง 1262px บนจอแคบ
+ตัวควบคุมที่อยู่ข้างในจะเริ่มต้นนอกขอบซ้ายของสิ่งที่คนอ่านเห็น — เหตุผลเดียวกับที่
+ประโยค `ไม่มีรายการที่ตรงกับตัวกรอง` ถูกย้ายออกมาไว้ข้างนอกตั้งแต่แรก
+
+**แถบขึ้นเมื่อมีแถว แม้จะพอดีหน้าเดียว** `แสดง 1–7 จากทั้งหมด 7 รายการ` โดยลูกศร
+ตายทั้งคู่ เป็นคำพูดเรื่องคิวและใช้พื้นที่บรรทัดเดียว ส่วนแถบที่โผล่มาเฉพาะตอนเกิน
+แถวที่ 21 คือตัวควบคุมที่คนอ่านต้องมาค้นพบเอาตอนที่แย่ที่สุด · **ไม่ขึ้นตอนคิวว่าง**
+เพราะแผงสองแบบใต้ตารางพูดไปแล้วว่าความว่างนั้นแปลว่าอะไร และ**ไม่ขึ้นตอนยังโหลด
+ไม่เสร็จ** ด้วยเหตุผลเดียวกับที่ตารางเองก็ยังไม่ขึ้น
+
+#### `›` ลงตรงไหน — เลขที่มาจากแถบที่ติดอยู่ข้างบน ไม่ได้มาจากคอมโพเนนต์
+
+`goPage` เรียก `scrollIntoView({ block: 'start' })` **จากตัวจัดการปุ่ม ไม่ใช่จาก
+เอฟเฟกต์** — เอฟเฟกต์ที่ผูกกับ `page` จะทำงานตอน `usePageReset` ด้วย แล้วตารางจะ
+ถูกกระชากเข้ามาทุกตัวอักษรที่พิมพ์ลงช่อง ค้นหา · ระยะที่มันลงห่างจากขอบบนคือ
+`scroll-margin-top` ของ `.table-wrap.queue-list` ใน `app/styles.css` ซึ่งเป็นแฟ้ม
+ที่เป็นเจ้าของแถบที่ต้องหลบ
+
+| จอ | อะไรติดอยู่ข้างบน | `scroll-margin-top` |
+|---|---|---|
+| เดสก์ท็อป | แถบแอป 62 | `calc(62px + 14px)` |
+| เดสก์ท็อป · ระหว่างติ๊ก | แถบแอป 62 + `.batch-bar` 58 | `calc(62px + 58px + 14px)` |
+| ≤ 860px | แถบแอป 62 + `.queue-mobile-bar` 49 | `calc(62px + 49px + 12px)` |
+| ≤ 860px · ระหว่างติ๊ก | แถบเดียวกันสูง 59 เพราะเปลี่ยนเป็นปุ่ม 44px | `calc(62px + 59px + 12px)` |
+
+**สี่ค่าไม่ใช่ค่าเดียวที่เผื่อไว้เยอะสุด** เลือกด้วย `:has()` บนการ์ด เพราะแถบแบตช์
+ถูกวาดเฉพาะตอนมีติ๊กเท่านั้น — ระยะที่เผื่อไว้ให้มันจะกลายเป็นพื้นที่ว่างเกือบหนึ่ง
+แถวเต็ม ๆ เหนือแถวแรกของทุกหน้าที่พลิกโดยไม่มีติ๊ก ซึ่งคือส่วนใหญ่
+
+**แถบพกระยะขอบของตัวเองมาด้วย** (`.table-pager.queue-pager`) เพราะการ์ดของจอนี้คือ
+`.card.flush` ที่ `padding: 0` — 18px บนเดสก์ท็อปให้ตรงกับ `.queue-tools` และเซลล์
+ของตาราง, 12px ใต้ 860px ให้ตรงกับการ์ดที่ `tbody` เยื้องไว้ · **เส้นคั่นตั้งใจไม่
+เยื้องตาม** เพราะขอบกินถึงขอบกล่อง มันจึงยังพาดเต็มความกว้างเหมือนเส้นใต้แถวข้างบน
+และตัวควบคุมนั่งอยู่ข้างใน
 
 ### นโยบายการพิมพ์ใบขออนุมัติ OT — which rows reach the paper
 
@@ -12605,8 +12696,11 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2598 tests**, about 4 s, measured 2026-09-11 across 144
-  files, all green. It read **"2561 tests … across 143"** until reload was
+- `npm test` — **2609 tests**, about 4 s, measured 2026-09-11 across 144
+  files, all green. It read **"2598 tests … across 144"** until คิวรออนุมัติ
+  gained the shared pager later the same day — eleven cases into `tablePager`,
+  §11 of that file, and no new file. Before that it read
+  **"2561 tests … across 143"** until reload was
   asked to stay on the screen it was on — `screenInUrl` is the file, and 25 of
   the 37 cases were already on disk unmeasured. Before that it read
   **"2571 tests … across 144"** until
