@@ -2929,13 +2929,21 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    beside it carries the figure, which is what รออนุมัติ OT has always done, and
    two renderings of one number ten pixels apart is worse than either. The rule
    stays because `ExportMenu` still takes a `count` and a fourth caller may want
-   it on a screen with no chip. */
-.export-btn { display: inline-flex; align-items: center; gap: 8px; }
+   it on a screen with no chip.
+
+   ไฟล์สแกน ▾ BESIDE IT WEARS THE SAME SHAPE — 2026-09-11. Below 860px the card
+   head stretches both buttons to half a line each, and `inline-flex` without
+   `justify-content` packed พิมพ์ / ส่งออก and its ▾ against the left edge while
+   ไฟล์สแกน, a plain button, sat centred: two neighbours that disagreed about
+   where a label goes, and a ▾ in two sizes. Centred and 10px on both. */
+.export-btn, .scan-toggle {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
 .export-btn .export-count {
   font: 500 12px/1 var(--mono); font-variant-numeric: tabular-nums;
   opacity: .8;
 }
-.export-btn .caret { font-size: 10px; opacity: .85; }
+.export-btn .caret, .scan-toggle .caret { font-size: 10px; opacity: .85; }
 /* The menu is `PickOne`'s list wearing a menu's roles — same panel, same rows,
    same phone sheet. What differs is that a menu row has a second line under it
    and no count against the right edge. */

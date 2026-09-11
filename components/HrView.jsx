@@ -1328,7 +1328,7 @@ export default function HrView({
                 aria-expanded={scanOpen}
               >
                 ไฟล์สแกน
-                <span aria-hidden="true">{scanOpen ? ' ▲' : ' ▾'}</span>
+                <span className="caret" aria-hidden="true">{scanOpen ? '▲' : '▾'}</span>
               </button>
             )}
             <ExportMenu

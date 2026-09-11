@@ -402,8 +402,13 @@ test('the scan drawer is opened from the card head, with the card’s other verb
   // (`ซ่อนไฟล์สแกนนิ้วมือ`). A button that grows by five characters when pressed
   // re-wraps the head it sits in, and at 360px that head already carries a chip
   // and a menu. The caret says which way it goes; `aria-expanded` says it aloud.
-  assert.match(block, /\{scanOpen \? ' ▲' : ' ▾'\}/);
+  assert.match(block, /<span className="caret" aria-hidden="true">\{scanOpen \? '▲' : '▾'\}<\/span>/);
   assert.match(block, /aria-expanded=\{scanOpen\}/);
+  // …AND IT SITS THE WAY พิมพ์ / ส่งออก DOES — 2026-09-11. Below 860px the head
+  // stretches both to half a line; without `justify-content` the export label
+  // and its ▾ packed left beside a centred ไฟล์สแกน, with a ▾ in another size.
+  assert.match(css, /\.export-btn, \.scan-toggle \{\s*display: inline-flex; align-items: center; justify-content: center; gap: 8px;/);
+  assert.ok(css.includes('.export-btn .caret, .scan-toggle .caret { font-size: 10px;'), 'the two ▾ are two sizes again');
   // The old wording is quoted in the comment above, so what is asserted gone is
   // the JSX that drew it — the ternary, not the word.
   assert.ok(!/\? 'ซ่อนไฟล์สแกนนิ้วมือ'/.test(hrView), 'the label still changes width when pressed');
