@@ -7029,6 +7029,58 @@ to open the person, and since earlier the same day the row itself is what opens.
 > agrees" are indistinguishable. *(It read "in the largest type on the page"
 > until 2026-09-11 — it is one row now; see §คอลัมน์สแกน above.)*
 
+#### ไอคอน ยืนยัน บนแถว — the same dialog, for one person
+
+**2026-09-11:** *"เพิ่ม icon อนุมัติ ในตารางด้วย หากรายการไหนอนุมัติไม่ได้ให้
+disable ปุ่มไว้"*. The note over `.row-actions` had said for a day that the next
+thing to land in that cell would stand **beside** พิมพ์ rather than instead of
+it; this is it.
+
+**It opens ยืนยันการอนุมัติ for that one person, and signs nothing itself.**
+Agreed with the user before it was built, because §5.1 is the rule it could most
+easily have broken: this screen has **no single-row fast path**, since one person
+here is a whole month of theirs — six signatures and hours that reach payroll —
+and คิวรออนุมัติ's "a clean single row goes through with no dialog" was never
+true of it. So the press does exactly what ticking one box and pressing the bar
+does: it **sets the selection to that person** and opens the dialog. `chosen`,
+`tally` and `signPicked` are untouched and are still the only route to a
+signature.
+
+> **⚠ It replaces the ticks rather than adding to them.** A press that quietly
+> signed four other people somebody had ticked minutes earlier — under a dialog
+> listing all five — is the failure this button sits one press away from.
+> Naming one person has to produce one person.
+
+**Disabled by `pickable`, and the reason is on the wrapper.** The same rule and
+the same sentence (`whyNotPickable`) the tick-box carries, because two controls
+doing one act must not explain themselves differently. **A disabled button never
+opens its own `title`**, so the reason hangs on a `.act-sign` span around it —
+the same box, for the same reason, as `.act-watch` on คิวรออนุมัติ.
+
+**Drawn with `showPickCol`, not with `mayCorrect`**: the buttons appear on
+exactly the months the tick column does, because a column of permanently
+disabled icons is an offer with nothing behind it.
+
+#### ปรับขนาดคอลัมน์ให้สมดุล — 104 / 160 / 152
+
+Asked for in the same message: *"ปรับขนาดคอลัมน์ของตารางให้สมดุล ให้การแสดงผล
+สวยงาม"*. **On `table-layout: auto` a reserved width is not empty space at the
+end of the table — it is width taken from the columns that can wrap**, and only
+one column on this row can.
+
+| | ก่อน | หลัง | เพราะ |
+|---|---|---|---|
+| `.hr-table th.act-col` | 64 | **104** | two 34px squares + a 6px gap + two 12px gutters = 98 |
+| `.hr-table th.cap-col` | 224 *(shared)* | **152** | the longest thing in it is `รวมรออนุมัติ 45 / 40`, ~128px |
+| `.hr-table th.dept-col` | 132 | **160** | 132 was measured to hold `แผนกบัญชีและการเงิน` **and was not getting it** |
+
+**That last row is the whole point.** `dept-col` was already declared wide enough
+and still broke across two lines, because a declared width under `auto` is only
+honoured once the table fits — and `cap-col`'s shared 224 was spending the
+difference. The 72px it gives back is what lets the 160 actually arrive. All
+three are `.hr-table`-scoped: the shared numbers are measured against
+คิวรออนุมัติ's own crowd of columns and are not touched.
+
 #### เลือกทั้งหมด crosses the pager, and on คิวรออนุมัติ it does not
 
 That queue's rule is *ติ๊กอยู่ได้เท่าที่แถวยังอยู่บนจอ*, because its pager is a

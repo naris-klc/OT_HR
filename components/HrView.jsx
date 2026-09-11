@@ -2386,6 +2386,75 @@ export default function HrView({
                             same trade the pager's chevrons made on 2026-08-26,
                             on this screen, for the same reason. */}
                         <div className="row row-actions">
+                          {/* ── ⚠ ยืนยันคนนี้ — THE NEXT THING IN THIS CELL,
+                                 2026-09-11 ──────────────────────────────────
+
+                              *"เพิ่ม icon อนุมัติ ในตารางด้วย หากรายการไหน
+                              อนุมัติไม่ได้ให้ disable ปุ่มไว้"*. The note over
+                              พิมพ์ said the next thing here would stand BESIDE
+                              it rather than instead of it; this is it.
+
+                              IT OPENS THE SAME DIALOG, for one person — decided
+                              with the user before it was built. §5.1's rule is
+                              that this screen has NO single-row fast path: one
+                              person here is a whole month of theirs, six
+                              signatures and hours that reach payroll, and the
+                              queue's "clean single row goes through with no
+                              dialog" was never true of it. So the press does
+                              exactly what ticking one box and pressing the bar
+                              does — it SETS THE SELECTION to this person and
+                              opens ยืนยันการอนุมัติ. Nothing new signs anything:
+                              `chosen`, `tally` and `signPicked` are untouched
+                              and still the only route to a signature.
+
+                              ⚠ IT REPLACES THE TICKS RATHER THAN ADDING TO
+                              THEM. A press that quietly signed four other
+                              people a reader had ticked minutes ago — under a
+                              dialog listing all five — is the failure this
+                              button is one press away from; naming one person
+                              must produce one person.
+
+                              `showPickCol` AND NOT `mayCorrect`, so the column
+                              of buttons appears on exactly the months the tick
+                              column does. A row of permanently disabled icons
+                              is an offer with nothing behind it, which is the
+                              argument `showPickCol` already makes for itself.
+
+                              DISABLED, WITH THE REASON ON IT — §5.2 again, and
+                              `whyNotPickable` is the same sentence the tick-box
+                              carries, because two controls doing one act must
+                              not explain themselves differently.
+
+                              ⚠ THE `title` IS ON THE WRAPPER AND NOT ON THE
+                              BUTTON. A disabled button never opens its own
+                              tooltip, so a reason written on it is a reason
+                              nobody reads — which is the whole failure §5.2's
+                              `title` exists to prevent. `.act-watch` on
+                              คิวรออนุมัติ learnt this the same way; `.act-sign`
+                              is the same box for the same reason. */}
+                          {showPickCol && (
+                            <span
+                              className="act-sign"
+                              title={pickable(row)
+                                ? `ยืนยันรายการทั้งเดือนของคนนี้ (${row.approvable.count} ใบ)`
+                                : whyNotPickable(row)}
+                            >
+                              <button
+                                className="btn sm icon-btn"
+                                disabled={!pickable(row)}
+                                onClick={() => {
+                                  setPicked(new Set([String(row.employee._id)]));
+                                  setConfirming(true);
+                                }}
+                                aria-label={`ยืนยันรายการทั้งเดือน — ${row.employee.name}`}
+                              >
+                                <Icon name="tick" />
+                                <span className="act-label">
+                                  ยืนยัน {row.approvable?.count || 0} ใบ
+                                </span>
+                              </button>
+                            </span>
+                          )}
                           <button
                             className="btn ghost sm icon-btn"
                             onClick={() => setPrinting({ employeeId: row.employee._id })}

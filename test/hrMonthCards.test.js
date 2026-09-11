@@ -214,24 +214,32 @@ test('the action column was resized when it lost a button, and แผนก got 
    */
   // The shared 258 stays for whoever still holds worded buttons.
   assert.match(css, /th\.act-col \{ width: 258px; \}/);
-  // …and this screen, which holds one icon, takes an override rather than
-  // narrowing that rule out from under คิวรออนุมัติ.
-  assert.match(css, /\.hr-table th\.act-col \{ width: 64px; \}/);
-  // The cell it is sized for: exactly one button.
+
+  /* ⚠ 104 SINCE 2026-09-11, AND IT WAS 64. The cell holds TWO squares now —
+     *"เพิ่ม icon อนุมัติ ในตารางด้วย"* — and this is the pair the test exists to hold together: two 34px
+     buttons + the 6px gap + the cell's two 12px gutters is 98, rounded to 104 so
+     the focus ring is not clipped by the card's edge. */
+  assert.match(css, /\.hr-table th\.act-col \{ width: 104px; \}/);
   const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
-  assert.equal((cell.match(/<button/g) || []).length, 1, 'act-col holds a different number of buttons than 64px was cut for');
+  assert.equal((cell.match(/<button/g) || []).length, 2, 'act-col holds a different number of buttons than 104px was cut for');
 
   // Where the room went. `dept-col` had NO width on this screen before — it was
   // whatever `auto` left over, and what `auto` left over was nothing.
   assert.match(css, /\.hr-table th\.who-col \{ width: 196px; \}/);
-  assert.match(css, /\.hr-table th\.dept-col \{ width: 132px; \}/);
+  /* 160 since 2026-09-11, and it was 132 — *"ปรับขนาดคอลัมน์ของตารางให้สมดุล"*. 132 was measured to hold
+     แผนกบัญชีและการเงิน and did not get it, because a declared width under
+     `table-layout: auto` is only honoured once the table fits; `th.cap-col`'s
+     shared 224 was taking the room back out of the one column that wraps. */
+  assert.match(css, /\.hr-table th\.dept-col \{ width: 160px; \}/);
+  assert.match(css, /\.hr-table th\.cap-col \{ width: 152px; \}/);
   // Thai wraps by dictionary, so the cell needs `normal` or the shared `th`
   // nowrap holds the heading while the cell still breaks — a column sized by
   // neither of the two things in it.
   assert.match(css, /\.hr-table td\.dept-col \{ white-space: normal; \}/);
-  // Both scoped: the queue's own crowd of columns is measured against the
+  // All four scoped: the queue's own crowd of columns is measured against the
   // shared rules and is not touched.
   assert.match(css, /th\.who-col \{ width: 168px; \}/);
+  assert.match(css, /^th\.cap-col \{ width: 224px; \}/m);
 });
 
 test('พิมพ์ F-HR-027 stayed, because it is the one act that is not "open this person"', () => {
@@ -1414,4 +1422,37 @@ test('the pill is set in the Thai face, with the figures still tabular', () => {
   assert.match(rule, /font: 600 12\.5px\/1\.35 var\(--sans\);/);
   assert.match(rule, /font-variant-numeric: tabular-nums;/);
   assert.ok(!/--mono/.test(rule), 'ครั้ง is back in a face that cannot draw it');
+});
+
+test('ไอคอนอนุมัติในแถว เปิดกล่องยืนยันของคนนั้น และปิดตัวเองเมื่ออนุมัติไม่ได้', () => {
+  /* *"เพิ่ม icon อนุมัติ ในตารางด้วย หากรายการไหนอนุมัติไม่ได้ให้ disable ปุ่มไว้"* · ตกลงกับผู้ใช้ก่อนลงมือว่าให้ "เปิดกล่องยืนยันเฉพาะคนนั้น"
+     §5.1 บอกว่าจอนี้ไม่มีทางลัดสำหรับคนเดียว — หนึ่งคนที่นี่คือทั้งเดือนของเขา
+     หกลายเซ็น และชั่วโมงที่ไปถึงบัญชีเงินเดือน · ปุ่มนี้จึงทำสิ่งเดียวกับการติ๊ก
+     หนึ่งช่องแล้วกดแถบ ไม่ใช่เส้นทางเซ็นเส้นใหม่ */
+  const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
+
+  // กลีฟเดียวกับปุ่ม อนุมัติ ของคิวรออนุมัติ ไม่ใช่กลีฟที่เลือกใหม่ให้จอนี้
+  assert.match(cell, /<Icon name="tick" \/>/);
+  assert.match(read('components/ApprovalQueue.jsx'), /<Icon name="tick" className="btn-icon" \/>/);
+
+  // วาดพร้อมคอลัมน์ติ๊ก — แถวของไอคอนที่ปิดตายถาวรคือข้อเสนอที่ไม่มีอะไรอยู่ข้างหลัง
+  assert.match(cell, /\{showPickCol && \(/);
+  // ปิดด้วยกฎเดียวกับช่องติ๊ก ไม่ใช่กฎที่เขียนใหม่ตรงนี้
+  assert.match(cell, /disabled=\{!pickable\(row\)\}/);
+
+  /* ⚠ เหตุผลอยู่บน "ตัวครอบ" ไม่ใช่บนปุ่ม — ปุ่มที่ถูก disable ไม่เปิด title ของ
+     ตัวเอง เหตุผลที่เขียนบนปุ่มจึงเป็นเหตุผลที่ไม่มีใครได้อ่าน ซึ่งเป็นความล้มเหลว
+     ที่ title ของ §5.2 มีไว้กันพอดี · `.act-watch` บนคิวรออนุมัติเรียนเรื่องนี้มาแล้ว */
+  const wrap = cell.slice(cell.indexOf('<span'), cell.indexOf('</span>', cell.indexOf('<button')));
+  assert.match(wrap, /className="act-sign"\s+title=\{pickable\(row\)/);
+  assert.match(wrap, /: whyNotPickable\(row\)\}/);
+  assert.match(css, /\.act-sign \{ display: inline-flex; flex: none; \}/);
+
+  // กดแล้วเลือกคนเดียว แล้วเปิดกล่องเดิม — ไม่ได้เพิ่มเข้ากองที่ติ๊กไว้
+  assert.match(cell, /setPicked\(new Set\(\[String\(row\.employee\._id\)\]\)\);\s*\r?\n\s*setConfirming\(true\);/);
+
+  // และไม่มีเส้นทางเซ็นเส้นใหม่: กล่องกับฟังก์ชันเซ็นยังเป็นตัวเดิมตัวเดียว
+  assert.match(hrView, /<MonthConfirm\s+people=\{chosen\}/);
+  assert.match(hrView, /onConfirm=\{signPicked\}/);
+  assert.equal((hrView.match(/setSigning\(true\)/g) || []).length, 1, 'มีทางเซ็นมากกว่าหนึ่งทาง');
 });

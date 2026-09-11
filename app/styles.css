@@ -9113,8 +9113,15 @@ th.act-col { width: 258px; }
 
    Scoped rather than narrowing the bare rule: `th.act-col`'s 258 is still the
    right answer for whoever holds three worded buttons, and this screen no
-   longer does. */
-.hr-table th.act-col { width: 64px; }
+   longer does.
+
+   ⚠ 104 SINCE 2026-09-11, AND IT WAS 64 — the cell holds TWO squares now
+   (*"เพิ่ม icon อนุมัติ ในตารางด้วย"*), which the note over `.row-actions` in the
+   component said would be how the next thing arrived. Two 34px buttons and the
+   6px gap come to 74; plus the cell's two 12px gutters that is 98, rounded to
+   104 so a focus ring is not clipped by the card's edge. The arithmetic is the
+   same one that produced the 64. */
+.hr-table th.act-col { width: 104px; }
 
 /* ── AND THE 194px GOES BACK TO THE TWO COLUMNS THAT WERE STARVED ─────────
 
@@ -9135,7 +9142,27 @@ th.act-col { width: 258px; }
    BOTH ARE `.hr-table`-SCOPED. The two shared rules are measured against the
    queue's own crowd of columns and stay exactly as they are. */
 .hr-table th.who-col { width: 196px; }
-.hr-table th.dept-col { width: 132px; }
+/* ⚠ 160 SINCE 2026-09-11, AND IT WAS 132 — which held the word and still did
+   not get it, because `table-layout: auto` gives a declared width only once the
+   table fits. `th.cap-col`'s 224 (below) was taking the room back out of the one
+   column on the row that wraps, so แผนกบัญชีและการเงิน came out over two lines
+   under 132px of declared width. Asked for as *"ปรับขนาดคอลัมน์ของตารางให้สมดุล"*
+   — and balance here is not equal columns, it is each column holding what it was
+   measured against. */
+.hr-table th.dept-col { width: 160px; }
+/* ── สะสม / เพดาน — 152 ON THIS SCREEN, AND THE SHARED RULE SAYS 224 ────────
+
+   The 224 is measured for the widest cell this column ever holds; here the cell
+   is a figure with `.cap-sub` under it, and the longest that line goes is
+   `รวมรออนุมัติ 45 / 40` — 11.5px sans, about 128px. 152 holds it with room and
+   gives 72px back to the row.
+
+   ⚠ THOSE 72px ARE WHY แผนก WAS BREAKING. Under `table-layout: auto` an
+   over-wide declaration is not empty space at the end of the table, it is width
+   taken from the columns that can wrap — and only one column on this row can.
+   Scoped, like `act-col` and `who-col` above, because 224 is still right for
+   the screen it was measured on. */
+.hr-table th.cap-col { width: 152px; }
 /* The heading is one short word and the cells are one short phrase; without
    this the shared `th` nowrap holds the heading while the CELL still wraps,
    which is how a column ends up sized by neither. */
@@ -9238,6 +9265,20 @@ th.act-col { width: 258px; }
    square are all rules this file already carries for every disabled button and
    every queue icon. This is the box that holds them and nothing more. */
 .act-watch { display: inline-flex; gap: 6px; flex: none; }
+
+/* ── ยืนยันคนนี้ ON ตรวจสอบประจำเดือน — 2026-09-11 ─────────────────────────
+   *"เพิ่ม icon อนุมัติ ในตารางด้วย หากรายการไหนอนุมัติไม่ได้ให้ disable ปุ่มไว้"*.
+
+   A WRAPPER FOR THE SAME REASON `.act-watch` ABOVE IS ONE: a disabled button
+   never opens its own `title`, so the sentence saying WHY the row cannot be
+   confirmed has to hang on something that is not disabled. Everything the
+   button looks like is `.btn.sm.icon-btn` and the disabled rules this file
+   already carries; this box holds them and nothing more.
+
+   `flex: none` above 860px so the two squares sit on the same left edge down
+   the column; the phone block hands it `flex: 1 1 0` instead, where the cell is
+   the foot of a person's card and the two buttons split it. */
+.act-sign { display: inline-flex; flex: none; }
 
 /* Prose, and the only cell in the row that is meant to wrap. Given a width
    rather than the leftover: under `table-layout: fixed` the leftover is
@@ -14090,6 +14131,11 @@ table.mini tbody tr:hover { background: none; }
      inside their own button instead, which is the one place a Thai label has
      room to. */
   .hr-table tbody td.act-col .row-actions { flex-wrap: nowrap; gap: 8px; }
+  /* `.act-sign` is a wrapper round one of the two buttons (a disabled button
+     cannot hold its own tooltip — see the rule in the desktop section), so the
+     split has to be handed to the wrapper as well or the card goes to the
+     button it does not wrap. */
+  .hr-table tbody td.act-col .row-actions > .act-sign { flex: 1 1 0; min-width: 0; }
   .hr-table tbody td.act-col .row-actions .btn {
     flex: 1 1 0; min-width: 0; min-height: 44px;
     padding: 10px 8px; font-size: 13px; text-align: center;
