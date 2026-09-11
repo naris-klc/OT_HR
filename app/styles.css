@@ -9761,6 +9761,36 @@ tbody tr.picked:hover { background: var(--green-bg); }
 
 .row-actions { display: flex; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
 
+/* ── BUTTONS IN A TABLE COLUMN SIT AGAINST ITS RIGHT EDGE — ALWAYS ─────────
+
+   Asked for in those words on 2026-09-11: *"การวางปุ่มในคอลัมน์ตารางให้จัดชิด
+   ขวาเสมอ"*, reported off ตรวจสอบประจำเดือน where the action column is 104px
+   wide for two buttons and was holding one, left-aligned, with 40px of nothing
+   after it.
+
+   WHY IT SHOWED UP THERE FIRST and not on the other three tables: an action
+   column is sized for the widest row it can draw, so a row drawing FEWER
+   buttons than that leaves the gap. Every one of these tables has such a row —
+   `.own-note` on คิวรออนุมัติ stands where two buttons would, a row with no
+   edit right on ทะเบียนพนักงาน draws two of three — the month table was simply
+   the one where the short row is the COMMON row. Left-aligned, the buttons of
+   consecutive rows then stand in different places down the column and the eye
+   has to find each one; against the right edge they line up whatever each row
+   holds, and the edge they line up on is the one the table already ends at.
+
+   `td` AND NOT THE BARE CLASS. `.row-actions` is the shared action-cell class
+   and four components use it (HrView, ApprovalQueue, AdminView, EmployeeView),
+   all four inside a `<td>` today — but the class is also the app's general
+   "a row of buttons, spaced and wrapping" hook, and a wrapper used outside a
+   table has no right edge to mean anything. The ask was about columns; the
+   selector says columns.
+
+   IT IS A NO-OP BELOW 860px, deliberately. There the tables are cards and the
+   buttons are given `flex: 1 1 …` so they fill the row edge to edge — there is
+   no free space for a `justify-content` to distribute, which is why this rule
+   needs no breakpoint of its own. */
+td .row-actions { justify-content: flex-end; }
+
 /* "คุณเป็นผู้บันทึกรายการนี้…" — the sentence that stands where a row's two
    buttons would be. Held to the width of the action column so it wraps into
    the column rather than widening the table; the card layout below 860px lets

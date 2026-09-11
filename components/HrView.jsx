@@ -720,26 +720,44 @@ export default function HrView({
    * is declared further down still. The chain decides the order, not the
    * paragraph headings.
    *
-   * `mayCorrect` is WHO; `canPick.length` is WHETHER THERE IS ANYTHING to tick.
-   * At สถานะที่นับ = อนุมัติแล้วเท่านั้น the month holds no `pending_hr` row, so
-   * every `approvable` is empty and the column is not drawn — a column of
-   * permanently disabled boxes is an offer with nothing behind it, and this
-   * screen's default filter is the one where the offer is real.
+   * `mayCorrect` IS THE WHOLE QUESTION, AND `canPick.length` IS NOT PART OF IT.
+   * The tick column and the ยืนยัน button on the row are drawn for every reader
+   * who signs at this step, on every month, whatever สถานะที่นับ is set to. A
+   * row that cannot be confirmed carries them DISABLED, with the reason on the
+   * `title` — never missing.
    *
-   * ⚠ TWO FILTERS DO THAT NOW, AND ONE DOES THE OPPOSITE — 2026-09-11, when
-   * รอ HR เท่านั้น and รอหัวหน้าเท่านั้น were added. รอหัวหน้าเท่านั้น is the
-   * second filter with no `pending_hr` row in it, and the column vanishes there
-   * for the same reason. รอ HR เท่านั้น is the other end: every row in the month
-   * is one HR may act on, so the column is drawn for all of them and เลือกทั้งหมด
-   * means the month. Neither is a new rule — `canPick` was already counting the
-   * rows rather than reading the filter, which is why both fall out for free.
+   * ⚠ IT READ `mayCorrect && canPick.length > 0` UNTIL 2026-09-11, AND THAT WAS
+   * REPORTED FROM THE SCREEN. The argument written here for it was *a column of
+   * permanently disabled boxes is an offer with nothing behind it* — and the
+   * instruction it was standing against had already been given, in these words:
+   * *"หากรายการไหนอนุมัติไม่ได้ให้ disable ปุ่มไว้"*. It was reported again on
+   * 2026-09-11 with a screenshot taken at อนุมัติแล้วเท่านั้น, where the whole
+   * column was gone: *"ทำไมตารางไม่มีปุ่มให้อนุมัติตามที่คุยกัน"*.
+   *
+   * AND THE REPORT IS RIGHT ON ITS OWN TERMS, not only because it was asked for
+   * twice. A control that VANISHES teaches nothing: the reader cannot tell an
+   * offer that is switched off from one this screen never had, and there is
+   * nowhere to hang the sentence saying which. A disabled button holds that
+   * sentence. It also stops the column changing width as the filter changes —
+   * `th.act-col`'s 104px is sized for two buttons, and one button rattling
+   * around in it was the second half of what was reported
+   * (*"การวางปุ่มในคอลัมน์ตารางให้จัดชิดขวาเสมอ"*, answered by
+   * `td .row-actions` in app/styles.css).
+   *
+   * WHAT `canPick.length` STILL DECIDES is `showBatchBar` below. That bar is
+   * not in the table — it is a sentence ABOUT the month — and one reading
+   * ยืนยันได้ 0 คน · 0 รายการ is noise rather than an offer. Its own note says
+   * it disappears on a month with nothing outstanding, and it still does.
    *
    * TWO OPTIONAL COLUMNS MAKE THE TABLE TEN, ELEVEN OR TWELVE WIDE, and every
    * full-width row in it has to know. `colCount` is that number in one place;
    * writing `11` at four call sites is how a `colSpan` ends up one short of the
    * header and the pager sits under the wrong edge of the table.
    */
-  const showPickCol = mayCorrect && canPick.length > 0;
+  const showPickCol = mayCorrect;
+  /** See the paragraph above: the table always offers, the bar only speaks
+      when it has something to say. */
+  const showBatchBar = mayCorrect && canPick.length > 0;
   const colCount = 10 + (showScanCol ? 1 : 0) + (showPickCol ? 1 : 0);
   /**
    * The blank tail of รวมทั้งหมด — every column after รวม ชม.
@@ -1906,7 +1924,7 @@ export default function HrView({
                 requirement of เลือกทั้งหมด.
 
                 `no-print`: none of it is part of any document. */}
-            {showPickCol && (
+            {showBatchBar && (
               <div className={`batch-bar no-print${chosen.length ? ' picking' : ''}`}>
                 <div className="count-label">
                   {chosen.length === 0 ? (
@@ -1998,6 +2016,16 @@ export default function HrView({
                         <input
                           type="checkbox"
                           aria-label={`เลือกทั้งหมด (${canPick.length} คน)`}
+                          /* ⚠ DISABLED WHEN THERE IS NOTHING TO TICK — since
+                             2026-09-11, when the column stopped disappearing on
+                             such a month. Every box under it is disabled there;
+                             a live box on top of a column of dead ones is the
+                             one control here that would do nothing and say
+                             nothing about why. */
+                          disabled={canPick.length === 0}
+                          title={canPick.length === 0
+                            ? 'ไม่มีรายการที่รอยืนยันในเดือนนี้ ตามสถานะที่นับที่เลือกอยู่'
+                            : `เลือกทั้งหมด (${canPick.length} คน)`}
                           checked={canPick.length > 0 && chosen.length === canPick.length}
                           ref={(el) => {
                             if (el) el.indeterminate = chosen.length > 0 && chosen.length < canPick.length;
@@ -2469,11 +2497,14 @@ export default function HrView({
                               button is one press away from; naming one person
                               must produce one person.
 
-                              `showPickCol` AND NOT `mayCorrect`, so the column
-                              of buttons appears on exactly the months the tick
-                              column does. A row of permanently disabled icons
-                              is an offer with nothing behind it, which is the
-                              argument `showPickCol` already makes for itself.
+                              `showPickCol`, which IS `mayCorrect` since
+                              2026-09-11 — so this button appears on exactly the
+                              months the tick column does, and that is now every
+                              month its reader signs on. This paragraph read *a
+                              row of permanently disabled icons is an offer with
+                              nothing behind it* and argued for hiding the pair
+                              together; the note over `showPickCol` records what
+                              withdrew that.
 
                               DISABLED, WITH THE REASON ON IT — §5.2 again, and
                               `whyNotPickable` is the same sentence the tick-box
@@ -2504,8 +2535,20 @@ export default function HrView({
                                 aria-label={`ยืนยันรายการทั้งเดือน — ${row.employee.name}`}
                               >
                                 <Icon name="tick" />
+                                {/* ⚠ NO "ยืนยัน 0 ใบ" — the count is dropped
+                                    rather than printed as a zero, since
+                                    2026-09-11 when this button started being
+                                    drawn on rows with nothing to confirm. A
+                                    quantity of none reads as a template that
+                                    failed to fill itself in, and the reason is
+                                    already on the wrapper's `title`. The
+                                    desktop shows the icon alone either way —
+                                    `.act-label` is drawn below 860px, where
+                                    this cell is the foot of a card. */}
                                 <span className="act-label">
-                                  ยืนยัน {row.approvable?.count || 0} ใบ
+                                  {row.approvable?.count
+                                    ? `ยืนยัน ${row.approvable.count} ใบ`
+                                    : 'ยืนยัน'}
                                 </span>
                               </button>
                             </span>

@@ -8269,11 +8269,18 @@ answered *how much of this month counts* could not answer *which step is it
 waiting on* — and on a month of 225 รอ HR, 73 รอหัวหน้า and no `approved`, the
 two combined settings and ทั้งหมด draw very nearly the same table. รอ HR
 เท่านั้น is the one that leaves HR looking at its own queue: every row in it is
-a row this screen's ยืนยัน button may act on, so the tick column is offered for
-all of them. รอหัวหน้าเท่านั้น is its opposite and has no tick column at all,
-for the reason อนุมัติแล้วเท่านั้น has none — there is no `pending_hr` row in
-it. Neither is a new rule: `canPick` counts the rows rather than reading the
-filter, so both fall out of what was already there. The route was not touched —
+a row this screen's ยืนยัน button may act on, so every tick-box is live and
+เลือกทั้งหมด means the month. รอหัวหน้าเท่านั้น is its opposite — not one row in
+it can be confirmed from here, for the reason อนุมัติแล้วเท่านั้น has none:
+there is no `pending_hr` row in it. Neither is a new rule; `canPick` counts the
+rows rather than reading the filter, so both fall out of what was already there.
+
+> This read "**รอหัวหน้าเท่านั้น … has NO TICK COLUMN AT ALL**" for the few
+> hours between that change and the next one on 2026-09-11. The column no
+> longer goes anywhere: it is drawn disabled, with the reason on each box. See
+> §Status, *คอลัมน์ปุ่มบน ตรวจสอบประจำเดือน วาดเสมอ*.
+
+The route was not touched —
 `reportStatuses` has always kept `pending_hr` on its own; there was simply no
 control that could say it. `test/monthStatusFilter.test.js` pins the five rows,
 their order, and that every value survives that function intact.
@@ -11790,6 +11797,35 @@ build แล้ว
 
 **Verified**
 
+- **คอลัมน์ปุ่มบน ตรวจสอบประจำเดือน วาดเสมอ — กดไม่ได้ก็เป็น disable ·
+  และปุ่มในคอลัมน์ตารางชิดขวาทุกตาราง** — 2026-09-11 · แจ้งมาจากหน้าจอพร้อมภาพว่า
+  *ทำไมตารางไม่มีปุ่มให้อนุมัติตามที่คุยกัน ที่บอกว่าถึงกดไม่ได้ก็ให้แสดงเป็น disable
+  และการวางปุ่มในคอลัมน์ตารางให้จัดชิดขวาเสมอ*
+  · **ปุ่มอยู่ในโค้ดอยู่แล้ว แต่ถูกปิดทั้งคอลัมน์** — `showPickCol` อ่านว่า
+  `mayCorrect && canPick.length > 0` ภาพที่ส่งมาถ่ายตอน `สถานะที่นับ` เป็น
+  `อนุมัติแล้วเท่านั้น` ซึ่งไม่มีใบ `pending_hr` เลย `canPick` จึงว่าง และ**ทั้งช่องติ๊ก
+  ทั้งปุ่มยืนยันหายไปพร้อมกัน** ทั้งที่คำสั่งเดิมบอกไว้แล้วว่า
+  *หากรายการไหนอนุมัติไม่ได้ให้ disable ปุ่มไว้*
+  · **เหตุผลที่เคยเขียนไว้ข้างกฎนั้นคือ** *แถวของช่องที่ปิดตายถาวรคือข้อเสนอที่ไม่มี
+  อะไรอยู่ข้างหลัง* — ⚠️ ถอนแล้ว · ตัวควบคุมที่**หายไป**สอนอะไรไม่ได้เลย ผู้อ่านแยก
+  ไม่ออกว่าอันไหนคือข้อเสนอที่ถูกปิดอยู่ กับอันไหนคือของที่จอนี้ไม่เคยมี และไม่เหลือ
+  ที่ให้แขวนประโยคที่บอกว่าอันไหนเป็นอันไหน · ปุ่มที่ disable ถือประโยคนั้นไว้บน
+  `title` ได้
+  · **ช่องติ๊กหัวตารางถูก disable ตามไปด้วย** เมื่อไม่มีแถวไหนติ๊กได้ — ไม่งั้นมันคือ
+  ตัวควบคุมที่ยังเป็น ๆ ตัวเดียวบนคอลัมน์ที่ตายทั้งคอลัมน์
+  · **แถบล่างไม่ขยับตาม และตั้งใจ** — `showBatchBar` ยังเป็น
+  `mayCorrect && canPick.length > 0` เหมือนเดิม เพราะแถบนั้นไม่ได้อยู่ในตาราง
+  มันคือ*ประโยคที่พูดถึงเดือนนี้* และแถบที่เขียนว่า `ยืนยันได้ 0 คน · 0 รายการ`
+  เป็นเสียงรบกวน ไม่ใช่ข้อเสนอ
+  · **ปุ่มชิดขวาเป็นกฎของทุกตาราง** — `td .row-actions { justify-content: flex-end; }`
+  · คอลัมน์ปุ่มกว้างเท่าแถวที่วาดปุ่มมากที่สุด แถวที่วาดน้อยกว่าจึงเหลือช่องว่างเสมอ
+  (ที่นี่คือ 104px เผื่อปุ่มสองตัว แล้ววาดตัวเดียว) · ชิดซ้ายแล้วปุ่มของแต่ละแถวยืน
+  คนละตำแหน่งไล่ลงมา ชิดขวาแล้วตรงกันหมด · เลือก `td` ไม่ใช่คลาสเปล่า เพราะของที่
+  ไม่ได้อยู่ในตารางไม่มีขอบขวาให้หมายถึงอะไร · ใต้ 860px ไม่มีผล เพราะปุ่มถูกสั่ง
+  `flex: 1 1 …` ให้เต็มแถวอยู่แล้ว
+  · **เทสต์ 2623/2623 ผ่าน** (เดิม 2621) · บิลด์ผ่านบน distDir แยก · `:3000` ไม่ถูกแตะ
+  · ⚠ **ยังไม่ได้เดินด้วยตาบนหน้าจอ**
+
 - **`สถานะที่นับ` บน ตรวจสอบประจำเดือน ได้แถว `รอ HR เท่านั้น` กับ
   `รอหัวหน้าเท่านั้น` — สามแถวเป็นห้าแถว** — 2026-09-11 · ขอมาพร้อมภาพแถบตัวกรองว่า
   *เพิ่มตัวกรองสถานะ "รอ HR"* · แถว `รอหัวหน้าเท่านั้น` ตกลงเพิ่มมาคู่กันในคำตอบเดียวกัน
@@ -11801,9 +11837,11 @@ build แล้ว
   ตามลำดับที่ใบเดินผ่าน แล้วค่อยเป็นชุดรวมสองแถว
   · **เราต์ไม่ถูกแตะเลย** `reportStatuses` รับ `pending_hr` เดี่ยว ๆ มาตลอด
   ที่ไม่มีคือตัวควบคุมที่พูดมันได้
-  · **คอลัมน์ช่องติ๊กขยับเองสองทางโดยไม่มีกฎใหม่** — `รอหัวหน้าเท่านั้น` ไม่มีคอลัมน์
-  ด้วยเหตุผลเดียวกับ `อนุมัติแล้วเท่านั้น` ส่วน `รอ HR เท่านั้น` มีครบทุกแถว ·
-  `canPick` นับแถวอยู่แล้ว ไม่ได้อ่านตัวกรอง
+  · **ช่องติ๊กขยับเองสองทางโดยไม่มีกฎใหม่** — `รอหัวหน้าเท่านั้น` ไม่มีแถวไหนติ๊กได้
+  ด้วยเหตุผลเดียวกับ `อนุมัติแล้วเท่านั้น` ส่วน `รอ HR เท่านั้น` ติ๊กได้ทุกแถว ·
+  `canPick` นับแถวอยู่แล้ว ไม่ได้อ่านตัวกรอง · ⚠️ ข้อนี้เคยเขียนว่า
+  **`รอหัวหน้าเท่านั้น` ไม่มีคอลัมน์** ซึ่งจริงอยู่ไม่กี่ชั่วโมง — คอลัมน์เลิกหายไปแล้ว
+  ในรอบถัดมาของวันเดียวกัน ดูข้อบนสุด
   · **คอลัมน์ `สะสม / เพดาน` ไม่ขยับ** และ `รายงาน OT ประจำทีม` ได้แถวใหม่ไปด้วย
   เพราะเป็นคอมโพเนนต์เดียวกัน
   · **เทสต์ 2621/2621 ผ่าน** — `test/monthStatusFilter.test.js` เป็นไฟล์ใหม่ ห้าเคส

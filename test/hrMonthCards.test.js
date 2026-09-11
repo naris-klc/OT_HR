@@ -308,9 +308,17 @@ test('every card is the same height — the ceiling column is a fixed track with
   const cardRule = phone.slice(phone.indexOf('.hr-table tbody tr {'));
   // ⚠ A THIRD TRACK LEADS IT SINCE 2026-09-10 — `auto`, for the tick-box, and
   // `auto` precisely so it can COLLAPSE: `showPickCol` takes the column off a
-  // month with nothing to confirm, and a fixed first track would indent every
-  // name on the card past a box that is not drawn. The 108px it is measured
-  // against is untouched, which is the claim this test is really making.
+  // reader who does not sign at this step, and a fixed first track would indent
+  // every name on the card past a box that is not drawn. The 108px it is
+  // measured against is untouched, which is the claim this test is really
+  // making.
+  //
+  // (That read "takes the column off a month with NOTHING TO CONFIRM" until
+  // 2026-09-11. The column stopped hiding on such a month — it is drawn
+  // disabled instead — so the track collapses on fewer readings than it did,
+  // and on none that this test measures. `auto` is still what it must be:
+  // `mayCorrect` is false for การเงิน and the three signers, who read this
+  // table and never tick anything on it.)
   assert.match(cardRule, /^\.hr-table tbody tr \{\s*display: grid;[\s\S]{0,600}?grid-template-columns: auto minmax\(0, 1fr\) 108px;/);
   // Scoped to this rule: `.bmonth-table` next door is a card with an `auto`
   // second track and has every right to be.
@@ -1448,7 +1456,11 @@ test('ไอคอนอนุมัติในแถว เปิดกล่�
   assert.match(cell, /<Icon name="tick" \/>/);
   assert.match(read('components/ApprovalQueue.jsx'), /<Icon name="tick" className="btn-icon" \/>/);
 
-  // วาดพร้อมคอลัมน์ติ๊ก — แถวของไอคอนที่ปิดตายถาวรคือข้อเสนอที่ไม่มีอะไรอยู่ข้างหลัง
+  /* วาดพร้อมคอลัมน์ติ๊ก — และตั้งแต่ 2026-09-11 นั่นแปลว่า "ทุกเดือนที่ผู้อ่าน
+     เซ็นได้" เพราะ `showPickCol` เป็น `mayCorrect` เฉย ๆ แล้ว · ⚠ บรรทัดนี้เคยมี
+     คำอธิบายว่า *แถวของไอคอนที่ปิดตายถาวรคือข้อเสนอที่ไม่มีอะไรอยู่ข้างหลัง* ซึ่ง
+     เป็นเหตุผลของกฎเก่าที่ถูกถอนไปแล้ว — ถูกแจ้งจากหน้าจอว่า
+     *"ทำไมตารางไม่มีปุ่มให้อนุมัติตามที่คุยกัน"* · ดู monthBatchApprove */
   assert.match(cell, /\{showPickCol && \(/);
   // ปิดด้วยกฎเดียวกับช่องติ๊ก ไม่ใช่กฎที่เขียนใหม่ตรงนี้
   assert.match(cell, /disabled=\{!pickable\(row\)\}/);
