@@ -266,10 +266,43 @@ the copy is never the one that gets fixed.
 be built from the kit without a fight, that is a design question to take back to
 the user — not a licence to build a parallel one.
 
+### Responsive is half the design, not a pass at the end
+
+**A screen is designed at two widths and both are agreed before you write.**
+Asking "what should it look like" once and getting the desktop answer is asking
+half the question; the other half is what the phone gets, and "the same thing,
+smaller" is not an answer — a seven-column table that merely shrinks is a
+seven-column table nobody can read.
+
+So the questions in §Before you write UI code always include: at phone width,
+does this table become cards · which columns may disappear · how do the buttons
+re-stack · what sits against the bottom edge. And then which breakpoint switches
+between the two — `docs/design.md` §6 lists the seven this app already has, and
+an eighth is not yours to add.
+
+Three mechanical rules cause most of the damage when they are missed, and all
+three are pinned by tests:
+
+- **A child of a flex or grid row needs `min-width: 0`** when what is inside it
+  can be long. The default lets one long address push the whole card off the
+  screen — `test/logCardMobile.test.js`.
+- **Names wrap, dates do not.** A person's name is allowed a second line and has
+  to break at the space, never inside a Thai word; `nowrap` belongs to dates and
+  time spans — `test/queueNameWrap.test.js`.
+- **A table that scrolls sideways has to say so**, and when it becomes cards
+  every cell carries its own label, because the `thead` that explained the
+  columns is gone — `test/acctScrollHint.test.js`,
+  `test/complianceCardMobile.test.js`.
+
+Printing is the third width, not a separate feature — `test/screenTablePrint.test.js`.
+
 ### Before you call a screen done
 
-Both themes · 390px wide · Ctrl+P · the safe area at the bottom edge · and the
-main breakpoint is 860px, below which the app is meant to read as a phone app
+Both themes · **1440, 1024, 861, 860, 640, 390 and 360 wide** — the two in the
+middle are opposite sides of the main breakpoint and are the pair that is missed
+most, because code written for one side looks right at whatever width its author
+had open · Ctrl+P · the safe area at the bottom edge · and no horizontal
+scrollbar on the page itself. Below 860px the app is meant to read as a phone app
 (bottom bar, FAB, tables that become cards, 44px targets), not as a shrunken
 desktop.
 

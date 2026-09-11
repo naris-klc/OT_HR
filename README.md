@@ -1937,7 +1937,7 @@ app/api/                  the HTTP layer — auth, entries, departments,
                           employees, holidays, reports, exports, settings
 app/layout.js, page.js    the shell; styles.css + print.css live here
 components/               React UI + the three printable A4 forms
-docs/design.md            กฎของหน้าตา — โทเคน เบรกพอยต์ ของที่ใช้ซ้ำ เช็กลิสต์จอใหม่
+docs/design.md            กฎของหน้าตา — โทเคน responsive ของที่ใช้ซ้ำ เช็กลิสต์จอใหม่
 lib/                      request plumbing: db, session, http, route helpers
 lib/policyVersion.js      what a rule set is, whether two of them compute the
                           same, and who a replay may touch — pure
