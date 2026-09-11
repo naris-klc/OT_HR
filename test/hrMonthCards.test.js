@@ -225,13 +225,24 @@ test('the action column was resized when it lost a button, and แผนก got 
 
   // Where the room went. `dept-col` had NO width on this screen before — it was
   // whatever `auto` left over, and what `auto` left over was nothing.
-  assert.match(css, /\.hr-table th\.who-col \{ width: 196px; \}/);
+  /* ⚠ 168 SINCE 2026-09-11 รอบสอง, AND IT WAS "196" — which is the same lesson
+     this test was written for, read the other way round. The 196 was not a
+     measurement either: it was what was LEFT of the 194 `act-col` gave back,
+     spent because it was there. When `count-col`'s labels gained `รอ` and the
+     column needed 40px, this was the one place on the row carrying width
+     nothing had been measured against. `นางสาวสสุคนธ์ ข่าค่ำ` is 128.6px
+     at 14px/400 off the font file, so 152.6 with the gutters — 168 still draws
+     it on one line. See test/monthCountStatus.test.js for the whole budget. */
+  assert.match(css, /\.hr-table th\.who-col \{ width: 168px; \}/);
   /* 160 since 2026-09-11, and it was 132 — *"ปรับขนาดคอลัมน์ของตารางให้สมดุล"*. 132 was measured to hold
      แผนกบัญชีและการเงิน and did not get it, because a declared width under
      `table-layout: auto` is only honoured once the table fits; `th.cap-col`'s
      shared 224 was taking the room back out of the one column that wraps. */
   assert.match(css, /\.hr-table th\.dept-col \{ width: 160px; \}/);
-  assert.match(css, /\.hr-table th\.cap-col \{ width: 152px; \}/);
+  // 140 since 2026-09-11 รอบสอง, and it was "152" — the other twelve of that
+  // 40px. `รวมรออนุมัติ 45 / 40` measures 107.2px, wanting 131.2 with the
+  // gutters, so 140 still keeps 9px over the longest line it holds.
+  assert.match(css, /\.hr-table th\.cap-col \{ width: 140px; \}/);
   // Thai wraps by dictionary, so the cell needs `normal` or the shared `th`
   // nowrap holds the heading while the cell still breaks — a column sized by
   // neither of the two things in it.

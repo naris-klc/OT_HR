@@ -173,8 +173,15 @@ const CARD_PAGE = 5;
  * STILL TWO LINES AT MOST, which is the constraint the whole column is built
  * around: the row is already two lines tall (`who-col` draws the รหัส under the
  * name), so the second is free and the third would make every row in the table
- * taller. Both pending kinds on one person share a line — `หัวหน้า 1 · HR 2`,
- * about 90px in a 96px column — rather than taking one each.
+ * taller. Both pending kinds on one person share a line — `รอหัวหน้า 1 · รอHR 2`
+ * — rather than taking one each.
+ *
+ * ⚠ THE WORDS GAINED `รอ` ON 2026-09-11, ASKED FOR IN THOSE TERMS: *"แก้ไขคำเป็น
+ * `รอหัวหน้า 1` `รอHR 1`"*. `หัวหน้า 1` named a person and left the reader to
+ * supply the verb; `รอหัวหน้า 1` says what the row is waiting for. It is not a
+ * free rename — the shared line went from 81.6px to 109.5px measured off the
+ * font file itself, which is 40px of column that has to come from somewhere.
+ * The stylesheet takes it from the two columns that were measured to have it.
  *
  * ⚠ SO THIS COLUMN NO LONGER HONOURS สถานะที่นับ, alone among the figures on
  * this row. That is the เพดาน column's argument one cell over — *a
@@ -188,8 +195,8 @@ function monthCount(row) {
   if (!m) return row.entryCount;
   const total = m.approved + m.pendingMgr + m.pendingHr;
   const waiting = [
-    m.pendingMgr > 0 && <span key="m" className="cs-m">หัวหน้า {m.pendingMgr}</span>,
-    m.pendingHr > 0 && <span key="h" className="cs-h">HR {m.pendingHr}</span>,
+    m.pendingMgr > 0 && <span key="m" className="cs-m">รอหัวหน้า {m.pendingMgr}</span>,
+    m.pendingHr > 0 && <span key="h" className="cs-h">รอHR {m.pendingHr}</span>,
   ].filter(Boolean);
   return (
     <span
@@ -201,7 +208,7 @@ function monthCount(row) {
       {waiting.length > 0 && (
         /* A `<div>` and not a second line of the same flow: it has to be the
            block that `.count-status` sizes and colours, and it must never share
-           a line with the total — a row reading `12 หัวหน้า 1` is the two
+           a line with the total — a row reading `12 รอหัวหน้า 1` is the two
            numbers running together that this redesign exists to stop. */
         <div className="count-status">
           {waiting.length === 2 ? [waiting[0], ' · ', waiting[1]] : waiting}
