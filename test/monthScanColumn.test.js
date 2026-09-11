@@ -183,6 +183,32 @@ test('a month with no scan file says so, and does not look like a clean month', 
   assert.match(hrView, /onOpenImport=\{\(\) => setScanOpen\(true\)\}/);
 });
 
+test('ปุ่ม นำเข้าไฟล์สแกน ไม่ซ้ำกับลิ้นชักที่เปิดอยู่แล้ว', () => {
+  /*
+   * 11 ก.ย. 2569 — *"ปุ่มนำเข้าไฟล์สแกน ซ้ำซ้อนหลายที่เยอะจัง"*, over a screenshot
+   * with three of them stacked inside 150px: `ไฟล์สแกน ▲` on the card head,
+   * `นำเข้าไฟล์สแกน` in this card's blue row, and the drawer's own
+   * `นำเข้าไฟล์สแกน (.txt)`. Only the last opens a file dialog; the other
+   * two open a drawer — and in that screenshot the drawer was already open, so
+   * two of the three did nothing at all when pressed.
+   *
+   * THE FIX IS NOT FEWER DOORS, IT IS NO DOOR ONTO A ROOM YOU ARE STANDING IN.
+   * While the drawer is open this card's state 1 draws nothing (the drawer says
+   * `นำเข้าแล้ว 0 จาก 4 ไฟล์` one line below, with the picker beside it) and
+   * the ยังไม่ได้นำเข้าของบริษัท… row keeps its sentence and loses its
+   * button. Shut, both are back: one press from the problem to the thing that
+   * answers it, which is what the block above `onOpenImport` is for.
+   */
+  assert.match(hrView, /importOpen=\{scanOpen\}/);
+  assert.match(card, /importOpen = false,/);
+  assert.match(card, /if \(importOpen\) return null;/);
+  assert.match(card, /\{onOpenImport && !importOpen && \(/);
+  // ชิปบนหัวการ์ดยังอยู่ — มันคือทางเข้าที่มีทุกสถานะ รวมถึงเดือนที่ทุกแถวตรง
+  // และเป็นทางเดียวที่ ปิด ลิ้นชักได้
+  assert.match(hrView, /className="btn ghost sm scan-toggle"/);
+  assert.match(hrView, /onClick=\{\(\) => setScanOpen\(\(v\) => !v\)\}/);
+});
+
 test('the tally is HR’s own words, and the facts are told apart from the errands', () => {
   // The four badges are read from `SCAN_BADGE` rather than written out, so the
   // card and the row chip cannot come to name one finding two ways.
@@ -464,7 +490,29 @@ test('ลิ้นชัก ไฟล์สแกนนิ้วมือ กร
   // 1. หัวข้อกับบรรทัดตัวเลขอยู่บรรทัดเดียวกัน
   //    สองคำบนบรรทัดกว้างเท่าการ์ด คือบรรทัดที่จ่ายไปกับการบอกชื่อลิ้นชัก
   assert.match(scanImport, /<div className="scan-head-text">/);
-  assert.match(css, /\.scan-head-text \{[^}]*flex: 1; display: flex; flex-wrap: wrap; align-items: baseline;/);
+  /* ⚠ THIS PINNED `.scan-head-text { flex: 1; display: flex; flex-wrap: wrap;
+     align-items: baseline; }` UNTIL 11 ก.ย. 2569, when the fold's own control was
+     asked onto this row as well: *"ปุ่ม อ่านต่อ สำหรับคำอธิบาย ย้ายไปอยู่แถว
+     เดียวกับ หัวข้อ"*. A row nested inside the head's row cannot seat a third
+     item beside its own two, so the box was dissolved (`display: contents`) and
+     the head row itself is the flex.
+
+     THE RULE DID NOT MOVE — the heading and the month's figures read as one
+     line — only which element says so. */
+  assert.match(scanImport, /<div className="scan-drawer-head">/);
+  assert.match(css, /^\.scan-drawer-head \{\r?\n  display: flex; flex-wrap: wrap; align-items: baseline;/m);
+  assert.match(css, /^\.scan-head-text \{ display: contents; \}$/m);
+
+  /* 1ข. ปุ่ม อ่านต่อ อยู่ในแถวนั้นด้วย — แต่สิ่งที่มันกางไม่ได้อยู่
+        `Disclosure` คืนกล่องเดียวที่ถือทั้งปุ่มและเนื้อความ หัวลิ้นชักต้องการมันคนละที่
+        `display: contents` ส่งลูกทั้งสองเข้าแถว flex แล้ว `order` จัดที่ให้
+        — ปุ่มต่อจากตัวเลข เนื้อความลงไปเต็มความกว้างข้างล่าง กลไกเดียวกับ `.manual-intro-head` */
+  assert.match(css, /^\.scan-drawer-head > \.disclosure \{ display: contents; \}$/m);
+  assert.match(css, /^\.scan-drawer-head \.disclosure-more \{ order: 1; \}$/m);
+  assert.match(css, /^\.scan-drawer-head \.disclosure-slide \{ order: 3; flex-basis: 100%; \}$/m);
+  // บนมือถือ ปุ่มที่นิ้วต้องกดจริง ๆ คือปุ่มเดียวในลิ้นชักนี้ จึงกินบรรทัดทั้งบรรทัด
+  const phone = css.slice(css.indexOf('@media (max-width: 640px)', css.indexOf('.scan-drawer-head {')));
+  assert.match(phone.slice(0, phone.indexOf('\n}')), /\.scan-drawer-head > \.row \.btn \{ flex: 1; min-height: 44px; \}/);
 
   // 2. สี่ช่องเป็นสองคอลัมน์ — สิ่งที่มันอธิบายคือตาราง
   assert.match(scanImport, /<div className="scan-slots">/);
@@ -489,6 +537,21 @@ test('ลิ้นชัก ไฟล์สแกนนิ้วมือ กร
   assert.match(upto, /ยกเลิก/);
   // ปุ่มมีชุดเดียว ไม่ได้ทิ้งแถวเดิมไว้ข้างล่าง
   assert.equal((upto.match(/ยืนยันนำเข้า/g) || []).length, 1, 'มีปุ่มยืนยันสองชุด');
+
+  /* 4ข. คำอธิบายสั้นลง แต่ยังเป็นห้าข้อ — 11 ก.ย. 2569
+        *"ปรับคำอธิบายให้กระชับขึ้น แต่ได้ใจความสำคัญครบถ้วน"* — แต่ละข้อตอบคนละคำถาม
+        ที่มีคนถามออกมาจริง ๆ: นำเข้าแล้วตัวเลขขยับไหม · เดือนหนึ่งกี่ไฟล์ · รู้ได้อย่างไรว่าไฟล์
+        ไหนของเครื่องไหนบริษัทไหน · นำเข้าซ้ำแล้วเกิดอะไร · ทำไมไม่มีเข้า/ออก ห้าข้อนี้จึงยัง
+        ครบห้า ที่หายไปคือการพูดรอบสองของแต่ละข้อ ไม่ใช่ข้อไหน */
+  const fold = scanImport.slice(scanImport.indexOf('<Disclosure as="ul"'), scanImport.indexOf('</Disclosure>'));
+  assert.equal((fold.match(/<li>/g) || []).length, 5, 'ข้อเท็จจริงในคำอธิบายหายไปหนึ่งข้อ');
+  for (const fact of [
+    'ไฟล์นี้ถูกเก็บไว้เฉย ๆ', 'เดือนหนึ่งมีได้ถึง', 'ไม่ต้องครบก็ได้',
+    'ระบบดูออกเอง', 'ทะเบียนพนักงาน', 'ทับของเดิมได้', 'ไฟล์เดิมยังเก็บไว้',
+    'ครั้งไหนเข้า ครั้งไหนออก',
+  ]) assert.ok(fold.includes(fact), `คำอธิบายขาด: ${fact}`);
+  // ตัวอย่างบรรทัดของแต่ละเครื่องยังอ่านมาจาก SCAN_FORMATS ไม่ได้พิมพ์ไว้เอง
+  assert.match(fold, /SCAN_FORMATS\.map/);
 
   /* 5. ⚠ ข้อเท็จจริงครบเท่าเดิมทุกตัว — "กระชับ" ไม่ใช่ "ตัดออก"
         `บรรทัด` ย้ายลงไปอยู่บรรทัดที่สอง ข้าง ๆ ยอดที่ถูกข้าม ซึ่งเป็นตัวที่อธิบาย

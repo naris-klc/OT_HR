@@ -188,13 +188,26 @@ export default function ScanImport({
        now, between the notices and the filter bar. A drawer with a `.card` root
        nested in a card is the shape this element can no longer be in. */
     <section className="scan-drawer no-print">
-      {/* ── ⚠ THE TITLE AND ITS FIGURES ARE ONE LINE — 2026-09-11 ───────────
-          *"ปรับการแสดงผลส่วนนี้ให้กระชับ แต่ยังได้รายละเอียดครบถ้วน และใช้พื้นที่
-          อย่างคุ้มค่าที่สุด"*. They were a heading with a `.hint` under it, and
-          the heading is two words on a line 900px wide — a line spent saying
-          what the drawer is called, over a line that says everything about it.
-          One baseline-aligned row costs nothing and gives a line back. */}
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+      {/* ── ⚠ THE WHOLE HEAD OF THIS DRAWER IS ONE ROW ────────────────
+
+          2026-09-11, twice in one morning. *"ปรับการแสดงผลส่วนนี้ให้กระชับ แต่ยังได้
+          รายละเอียดครบถ้วน"* put the heading and its figures on one baseline-aligned
+          row — the heading is two words on a line 900px wide, over a line that
+          says everything about the drawer. Then: *"ปุ่ม อ่านต่อ สำหรับคำอธิบาย
+          ย้ายไปอยู่แถวเดียวกับ หัวข้อ"* — so `Disclosure` came inside this row too,
+          and the last line the head spent on itself is a line of the table.
+
+          THE FOLD IS ONE ELEMENT AND HAS TO BE TWO THINGS HERE: a control in the
+          row, and a body that is not in it. `display: contents` on its wrapper
+          (app/styles.css) hands both children to this flex row, where `order`
+          puts อ่านต่อ after the figures and the body on a full-width line of its
+          own underneath everything. Same mechanism as the manual card's head.
+
+          IT IS A ROW THAT WRAPS. At 390px the heading, the figures, อ่านต่อ and
+          นำเข้าไฟล์สแกน (.txt) break wherever they have to; nothing is shortened
+          and nothing is cut. The button takes a 44px line of its own down there
+          — it is the one thing in this drawer a finger has to hit. */}
+      <div className="scan-drawer-head">
         <div className="scan-head-text">
           <h3 style={{ margin: 0 }}>ไฟล์สแกนนิ้วมือ</h3>
           <div className="hint" style={{ margin: 0 }}>
@@ -231,6 +244,76 @@ export default function ScanImport({
               )}
           </div>
         </div>
+        {/*
+          THE SAME FOLD THE REST OF THE APP USES — 2026-09-07.
+
+          The detail is folded because it is read once, by whoever imports a file
+          for the first time, and is furniture on every visit after. That much has
+          been true since the card was written; what changed is the control. It
+          was a `.btn ghost` reading รายละเอียด, in the header row beside
+          นำเข้าไฟล์สแกน — a second button, the same weight as the one that does
+          the work, for something that only reads. The rest of the app opens its
+          explanations on `Disclosure`, and a card that keeps its own word for the
+          gesture is a card somebody has to learn twice.
+
+          THAT LAST SENTENCE IS OWED A DEBT SINCE 2026-09-08. It read "Every other
+          explanation in the app now opens on อ่านต่อ", which stopped being true
+          the day ทะเบียนพนักงาน — the card next to this one, folding a bullet
+          list of the same shape for the same reason — was asked to say
+          ดูรายละเอียด instead. So the two whole-body folds on ตั้งค่าระบบ now use
+          two words for one gesture, which is the exact thing the sentence above
+          warns about, and this card is the one that did not change.
+
+          NOT CHANGED HERE ON ITS OWN. The word for a `lines={0}` fold is a
+          decision about all three of them — this card, ทะเบียนพนักงาน and
+          นโยบายการคำนวณ's nineteen rows — and `Disclosure`'s own header carries
+          the argument for making ดูรายละเอียด the default when nothing is
+          clamped. One card changing quietly to match another is how a rule ends
+          up existing in two places and agreeing in neither.
+
+          ⚠ THE STYLE IS GONE AND NOT MISLAID. It carried `marginTop: 10` for the
+          days this sat under the head as a block of its own; the wrapper is
+          `display: contents` now, and a margin on a box that draws nothing is a
+          margin nobody applies. The gap above the body is the row's own.
+        */}
+        <Disclosure as="ul" lines={0} className="hint hint-list" of="ไฟล์สแกนนิ้วมือ">
+          {/* ⚠ กระชับขึ้น — 2026-09-11, SAID IN THE SAME BREATH AS THE ROW ABOVE:
+              *"ปรับคำอธิบายให้กระชับขึ้น แต่ได้ใจความสำคัญครบถ้วน"*.
+
+              FIVE FACTS STAYED FIVE FACTS — not one bullet was dropped, because
+              each one answers a different question somebody has asked out loud:
+              does importing move my numbers, how many files is a month, how does
+              it know which machine, what happens if I import twice, why are there
+              no in/out marks. What went is the second telling of each: the two
+              clauses that restated the count line above them, the list of what
+              "รายงานทุกใบ" means, and the sentence that named the machine and the
+              company in a heading and then again in its own body.
+
+              ONE OF THEM MERGED RATHER THAN SHRANK. *ระบบดูออกเองว่าไฟล์ไหนเป็นของ
+              เครื่องไหนบริษัทไหน* was the tail of the สี่ไฟล์ bullet and the
+              bullet under it was how it does that — a claim and its own proof,
+              one line apart, as two bullets. */}
+          <li>
+            <strong>ไฟล์นี้ถูกเก็บไว้เฉย ๆ ไม่ทำให้ตัวเลขใดขยับ</strong> — ยอดชั่วโมง
+            {' '}ใบขออนุมัติ OT และรายงานทุกใบ ยังคิดจากใบที่ยื่นและเซ็นเหมือนเดิม
+          </li>
+          <li>
+            <strong>เดือนหนึ่งมีได้ถึง {grid ? grid.slots.length : 4} ไฟล์</strong> — สองเครื่อง
+            {' '}× ไพรมัสกับเดมเทค · อัปโหลดทีละไฟล์ ลำดับไหนก่อนก็ได้
+            {' '}· ไม่ต้องครบก็ได้ ระบบเทียบเท่าที่มี
+          </li>
+          <li>
+            <strong>ระบบดูออกเองว่าไฟล์ไหนเครื่องไหน บริษัทไหน</strong> — เครื่องดูจากรูปแบบบรรทัด
+            {' '}({SCAN_FORMATS.map((f) => `${f.short}: ${f.example}`).join('  ·  ')})
+            {' '}· บริษัทดูจากทะเบียนพนักงานของคนในไฟล์ ไม่ใช่คำนำหน้ารหัส
+          </li>
+          <li>
+            <strong>นำเข้าไฟล์ใหม่ทับของเดิมได้</strong> — ถ้าเครื่อง บริษัท
+            {' '}และวันที่ตรงกับของเดิม ระบบจะ<strong>ลบรายการเดิมช่วงวันนั้นแล้วใช้ไฟล์ใหม่แทน</strong>
+            {' '}พร้อมบอกว่าทับไปกี่รายการ · ไฟล์เดิมยังเก็บไว้ · ไฟล์ของอีกเครื่องในวันเดียวกันไม่ถูกแตะ
+          </li>
+          <li>เครื่องสแกนไม่บอกว่าครั้งไหนเข้า ครั้งไหนออก ระบบจึงเก็บตามที่เครื่องบันทึกมา</li>
+        </Disclosure>
         <div className="row" style={{ gap: 8 }}>
           <label className="btn ghost" style={{ cursor: 'pointer' }}>
             นำเข้าไฟล์สแกน (.txt)
@@ -244,59 +327,6 @@ export default function ScanImport({
           </label>
         </div>
       </div>
-
-      {/*
-        THE SAME FOLD THE REST OF THE APP USES — 2026-09-07.
-
-        The detail is folded because it is read once, by whoever imports a file
-        for the first time, and is furniture on every visit after. That much has
-        been true since the card was written; what changed is the control. It
-        was a `.btn ghost` reading รายละเอียด, in the header row beside
-        นำเข้าไฟล์สแกน — a second button, the same weight as the one that does
-        the work, for something that only reads. The rest of the app opens its
-        explanations on `Disclosure`, and a card that keeps its own word for the
-        gesture is a card somebody has to learn twice.
-
-        THAT LAST SENTENCE IS OWED A DEBT SINCE 2026-09-08. It read "Every other
-        explanation in the app now opens on อ่านต่อ", which stopped being true
-        the day ทะเบียนพนักงาน — the card next to this one, folding a bullet
-        list of the same shape for the same reason — was asked to say
-        ดูรายละเอียด instead. So the two whole-body folds on ตั้งค่าระบบ now use
-        two words for one gesture, which is the exact thing the sentence above
-        warns about, and this card is the one that did not change.
-
-        NOT CHANGED HERE ON ITS OWN. The word for a `lines={0}` fold is a
-        decision about all three of them — this card, ทะเบียนพนักงาน and
-        นโยบายการคำนวณ's nineteen rows — and `Disclosure`'s own header carries
-        the argument for making ดูรายละเอียด the default when nothing is
-        clamped. One card changing quietly to match another is how a rule ends
-        up existing in two places and agreeing in neither.
-      */}
-      <Disclosure as="ul" lines={0} className="hint hint-list" style={{ marginTop: 10 }} of="ไฟล์สแกนนิ้วมือ">
-        <li>
-          <strong>ไฟล์นี้ถูกเก็บไว้เฉย ๆ</strong> — ยอดชั่วโมง ใบขออนุมัติ OT
-          {' '}และรายงานทุกใบยังคิดจากใบที่ยื่นและเซ็นเหมือนเดิม การนำเข้าไม่ทำให้ตัวเลขใดขยับ
-        </li>
-        <li>
-          <strong>เดือนหนึ่งมีได้ถึง {grid ? grid.slots.length : 4} ไฟล์</strong> — เครื่องละสองไฟล์ แยกไพรมัสกับเดมเทค
-          {' '}· อัปโหลดทีละไฟล์ ลำดับไหนก่อนก็ได้ ระบบดูออกเองว่าไฟล์ไหนเป็นของเครื่องไหนบริษัทไหน
-          {' '}· <strong>ไม่ต้องนำเข้าครบทุกไฟล์ก็ได้</strong> ระบบเทียบเท่าที่มี
-        </li>
-        <li>
-          <strong>เครื่องไหน</strong> ดูจากรูปแบบบรรทัดในไฟล์ —
-          {' '}{SCAN_FORMATS.map((f) => `${f.short}: ${f.example}`).join('  ·  ')}
-          {' '}· <strong>บริษัทไหน</strong> ดูจากทะเบียนพนักงานของคนในไฟล์ ไม่ได้ดูจากคำนำหน้ารหัส
-        </li>
-        <li>
-          <strong>นำเข้าไฟล์ใหม่ทับของเดิมได้</strong> — ถ้าเป็นเครื่องเดียวกัน บริษัทเดียวกัน
-          {' '}และวันที่ซ้ำกัน ระบบจะ<strong>ลบรายการเดิมในช่วงวันนั้นออกแล้วใช้ไฟล์ใหม่แทน</strong>
-          {' '}พร้อมบอกว่าทับไฟล์ไหนไปกี่รายการ · ตัวไฟล์เดิมยังเก็บไว้ในระบบ
-          {' '}· ทับเฉพาะเครื่องและบริษัทเดียวกัน ไฟล์ของอีกเครื่องในวันเดียวกันไม่ถูกแตะ
-        </li>
-        <li>
-          เครื่องสแกนไม่ได้บอกว่าครั้งไหนคือเข้าและครั้งไหนคือออก ระบบจึงเก็บไว้ตามที่เครื่องบันทึกมา
-        </li>
-      </Disclosure>
 
       {error && <div style={{ marginTop: 10 }}><Alert kind="error">{error}</Alert></div>}
 
