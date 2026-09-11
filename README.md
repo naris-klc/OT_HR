@@ -2024,9 +2024,13 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2649 tests
-across 146 files**, measured 2026-09-11 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2653 tests
+across 146 files**, measured 2026-09-12 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2649 tests across 146 files … measured 2026-09-11" until **การแจ้งเตือนพูดด้วย
+เสียงเดียวกัน** the next day — four cases spread over four existing files, one
+sweeping `components/` for hand-written type sizes and three pinning a sentence
+to a single source. It read
 "2634 tests across 146 files" until **ทะเบียนพนักงาน และ สรุป OT ส่งบัญชี
 แบ่งหน้าแล้ว** later the same day — thirteen cases as §12 and §13 of
 `tablePager`, no new file. It read
@@ -9076,6 +9080,15 @@ is `.alert .say`, and the panel gave up an inline `fontSize: 12.5` to reach it �
 colour, and greys with it. One notice, one decision about how loud its
 instruction is.
 
+> **It read "the panel was the only place in the app writing 12.5 by hand"
+> until 2026-09-12.** The comment on the rule in `app/styles.css` said so, the
+> test written beside it read `components/PolicyVersion.jsx` and nothing else,
+> and it was not true — a sweep of `components/` that day found the same two
+> numbers hand-written in **sixteen more notices across six files**, every one
+> of them the quiet second line of an `<Alert>`. The test was not wrong; it
+> watched a *file* where the rule was about the app, so fifteen of the sixteen
+> were never in its reach. See §การแจ้งเตือนพูดด้วยเสียงเดียวกัน below.
+
 **Every word of it lives in one module.** `policyVersionNotice()` in
 [`components/PolicyVersion.jsx`](components/PolicyVersion.jsx) answers whether
 there is anything to say, how loud, the version list and which of the four
@@ -9137,6 +9150,78 @@ usefully, where they did NOT. Most of what is left is the controls card — its 
 `<h2>ตรวจสอบรายเดือน</h2>` and `สิงหาคม 2569` repeat the app header and the
 alert panel directly above them, and dropping that pair below 860px is worth
 about 60px more. Not done: it is a title, not spacing.
+
+### การแจ้งเตือนพูดด้วยเสียงเดียวกัน — 2026-09-12
+
+Asked after the holiday banner came down to one row: *"ยังมีการแจ้งเตือนตรงไหน
+ใน app ที่ไม่กระชับ และควรกระชับเป็นรูปแบบเดียวกันอีกมั้ย"*. The sweep is
+[`docs/plan-notice-compact.md`](docs/plan-notice-compact.md) and it came back
+with six groups; the two taken first are the two that need nobody's opinion.
+
+**Sixteen notices were writing their own type size.** `style={{ fontSize: 12.5 }}`
+in `AdminView.jsx` (nine), `ApprovalQueue.jsx` (two), `App.jsx`,
+`BackupBanner.jsx`, `common.jsx`, `Delegation.jsx` — every one of them the quiet
+second line under a headline, which is exactly what `.alert .say` was created
+for on 2026-08-26. They all take the class now, and what they gave up is not
+only the size: each had picked its own gap (4px, 6px, 8px, or none — 6px
+everywhere now) and each inherited the box's ink, so a line meant to be *quieter*
+than the headline was the alert's own amber or red at a smaller size. It is the
+neutral on all four grounds now, measured in both themes and all AA:
+`--danger-bg` **4.84 / 6.95** · `--info-bg` **4.90 / 6.55** · `--alert-ok-bg`
+**4.99 / 6.51** · `--amber-bg` **5.04 / 6.46**. The red is the tight one.
+
+**`.box` joined `.alert` on the selector**, for `UnaccountedHours` in
+`components/common.jsx` — the one of the sixteen that is not an `<Alert>`. It is
+a notice by every other measure, and the alternative was leaving one component
+writing the number by hand so a selector could stay shorter. `.box.total`, the
+figures box, owns no `.say` and a descendant rule cannot reach it.
+
+**The print sheets keep theirs, on purpose.** `PrintForm.jsx` and
+`PrintFormBatch.jsx` draw F-HR-027, where small type is the size of the form
+rather than the loudness of a sentence, and `app/print.css` is a different set of
+rules from the screen. They are named as the exception in the test rather than
+merely skipped by it, so the day the last one goes the test says so.
+
+**Three sentences were written twice.** The rule this repo already states about
+that — *a warning that is worded twice is a warning that gets corrected once* —
+is in `components/PolicyVersion.jsx`, and three pairs were breaking it:
+
+| said twice | where | now |
+| --- | --- | --- |
+| เหตุผลจะถูกบันทึกในประวัติของใบ และแสดงบนสรุป OT ส่งบัญชี | แผ่นยืนยันอนุมัติ and แผ่นไม่อนุมัติ, **one file**, about a hundred lines apart, in two wordings and two sizes | `OVER_CEILING_REASON_SAY` in `lib/caps.js`, beside `OVER_CEILING_REASON_REQUIRED`, drawn through `.say` on both |
+| การอนุมัติของผู้รับช่วงถูกบันทึกว่า “ทำแทน” ทั้งในประวัติและบนใบพิมพ์ | คิวรออนุมัติ (to the stand-in) and ผู้รับช่วงอนุมัติแทน (to whoever appointed one) | `DELEGATED_APPROVAL_RECORDED` in `lib/delegation.js` — **the middle only** |
+| ทุกคนเข้าใช้งานได้ทันที และจะมีแถบเตือนให้ตั้งรหัสของตัวเอง | the headline **and** the tail of the SAME `<Alert>` on รหัสผ่านแรกเข้า | the tail's copy deleted; one-way storage, the half that was not a repeat, stays |
+
+**Only the middle of the stand-in sentence is shared, and that is the design.**
+The subject is the reader — *การอนุมัติของคุณ* to a stand-in, *ทุกการอนุมัติของ
+ผู้รับช่วง* to whoever appointed one — and the tail is what that particular
+reader needs next: the stand-in needs to know the owner can still approve, the
+delegator needs to know the stand-in cannot hand it on again. What neither screen
+may own is the clause in between, because it describes what the SYSTEM records,
+and a system that describes its own record two ways has two records as far as
+the reader is concerned.
+
+**“ทำแทน” lost its `<strong>` on both screens.** The word sits inside “ ”
+already, which is what marks it as the label written into the record rather than
+a description of it; a bold word inside the line that is deliberately the quiet
+one is the notice arguing with itself about which line matters. Nothing else in
+the three sentences changed.
+
+**The test that was supposed to hold this read one file.** It is
+`test/theme.test.js` now and it sweeps every `.jsx` in `components/`, with the
+two print sheets named; `test/hrMonthCards.test.js` keeps the original,
+file-specific one for `PolicyVersion.jsx`, and the four `--muted` pairs are in
+that file's `READABLE` list so the grounds stay measured. The three
+de-duplications are pinned by name — one test each in `test/overCeiling.test.js`,
+`test/delegation.test.js` and `test/tempPassword.test.js`, and each asserts the
+*number of sources* rather than the words, because a test that matches the
+sentence is a test that will be edited alongside the copy somebody is fixing.
+
+**Not done, and deliberately:** the eight standing banners that are still two
+decks or more, the three remaining ▲/▼ folds (and the four comments that still
+name `ot-holiday-fold` as their precedent, withdrawn on 2026-09-11), and the
+long `.hint` under `<Alert>` in two of `EmployeeView`'s dialogs. Those need
+decisions, and they are listed with their open questions in the plan.
 
 ### ประจำเดือน ย้ายลงมาอยู่กับช่องค้นหา — 2026-08-27
 
@@ -13241,8 +13326,12 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2649 tests**, about 4 s, measured 2026-09-11 across 146
-  files, all green. **NO NEW FILE in the round that moved it off 2647** —
+- `npm test` — **2653 tests**, about 4 s, measured 2026-09-12 across 146
+  files, all green. **NO NEW FILE in the round that moved it off 2649 either** —
+  การแจ้งเตือนพูดด้วยเสียงเดียวกัน put its four cases into `theme`,
+  `overCeiling`, `delegation` and `tempPassword`, each beside the rule it
+  extends. It read "2649 tests … measured 2026-09-11" until that round.
+  **NO NEW FILE in the round that moved it off 2647** —
   `monthCountStatus` was rewritten whole rather than added to, when คอลัมน์
   รายการ was redesigned. It read
   **"2634 tests … across 146"** until ทะเบียนพนักงาน

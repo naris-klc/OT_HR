@@ -1309,7 +1309,13 @@ test('the panel says the instruction in the same voice the list does', () => {
   // `--muted` on that same ground is 5.04 and passes AA. Neutral also because
   // `policyVersionNotice` returns `ok` as well as `warn`, and one rule has to
   // sit correctly on green too — 4.99 there.
-  assert.match(css, /\.alert \.say \{ margin-top: 6px; font-size: 12\.5px; color: var\(--muted\); \}/);
+  // ⚠ THE SELECTOR GREW A SECOND LINE ON 2026-09-12. `.box .say` joined it for
+  // `UnaccountedHours`, the one notice in the sweep below that is not an
+  // `<Alert>`; the declarations are the same three and are still on one line.
+  // `\r?\n` and not `\n`: `core.autocrlf` is true on this machine, so the
+  // working copy is CRLF and the repository is LF — the same trap the comment
+  // at the top of test/theme.test.js records having been walked into.
+  assert.match(css, /\.alert \.say,\r?\n\.box \.say \{ margin-top: 6px; font-size: 12\.5px; color: var\(--muted\); \}/);
   // The list keeps its own, further down the file, and wins on order. Matched
   // on the rule's opening brace, not on the selector: both names also appear in
   // the prose above the rules, which is where an indexOf finds them first.

@@ -6305,7 +6305,35 @@ td > .approver-line { margin-top: 5px; }
    bracketed copy of this sentence greys with the panel's, which is the point of
    both of them coming from one `policyVersionNotice`. It gains contrast doing
    it: amber at 85% on `--amber-bg` is 2.80:1, the neutral at 85% is 3.74. */
-.alert .say { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+
+/* ── ⚠ IT WAS `.alert .say` ALONE, AND SERVED ONE NOTICE — until 2026-09-12 ──
+   ────────────────────────────────────────────────────────────────────────────
+
+   This rule was written on 2026-08-26 for `PolicyVersionBanner`, whose second
+   line had carried its own `style={{ fontSize: 12.5 }}`. The comment above it
+   has said ever since that that banner was the only place in the app writing
+   12.5 by hand. IT WAS NOT, AND PROBABLY NEVER WAS: on 2026-09-12 a sweep found
+   the same two numbers hand-written in SIXTEEN more notices across six
+   components. The test that was meant to hold the line — `test/theme.test.js`
+   now, `test/hrMonthCards.test.js` before it — read one file, so fifteen of the
+   sixteen were invisible to it and the sixteenth was the only one it could see.
+
+   All sixteen take this rule now, and what they gave up is not only the size.
+   Each had picked its own gap — 4px, 6px, 8px, or none — and inherited the
+   box's ink, so a second line was the alert's own amber or red at a smaller
+   size. The gap is 6px everywhere now and the colour is the neutral the comment
+   above argues for. Measured on every ground this rule can land on, both
+   themes, all AA: `--danger-bg` 4.84 / 6.95 · `--info-bg` 4.90 / 6.55 ·
+   `--alert-ok-bg` 4.99 / 6.51 · `--amber-bg` 5.04 / 6.46.
+
+   `.box` JOINS `.alert` HERE, for `UnaccountedHours` in components/common.jsx —
+   the one of the sixteen that is not an `<Alert>`. It is a notice by every
+   other measure (`.box.error`, a headline, a quieter line under it) and the
+   alternative was to leave one component writing the number by hand so that a
+   selector could stay shorter. `.box` is also `.box.total`, the figures box,
+   which owns no `.say` and is untouched by a descendant rule. */
+.alert .say,
+.box .say { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
 
 /* A WAY OUT, ON THE BANNER THAT SAYS SOMETHING WENT RIGHT.
 

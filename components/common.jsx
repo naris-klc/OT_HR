@@ -250,7 +250,7 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
       </strong>
       {' '}— ใบเหล่านี้อ้างถึงพนักงานที่หาไม่พบในระบบ จึงไม่มีแถวให้ลง
       {hint && (
-        <div style={{ marginTop: 4, fontSize: 12.5 }}>
+        <div className="say">
           ยอดรวมทุกช่องในใบนี้จะ<strong>ขาดไปเท่าจำนวนนั้น</strong> ทั้งที่ตัวเลขทุกตัวยังตรงกันเอง
           {' '}· อย่าเพิ่งส่งบัญชี
           {/*

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
+import { DELEGATED_APPROVAL_RECORDED } from '@/lib/delegation.js';
 import { Alert, Empty, Field, Modal, PickOne, foldClick } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
@@ -153,9 +154,16 @@ export default function Delegation({ user, scope = 'mine' }) {
             {noteFolded ? '▼' : '▲'}
           </button>
         </div>
-        <div id={`${noteId}-b`} hidden={noteFolded} style={{ fontSize: 12.5, marginTop: 4 }}>
-          ทุกการอนุมัติของผู้รับช่วงจะถูกบันทึกว่า “<strong>ทำแทน</strong>” พร้อมชื่อหัวหน้างานเจ้าของคิว
-          {' '}ทั้งในประวัติรายการและบนใบพิมพ์ · ผู้รับช่วง<strong>มอบหมายต่อเป็นทอดไม่ได้</strong>
+        {/* THE MIDDLE IS SHARED WITH คิวรออนุมัติ SINCE 2026-09-12 — see
+            `DELEGATED_APPROVAL_RECORDED` in lib/delegation.js. What stays here
+            is the subject (this reader is the one who APPOINTS a stand-in, not
+            the one standing in) and the tail, which is the fact only this
+            screen's reader is about to need. "ทำแทน" gave up its `<strong>`
+            with the queue's copy; the quotes already mark it, and the tail's
+            bold is the one thing on this line worth a weight. */}
+        <div id={`${noteId}-b`} hidden={noteFolded} className="say">
+          {`ทุกการอนุมัติของผู้รับช่วง${DELEGATED_APPROVAL_RECORDED} · ผู้รับช่วง`}
+          <strong>มอบหมายต่อเป็นทอดไม่ได้</strong>
         </div>
       </Alert>
 

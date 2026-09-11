@@ -385,7 +385,7 @@ function Login({ onLogin }) {
             {error && (
               <Alert kind="error">
                 {error}
-                {hint && <div style={{ marginTop: 4, fontSize: 12.5 }}>{hint}</div>}
+                {hint && <div className="say">{hint}</div>}
               </Alert>
             )}
             <button className="btn" style={{ width: '100%', marginTop: 20 }} disabled={busy}>

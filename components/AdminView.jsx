@@ -2900,7 +2900,7 @@ function Employees({ user }) {
               )}
             />
           )}
-          <div style={{ marginTop: 6, fontSize: 12.5 }}>
+          <div className="say">
             แก้ตามบรรทัดข้างบนใน Excel · บันทึกเป็น .csv (คอลัมน์วันเกิดควรเป็น YYYY-MM-DD)
             {' '}แล้วเลือกไฟล์ใหม่อีกครั้ง
           </div>
@@ -2976,7 +2976,7 @@ function Employees({ user }) {
                 <strong>สร้างบัญชี {issued.code} · {issued.name} แล้ว แต่ไม่ทราบรหัสผ่าน</strong>
                 {' '}— เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านกลับมา และระบบเก็บไว้แบบเข้ารหัสทางเดียว
               </div>
-              <div style={{ marginTop: 4, fontSize: 12.5 }}>
+              <div className="say">
                 บัญชีนี้ยังเข้าระบบไม่ได้จนกว่าจะรีเซ็ต — กดปุ่ม “รีเซ็ตรหัสผ่าน” ที่แถวของคนนี้
                 {' '}และแจ้งผู้ดูแลระบบว่าเกิดเหตุนี้ขึ้น
               </div>
@@ -2986,7 +2986,7 @@ function Employees({ user }) {
               <div>
                 สร้างบัญชี {issued.code} · {issued.name} แล้ว — ใช้รหัสผ่านที่ตั้งไว้ในหน้าต่างเพิ่มพนักงาน
               </div>
-              <div style={{ marginTop: 4, fontSize: 12.5 }}>
+              <div className="say">
                 ระบบไม่แสดงรหัสนั้นซ้ำที่ใดอีก เพราะเก็บไว้แบบเข้ารหัสทางเดียว — หากจำไม่ได้
                 {' '}ให้ใช้ปุ่ม “รีเซ็ตรหัสผ่าน” ซึ่งจะตั้งกลับเป็นรหัสพนักงาน
                 {' '}· พนักงานเข้าใช้งานได้ทันที และจะมีแถบเตือนให้ตั้งรหัสผ่านของตัวเองจนกว่าจะเปลี่ยน
@@ -3001,7 +3001,7 @@ function Employees({ user }) {
                   {issued.password}
                 </strong>
               </div>
-              <div style={{ marginTop: 4, fontSize: 12.5 }}>
+              <div className="say">
                 แจ้งรหัสนี้ให้พนักงาน · เข้าใช้งานได้ทันที และมีแถบเตือนให้ตั้งรหัสของตัวเองจนกว่าจะเปลี่ยน
                 {' '}· นี่คือรหัสพนักงานของคนนี้เอง จึงดูซ้ำได้จากทะเบียนตลอด — แต่ระหว่างที่ยังไม่ได้เปลี่ยน
                 {' '}<strong>ใครที่เห็นรหัสพนักงานก็เข้าบัญชีนี้ได้</strong> จึงควรให้เข้าระบบตั้งรหัสของตัวเองโดยเร็ว
@@ -3126,7 +3126,7 @@ function Employees({ user }) {
                 </ul>
               )}
               {pending.dates.rowErrors.length > 0 && (
-                <div style={{ marginTop: 6, fontSize: 12.5 }}>
+                <div className="say">
                   {pending.dates.rowErrors.length} แถวมีวันเกิดที่ใช้ไม่ได้ และจะถูกข้ามไปทั้งแถว:
                   <ShowMore
                     as="ul"
@@ -3217,7 +3217,7 @@ function Employees({ user }) {
             </div>
           )}
           {result.birthDates?.order && (
-            <div style={{ fontSize: 12.5 }}>
+            <div className="say">
               วันเกิด {result.birthDates.count} ค่า อ่านเป็น {ORDER_LABEL[result.birthDates.order]}
               {/* Two more clauses hung here until 2026-09-04 — "ตามลำดับที่คุณ
                   ระบุเอง" and "อ่านตามค่าเริ่มต้นขององค์กร" — and both existed
@@ -4851,9 +4851,23 @@ function IssuedPasswords({ rows }) {
         </table>
       </div>
 
-      <div style={{ marginTop: 6, fontSize: 12.5 }}>
-        ทุกบัญชีเข้าใช้งานได้ทันที และจะเห็นแถบเตือนให้ตั้งรหัสผ่านของตัวเองจนกว่าจะเปลี่ยน
-        {' '}· ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรายการนี้ซ้ำได้
+      {/* ── ⚠ IT SAID "เข้าใช้งานได้ทันที และจะมีแถบเตือน" TWICE — until 2026-09-12
+          ─────────────────────────────────────────────────────────────────────
+
+          Once in the headline above, once here, about four inches apart inside
+          ONE box, in two wordings of the same sentence (ทุกคน/ทุกบัญชี,
+          จะมี/จะเห็น, รหัสของตัวเอง/รหัสผ่านของตัวเอง). Nothing in between made
+          the second reading a different claim; it was the first one again, and
+          a reader who noticed the difference in wording had to check whether it
+          was a difference in meaning.
+
+          THE HALF THAT WAS NOT A REPEAT IS THE HALF THAT STAYS. One-way storage
+          is the reason this table cannot be re-opened later, and it is said
+          nowhere else on this screen — it is also what makes the buttons above
+          (พิมพ์ / คัดลอก / CSV) the moment they are used rather than a
+          convenience, so it belongs under them and not in the headline. */}
+      <div className="say">
+        ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรายการนี้ซ้ำได้
       </div>
     </Alert>
   );
@@ -7206,7 +7220,7 @@ function ConfirmPolicyChange({
           <strong>
             กฎใหม่มีผลกับใบของงานที่ทำตั้งแต่วันที่ {thaiDate(effectiveFrom)} เป็นต้นไป
           </strong>
-          <div style={{ marginTop: 4, fontSize: 12.5 }}>
+          <div className="say">
             {announced
               ? 'ประกาศล่วงหน้า — งานที่ทำก่อนวันนั้นยังคิดด้วยกฎเดิมตลอดไป ไม่ว่าใบจะยื่นเข้ามาช้าแค่ไหน'
               : 'งานที่ทำก่อนวันนี้ยังคิดด้วยกฎเดิมตลอดไป ไม่ว่าใบจะยื่นเข้ามาช้าแค่ไหน'}
@@ -7235,7 +7249,7 @@ function ConfirmPolicyChange({
               said it. This dialog would not be; but a promise that reads the same
               on two screens where it is true on one is worth spelling differently,
               and คิดใหม่ is the more exact word for what a policy replay does. */}
-          <div style={{ marginTop: 6, fontSize: 12.5 }}>
+          <div className="say">
             {arithmetic
               ? 'ข้อนี้เปลี่ยนจำนวนชั่วโมง — ระบบจะคำนวณใบที่ยังไม่อนุมัติใหม่ทันทีหลังบันทึก '
                 + '· ใบที่อนุมัติแล้วไม่ถูกคิดใหม่ ไม่ว่าจะเป็นเดือนไหนหรือเก่าแค่ไหน'
@@ -7305,15 +7319,18 @@ function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
           ? 'กฎที่ใช้อยู่ยังไม่เคยถูกบันทึกเป็นเวอร์ชัน'
           : `กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน ${live.latestSeq} ซึ่งเป็นเวอร์ชันล่าสุดที่บันทึกไว้`}
       </strong>
-      <div style={{ marginTop: 4, fontSize: 12.5 }}>
+      <div className="say">
         ระหว่างนี้ <strong>ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน</strong> — ระบบไม่ยอมกำกับด้วยเวอร์ชันที่ให้ตัวเลขไม่ตรงกับที่คำนวณจริง
         {' '}และจะไม่มีอะไรฟ้องจนกว่าจะปิดเดือน
         {!first && ' · มักเกิดจากการ deploy ที่แก้ค่าตั้งต้นในไฟล์ โดยไม่ได้บันทึกผ่านหน้านี้'}
       </div>
 
       {live.drift?.length > 0 && (
-        <div style={{ marginTop: 8, fontSize: 12.5 }}>
-          <div style={{ color: 'var(--muted)' }}>ต่างจากเวอร์ชันล่าสุด:</div>
+        <div className="say">
+          {/* IT WROTE `color: var(--muted)` ON ITSELF UNTIL 2026-09-12, when the
+              block around it became `.say` — which IS that grey. Two decisions
+              about one colour, and the one that went is the hand-written copy. */}
+          <div>ต่างจากเวอร์ชันล่าสุด:</div>
           {live.drift.map((c) => (
             <div key={c.key}>
               {CHANGE_LABEL[c.key] || c.key}: {JSON.stringify(c.from)} → {JSON.stringify(c.to)}

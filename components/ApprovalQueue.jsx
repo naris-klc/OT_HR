@@ -10,7 +10,7 @@ import {
 import {
   capPair, describeBreaches, overCapLine,
   needsOverCeilingReason, overCeilingApproveHead,
-  OVER_CEILING_REASON_REQUIRED,
+  OVER_CEILING_REASON_REQUIRED, OVER_CEILING_REASON_SAY,
 } from '@/lib/caps.js';
 import {
   MAX_LIST_LIMIT, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
@@ -19,7 +19,10 @@ import {
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
-import { barredAsOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
+import {
+  barredAsOwnFiling, signedManagerStep,
+  OVERRIDE_NOTE_REQUIRED, DELEGATED_APPROVAL_RECORDED,
+} from '@/lib/delegation.js';
 import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
   Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
@@ -1161,10 +1164,19 @@ export default function ApprovalQueue({
             {holding.map((d) => `${d.from?.name} (ถึง ${thaiDate(d.toDate)})`).join(' · ')}
             {' '}— คิวด้านล่างรวมทีมที่รับช่วงมาแล้ว {coveredCount} รายการ
             {' '}และแถวเหล่านั้นมีป้าย “รับช่วง” กำกับไว้
-            <div style={{ fontSize: 12.5, marginTop: 4 }}>
-              การอนุมัติของคุณจะถูกบันทึกว่า <strong>“ทำแทน”</strong> ชื่อหัวหน้าเจ้าของคิว
-              {' '}ทั้งในประวัติรายการและบนใบพิมพ์ ·
-              {' '}หัวหน้าเจ้าของคิวยังอนุมัติเองได้ตลอดเวลา
+            {/* THE SUBJECT IS THE READER, the middle is the system's, and the
+                tail is what THIS reader needs next — see
+                `DELEGATED_APPROVAL_RECORDED` in lib/delegation.js, which the
+                card in ผู้รับช่วงอนุมัติแทน draws from the same line.
+
+                ⚠ "ทำแทน" LOST ITS `<strong>` ON 2026-09-12, on both screens.
+                The word is already inside “ ” — which is what says it is the
+                label written into the record rather than a description of it —
+                and a bold word in the line that is deliberately the quiet one
+                is the notice arguing with itself about which line matters. */}
+            <div className="say">
+              {`การอนุมัติของคุณ${DELEGATED_APPROVAL_RECORDED}`}
+              {' · หัวหน้าเจ้าของคิวยังอนุมัติเองได้ตลอดเวลา'}
             </div>
           </Alert>
         </div>
@@ -1202,7 +1214,7 @@ export default function ApprovalQueue({
               ให้แคบลง" here would be advice that quietly does nothing. Loading
               the rest, or working the queue down, are the only two answers.
             */}
-            <div style={{ fontSize: 12.5, marginTop: 4 }}>
+            <div className="say">
               {cut.shown < MAX_LIST_LIMIT ? (
                 <button
                   type="button"
@@ -2485,11 +2497,12 @@ function ConfirmModal({
           {/* WHERE THE SENTENCE IS READ, which is the part a reviewer cannot
               guess: not only this entry's history but สรุป OT ส่งบัญชี, beside
               this person's hours, months later. `.say` is the grey step off the
-              amber this notice uses for the line that is not a finding. */}
-          <div className="say">
-            เหตุผลที่ระบุจะถูกบันทึกไว้ในประวัติของใบคำขอ และนำไปแสดงบนรายงานสรุป OT ส่งบัญชี
-            {' '}(ตรงตัวเลขชั่วโมงของพนักงานคนนี้)
-          </div>
+              amber this notice uses for the line that is not a finding.
+
+              ⚠ THE WORDS MOVED TO lib/caps.js ON 2026-09-12. They were typed
+              here and typed again in กล่องไม่อนุมัติ a hundred lines down, in
+              two wordings; see `OVER_CEILING_REASON_SAY` for what that cost. */}
+          <div className="say">{OVER_CEILING_REASON_SAY}</div>
         </Alert>
       )}
 
@@ -2604,10 +2617,12 @@ function RejectModal({ entries, busy, onClose, onReject }) {
               </li>
             )}
           />
-          <div style={{ marginTop: 6 }}>
-            เหตุผลที่กรอกด้านล่างจะถูกบันทึกไว้ในประวัติของใบ และแสดงบนสรุป OT ส่งบัญชี
-            {' '}ตรงตัวเลขชั่วโมงของคนนี้ด้วย
-          </div>
+          {/* ⚠ ITS OWN WORDING OF THE APPROVE SHEET'S SENTENCE UNTIL 2026-09-12,
+              and its own type size — a plain `marginTop` left it at the alert's
+              amber while the same sentence upstairs was grey. One source now
+              (`OVER_CEILING_REASON_SAY`) and one class, because two sheets that
+              say one thing differently are two sheets that get corrected once. */}
+          <div className="say">{OVER_CEILING_REASON_SAY}</div>
         </Alert>
       )}
       <RejectFields value={state} onChange={setState} many={many} />
