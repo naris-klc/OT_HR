@@ -388,14 +388,26 @@ export function OverCeilingFigure({ over, children }) {
  * person's reasons ran to a screen of their own. FOLDED IS NOT GONE: the
  * heading — the word, the count and the hours — stays, and so does the red
  * figure with its tooltip; only the one-line-per-entry reasons go behind the
- * arrow. Opens by default and is not remembered: this is the record, and a
- * report that came back folded would be a report read without its reasons.
- * The press follows `foldClick` — folded, anywhere on the note opens it; open,
- * only the heading folds it — and the button has no onClick of its own.
+ * arrow. The press follows `foldClick` — folded, anywhere on the note opens
+ * it; open, only the heading folds it — and the button has no onClick of its
+ * own.
+ *
+ * ⚠ IT OPENED BY DEFAULT UNTIL 2026-09-11, on the argument that "this is the
+ * record, and a report that came back folded would be a report read without
+ * its reasons". HR asked for the other default on both sheets — *หมายเหตุให้
+ * แสดง รายการเกินเพดานแบบย่อเป็นค่าเริ่มต้น* — and the argument was answered
+ * rather than overruled: the heading is what was never folded, and it still
+ * says the word, the count and the hours, which is the part a month is closed
+ * against. What was open by default was the per-entry reasons, and ONE person
+ * with five of them set the height of every row beside them. A record nobody
+ * can scan is not read either.
+ *
+ * STILL NOT REMEMBERED, and that half stands: the fold is per render, so a
+ * screen that is opened again starts from the same place for everybody.
  */
 export function OverCeilingNote({ over }) {
   // Above the early return: a hook is called on every render or on none.
-  const [folded, setFolded] = React.useState(false);
+  const [folded, setFolded] = React.useState(true);
   const whyId = React.useId();
   if (!over?.count) return null;
   const toggle = () => setFolded((was) => !was);

@@ -9238,6 +9238,67 @@ th.act-col { width: 258px; }
    which is how a column ends up sized by neither. */
 .hr-table td.dept-col { white-space: normal; }
 
+/* ── สรุป OT ส่งบัญชี — SEVEN COLUMNS THAT ALL SAY HOW WIDE THEY ARE ────────
+
+   ⚠ ONLY FOUR OF THEM DID UNTIL 2026-09-11 — the shared `th.who-col` 168 and
+   the three `th.rate-col` figures. `แผนก`, `รวม ชม.` and `หมายเหตุ` declared
+   nothing, and under `table-layout: auto` a column that declares nothing does
+   not size itself to its contents: it takes every pixel the others do not
+   claim. Measured in a 1178px card: แผนก 269.7 for a 140.4px word, รวม ชม.
+   130.5 for a 55.6px heading and หมายเหตุ 439.8 for an 11.5px line — 840px
+   between the three of them — while พนักงาน sat pinned at the queue's 168 and
+   wrapped นางสาวกิพวรรณ สุขสำราญ (168.2, against 144 of room) onto a second
+   line. The column that had to hold something was the only one that was not
+   allowed to grow. Asked for as *ปรับความกว้างของแต่ละคอลัมน์ให้เหมาะสม สวยงาม*.
+
+   MEASURED IN HEADLESS CHROME AGAINST THE APP'S OWN FACES on 2026-09-11
+   (`IBM Plex Sans Thai Looped` at the weight and size each cell actually uses;
+   the check that the rig was honest is that นางสาวฟ้าประทาน came back at
+   115.4px, the figure over `th.who-col` above). Each number below is
+   TEXT + THE CELL'S TWO 12px GUTTERS, rounded up:
+
+     พนักงาน   196  นางสาวกิพวรรณ สุขสำราญ 168.2 + 24 = 192.2 — the same 196
+                    ตรวจสอบรายเดือน uses, for the same roster and the same
+                    reason: a longer name wraps at its space, not mid-token.
+     แผนก      168  แผนกบัญชีและการเงิน 140.4 + 24 = 164.4. Eight more than
+                    ตรวจสอบรายเดือน's 160, which is 4.4 short of the word and
+                    gets away with it because eleven columns leave it slack;
+                    seven columns that all declare a width leave none.
+     รวม ชม.    80  the heading, not the figure — `รวม ชม.` is 55.6 in 11.5px
+                    --mono with .07em of tracking, + 24 = 79.6.
+     หมายเหตุ   260  the widest thing the column says with the reasons folded:
+                    `รายการเกินเพดาน · 5 รายการ · 10 ชม.` 194.1 + the ▲ button
+                    17.5 + its 6px gap + 24 = 241.6, with room left for the
+                    three-digit counts a big month brings (~256).
+
+   The three rate columns keep the shared 52 / 58 / 58 — those are measured for
+   `×1.5` and `วันหยุด` in the block above and this table's are the same two
+   words. Seven columns come to 872, which is the FLOOR and not the layout: a
+   card wider than that shares the leftover among all seven in the ratio they
+   declare, instead of handing it to whichever column declared nothing. Walked
+   at three card widths with the real stylesheet — 880 gives each column its
+   number to the pixel (197 · 169 · 52 · 58 · 58 · 80 · 262); 1000 and 1178
+   scale the whole row by 1.14 and 1.35 (264 · 227 · 70 · 78 · 78 · 108 · 351).
+   แผนกบัญชีและการเงิน is on one line at all three, and so is the name.
+
+   ⚠ AND หมายเหตุ IS SIZED FOR A NOTE THAT IS FOLDED, which it now is by default
+   — see `OverCeilingNote` in components/common.jsx. Gaped, the reasons are
+   full sentences (`19/08/2569 · 2 ชม. · เหตุผลผู้อนุมัติ: …` is 229.2 and they
+   run longer), and they wrap inside this width on purpose: a column wide
+   enough for the longest of them is a column that is mostly empty on every row
+   that has none.
+
+   ABOVE 860px ONLY. Below it this table is `width: max-content` and scrolls
+   sideways with พนักงาน frozen, on caps of its own — 112 / 88 / 140 — measured
+   at 360px and left exactly as they were on 2026-09-11: บริษัท leaving the
+   note cell takes a LINE off every row there, not a pixel off any column. */
+@media (min-width: 861px) {
+  .acct-table th.who-col { width: 196px; }
+  .acct-table th.dept-col { width: 168px; }
+  .acct-table th.total-col { width: 80px; }
+  .acct-table th.note-col { width: 260px; }
+}
+
 /* AND IT STAYS ON SCREEN.
 
    The width above only ever guaranteed the buttons fit their own cell. The
