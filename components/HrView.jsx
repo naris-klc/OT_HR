@@ -2968,11 +2968,22 @@ function MonthAlerts({
 
   return (
     <Alert kind={kind} tight onClose={() => { alertsDismissed = true; setShut(true); }}>
-      {/* THE MONTH BY NAME, because this now sits above the box that sets it.
+      {/* ── ⚠ THE HEADING JOINED THE LABELS — 2026-09-11 ──────────────────
+          *"ปรับให้เหลือไม่เกิน 1-2 แถวเป็นอันดับแรก"*. The heading was a block of
+          its own above this flow, so a shut panel was two rows and an open one
+          four. It is the first phrase of the same sentence now: shut, this
+          panel is ONE row; open, it is that row and the list.
+
+          `· N ข้อความ` ONLY WHEN N IS MORE THAN ONE. On a month with a single
+          notice the count is a fact the reader can see — the label is right
+          there beside it — and "1 ข้อความ" beside one message is the screen
+          counting out loud for its own benefit.
+
+          THE MONTH BY NAME, because this sits above the box that sets it.
           "เดือนนี้" was answered by the period picker when this was two inches
-          under it; from the top of the page it is a question. */}
-      <strong>{`แจ้งเตือนของ ${periodName} · ${notices.length} ข้อความ`}</strong>
-      {/* THE LABELS AND THE BUTTON IN ONE FLOW, not one block each. The button
+          under it; from the top of the card it is a question.
+
+          THE LABELS AND THE BUTTON IN ONE FLOW, not one block each. The button
           is a 44px touch target and the labels wrap to two lines of Thai at
           360px; stacked, that is 44px of panel spent on a row holding one
           control. Inline, the button lands at the end of the wrapped text and
@@ -2982,7 +2993,11 @@ function MonthAlerts({
           words, and a screen that says them twice fourteen pixels apart is a
           screen a reader has to check for a difference that is not there. */}
       <div className="alerts-say">
-        {!open && <span>{notices.map((n) => n.label).join(' · ')}</span>}
+        <strong className="alerts-head">
+          {`แจ้งเตือนของ ${periodName}`}
+          {notices.length > 1 && ` · ${notices.length} ข้อความ`}
+        </strong>
+        {!open && <span>{'— '}{notices.map((n) => n.label).join(' · ')}</span>}
         <button
           type="button"
           className="fold-pill"
@@ -2992,23 +3007,24 @@ function MonthAlerts({
           {open ? 'ซ่อน ▲' : 'ดูรายละเอียด ▼'}
         </button>
       </div>
-      {/* ONE ITEM IS TWO LINES: what it is and its figures on the first, the
-          instruction in brackets on the second.
+      {/* ⚠ ONE ITEM IS ONE FLOW SINCE 2026-09-11, AND IT WAS TWO BLOCKS — the
+          statement and its figures on one line, the instruction in brackets on
+          a line of its own below it. The pair was already written to run
+          together for the first half of that reason ("กฎการคำนวณคนละชุด:
+          เวอร์ชัน 10 (1 ใบ) · เวอร์ชัน 1 (19 ใบ)", one statement and not two
+          blocks); this finishes the argument. An instruction in brackets is
+          marked as guidance about the words before it BY THE BRACKETS, which
+          is what they were introduced for — a block of its own was the same
+          claim made twice, and it cost every item a line.
 
-          The heading and the figures RUN TOGETHER — "กฎการคำนวณคนละชุด:
-          เวอร์ชัน 10 (1 ใบ) · เวอร์ชัน 1 (19 ใบ)" — rather than sitting in two
-          blocks. They are one statement, and two blocks made a three-line item
-          out of a two-line one wherever the pair happened to fit.
-
-          The brackets around the instruction are the second half of that: they
-          mark it as guidance about the line above rather than more of it, which
-          is what the block margin used to do and does not have to. */}
+          It wraps to a second line when it is long, which is a wrap and not a
+          row: the bullet is what says where the next item starts. */}
       {open && (
         <ul className="alerts-list">
           {notices.map((n) => (
             <li key={n.key}>
-              <div><strong>{n.label}</strong>: {n.figures}</div>
-              <div className="say">({n.say})</div>
+              <strong>{n.label}</strong>: {n.figures}
+              {' '}<span className="say">({n.say})</span>
             </li>
           ))}
         </ul>

@@ -155,24 +155,60 @@ export default function ScanCompareCard({
   return (
     <div className="scan-compare no-print">
       <Alert kind={counts.mismatch ? 'warn' : 'ok'} mark={false}>
-        <div className="row" style={{ justifyContent: 'space-between', gap: 10 }}>
-          <strong>ผลเทียบกับไฟล์สแกนนิ้วมือ — {periodLabel(period)}</strong>
-        </div>
+        {/* ── ⚠ FIVE BLOCKS BECAME TWO ROWS — 2026-09-11 ─────────────────
 
-        {/* THE HEADLINE IS THE PILE THAT NEEDS A PERSON, and it is the only
-            figure here drawn large. Everything under it is the breakdown, in
-            HR's own four words and in the order they gave them — see
-            `SCAN_BADGE`. Naming the pile after half of itself is a mistake this
-            comparison has already made once (see `summariseScanChecks`), which
-            is why ไม่ครบ and เวลาเริ่มไม่ตรง are printed apart. */}
-        <div className="scan-head">
-          {counts.mismatch > 0 ? (
-            <>
-              <span className="scan-big warn">⚠ ต้องตรวจ {counts.mismatch} แถว</span>
-              <span className="hint">{' '}({flagged} คน จาก {compare.entryCount} ใบ)</span>
-            </>
-          ) : (
-            <span className="scan-big ok">✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน</span>
+            *"ปรับการแจ้งเตือนตามภาพให้กระชับด้วย แต่ยังได้ใจความครบถ้วน …
+            ปรับให้เหลือไม่เกิน 1-2 แถวเป็นอันดับแรก"*. It was a title row, a
+            headline row, the tally, a caveat paragraph and a button on a row of
+            its own — five blocks for one answer.
+
+            THE TITLE AND THE HEADLINE WERE ALWAYS ONE SENTENCE. *ผลเทียบกับ
+            ไฟล์สแกนนิ้วมือ · สิงหาคม 2569* names the question and *⚠ ต้องตรวจ
+            10 แถว* answers it; they sat in two blocks because the title row was
+            built as a `space-between` flex that never got a second item. Read
+            together they are the row, and `.scan-line` — the same row state 1
+            uses — puts the one control this card has at the end of it.
+
+            `.scan-big` KEEPS ITS SIZE. It is 15px against the 13px around it
+            because it is the figure somebody scans the screen for; inlining it
+            after a `<strong>` of the same weight changes where it sits, not how
+            loud it is. */}
+        <div className="scan-line">
+          <span>
+            <strong>ผลเทียบกับไฟล์สแกนนิ้วมือ · {periodLabel(period)}</strong>
+            {' — '}
+            {counts.mismatch > 0 ? (
+              <>
+                <span className="scan-big warn">⚠ ต้องตรวจ {counts.mismatch} แถว</span>
+                <span className="hint">{' '}({flagged} คน จาก {compare.entryCount} ใบ)</span>
+              </>
+            ) : (
+              <span className="scan-big ok">✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน</span>
+            )}
+          </span>
+          {/* THE PRESS THAT TURNS A NUMBER INTO A PLACE TO STAND, and it is at
+              the end of the sentence that holds the number now rather than on a
+              row of its own. It narrows the table below rather than listing
+              names here: the list of names was what this card printed until
+              2026-09-10 and it capped at twelve, which on a month with thirty
+              flagged people names less than half of them and offers no way to
+              the rest.
+
+              A TOGGLE AND NOT A ONE-WAY TRIP — pressing it again is the way
+              back, and ล้างตัวกรอง releases it too, because a filter the filter
+              bar does not know about is how somebody comes to believe this
+              month has eleven employees in it. */}
+          {onToggleFlagged && flagged > 0 && (
+            <button
+              type="button"
+              className={onlyFlagged ? 'btn ghost sm on' : 'btn ghost sm'}
+              onClick={onToggleFlagged}
+              aria-pressed={onlyFlagged}
+            >
+              {onlyFlagged
+                ? 'แสดงทุกคนในเดือนนี้'
+                : `ดูเฉพาะคนที่ต้องตรวจ (${flagged} คน)`}
+            </button>
           )}
         </div>
 
@@ -205,7 +241,20 @@ export default function ScanCompareCard({
             )}
           </div>
         )}
+        {/* THE CAVEAT IS THE LAST ITEM OF THE TALLY, NOT A PARAGRAPH UNDER IT.
 
+            *เกินเวลา และ เหมารายวัน เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ* is a
+            sentence ABOUT two of the six figures beside it, and `.scan-tally`
+            is a wrapping flex row — so as an item it lands on the same line
+            whenever there is room and takes its own when there is not, which is
+            what a paragraph under the row could never do.
+
+            ⚠ NOTHING IN IT WAS CUT. Both clauses are the ones HR settled on
+            2026-09-07 (*ข้อเท็จจริง ป้ายเทา ไม่นับกองที่ต้องตรวจ*) and the line
+            that says this comparison restates no hours. They are `.quiet`, like
+            the two figures they qualify, for the same reason: a screen that
+            folds facts into the errand count is a screen whose errand count
+            nobody trusts. */}
         <div className="scan-tally">
           <span><strong>{counts.short}</strong> {SCAN_BADGE.SHORT}</span>
           <span><strong>{counts.startOff}</strong> {SCAN_BADGE.START_OFF}</span>
@@ -213,43 +262,11 @@ export default function ScanCompareCard({
           <span className="quiet"><strong>{counts.overTime}</strong> {SCAN_BADGE.OVER}</span>
           <span className="quiet"><strong>{counts.flatDaily}</strong> เหมารายวัน</span>
           <span className="quiet"><strong>{agreed}</strong> ตรง</span>
+          <span className="quiet">
+            {SCAN_BADGE.OVER} และ เหมารายวัน เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ ·
+            {' '}ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน
+          </span>
         </div>
-
-        {/* เกินเวลา และ เหมารายวัน ARE FACTS, NOT ERRANDS — *ข้อเท็จจริง ป้ายเทา
-            ไม่นับกองที่ต้องตรวจ* (2026-09-07). They are drawn `.quiet` for the
-            same reason they are counted outside `mismatch`: a screen that folds
-            facts into the errand count is a screen whose errand count nobody
-            trusts. Said in words as well as in colour, because colour alone is
-            not a sentence. */}
-        <div className="hint" style={{ margin: '6px 0 0' }}>
-          <strong>{SCAN_BADGE.OVER}</strong> และ <strong>เหมารายวัน</strong> เป็นข้อเท็จจริง
-          {' '}ไม่นับเป็นกองที่ต้องตรวจ · <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong>
-          {' '}— นี่เป็นการชี้ให้ดู ไม่ใช่การคิดใหม่
-        </div>
-
-        {/* THE PRESS THAT TURNS A NUMBER INTO A PLACE TO STAND. It narrows the
-            table below rather than listing names here: the list of names was
-            what this card printed until today and it capped at twelve, which
-            on a month with thirty flagged people is a card that names less than
-            half of them and no way to reach the rest.
-
-            A TOGGLE AND NOT A ONE-WAY TRIP — pressing it again is the way back,
-            and ล้างตัวกรอง releases it too, because a filter the filter bar does
-            not know about is how somebody comes to believe this month has
-            eleven employees in it. */}
-        {onToggleFlagged && flagged > 0 && (
-          <button
-            type="button"
-            className={onlyFlagged ? 'btn ghost sm on' : 'btn ghost sm'}
-            style={{ marginTop: 8 }}
-            onClick={onToggleFlagged}
-            aria-pressed={onlyFlagged}
-          >
-            {onlyFlagged
-              ? 'แสดงทุกคนในเดือนนี้'
-              : `ดูเฉพาะคนที่ต้องตรวจ (${flagged} คน)`}
-          </button>
-        )}
       </Alert>
     </div>
   );

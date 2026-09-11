@@ -7644,6 +7644,42 @@ two counts and two bare consequences after it would be a matching exercise.
 > layout. The sentence is one, and a second `.map(…).join(' และ ')` in the other
 > branch is the copy that gets fixed while the first one does not.
 
+#### ผลเทียบ และ แจ้งเตือน — ไม่เกินสองแถวใบละ
+
+**2026-09-11:** *"ปรับการแจ้งเตือนตามภาพให้กระชับด้วย แต่ยังได้ใจความครบถ้วน
+ให้โฟกัสการรวมแจ้งเตือนเข้าด้วยกัน หรือปรับให้เหลือไม่เกิน 1-2 แถวเป็นอันดับแรก"*.
+
+**ผลเทียบกับไฟล์สแกนนิ้วมือ — five blocks became two rows.** It was a title row,
+a headline row, the tally, a caveat paragraph and a button on a row of its own.
+
+> **The title and the headline were always one sentence.** *ผลเทียบกับไฟล์สแกน
+> นิ้วมือ · สิงหาคม 2569* names the question and *⚠ ต้องตรวจ 10 แถว* answers it;
+> they sat in two blocks only because the title row had been built as a
+> `space-between` flex that never got a second item. Read together they are the
+> row — `.scan-line`, the same row state 1 uses — with the card's one control at
+> the end of it.
+
+**The caveat is the last item of the tally, not a paragraph under it.** *เกินเวลา
+และ เหมารายวัน เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ* is a sentence **about**
+two of the six figures beside it, and `.scan-tally` is a wrapping flex row — so
+as an item it lands on the same line whenever there is room and takes its own
+when there is not, which a paragraph under the row could never do. **Nothing in
+it was cut**: both clauses are the ones HR settled on 2026-09-07 and the line
+saying this comparison restates no hours, and both stay `.quiet` like the figures
+they qualify. `.scan-big` keeps its 15px — inlining a figure changes where it
+sits, not how loud it is.
+
+**แจ้งเตือน — one row shut, two open.** The heading was a block above the labels,
+so a shut panel was two rows and an open one four. It is the first phrase of the
+same flow now. **`· N ข้อความ` only when N is more than one**: beside a single
+message the count is the screen counting out loud for its own benefit.
+
+**And an item of the open list is one flow, not two blocks.** The instruction was
+on a line of its own under the statement — but **the brackets around it are what
+mark it as guidance about the words before it**, which is what they were
+introduced for. A block of its own was the same claim made a second way, and it
+cost every item a line.
+
 #### ลิ้นชัก ไฟล์สแกนนิ้วมือ — กระชับ โดยไม่มีข้อเท็จจริงไหนหายไป
 
 **2026-09-11:** *"ปรับการแสดงผลส่วนนี้ให้กระชับ แต่ยังได้รายละเอียดครบถ้วน และ

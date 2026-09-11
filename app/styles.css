@@ -2263,7 +2263,10 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* The sentence takes the room; the button never shrinks under its own label. */
 .scan-line .btn { flex: none; }
 
-.scan-head { margin: 6px 0 0; }
+/* ⚠ `.scan-head { margin: 6px 0 0 }` STOOD HERE — the block that held the
+   headline under the card's title. The two are one sentence on one row since
+   2026-09-11 (*"ปรับให้เหลือไม่เกิน 1-2 แถว"*), so the block is gone and the
+   figure keeps only its size. */
 .scan-big { font: 600 15px/1.4 var(--sans); }
 .scan-big.warn { color: var(--amber-ink); }
 .scan-big.ok { color: var(--green-dark); }
@@ -6727,7 +6730,15 @@ td > .approver-line { margin-top: 5px; }
    panel, under the count rather than run into it. Quieter by a step, the same
    distance `.cap-sub` puts between a figure and its qualifier. Drawn only while
    the list is shut; open, the list's own headings are these same words. */
-.alerts-say { margin-top: 2px; font-size: 12px; }
+/* ⚠ THE HEADING IS INSIDE THIS FLOW SINCE 2026-09-11 — it was a `<strong>`
+   block above it, so a shut panel was two rows and an open one four
+   (*"ปรับให้เหลือไม่เกิน 1-2 แถวเป็นอันดับแรก"*). `margin-top` went with the
+   stacking; the heading is the first phrase of the row now, not a row. */
+.alerts-say { font-size: 12px; }
+/* The heading holds the panel's own size, which the labels after it step back
+   from. 12px for a heading would be the panel introducing itself in the voice
+   of its own footnotes. */
+.alerts-head { font-size: 13px; margin-right: 6px; }
 /* The labels take the step back; the button in the same flow must not, or the
    one control on the panel is the faintest thing on it. */
 .alerts-say > span { opacity: .85; }
@@ -6766,7 +6777,11 @@ td > .approver-line { margin-top: 5px; }
    quieter here. `ตรวจก่อนเซ็นรับรอง` is the whole reason the policy notice
    exists; a list that dropped it would be a tidier panel that had stopped
    saying the thing it is for. */
-.alerts-list .say { margin-top: 2px; font-size: 12px; opacity: .85; }
+/* ⚠ INLINE SINCE 2026-09-11, AND IT WAS A BLOCK WITH `margin-top: 2px`. The
+   brackets in the markup are what mark it as guidance about the words before
+   it; a block of its own was that same claim made a second way, and it cost
+   every item in the list a line (*"ปรับให้เหลือไม่เกิน 1-2 แถว"*). */
+.alerts-list .say { font-size: 12px; opacity: .85; }
 
 .notice-fold-group { margin-top: 6px; }
 .notice-fold-group > .k {

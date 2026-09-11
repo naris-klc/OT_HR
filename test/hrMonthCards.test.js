@@ -780,7 +780,14 @@ test('two panels became one panel — a list, not a second stack', () => {
   const strip = hrView.slice(hrView.indexOf('function MonthAlerts('), hrView.indexOf('function CapCell('));
   // THE MONTH BY NAME. This panel now sits ABOVE the box that sets the period,
   // so "เดือนนี้" is a question rather than an answer.
-  assert.match(strip, /แจ้งเตือนของ \$\{periodName\} · \$\{notices\.length\} ข้อความ/);
+  /* ⚠ IT WAS ONE STRING WITH THE COUNT ALWAYS IN IT UNTIL 2026-09-11, when
+     the heading joined the labels' own flow and the count became conditional:
+     *"1 ข้อความ"* beside a single message is the screen counting out loud for
+     its own benefit. The month by name stays — this panel sits ABOVE the box
+     that sets the period, so "เดือนนี้" is a question rather than an answer. */
+  assert.match(strip, /`แจ้งเตือนของ \$\{periodName\}`/);
+  assert.match(strip, /notices\.length > 1 && ` · \$\{notices\.length\} ข้อความ`/);
+  assert.match(strip, /<strong className="alerts-head">/);
   assert.match(hrView, /periodName=\{periodLabel\(period\)\}/);
   // ONE `<Alert>` in the whole component, and the list is INSIDE it.
   assert.equal(strip.match(/<Alert /g).length, 1, 'a second panel came back');
@@ -801,14 +808,17 @@ test('two panels became one panel — a list, not a second stack', () => {
 
 test('an item is a heading, its figures, and the one sentence that says what to do', () => {
   const strip = hrView.slice(hrView.indexOf('function MonthAlerts('), hrView.indexOf('function CapCell('));
-  // TWO LINES, not three. The heading and its figures are one statement and run
-  // together on the first; two blocks made a three-line item out of a two-line
-  // one wherever the pair happened to fit.
-  assert.match(strip, /<div><strong>\{n\.label\}<\/strong>: \{n\.figures\}<\/div>/);
-  // The brackets mark the second line as guidance ABOUT the first rather than
-  // more of it — which is what the block margin used to do and need not.
-  assert.match(strip, /<div className="say">\(\{n\.say\}\)<\/div>/);
-  // A bullet and a gap, not a hairline: an item is two lines now, and the disc
+  /* ⚠ ONE FLOW SINCE 2026-09-11, AND IT WAS TWO BLOCKS — the statement with
+     its figures, then the instruction on a line of its own. The pair was
+     already written to run together for the first half of that reason; this
+     finishes it (*"ปรับให้เหลือไม่เกิน 1-2 แถว"*). */
+  assert.match(strip, /<strong>\{n\.label\}<\/strong>: \{n\.figures\}/);
+  /* The brackets are what mark the instruction as guidance ABOUT the words
+     before it — a block of its own was the same claim made a second way, and
+     it cost every item in the list a line. */
+  assert.match(strip, /<span className="say">\(\{n\.say\}\)<\/span>/);
+  assert.match(css, /\.alerts-list \.say \{ font-size: 12px; opacity: \.85; \}/);
+  // A bullet and a gap, not a hairline: an item can still wrap, and the disc
   // is what says where the next one starts when the one above it did not end at
   // the right-hand margin. Drawn, not `list-style`, so it cannot hang into the
   // panel's own padding.
@@ -849,13 +859,16 @@ test('one control for the whole thing, and no second ดูรายละเอ
   // The labels line is drawn SHUT only — open, the list headings are those same
   // words, and saying them twice fourteen pixels apart is a difference a reader
   // has to check for and will not find.
-  assert.match(strip, /\{!open && <span>\{notices\.map\(\(n\) => n\.label\)\.join\(' · '\)\}<\/span>\}/);
+  assert.match(strip, /\{!open && <span>\{'— '\}\{notices\.map\(\(n\) => n\.label\)\.join\(' · '\)\}<\/span>\}/);
   // …and the button is in that SAME flow, not on a block of its own: a 44px
   // touch target stacked under two wrapped lines of Thai is a whole row of the
   // panel spent on one control.
-  assert.match(strip, /<div className="alerts-say">\s*\{!open && <span>[\s\S]*?<button/);
+  // …and the heading is the first thing in that flow, not a block above it.
+  assert.match(strip, /<div className="alerts-say">\s*<strong className="alerts-head">[\s\S]*?\{!open && <span>[\s\S]*?<button/);
   assert.match(css, /\.alerts-say > \.fold-pill \{ margin: 0 0 0 8px; vertical-align: middle; \}/);
-  assert.match(css, /\.alerts-say \{ margin-top: 2px; font-size: 12px; \}/);
+  // `margin-top` went with the stacking: the heading is a phrase of this row.
+  assert.match(css, /\.alerts-say \{ font-size: 12px; \}/);
+  assert.match(css, /\.alerts-head \{ font-size: 13px; margin-right: 6px; \}/);
   // THE COLOUR IS THE WORST OF THEM, or the fold has quietly downgraded a
   // warning by folding it.
   assert.match(strip, /\['warn', 'info', 'ok'\]\.find\(/);

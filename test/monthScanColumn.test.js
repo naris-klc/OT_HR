@@ -501,3 +501,35 @@ test('ลิ้นชัก ไฟล์สแกนนิ้วมือ กร
     assert.ok(upto.includes(piece), `${piece} หายไปจากแผงตรวจก่อนนำเข้า`);
   }
 });
+
+test('การ์ดผลเทียบเหลือสองแถว — หัวข้อกับคำตอบเป็นประโยคเดียว และคำกำกับเป็นชิ้นสุดท้ายของแถวตัวเลข', () => {
+  /* *"ปรับการแจ้งเตือนตามภาพให้กระชับด้วย … ปรับให้เหลือไม่เกิน 1-2 แถวเป็นอันดับแรก"* (11 ก.ย. 2569) · เดิมเป็นห้าก้อน: แถวหัวข้อ · แถวคำตอบ · แถวตัวเลข
+     · ย่อหน้าคำกำกับ · และปุ่มบนแถวของตัวเอง — ห้าก้อนสำหรับคำตอบเดียว */
+
+  // หัวข้อกับคำตอบเป็นประโยคเดียวบน `.scan-line` แถวเดียวกับที่สถานะแรกใช้
+  const body2 = card.slice(card.indexOf('if (!counts) return null;'));
+  const upto = body2.slice(0, body2.indexOf('<div className="scan-tally">'));
+  assert.match(upto, /<div className="scan-line">/);
+  assert.match(upto, /<strong>ผลเทียบกับไฟล์สแกนนิ้วมือ · \{periodLabel\(period\)\}<\/strong>/);
+  assert.match(upto, /className="scan-big warn">⚠ ต้องตรวจ \{counts\.mismatch\} แถว/);
+  assert.match(upto, /className="scan-big ok">✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน/);
+  // และปุ่มเดียวของการ์ดอยู่ท้ายประโยคที่ถือตัวเลขนั้น
+  assert.match(upto, /onToggleFlagged && flagged > 0 && \(/);
+  assert.ok(!css.includes('.scan-head { margin: 6px 0 0; }'), 'ก้อนหัวข้อเดิมยังอยู่ในสไตล์ชีต');
+
+  /* ⚠ คำกำกับเป็นชิ้นสุดท้ายของแถวตัวเลข ไม่ใช่ย่อหน้าใต้แถว
+     `.scan-tally` เป็นแถว flex ที่ตัดบรรทัดได้ การเป็นชิ้นหนึ่งในนั้นทำให้มันลงบรรทัด
+     เดียวกันเมื่อมีที่ และกินบรรทัดของตัวเองเมื่อไม่มี ซึ่งย่อหน้าทำแบบนั้นไม่ได้ */
+  const tally = card.slice(card.indexOf('<div className="scan-tally">'));
+  const tallyEnd = tally.slice(0, tally.indexOf('</div>'));
+  assert.match(tallyEnd, /เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ/);
+  assert.match(tallyEnd, /ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน/);
+  // เป็น `.quiet` เหมือนสองตัวเลขที่มันกำกับ ด้วยเหตุผลเดียวกัน
+  assert.match(tallyEnd, /<span className="quiet">/);
+
+  // ⚠ ตัวเลขทั้งหกตัวและจำนวนคน/ใบ ยังอยู่ครบ — "กระชับ" ไม่ใช่ "ตัดออก"
+  for (const piece of ['counts.short', 'counts.startOff', 'counts.noScan',
+    'counts.overTime', 'counts.flatDaily', '{agreed}', 'compare.entryCount']) {
+    assert.ok(body2.includes(piece), `${piece} หายไปจากการ์ด`);
+  }
+});
