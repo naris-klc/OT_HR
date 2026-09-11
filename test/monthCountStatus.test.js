@@ -137,8 +137,17 @@ test('ไม่มีการอ่านฐานข้อมูลเพิ�
 test('วาดเฉพาะส่วนที่ค้าง — ไม่มีเลข อนุมัติ และไม่มีขีดแทนศูนย์', () => {
   // Guarded by `> 0`, so a person with nothing pending draws a bare number and
   // the column's blank rows are the answer rather than the absence of one.
-  assert.match(helper, /m\.pendingMgr > 0 && <span key="m" className="cs-m">หัวหน้า \{m\.pendingMgr\}<\/span>/);
-  assert.match(helper, /m\.pendingHr > 0 && <span key="h" className="cs-h">HR \{m\.pendingHr\}<\/span>/);
+  assert.match(helper, /m\.pendingMgr > 0 && <span key="m" className="cs-m">รอหัวหน้า \{m\.pendingMgr\}<\/span>/);
+  assert.match(helper, /m\.pendingHr > 0 && <span key="h" className="cs-h">รอHR \{m\.pendingHr\}<\/span>/);
+
+  /* ⚠ THE VERB IS PART OF THE LABEL — asked for on 2026-09-11 as *"แก้ไขคำเป็น
+     `รอหัวหน้า 1` `รอHR 1`"*. `หัวหน้า 1` named a person and left the reader to
+     supply what the row was doing with them; the column exists to answer "is
+     there anything of this person's left to do", so the waiting is the word
+     that cannot be the one left out. Pinned as a whole label rather than a
+     substring: `HR 1` matches inside `รอHR 1` and would pass either way. */
+  assert.doesNotMatch(helper, /className="cs-m">หัวหน้า /, 'ป้ายกลับไปเป็น หัวหน้า เฉย ๆ ไม่มีคำว่ารอ');
+  assert.doesNotMatch(helper, /className="cs-h">HR /, 'ป้ายกลับไปเป็น HR เฉย ๆ ไม่มีคำว่ารอ');
   assert.match(helper, /\.filter\(Boolean\)/);
 
   /* ⚠ NO `อนุมัติ` FIGURE AND NO `–` — both were in the version the screenshot
@@ -165,8 +174,38 @@ test('มีทั้งสองอย่างก็ยังบรรทั�
   );
   assert.match(css, /\.count-status \{\r?\n\s*font: 600 11\.5px\/1\.5 var\(--sans\); margin-top: 1px; white-space: nowrap;\r?\n\}/);
 
-  // 96px is what the widest line — `หัวหน้า 1 · HR 2` — is measured against.
-  assert.match(css, /\.hr-table th\.count-col \{ width: 96px; \}/);
+  // 136px is what the widest line — `รอหัวหน้า 1 · รอHR 2`, 109.5px measured off
+  // the font file — is measured against, plus the cell's two 12px gutters.
+  assert.match(css, /\.hr-table th\.count-col \{ width: 136px; \}/);
+});
+
+test('40px ที่คอลัมน์ รายการ กินเพิ่ม ถูกจ่ายมาจากคอลัมน์ที่วัดแล้วว่ามีเหลือ', () => {
+  /* ⚠ THIS TABLE IS `table-layout: auto`, WHICH IS WHY THE SUM MATTERS.
+     A declared width there is not a box the cell is clipped into — it is a
+     share of the row. Declare one column 40px more and the browser does not
+     find the 40px in the margin; it takes it out of the only column that can
+     wrap, which is แผนก, and แผนก breaking mid-word is a bug this table has
+     already had twice (`th.dept-col`'s two notes in app/styles.css).
+
+     So the four widths are pinned together, as a budget rather than four
+     numbers. `รอ` on the labels cost 40px; `who-col` 196 → 168 and `cap-col`
+     152 → 140 paid all of it, both still measured over what they hold, and
+     `dept-col` — the one that wraps — was not asked to contribute. */
+  const width = (col) => {
+    const m = css.match(new RegExp(`\\.hr-table th\\.${col} \\{ width: (\\d+)px; \\}`));
+    assert.ok(m, `ไม่พบความกว้างของ ${col}`);
+    return Number(m[1]);
+  };
+  assert.equal(width('count-col'), 136);
+  assert.equal(width('who-col'), 168);
+  assert.equal(width('cap-col'), 140);
+  assert.equal(width('dept-col'), 160, 'แผนก ถูกเรียกมาจ่ายด้วย — มันคือคอลัมน์ที่การย้ายนี้มีไว้ป้องกัน');
+
+  assert.equal(
+    width('count-col') + width('who-col') + width('cap-col'),
+    96 + 196 + 152,
+    'รวมสามคอลัมน์ไม่เท่าเดิม — ความกว้างที่เพิ่มมาถูกดึงมาจาก แผนก โดยเงียบ ๆ',
+  );
 });
 
 test('หัวคอลัมน์กลับมาเป็นคำเดียว และบอกไว้ว่ามันไม่ขึ้นกับ สถานะที่นับ', () => {

@@ -9277,8 +9277,18 @@ th.act-col { width: 258px; }
    `แผนกผลิตN` with most of it to spare.
 
    BOTH ARE `.hr-table`-SCOPED. The two shared rules are measured against the
-   queue's own crowd of columns and stay exactly as they are. */
-.hr-table th.who-col { width: 196px; }
+   queue's own crowd of columns and stay exactly as they are.
+
+   ⚠ 168 AGAIN SINCE 2026-09-11, AND IT WAS "196" — `count-col` below needed
+   40px it did not have, and this was the one column on the row carrying width
+   nobody had measured a requirement for. The 196 was never a requirement: it
+   was what was LEFT of the 194 `act-col` gave back, spent because it was there.
+   Measured off the font file, `นางสาวสสุคนธ์ ข่าค่ำ` — the longest on the roster —
+   is 128.6px at 14px/400, so it wants 152.6 with the cell's two 12px gutters.
+   168 still draws it on one line with 15px to spare, and the widest single
+   TOKEN still cannot break. Nothing above regressed; the surplus went next
+   door. */
+.hr-table th.who-col { width: 168px; }
 /* ⚠ 160 SINCE 2026-09-11, AND IT WAS 132 — which held the word and still did
    not get it, because `table-layout: auto` gives a declared width only once the
    table fits. `th.cap-col`'s 224 (below) was taking the room back out of the one
@@ -9298,23 +9308,40 @@ th.act-col { width: 258px; }
    over-wide declaration is not empty space at the end of the table, it is width
    taken from the columns that can wrap — and only one column on this row can.
    Scoped, like `act-col` and `who-col` above, because 224 is still right for
-   the screen it was measured on. */
-.hr-table th.cap-col { width: 152px; }
+   the screen it was measured on.
+
+   ⚠ 140 SINCE 2026-09-11, AND IT WAS "152" — the other twelve of the 40px
+   `count-col` needed. The "about 128px" above was an estimate and it was
+   generous: measured off the font file, `รวมรออนุมัติ 45 / 40` is 107.2px at
+   11.5px/600, wanting 131.2 with the gutters. 140 keeps 9px over that. */
+.hr-table th.cap-col { width: 140px; }
 
 /* ── คอลัมน์ รายการ — จำนวนใบทั้งเดือน แล้วบรรทัดบอกว่าค้างอยู่ที่ขั้นไหน ──
 
-   96px AND IT HAD NO WIDTH AT ALL until 2026-09-11 — it was `auto`, which came
+   136px AND IT HAD NO WIDTH AT ALL until 2026-09-11 — it was `auto`, which came
    out at about 46, the width of the heading over a column of two-digit figures.
-   The pending line needs it: `หัวหน้า 1 · HR 2` is the widest this cell can
-   draw, about 90px at 11.5px, and it must not wrap. The 50 comes out of the
-   same 194 `act-col` gave back to `who-col` and `dept-col` on 2026-09-10; both
-   keep the widths measured for them there.
+   The pending line needs it: `รอหัวหน้า 1 · รอHR 2` is the widest this cell
+   draws in practice, and it must not wrap.
+
+   ⚠ "96px" HELD THE SAME LINE WITHOUT THE WORD `รอ` ON IT, and it did not
+   really hold that one either. The figures in this file are written as content
+   plus the cell's two 12px gutters; `หัวหน้า 1 · HR 2` measures 81.6px off the
+   font file, which wanted 105.6 and was declared 96. Under `table-layout: auto`
+   a declaration that short is not a clipped cell — the browser takes the
+   difference out of the columns that wrap, silently, which is the exact way
+   แผนก broke twice before. `รอหัวหน้า 1 · รอHR 2` is 109.5px, so 133.5 with
+   the gutters, rounded to 136 the way `act-col`'s 98 was rounded to 104.
+
+   THE 40px IS PAID FOR, NOT TAKEN. `who-col` 196 → 168 and `cap-col` 152 → 140,
+   both measured above against what they actually hold; neither lost a line it
+   was drawing. `dept-col` was deliberately not touched — it is the column that
+   wraps, and it is the one this move exists to protect.
 
    CENTRED, NOT `.num`'s RIGHT. The cell stopped being one figure. `scan-col`
    and `edits-col` on this same table are centred for the same reason — a cell
    whose content is not a quantity to be compared down the column does not owe
    the decimal alignment. */
-.hr-table th.count-col { width: 96px; }
+.hr-table th.count-col { width: 136px; }
 .hr-table th.count-col, .hr-table td.count-col { text-align: center; }
 
 /* ── THE LINE THAT ONLY APPEARS WHEN SOMETHING IS OUTSTANDING ──────────────
@@ -9326,10 +9353,16 @@ th.act-col { width: 258px; }
    from one basis, so there is no key to print and no gap to grey.
 
    `nowrap` IS THE LOAD-BEARING PART. Both kinds on one person share this line
-   (`หัวหน้า 1 · HR 2`); let it wrap and the cell is three lines, which makes
-   every row in the table taller — the one thing this column was asked not to
-   do. The 96px above is what keeps the promise; this is what makes a broken
-   promise visible as an overflow instead of silent as a reflow. */
+   (`รอหัวหน้า 1 · รอHR 2`); let it wrap and the cell is three lines, which
+   makes every row in the table taller — the one thing this column was asked
+   not to do. The 136px above is what keeps the promise; this is what makes a
+   broken promise visible as an overflow instead of silent as a reflow.
+
+   ⚠ TWO-DIGIT ON BOTH SIDES AT ONCE IS THE ONE CASE 136 DOES NOT HOLD:
+   `รอหัวหน้า 12 · รอHR 12` is 123.3px, wanting 147. Left over the line rather
+   than paid for, because a person with ten or more waiting at BOTH stages in
+   one month is not the row this table is read for, and buying 11px more would
+   have come out of แผนก. It grows the column when it happens; it does not wrap. */
 .count-status {
   font: 600 11.5px/1.5 var(--sans); margin-top: 1px; white-space: nowrap;
 }
