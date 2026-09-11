@@ -433,7 +433,15 @@ function CompanySheet({ company, periods, index }) {
                   <th className="num rate-col wide b-15h" rowSpan={span}><RateHead rate="×1.5" of="วันหยุด" /></th>
                   <th className="num rate-col wide b-3h" rowSpan={span}><RateHead rate="×3" of="วันหยุด" /></th>
                   <th className="num total-col" rowSpan={span}>รวม ชม.</th>
-                  <th className="note-col" rowSpan={span}>หมายเหตุ / บริษัท</th>
+                  {/* IT READ `หมายเหตุ / บริษัท` UNTIL 2026-09-11, and the
+                      บริษัท half was a second copy of the card's own heading.
+                      Every row of this table belongs to the company named three
+                      lines above it — the partition is what the sheet IS — so
+                      the column repeated ไพรมัส down twenty rows beside the one
+                      sentence on the row that is not already known. README
+                      §สรุป OT ส่งบัญชี has listed these seven columns ending in
+                      หมายเหตุ, without the company, the whole time. */}
+                  <th className="note-col" rowSpan={span}>หมายเหตุ</th>
                 </tr>
                 {many && <tr>{monthRateHeads(periods)}</tr>}
               </thead>
@@ -455,7 +463,6 @@ function CompanySheet({ company, periods, index }) {
                       <OverCeilingFigure over={row.overCeiling}>{cell(row.otHours)}</OverCeilingFigure>
                     </td>
                     <td className="note-col">
-                      <span className="co">{row.companyLabel}</span>
                       {/* The same remark the printed sheet puts beside this row,
                           so HR reads it here before it is on paper. With the
                           hours, which the paper leaves out for want of room —

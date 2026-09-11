@@ -2462,11 +2462,23 @@ and gives them a row of their own under the row they explain.
 one person's three reasons filled the screen). `OverCeilingNote` carries a ▲/▼:
 folded, `รายการเกินเพดาน · 3 รายการ · 12 ชม.` stays and only the list of dated
 reasons goes behind the arrow — the red figure and its tooltip are untouched.
-Since the note is shared, ส่งบัญชี's หมายเหตุ folds the same way. It opens by
-default and is not remembered, per note: this is the record, and a report that
-came back folded would be one read without its reasons. The press follows
-`foldClick` — folded, anywhere on the note opens it; open, only the heading
-folds it.
+Since the note is shared, ส่งบัญชี's หมายเหตุ folds the same way. The press
+follows `foldClick` — folded, anywhere on the note opens it; open, only the
+heading folds it.
+
+**It read *"It opens by default and is not remembered, per note: this is the
+record, and a report that came back folded would be one read without its
+reasons"* until 2026-09-11**, when ฝ่ายบุคคล asked for the other default on
+ส่งบัญชี — *หมายเหตุให้แสดง รายการเกินเพดานแบบย่อเป็นค่าเริ่มต้น* — and it was
+taken to both sheets rather than forked, because one component draws the mark on
+both and two defaults for one mark is two marks. The argument above was answered
+rather than overruled: what was never folded is the heading, and the heading
+still says the word, the count and the hours, which is the part a month is
+closed against. What WAS open by default is the per-entry reasons, and one
+person with five of them set the height of every row beside theirs — 173.7px
+against 64. A record nobody can scan is not read either. **Still not
+remembered**, and that half stands: the fold is per render, so the screen opens
+the same way for everybody.
 
 **Both PRINTED sheets are coloured too, and the department one only after a
 second ask.** `figureClass` in `components/AccountingPrint.jsx` has reddened
@@ -10771,6 +10783,33 @@ screen is ตรวจสอบรายเดือน's table — พนัก
 ×3 | รวม ชม. | หมายเหตุ — because it is read by the same person on the same
 day as that screen, and two review tables with different column sets is how a
 month goes wrong.
+
+**The last column was headed `หมายเหตุ / บริษัท` until 2026-09-11 and carried
+the company's name on every row.** The list above has read `หมายเหตุ` the whole
+time, which is what it is now: *เพราะบริษัทแสดงที่หัวตารางแล้ว มันซ้ำซ้อน*. One
+table is one company — the partition is what this screen IS — so the name was
+already three lines above the first row, in the card's own head, and repeating
+it down twenty rows put a word nobody needs beside the one sentence on the row
+that nobody knows. What is left in the column is the three marks: วันเกิด,
+ค้างอนุมัติ n รายการ · ไม่นับรวม, and รายการเกินเพดาน.
+
+**And the seven columns all declare a width now, which they did not before.**
+Only พนักงาน and the three rate columns did; แผนก, รวม ชม. and หมายเหตุ
+declared nothing, and under `table-layout: auto` a column that declares nothing
+does not size itself to its contents — it takes every pixel the others leave.
+Measured in a 1178px card: แผนก came out 269.7 for a 140.4px word, รวม ชม. 130.5
+for a 55.6px heading and หมายเหตุ 439.8 for an 11.5px line, while พนักงาน sat
+pinned at คิวรออนุมัติ's shared 168 and wrapped `นางสาวกิพวรรณ สุขสำราญ` onto a
+second line. Asked for as *ปรับความกว้างของแต่ละคอลัมน์ให้เหมาะสม สวยงาม*. The
+numbers are 196 · 168 · 52 · 58 · 58 · 80 · 260, each one its widest content
+plus the cell's two 12px gutters, measured against the app's own faces; they
+come to 872, which is a FLOOR and not a layout — a wider card scales all seven
+in that ratio (1178 gives 264 · 227 · 70 · 78 · 78 · 108 · 351). The arithmetic
+behind each is over `.acct-table th.who-col` in `app/styles.css`, and
+`test/acctCycleSheet.test.js` holds each number to the thing it was cut for.
+**Above 860px only** — the phone keeps its own caps, measured at 360px and
+unchanged: บริษัท leaving the note cell takes a LINE off every row there, not a
+pixel off any column.
 
 **A two-month งวดจ่าย follows the PAPER for the columns it adds, and that was
 asked for on 2026-09-10** — *"เรียงคอลัมน์แบบฟอร์มกระดาษ"*. The three bucket

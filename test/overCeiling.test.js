@@ -455,12 +455,20 @@ test('เหตุผลเกินเพดานย่อได้ แต่�
   /**
    * ขอมาบน รายงาน OT แยกแผนก 2026-09-10 · ที่ซ่อนคือรายการเหตุผลทีละวันเท่านั้น —
    * คำว่า รายการเกินเพดาน จำนวน และชั่วโมง ต้องอยู่นอกส่วนที่ซ่อนเสมอ
+   *
+   * ⚠ และ 2026-09-11 ค่าเริ่มต้นกลับด้าน — *"หมายเหตุให้แสดง รายการเกินเพดาน
+   * แบบย่อเป็นค่าเริ่มต้น"* ขอมาที่หน้า รายงาน OT การเงิน และตกลงกันว่าให้เป็น
+   * แบบเดียวกันทั้งสองหน้า เพราะคอมโพเนนต์นี้ตัวเดียวรับใช้ทั้งคู่ ที่ย่อคือ
+   * รายการเหตุผลเท่านั้น หัวยังพูดคำ จำนวน และชั่วโมง เหมือนเดิม — ซึ่งเป็นเหตุผล
+   * ที่กลับด้านได้โดยไม่เสียความเป็นบันทึก
    */
   const common = read('components/common.jsx');
   const note = strip(common.slice(common.indexOf('export function OverCeilingNote(')));
   // Hooks above the early return, or they run on some renders and not others.
-  assert.ok(note.indexOf('React.useState(false)') < note.indexOf('if (!over?.count) return null;'),
+  assert.ok(note.indexOf('React.useState(true)') < note.indexOf('if (!over?.count) return null;'),
     'hook อยู่หลัง early return');
+  assert.match(note, /const \[folded, setFolded\] = React\.useState\(true\);/,
+    'ค่าเริ่มต้นต้องเป็น ย่อ — ทั้ง ส่งบัญชี และ แยกแผนก');
   assert.match(note, /onClick=\{foldClick\(folded, toggle, '\.over-cap-head'\)\}/);
   const head = note.slice(note.indexOf('className="over-cap-head"'), note.indexOf('<ul '));
   assert.match(head, /\{OVER_CEILING_MARK\}<\/strong> · \{over\.count\} รายการ · \{hours\(over\.hours\)\} ชม\./,
