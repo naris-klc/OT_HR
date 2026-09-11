@@ -2215,8 +2215,9 @@ export default function HrView({
                                VERDICT AT ALL, and a third colour on that scale
                                would put it somewhere between the two. Grey is
                                off the scale, which is where it belongs — the
-                               same grey `.chip.scan-none` uses on the row marks
-                               for a day with no punches.
+                               same grey `.chip.scan-over` wears on the row
+                               marks (`.chip.scan-none` was that grey until
+                               2026-09-11, and is red now).
 
                                ASKED OF THE MONTH, not of the row, because that
                                is the only thing this screen can be sure of: a

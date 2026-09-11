@@ -5003,7 +5003,7 @@ requires none of them: a scan near 17:30 is evidence somebody was at the door at
 | `mismatch` | the scan-out came **before** the requested end (ไม่ครบ, by any amount), or the start has a scan that disagrees — the punch is quoted with the shortfall | amber, `.chip.scan-off` |
 | `no_scan` | this person has no punches at all that day | quiet, `.chip.scan-none` |
 
-#### The words on the badges are HR's own — เกินเวลา · ไม่ครบ · ไม่ตรง
+#### The words on the badges are HR's own — เกินเวลา · ไม่ครบ · ไม่ได้สแกน
 
 **2026-09-07**, given as definitions rather than as a change request, which is
 how the vocabulary and the arithmetic came to be settled in one go:
@@ -5012,18 +5012,38 @@ how the vocabulary and the arithmetic came to be settled in one go:
 |---|---|---|---|
 | **เกินเวลา** | *ขอโอทีมาน้อยกว่าที่ทำจริง — ขอมา 19:00 น. แต่สแกนออก 19:30 น.* | scan-out ≥ end + `SCAN_OVER_MINUTES` | grey, `.chip.scan-over` |
 | **ไม่ครบ** | *ขอโอทีมามากกว่าเวลาที่ทำจริง — ขอมาถึง 20:00 น. แต่สแกนออก 19:30 น.* | scan-out < end, by any amount | amber, `.chip.scan-off` |
-| **ไม่ตรง** | *ไม่มีการสแกนนิ้วแต่ยื่นขอโอที* | no punches at all that day | grey, `.chip.scan-none` |
+| **ไม่ได้สแกน** | *ไม่มีการสแกนนิ้วแต่ยื่นขอโอที* | no punches at all that day | **red**, `.chip.scan-none` |
 
 The three are named **from the request's point of view** — how the paper
 compares with the day — which is why เกินเวลา and ไม่ครบ are opposites rather
 than degrees of one thing. `SCAN_BADGE` in `lib/scanMatch.js` holds the words.
 
 > `ไม่มีข้อมูลสแกนนิ้ว` and `สแกนออกก่อนเวลา OT` were the wordings until
-> 2026-09-07; they are **ไม่ตรง** and **ไม่ครบ** now. A fourth badge is NOT one
-> of the three and keeps a longer name for that reason —
+> 2026-09-07; they became **ไม่ตรง** and **ไม่ครบ** then. A fourth badge is NOT
+> one of the three and keeps a longer name for that reason —
 > `เวลาเริ่มไม่ตรงกับสแกน` (`SCAN_BADGE.START_OFF`), a start the machine
-> actively disagrees with on a row whose end is fine. Calling it ไม่ตรง would
-> collide head-on with the word that now means *no scan at all*.
+> actively disagrees with on a row whose end is fine.
+
+> **⚠ ไม่ตรง became ไม่ได้สแกน, and grey became red, on 2026-09-11.** HR's own
+> word for the no-scan case lasted four days. `ไม่ตรง` is a **comparison** — it
+> asserts two things that fail to agree — and this is the one state where there
+> is no second thing to compare: nobody touched the reader that day. A reader
+> who has just learnt that ไม่ครบ means *สแกนออกก่อนเวลา* reads ไม่ตรง as a
+> third shade of the same kind of disagreement, and it is not one.
+>
+> The paragraph above used to end "Calling it ไม่ตรง would collide head-on with
+> the word that now means *no scan at all*" — the reason `START_OFF` could not
+> be shortened. **That collision is gone**; the long name stays on its own
+> merits.
+>
+> **ไม่ครบ deliberately did not move with it.** Asked for in those terms: amber
+> is still the pile to work through, where the hours are arguable; red is the
+> row with no evidence beneath it at all, which is a different question rather
+> than a louder version of the same one. Grey was chosen in the first place so
+> that *a month whose file was never imported must not look like a month full
+> of bad requests* — and since 2026-09-10 such a month draws **no chips at all**
+> (`scanChecked` gates them), so the reasoning had already been overtaken by the
+> code it was protecting.
 
 ##### เกินเวลา is a fact, and `state` does not move for it
 
@@ -5191,7 +5211,7 @@ normal hours now, and neither is OT.
 *"แจ้งเตือนเพื่อให้ HR แยกออกระหว่างงานเหมากับเวลาไม่ตรงงานปกติ"* — the chips do
 that row by row, in colour. `summariseScanChecks` does it for the month, in a
 number, above the table: **`1` แถวไม่ครบ · `1` แถวเวลาเริ่มไม่ตรง · `0`
-แถวไม่ตรง (ไม่มีสแกนนิ้ว) · `2` แถวเกินเวลา · `3` แถวเป็นใบเหมารายวัน** — HR's own
+แถวไม่ได้สแกน · `2` แถวเกินเวลา · `3` แถวเป็นใบเหมารายวัน** — HR's own
 words in the order they defined them, and **only the first two are errands**. A
 flat day is never counted into the warning piles, whatever its scan verdict;
 เกินเวลา is counted ALONGSIDE the verdict rather than instead of it, since an
@@ -7244,10 +7264,18 @@ cannot back.
 **Grey is the statement, not the styling.** ตรง is green because the machine
 agreed and เวลาไม่ตรง is red because it did not; this row has had **no verdict
 at all**, and a third colour *on* that scale would place it between agreeing and
-disagreeing — the one thing it is not. `--muted` is the same grey `.chip.scan-none`
-wears on the row marks for a day with no punches, which is the same statement one
-level down. Regular weight, not the 600 the red carries: a fact about the month,
-not an errand for a person.
+disagreeing — the one thing it is not. Regular weight, not the 600 the red
+carries: a fact about the month, not an errand for a person.
+
+> **⚠ THE CHIP IT WAS COMPARED WITH MOVED THE SAME DAY.** This paragraph read
+> "`--muted` is the same grey `.chip.scan-none` wears on the row marks for a day
+> with no punches, which is the same statement one level down", which is the
+> shape the ask took — *เป็นสีเทา เหมือนคำว่า ไม่ตรง*. Hours later the next
+> instruction turned that chip **red** and renamed it **ไม่ได้สแกน**, so the two
+> are no longer the same colour. **This cell did not move**: what the ask wanted
+> is grey off the verdict scale, and the anchor for that is `--muted` itself —
+> the token that means *a fact nobody has to act on*. `.chip.scan-over` (เกินเวลา)
+> is the row mark still wearing it.
 
 > **It read "ยังไม่นำเข้า" until later the same day** — *"เปลี่ยนคำว่า ยังไม่นำเข้า
 > เป็นคำว่า รอนำเข้า ทั้งหมด"*. Shorter, and it names what happens next instead of
@@ -7389,7 +7417,7 @@ about being crude — it is not a substitute for opening the app, it is a
 substitute for opening the app *twice*. It was checked by putting the bug back
 and watching it fail.
 
-#### ยืนยันทีละใบ จากในหน้ารายคน — the half that makes §5.2 honest
+#### อนุมัติทีละใบ จากในหน้ารายคน — the half that makes §5.2 honest
 
 Refusing to tick a flagged person is only defensible if there is somewhere to
 settle them, and until the last commit of this round there was not: the reader
@@ -7398,13 +7426,47 @@ them, decided the row was fine — and then had to cross to รออนุม�
 same row among everybody else's, act there, and come back. **§5.2 would have
 manufactured more page-switching than it prevented.**
 
-So ตรวจสอบใบของพนักงาน — the list a row opens onto — grew a **ยืนยัน** button per
-row, and `GET /api/entries` grew one query parameter to feed it: `decide=check`,
-which hangs `approvalPermission`'s verdict beside each row. **Three screens now
-ask that one function** — this list, the monthly report's `approvable`, and the
-approve route itself — which is the whole reason §6 cannot be got wrong on any
-of them. A row this reader may not sign says `ยืนยันไม่ได้` in words, carrying
-the route's own refusal in its `title`, rather than showing a dead control.
+So ตรวจสอบใบของพนักงาน — the list a row opens onto — grew an **อนุมัติ** button
+per row, and `GET /api/entries` grew one query parameter to feed it:
+`decide=check`, which hangs `approvalPermission`'s verdict beside each row.
+**Three screens now ask that one function** — this list, the monthly report's
+`approvable`, and the approve route itself — which is the whole reason §6 cannot
+be got wrong on any of them.
+
+##### One shape in two states, on every row — 2026-09-11
+
+*ปุ่ม "ยืนยัน" เปลี่ยนเป็นคำว่า "อนุมัติ" และให้แสดงทุกแถว ถ้ากดได้เป็นสีเขียว ถ้า
+disable ไม่มีสี.* Three changes in one sentence, and the third is the one that
+matters most.
+
+**The word.** It was `ยืนยัน` here while คิวรออนุมัติ OT had already stopped
+calling it that — two screens signing the same ใบ, saying it two different ways.
+`ยืนยัน` keeps the meaning it actually has, *are you sure*, which is the prompt
+this button opens and nothing else.
+
+**The shape.** Plain `.btn` is the filled green one; `.btn:disabled` is grey for
+real (not a faded green). So the instruction is the two states of one class, and
+it is the same pair คิวรออนุมัติ OT draws for the same act.
+
+**Every row.** It read `{e.decide && (e.decide.ok ? … )}` until then, which put
+three different things down one column: a live button, the grey words
+`ยืนยันไม่ได้`, and — on a row still at the หัวหน้า step, where the route sends
+`decide: null` — nothing whatsoever. Finding the one press meant reading every
+cell. **The sentence did not go away**: `whyNotApprovable` in
+`components/HrEntries.jsx` is where all of them are written now, hanging on the
+wrapper's `title` because a disabled button dispatches no pointer events and its
+own `title` would never open. Where the server sent a verdict, `decide.why` is
+used verbatim; the four statuses the route does not judge get this screen's own
+sentence.
+
+> **⚠ AND IT GAINED THE ONE GATE IT USED TO REFUSE.** The button was documented
+> as NOT `mayEdit`-gated — *confirming is not correcting* — which held while it
+> was drawn only where it could be pressed: `decide` reaches
+> `mayCorrectEntries` readers alone, so การเงิน and the three signers simply saw
+> no button. Drawing every row would hand those readers a full column of grey
+> buttons for an act no screen in this app will ever offer them. `mayEdit` is
+> the same `mayCorrectEntries` answer the route already applies, so nothing new
+> is decided in the browser — the gate is just named where it is now visible.
 
 The two halves are one feature: **the batch is the fast path for rows nothing is
 wrong with, and this is the considered path for the rest.** Either alone leaves

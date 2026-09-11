@@ -17,6 +17,47 @@ import Icon from './icons.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /**
+ * Why อนุมัติ is dead on this row, in one sentence — `''` when it is live.
+ *
+ * ── THE ROW HAS TO SAY IT, BECAUSE THE BUTTON IS DRAWN ON EVERY ROW NOW ───
+ *
+ * Asked for on 2026-09-11: *ให้แสดงทุกแถว ถ้ากดได้เป็นสีเขียว ถ้า disable ไม่มี
+ * สี*. Before that a row this reader could not sign carried the words
+ * `ยืนยันไม่ได้` and a row at the หัวหน้า step carried nothing at all, so the
+ * column was three different shapes down its length and the eye had to read
+ * each cell to find the one press it came for.
+ *
+ * A dead control with no explanation is the failure `actionable` was written to
+ * fix on คิวรออนุมัติ — press, nothing happens, no idea what to do instead. So
+ * every disabled state here owes a sentence, and this is where they are
+ * written.
+ *
+ * ── TWO SOURCES, AND ONLY ONE OF THEM IS THIS SCREEN'S TO WRITE ───────────
+ *
+ * `entry.decide` is `approvalPermission`'s verdict, carried beside the row by
+ * `decide=check`, and `decide.why` is the sentence the approve route itself
+ * would answer with — §6 (one ใบ, two people) is inside it and no test over
+ * `status` in a browser could reach it. Where the server sent a verdict, the
+ * server's words are used verbatim, so the screen and a 409 cannot read as two
+ * different rules.
+ *
+ * `decide` is `null` on every status except `pending_hr`: the route does not
+ * ask the decider about a step that is not this reader's. Those four sentences
+ * are the ones below, and they are statements about where the ใบ IS rather than
+ * about permission.
+ */
+function whyNotApprovable(entry) {
+  if (entry.decide) return entry.decide.ok ? '' : entry.decide.why;
+  if (entry.status === 'pending_mgr') {
+    return 'ใบนี้ยังอยู่ที่ขั้นหัวหน้าแผนก — เมื่อหัวหน้าเซ็นแล้วจึงอนุมัติได้ที่นี่';
+  }
+  if (entry.status === 'approved') return 'ใบนี้อนุมัติแล้ว';
+  if (entry.status === 'rejected') return 'ใบนี้ถูกไม่อนุมัติแล้ว ไม่มีอะไรให้อนุมัติ';
+  if (entry.status === 'cancelled') return 'ใบนี้ถูกยกเลิกแล้ว ไม่มีอะไรให้อนุมัติ';
+  return 'อนุมัติใบนี้จากหน้านี้ไม่ได้';
+}
+
+/**
  * One employee's entries for one month, with HR's correction path.
  *
  * The monthly review shows totals; this is what sits behind a total when it
@@ -159,7 +200,8 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
    * logs `void` rather than `cancel`; this screen only has to ask.
    */
   /**
-   * ยืนยันใบนี้ — one row, from the screen that is showing why it was doubted.
+   * อนุมัติใบนี้ — one row, from the screen that is showing why it was doubted.
+   * (`ยืนยันใบนี้` until 2026-09-11 — see the button below for the reword.)
    *
    * ── WHY A SECOND PLACE TO APPROVE IS NOT A DUPLICATE ─────────────────────
    *
@@ -359,7 +401,8 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                   A flat day is never counted into the warning piles — see
                   `summariseScanChecks`, where that exclusion is the point. */}
               {/* HR'S OWN FOUR WORDS, IN THE ORDER THEY DEFINED THEM
-                  (2026-09-07): ไม่ครบ · ไม่ตรง · เกินเวลา · เหมารายวัน.
+                  (2026-09-07): ไม่ครบ · ไม่ตรง · เกินเวลา · เหมารายวัน —
+                  ไม่ตรง reworded to ไม่ได้สแกน on 2026-09-11, see `SCAN_BADGE`.
                   Only the FIRST is an errand. เกินเวลา and เหมารายวัน are
                   facts and ไม่ตรง is a gap in the evidence, so the line says
                   which pile is the one to work through rather than leaving
@@ -368,7 +411,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                 เดือนนี้:
                 {' '}<strong>{scanCounts.short}</strong> แถวไม่ครบ ·
                 {' '}<strong>{scanCounts.startOff}</strong> แถวเวลาเริ่มไม่ตรง ·
-                {' '}<strong>{scanCounts.noScan}</strong> แถวไม่ตรง (ไม่มีสแกนนิ้ว) ·
+                {' '}<strong>{scanCounts.noScan}</strong> แถวไม่ได้สแกน ·
                 {' '}<strong>{scanCounts.overTime}</strong> แถวเกินเวลา ·
                 {' '}<strong>{scanCounts.flatDaily}</strong> แถวเป็นใบเหมารายวัน
                 {(scanCounts.overTime > 0 || scanCounts.flatDaily > 0)
@@ -601,7 +644,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           On a read-only screen the true sentence is about the
                           screen, and it is already said by the absence of a
                           correction path anywhere on it. See `mayEdit` above. */}
-                      {/* ── ยืนยัน — THE ROUND TRIP THIS ROUND EXISTS TO DELETE
+                      {/* ── อนุมัติ — THE ROUND TRIP THIS ROUND EXISTS TO DELETE
 
                           Drawn only on a row still at the ฝ่ายบุคคล step, and
                           only where the SERVER said this reader may sign it:
@@ -619,29 +662,81 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           existed, that was a walk to รออนุมัติ OT, a hunt for
                           the same row, and a walk back.
 
-                          A REFUSED ROW SAYS SO IN WORDS rather than showing a
-                          dead control. `.cell-sub.th` is this cell's own voice
-                          for a statement about the row — the same one
-                          แก้ไขไม่ได้ uses a few lines down — and the sentence is
-                          the route's own, so the screen and a 409 cannot read
-                          as two different rules.
+                          ⚠ IT WAS `ยืนยัน` AND IT WAS A GHOST BUTTON, AND
+                          BOTH CHANGED ON 2026-09-11. The word first: this is an
+                          approval step and รออนุมัติ OT had already stopped
+                          calling it anything else, so the two screens that sign
+                          the same ใบ said two different words for it. `ยืนยัน`
+                          survives where it means *are you sure* — the prompt
+                          `confirmEntry` opens — and nowhere else.
 
-                          NOT `mayEdit`-GATED. Confirming is not correcting: the
-                          route decides who may sign, and `decide` is `null` for
-                          anybody it did not offer it to. */}
-                      {e.decide && (e.decide.ok ? (
+                          The shape second: *ถ้ากดได้เป็นสีเขียว ถ้า disable
+                          ไม่มีสี*. Plain `.btn` is the filled green one and
+                          `.btn:disabled` is grey for real (app/styles.css), so
+                          the two states are the instruction exactly, and it is
+                          the same pair คิวรออนุมัติ OT draws for the same act.
+
+                          ── AND IT IS DRAWN ON EVERY ROW ──────────────────────
+
+                          `ให้แสดงทุกแถว`, same day. It read
+                          `{e.decide && (e.decide.ok ? … : <span>ยืนยันไม่ได้)}`
+                          until then: a live button on one row, a grey SENTENCE
+                          on the next, and nothing whatsoever on a row still at
+                          the หัวหน้า step, where `decide` is `null`. Three
+                          shapes down one column, and the reader had to read each
+                          cell to find the press they came for. One shape in two
+                          states is a column that can be scanned.
+
+                          THE SENTENCE DID NOT GO AWAY, it moved to the wrapper's
+                          `title` — see `whyNotApprovable`, which is where all of
+                          them are written now. It hangs on the SPAN and not on
+                          the button because a disabled button dispatches no
+                          pointer events, so its own `title` never opens; the
+                          hover lands on the ancestor. `role="note"` and
+                          `aria-label` carry the same sentence to a reader who
+                          cannot hover, and the dead button is `aria-hidden` so
+                          it is not announced as an offer.
+
+                          ⚠ STILL NOTHING AT ALL FOR A READER WHO CANNOT
+                          CORRECT, which is `mayEdit` and is the one gate this
+                          control gained rather than lost. It read "NOT
+                          `mayEdit`-GATED. Confirming is not correcting" until
+                          2026-09-11, and that was right while the button was
+                          drawn only where it could be pressed: `decide` is sent
+                          only to `mayCorrectEntries`, so a การเงิน reader
+                          simply saw no button. Drawing every row means that same
+                          reader would now get a column of grey buttons for a
+                          thing no screen in this app will ever let them do —
+                          which is the failure the paragraph above about
+                          แก้ไขไม่ได้ describes: on a read-only screen the true
+                          sentence is about the SCREEN, and it is already said by
+                          the absence of any control on it. `mayEdit` and the
+                          route's `decide` gate are the same `mayCorrectEntries`
+                          answer, so this adds no rule — it just names the one
+                          the server was already applying. */}
+                      {mayEdit && (e.decide?.ok ? (
                         <button
-                          className="btn ghost sm with-icon"
+                          className="btn sm with-icon"
                           onClick={() => confirmEntry(e)}
                           title={e.decide.needsReason
-                            ? 'ใบนี้เกินเพดาน — ต้องระบุเหตุผลก่อนยืนยัน'
-                            : 'ยืนยันใบนี้ · จะเข้าสู่รายงานส่งออกทันที'}
+                            ? 'ใบนี้เกินเพดาน — ต้องระบุเหตุผลก่อนอนุมัติ'
+                            : 'อนุมัติใบนี้ · จะเข้าสู่รายงานส่งออกทันที'}
                         >
                           <Icon name="check" className="btn-icon" />
-                          ยืนยัน{e.decide.needsReason ? ' *' : ''}
+                          อนุมัติ{e.decide.needsReason ? ' *' : ''}
                         </button>
                       ) : (
-                        <span className="cell-sub th" title={e.decide.why}>ยืนยันไม่ได้</span>
+                        <span
+                          className="act-why"
+                          title={whyNotApprovable(e)}
+                          aria-label={whyNotApprovable(e)}
+                          role="note"
+                        >
+                          <button className="btn sm with-icon" disabled aria-hidden="true">
+                            <Icon name="check" className="btn-icon" />
+                            อนุมัติ
+                          </button>
+                        </span>
                       ))}
                       {!mayEdit ? null : closed ? (
                         <span className="cell-sub th">แก้ไขไม่ได้</span>

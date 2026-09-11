@@ -277,12 +277,33 @@ test('a month with no file says รอนำเข้า on every row, in grey',
   // ⚠ GREY IS THE STATEMENT, NOT THE STYLING. `ตรง` is green because the machine
   // agreed and `เวลาไม่ตรง` is red because it did not; this row has had no
   // verdict at all, and a third colour ON that scale would place it between
-  // agreeing and disagreeing — the one thing it is not. `--muted` on
-  // `--neutral-wash` is `.chip.scan-none` exactly — the grey `ไม่ตรง` this
-  // column was asked to look like — one level down.
+  // agreeing and disagreeing — the one thing it is not.
   assert.match(css, /\.hr-table td\.scan-col \.scan-wait \{ background: var\(--neutral-wash\); color: var\(--muted\); \}/);
-  const chip = css.slice(css.indexOf('.chip.scan-none {'));
-  assert.match(chip.slice(0, chip.indexOf('}')), /background: var\(--neutral-wash\); color: var\(--muted\)/);
+  /**
+   * ⚠ THE THING IT WAS COMPARED WITH MOVED, HOURS AFTER IT WAS WRITTEN.
+   *
+   * This asserted that `.chip.scan-none` also carried `color: var(--muted)` —
+   * "the same grey `.chip.scan-none` wears for a day with no punches, one level
+   * down", which was the shape the ask took: *ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า
+   * ไม่ตรง* (2026-09-11). The next instruction the same day turned that chip red
+   * and renamed it ไม่ได้สแกน, so the two are no longer the same colour and the
+   * old assertion could only fail.
+   *
+   * WHAT THE ASK ACTUALLY WANTED SURVIVES INTACT, and is the line above: this
+   * cell is grey, quiet, and outside the green/red verdict scale. The anchor is
+   * `--muted` itself, which is the token that means *a fact nobody has to act
+   * on* — a chip that changes its mind about being one is not evidence about
+   * this cell. `.chip.scan-over` is the mark still wearing that grey today.
+   */
+  const chip = css.slice(css.indexOf('.chip.scan-over {'));
+  assert.match(chip.slice(0, chip.indexOf('}')), /color: var\(--muted\)/);
+  /* ⚠ AND THE WEIGHT GUARD THAT STOOD HERE WAS WITHDRAWN THE SAME DAY.
+     It read `assert.ok(!/\.scan-wait \{ font: 600/.test(css))` and argued a
+     fact about the month should not be drawn as loudly as an errand for a
+     person. The cell became a pill hours later and the argument inverted:
+     among pills of one weight a 400 pill does not read as quieter, it reads
+     as one that failed to render, and the ground now separates the three.
+     The 600 comes from `.chip` and is asserted where it is set, not here. */
 
   // ⚠ AND IT CHANGES NOTHING DOWNSTREAM. `loadScan` does not ask for the
   // comparison at all without punches, so `flaggedBy` is empty by construction

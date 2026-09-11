@@ -5950,10 +5950,27 @@ td > .approver-line { margin-top: 5px; }
    two will not stay identical: `แก้ไขแล้ว` is about this system's own history
    and this one is about evidence from outside it. */
 .chip.scan-off { background: var(--amber-bg); color: var(--amber); }
-/* ไม่มีข้อมูลสแกน — a GAP in the evidence, not a disagreement with it, so it
-   takes the quiet tone. A month whose file was never imported must not look
-   like a month full of bad requests. */
-.chip.scan-none { background: var(--neutral-wash); color: var(--muted); }
+/* ไม่ได้สแกน — ไม่มีการสแกนนิ้วในวันนั้นเลย แต่มีใบ OT ยื่นเข้ามา.
+
+   ⚠ IT READ `background: var(--neutral-wash); color: var(--muted)` — the same
+   grey `.chip.scan-over` still wears — FROM 2026-09-04 UNTIL 2026-09-11, on the
+   reasoning "a GAP in the evidence, not a disagreement with it, so it takes the
+   quiet tone. A month whose file was never imported must not look like a month
+   full of bad requests."
+
+   THE SECOND HALF OF THAT SENTENCE STOPPED BEING THE CASE. A month with no
+   scan file draws no chips at all — `scanChecked` gates every one of them in
+   components/HrEntries.jsx, and the line above the table says ยังไม่ได้เทียบ
+   กับไฟล์สแกนนิ้ว instead — so the row this mark lands on is never "the file
+   was not imported". It is the narrow case grey was hiding: the file IS here,
+   the days around it have punches, and this one request has none under it.
+
+   Asked for in red on 2026-09-11, with the word (`SCAN_BADGE.NO_SCAN`).
+   **ไม่ครบ stays amber by the same instruction** — amber is still the pile to
+   work through and it is the one where the hours are arguable; red is the row
+   with no evidence beneath it at all, which is a different question and not a
+   louder version of the same one. */
+.chip.scan-none { background: var(--danger-bg); color: var(--danger-ink); }
 /* `.chip.scan-noin` (ไม่ได้สแกนเข้า OT) STOOD HERE FROM 2026-09-04 TO
    2026-09-09, and was withdrawn by ฝ่ายบุคคล: *ไม่ต้องแจ้งเตือนเพราะปกติพนักงาน
    ก็ไม่สแกนกันอยู่แล้ว.* It marked the start of an OT that no door event
@@ -5978,9 +5995,11 @@ td > .approver-line { margin-top: 5px; }
    the exact reading the end-side rule was rewritten earlier the same day to
    stop making (`metEnd` is `>=`, and an overrun is still ครบตามขอ).
 
-   ITS OWN CLASS, matching `.chip.scan-none` today — two different statements
-   about a day that happen to share a colour, and the one that moves must not
-   drag the other with it. */
+   ITS OWN CLASS, AND ON 2026-09-11 THAT PAID FOR ITSELF. It read "matching
+   `.chip.scan-none` today — two different statements about a day that happen to
+   share a colour, and the one that moves must not drag the other with it", and
+   that is exactly what happened: ไม่ได้สแกน went red and this one did not have
+   to move a pixel. The two no longer share anything. */
 .chip.scan-over { background: var(--neutral-wash); color: var(--muted); }
 /* เหมารายวัน — THE SAME GREEN `OT สวัสดิการวันเกิด` wears, and deliberately so:
    both are facts about how a request was FILED that change how its hours were
@@ -7230,6 +7249,21 @@ td > .approver-line { margin-top: 5px; }
    the dead one's clothes is the defect this cell was just repaired for. */
 .entry-actions .cell-sub.th { color: var(--muted-2); }
 .entry-actions .btn.ghost { border-color: var(--line-lift); }
+
+/* THE HOVER TARGET FOR AN อนุมัติ THAT CANNOT BE PRESSED.
+
+   A disabled button dispatches no pointer events, so a `title` on the button
+   itself never opens — the pointer falls through to whatever is behind it. So
+   the sentence explaining WHY the row cannot be signed hangs on this wrapper
+   instead, which is the ancestor the hover actually lands on. It is the same
+   arrangement `.act-watch` uses on คิวรออนุมัติ OT, for the same reason.
+
+   `inline-flex` is the whole rule: without it the span is a text box around a
+   flex child and picks up the line-height of the row rather than the button's
+   own height, which puts the grey button a pixel or two off the baseline of the
+   live controls beside it. `flex: none` — it holds one button and may not be
+   squeezed by the run of controls it sits in. */
+.entry-actions .act-why { display: inline-flex; flex: none; }
 
 /* ── a chip under the line of work it qualifies ─────────────────────────────
    6px and not 4: on the phone card the description cell is a floated label with
@@ -9038,7 +9072,7 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
    THE INKS DID NOT MOVE — each simply gained the ground that already belongs to
    it (`--reject-bg` under `--reject-ink` is the pair ปฏิเสธ wears; `--green-bg`
    under `--green-dark` is `.chip.green`'s; `--neutral-wash` under `--muted` is
-   `.chip.scan-none`'s). Every rule below now states TWO COLOURS AND NOTHING
+   `.chip.scan-over`'s). Every rule below now states TWO COLOURS AND NOTHING
    ELSE: the padding, the 20px radius, 600/11.5 and the tabular figures all come
    from `.chip` in the chips section, which is `StatusChip`'s geometry on
    คิวรออนุมัติ and every other badge in the app. A pill measured again down here
@@ -9049,8 +9083,14 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
    On a ground that argument inverts: among pills of one weight a 400 pill does
    not read as quieter, it reads as a pill that failed to render — and the thing
    that separates the three is now the ground, which is doing that work better
-   than a weight ever did. `.chip.scan-none`, the grey `ไม่ตรง` this column was
-   asked to look like in the first place, has been 600 all along. */
+   than a weight ever did. `.chip.scan-over`, the grey the row marks still
+   wear, has been 600 all along.
+
+   ⚠ IT NAMED `.chip.scan-none` HERE UNTIL 2026-09-11, and that was the mark
+   the ask itself pointed at (*เหมือนคำว่า ไม่ตรง*). Later the same day that
+   chip turned RED and became `ไม่ได้สแกน`, so it is no longer evidence about
+   any grey. `--neutral-wash` under `--muted` is unchanged; only the mark
+   that happens to share it moved. */
 .hr-table td.scan-col .scan-ok { background: var(--green-bg); color: var(--green-dark); }
 
 /* THE PILE THAT NEEDS A PERSON, and stacked when a row carries both counts —
@@ -9078,9 +9118,13 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
    file is not in — and a third colour ON that scale would place it somewhere
    between agreeing and disagreeing, which is the one thing it is not.
 
-   `--muted` on `--neutral-wash` is `.chip.scan-none` exactly — the grey `ไม่ตรง`
-   on the row marks for a day with no punches, which is the same statement one
-   level down: nothing was compared here. */
+   `--muted` on `--neutral-wash` is `.chip.scan-over` exactly — the grey a day
+   the machine saw but had nothing to argue with wears, which is the same
+   statement one level down: nothing was compared here.
+
+   ⚠ THIS READ `.chip.scan-none` UNTIL 2026-09-11 — the grey `ไม่ตรง` the ask
+   asked to look like. That chip is red now and says `ไม่ได้สแกน`; the pair of
+   tokens below did not move, and the anchor is the tokens, not the chip. */
 .hr-table td.scan-col .scan-wait { background: var(--neutral-wash); color: var(--muted); }
 
 /* ── ทั้งแถวกดได้ — 2026-09-10 ─────────────────────────────────────────────
