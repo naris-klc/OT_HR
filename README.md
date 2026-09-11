@@ -11017,6 +11017,30 @@ the order the figures are built in. At the foot of two company sheets, the one
 figure the covering note carries was the last thing on the screen, reached past
 every row of both.
 
+**And each of its rows is one line, since 2026-09-11.** The บริษัท cell read
+`PM · ไพรมัส` with `บริษัทที่ 1 · Primus Instrument Co., Ltd.` under it, and that
+second line wrapped again inside a 168px column — a 46px row drawn 82px tall,
+twice, to say what fits on one: *คอลัม บริษัทปรับให้แสดงผลกระชับแถวเดียว*. It is
+now `PM · ไพรมัส · Primus Instrument Co., Ltd.`, the tail in `.cell-tail` — a new
+shared class beside `.cell-sub`, which is the same quiet 12px `--muted` note
+UNDER a line; this one sits beside it and is `--sans`, because `.cell-sub` is
+mono for employee codes and a legal name is not one. **`บริษัทที่ N` went and the
+legal name stayed**: the ordinal is what the row's own position already says and
+the company's own sheet carries it as a kicker further down, while the legal
+name is the one thing on the row that cannot be read off it — and this is the
+table that goes on the covering note.
+
+**Its six columns declare widths too, and for the same reason the seven above
+do.** Only บริษัท (the shared 168) and the three rate columns did; measured in a
+1178px card, `จำนวนคน` came out **419.8** and `รวม ชม.` **420.3** — 840px between
+two columns holding `23` and `592` — which is width taken out of the one column
+that had prose in it. The numbers are 252 · 80 · 52 · 58 · 58 · 80, each its
+widest content plus the cell's two 12px gutters. They come to 580 against that
+card, so this table stretches further than the sheets do (2.03× rather than
+1.35×) — that is the leftover being shared out instead of hoarded, and it is
+what makes every row 46px tall. **Above 860px only**; the phone still scrolls
+sideways with บริษัท frozen and capped at 112.
+
 
 **สรุป OT ส่งบัญชี บนมือถือ: ตารางนี้เลื่อนแนวนอน และนั่นคือคำตอบที่เลือกแล้ว.**
 Below 860px this table is laid out at `width: max-content` and scrolls sideways

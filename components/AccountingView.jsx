@@ -586,13 +586,26 @@ function AllCompanies({ data }) {
             {many && <tr>{monthRateHeads(data.periods)}</tr>}
           </thead>
           <tbody>
-            {data.companies.map((c, i) => (
+            {data.companies.map((c) => (
               <tr key={c.key}>
+                {/* ONE LINE, AND IT WAS THREE UNTIL 2026-09-11 — *"คอลัม บริษัท
+                    ปรับให้แสดงผลกระชับแถวเดียว"*. The cell held the code and the
+                    short name, then a second line reading `บริษัทที่ N · <legal
+                    name>` which wrapped again at 168px: a 46px row drawn 82px
+                    tall, twice, to say what fits on one.
+
+                    บริษัทที่ N WENT AND THE LEGAL NAME STAYED. The ordinal is
+                    what the row's own position already says, and the sheet for
+                    that company carries it as a kicker further down the screen
+                    (see `CompanySheet`); the legal name is the one thing on
+                    this row that is not derivable from looking at it, and this
+                    is the table that goes on the covering note. */}
                 <td className="who-col">
                   {c.accountingCode ? `${c.accountingCode} · ` : ''}{c.shortTh}
-                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                    บริษัทที่ {i + 1} · {c.nameEn}
-                  </div>
+                  {/* `.cell-tail` and not `.cell-sub`: the same quiet 12px, on
+                      the same line rather than under it — and in --sans, because
+                      `Primus Instrument Co., Ltd.` is a name and not a code. */}
+                  <span className="cell-tail"> · {c.nameEn}</span>
                 </td>
                 <td className="num head-col">{c.totals.headcount}</td>
                 {many && monthFigures(c.totals.months, cell)}
