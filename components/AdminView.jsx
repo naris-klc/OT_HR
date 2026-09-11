@@ -2204,9 +2204,17 @@ const ROLE_LABEL = Object.fromEntries(ROLE_OPTIONS.map((o) => [o.value, o.label]
  *   role       — no hours are lost. The submission sheet is built entries-first
  *                and the roster filter only decides who gets a blank line. What
  *                does change is what the person can do next.
- *   birthDate  — approved entries never move (recomputeEntries refuses them);
- *                the ones still in flight are replayed, because the day types
- *                they were computed under have changed.
+ *   birthDate  — YES, AND THAT INCLUDES ใบที่อนุมัติแล้ว. This line read
+ *                "approved entries never move (recomputeEntries refuses them)"
+ *                until 2026-09-11, and that is the general rule rather than what
+ *                THIS route does: it replays with `includeApproved: true` on
+ *                purpose, and deliberately does not consult `authorizeReplay`
+ *                — a birth date is a fact that was recorded wrong, not a policy
+ *                question somebody re-read. See the block over the
+ *                `recomputeEntries` call in app/api/employees/[id]/route.js.
+ *                The hours those ใบ were signed with survive in the entry's own
+ *                ประวัติรายการ, and the save message below says how many of
+ *                them moved — see `approvedReplayed`.
  *
  * THE FIRST TWO WERE OPPOSITE FOR A YEAR and this screen was written around
  * that asymmetry — แผนก was the reassuring paragraph, บริษัท the red one. They
@@ -2305,19 +2313,43 @@ const IMPACT = {
    * it is the other field on this screen that moves hours without anybody
    * opening an entry, so it is warned about in the same place. The rule stated
    * here is the one the route actually applies, not a summary of it: see the
-   * `recomputeEntries` call in app/api/employees/[id]/route.js, narrowed to
-   * PENDING_STATUSES on top of that function's own refusal to replay approved.
+   * `recomputeEntries` call in app/api/employees/[id]/route.js, which asks for
+   * PENDING_STATUSES AND 'approved' and passes `includeApproved: true`.
+   *
+   * THIS BLOCK READ "narrowed to PENDING_STATUSES on top of that function's own
+   * refusal to replay approved" UNTIL 2026-09-11, and the dialog below promised
+   * the same thing to HR in as many words. Both were the general rule rather
+   * than this route's, which steps around it on purpose — test/birthDateReplay
+   * pins the argument. A warning that promises a signed figure will not move,
+   * shown at the moment somebody decides whether to save, is the one sentence
+   * on this screen that must not be wrong.
+   */
+  /**
+   * RED SINCE 2026-09-11, and `warn` until then — on the copy above it, which
+   * said signed hours do not move. They do, so this belongs with แผนก and
+   * บริษัท: the three changes on this screen that restate a figure already
+   * sent to accounting wear one colour between them.
+   *
+   * NO `retroLine` HERE, which is what still separates it from those two. They
+   * count the months they move from /api/employees/:id/impact, which is
+   * partitioned by แผนก and บริษัท and knows nothing about วันเกิด;
+   * the count arrives after the save instead, from the replay itself. A red
+   * dialog with no number is still the honest shape — the alternative is a
+   * second impact query for one field.
    */
   birthDate: ({ from, to }) => ({
-    tone: 'warn',
-    title: 'เปลี่ยนวันเกิด — ใบที่ยังไม่อนุมัติจะถูกคำนวณใหม่',
+    tone: 'error',
+    title: 'เปลี่ยนวันเกิด — ใบที่อนุมัติแล้วก็ถูกคำนวณใหม่ด้วย',
     body: [
       `จาก ${from ? thaiDate(from) : '— ไม่ได้ระบุ —'} เป็น ${to ? thaiDate(to) : '— ล้างค่า —'}`,
       'วันเกิดเป็นวันหยุดของคนนั้น การเปลี่ยนจึงเปลี่ยนว่าวันไหนของเขาเป็นวันหยุด '
         + 'และชั่วโมงในใบถูกคิดเป็นอัตราไหน',
-      'ใบที่ “อนุมัติแล้ว” จะไม่ถูกแตะต้อง — ชั่วโมงที่มีคนเซ็นรับรองไปแล้วไม่ขยับ '
-        + 'เพราะแก้วันเกิดทีหลัง',
-      'ใบที่ยัง “รออนุมัติ” จะถูกคำนวณใหม่ทันที และจะบอกจำนวนที่คำนวณใหม่หลังบันทึก',
+      'ใบที่ “อนุมัติแล้ว” ก็ถูกคำนวณใหม่ด้วย — วันเกิดที่บันทึกผิดทำให้ใบที่เซ็นรับไปแล้ว '
+        + 'คิดอัตราผิดมาตั้งแต่วันที่พิมพ์ การแก้จึงต้องตามไปแก้ใบพวกนั้นด้วย',
+      'ย้อนได้ทุกเดือน ไม่มีเส้นตัด — ถ้าเดือนนั้นส่งบัญชีไปแล้ว ตัวเลขจะไม่ตรงกับกระดาษที่ส่งไป '
+        + 'ให้แจ้งบัญชีก่อนบันทึก',
+      'ค่าเดิมของทุกใบถูกเก็บไว้ใน “ประวัติรายการ” ของใบนั้น และจะบอกจำนวนที่คำนวณใหม่ '
+        + '(แยกว่าเป็นใบที่อนุมัติแล้วกี่ใบ) หลังบันทึก',
     ],
   }),
 };

@@ -2024,9 +2024,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2598 tests
+and the engine know nothing about Next.js, so the whole suite — **2599 tests
 across 144 files**, measured 2026-09-11 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2598 tests across 144 files" until **กล่องเตือนตอนแก้วันเกิดพูดตรงกับโค้ด** —
+`birthDateReplay` gained one case and NO new file, which is the shape of a
+round that changes what a screen SAYS rather than what it does; and it read
 "2561 tests across 143 files … measured 2026-09-10" until **reload ค้างหน้าจอ
 เดิม** — `screenInUrl` is the 144th file and twelve of the cases; **the other
 25 were already on disk when that sentence was written**, added by rounds
@@ -12605,8 +12608,10 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2598 tests**, about 4 s, measured 2026-09-11 across 144
-  files, all green. It read **"2561 tests … across 143"** until reload was
+- `npm test` — **2599 tests**, about 4 s, measured 2026-09-11 across 144
+  files, all green. It read **"2598 tests … across 144"** until the วันเกิด
+  warning was made to agree with the route it describes — one case in
+  `birthDateReplay`, no new file. Before that it read **"2561 tests … across 143"** until reload was
   asked to stay on the screen it was on — `screenInUrl` is the file, and 25 of
   the 37 cases were already on disk unmeasured. Before that it read
   **"2571 tests … across 144"** until
