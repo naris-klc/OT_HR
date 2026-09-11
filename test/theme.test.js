@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -159,6 +159,20 @@ const READABLE = [
   ['--danger-ink', '--danger-bg'],
   ['--amber', '--amber-bg'],
   ['--info', '--info-bg'],
+  // ── `.alert .say` ON ALL FOUR GROUNDS — ADDED 2026-09-12 ──────────────────
+  //
+  // The quiet second line of a notice is `--muted` on whichever fill that
+  // notice uses. Only two of the four had ever been measured: the comment on
+  // the rule in app/styles.css quotes `--amber-bg` and `--green-bg`, because on
+  // 2026-08-26 the rule served one notice that is only ever warn or ok. Sixteen
+  // more notices joined it on 2026-09-12 and they are error and info as well,
+  // so the other two grounds stopped being hypothetical. Measured that day:
+  // `--danger-bg` 4.84 / 6.95 · `--info-bg` 4.90 / 6.55 · `--alert-ok-bg`
+  // 4.99 / 6.51 · `--amber-bg` 5.04 / 6.46. The red is the tight one.
+  ['--muted', '--amber-bg'],
+  ['--muted', '--danger-bg'],
+  ['--muted', '--info-bg'],
+  ['--muted', '--alert-ok-bg'],
   ['--on-amber', '--amber'],
   ['--on-fill', '--surface-dark'],
   // The rail and the hero, which took `--surface-dark` until 2026-09-07 and
@@ -781,4 +795,48 @@ test('ไม่มีตัวหนังสือเล็กบนหน้�
   }
   // And the warning is a warning: amber, and not the grey beside it.
   assert.match(rule('.hero .sub.waiting'), /var\(--on-panel-warn\)/);
+});
+
+/**
+ * ── ไม่มีจอไหนเขียนขนาดตัวอักษรของ "บรรทัดที่เงียบกว่า" เอง ────────────────────
+ *
+ * ⚠ กฎนี้มีมาตั้งแต่ 2026-08-26 แต่เฝ้าไฟล์เดียวจนถึง 2026-09-12
+ *
+ * วันนั้น `.alert .say` ถูกตั้งขึ้นเพราะ `PolicyVersionBanner` เขียน
+ * `style={{ fontSize: 12.5 }}` เอง และคอมเมนต์เหนือกฎใน app/styles.css ก็บอก
+ * ตั้งแต่วันนั้นว่ามันเป็น "the only place in the app that said 12.5 by hand"
+ * เทสต์ที่เขียนคู่กันมา (`test/hrMonthCards.test.js`) จึงอ่าน
+ * components/PolicyVersion.jsx ไฟล์เดียว
+ *
+ * มันไม่จริง และน่าจะไม่เคยจริง — 2026-09-12 กวาดทั้ง components/ เจออีก
+ * สิบหกจุดในหกไฟล์ ทั้งหมดเป็นบรรทัดที่สองของกล่องแจ้งเตือน ทั้งหมดเลือก
+ * ระยะห่างของตัวเองคนละค่า (4px / 6px / 8px / ไม่มีเลย) และทั้งหมดรับสีของ
+ * กล่องมา — บรรทัดที่ตั้งใจให้เบากว่าจึงเป็นสีส้มหรือสีแดงของกล่องในขนาดเล็กลง
+ *
+ * เทสต์ตัวเดิมไม่ได้ผิด มันแค่เฝ้า*ไฟล์* ไม่ได้เฝ้า*กฎ* — ตัวนี้เฝ้ากฎ
+ *
+ * ใบพิมพ์ไม่อยู่ในกฎนี้ และไม่ใช่ข้อยกเว้นที่ปล่อยผ่าน: `PrintForm` กับ
+ * `PrintFormBatch` วาดกระดาษ F-HR-027 ซึ่งตัวเล็กของมันคือขนาดของแบบฟอร์ม
+ * ไม่ใช่ระดับเสียงของข้อความ และ app/print.css เป็นคนละชุดกฎกับจอ
+ */
+test('ไม่มีคอมโพเนนต์บนจอเขียน fontSize ของบรรทัดรองเอง — ใช้ .say ตัวเดียวกันหมด', () => {
+  const dir = join(ROOT, 'components');
+  const offenders = [];
+  for (const name of readdirSync(dir).filter((f) => f.endsWith('.jsx'))) {
+    if (name === 'PrintForm.jsx' || name === 'PrintFormBatch.jsx') continue;
+    const src = readFileSync(join(dir, name), 'utf8');
+    for (const [i, line] of src.split('\n').entries()) {
+      if (/style=\{\{[^}]*fontSize: 12\.5/.test(line)) offenders.push(`${name}:${i + 1}`);
+    }
+  }
+  assert.deepEqual(offenders, [], 'บรรทัดรองในกล่องแจ้งเตือนต้องเป็น className="say" ไม่ใช่ fontSize ของตัวเอง');
+
+  // และ `.say` ที่ว่านั้นมีอยู่จริง ครอบคลุมทั้ง `.alert` และ `.box` — ไม่ใช่
+  // ชื่อคลาสที่ทุกจอเรียกใช้แล้วไม่มีกฎรองรับ
+  assert.match(css, /\.alert \.say,\r?\n\.box \.say \{/);
+
+  // ใบพิมพ์ยังเขียนเองอยู่ และนั่นคือของที่ตั้งใจให้เหลือ — ถ้าวันหนึ่งมันหมดไป
+  // เทสต์ตัวนี้จะฟ้อง เพื่อให้คนที่ทำเป็นคนลบข้อยกเว้นข้างบนออก ไม่ใช่ปล่อยค้าง
+  const print = readFileSync(join(dir, 'PrintForm.jsx'), 'utf8');
+  assert.match(print, /style=\{\{ fontSize: 12\.5 \}\}/);
 });

@@ -582,3 +582,53 @@ test('“has not started” and “has run out” are told apart, because the fi
   // backwards. A single "not active" would leave the person guessing.
   assert.notEqual(publicDelegation(AtoB, '2026-08-04').state, publicDelegation(AtoB, '2026-08-13').state);
 });
+
+/**
+ * ── ประโยคที่บอกว่าการอนุมัติของผู้รับช่วงทิ้งอะไรไว้ มีฉบับเดียว ────────────
+ *
+ * ⚠ มันมีสองฉบับจนถึง 2026-09-12
+ *
+ * แถบบนสุดของคิวรออนุมัติพูดกับ*ผู้รับช่วง* การ์ดในหน้าผู้รับช่วงอนุมัติแทน
+ * พูดกับ*คนที่ตั้งผู้รับช่วง* — คนละหน้าจอ คนละคนอ่าน แต่ทั้งคู่ต้องบอกสิ่ง
+ * เดียวกัน คือระบบบันทึกอะไรไว้เมื่อผู้รับช่วงกดอนุมัติ และทั้งคู่เขียนเอง
+ * ฉบับหนึ่งว่า `ชื่อหัวหน้าเจ้าของคิว` อีกฉบับว่า `พร้อมชื่อหัวหน้างานเจ้าของคิว`
+ *
+ * แบ่งกันแค่ท่อนกลาง และนั่นคือทั้งหมดของการออกแบบ: ประธานเป็นของแต่ละจอ
+ * เพราะประธานคือคนอ่าน และหางก็เป็นของแต่ละจอ เพราะสิ่งที่คนอ่านต้องรู้ต่อไป
+ * ไม่เหมือนกัน สิ่งที่ไม่มีจอไหนเป็นเจ้าของได้คือประโยคตรงกลาง เพราะมันคือคำ
+ * อธิบายว่า*ระบบ*เก็บอะไร และระบบที่อธิบายบันทึกของตัวเองสองแบบ คือระบบที่มี
+ * บันทึกสองชุดในสายตาคนอ่าน
+ */
+test('สองจอพูดเรื่องบันทึก “ทำแทน” ด้วยประโยคกลางเดียวกัน', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, join } = await import('node:path');
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const src = (p) => readFileSync(join(root, p), 'utf8')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  const queue = src('components/ApprovalQueue.jsx');
+  const card = src('components/Delegation.jsx');
+
+  // ทั้งสองจออ่านจากที่เดียวกัน
+  for (const [name, code] of [['คิวรออนุมัติ', queue], ['ผู้รับช่วงอนุมัติแทน', card]]) {
+    assert.ok(
+      code.includes('DELEGATED_APPROVAL_RECORDED'),
+      `${name} เลิกอ่านประโยคกลางจาก lib/delegation.js`,
+    );
+    assert.ok(
+      !code.includes('ทั้งในประวัติรายการและบนใบพิมพ์'),
+      `${name} พิมพ์ประโยคกลางเป็นตัวอักษรเองอีกแล้ว`,
+    );
+  }
+
+  // และประธานกับหางยังเป็นของแต่ละจอ ไม่ได้ถูกกลืนเข้าไปในค่าคงที่ด้วย
+  assert.ok(queue.includes('การอนุมัติของคุณ') && queue.includes('หัวหน้าเจ้าของคิวยังอนุมัติเองได้ตลอดเวลา'));
+  assert.ok(card.includes('ทุกการอนุมัติของผู้รับช่วง') && card.includes('มอบหมายต่อเป็นทอดไม่ได้'));
+
+  // ประโยคกลางขึ้นต้นด้วยกริยา ไม่ใช่ประธาน — ไม่อย่างนั้นจอไหนก็ต่อหน้ามันไม่ได้
+  const lib = readFileSync(join(root, 'lib/delegation.js'), 'utf8');
+  assert.match(lib, /export const DELEGATED_APPROVAL_RECORDED = 'จะถูกบันทึกว่า /);
+});

@@ -94,7 +94,7 @@ export function BackupBanner({ user }) {
     <Alert kind={kind}>
       <div>
         <strong>{headline}</strong>
-        <div style={{ fontSize: 12.5, marginTop: 4 }}>
+        <div className="say">
           {state === 'unreadable' && (
             <>
               ปลายทางที่ตั้งไว้อ่านไม่ได้ — ไดรฟ์อาจไม่ได้เสียบ share หลุด
