@@ -414,18 +414,12 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                   finger's width from the ประจำเดือน picker on a desktop,
                   hanging at the height of that picker's LABEL — two controls
                   that have nothing to do with each other, drawn as a pair.
-                  Shrink-wrapped, it reads as what it is: a word attached to the
-                  heading it undoes. */}
-              <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 4 }}>
-                <h2 style={{ margin: 0 }}>ประวัติการขอ OT · {periodLabel(period)}</h2>
-                <button
-                  className="btn ghost sm"
-                  style={{ flex: 'none' }}
-                  onClick={() => setShowAll(false)}
-                >
-                  ล่าสุด
-                </button>
-              </div>
+                  It read "Shrink-wrapped, it reads as what it is: a word
+                  attached to the heading it undoes" until 2026-09-11, when it
+                  was asked for AFTER the picker instead — the place ทั้งหมด
+                  holds in รายการล่าสุด, so the way in and the way back sit in
+                  the same spot on both cards. It is below, beside the picker. */}
+              <h2 style={{ margin: '0 0 4px' }}>ประวัติการขอ OT · {periodLabel(period)}</h2>
               {/* Five clauses down to two — this is every employee's own
                   screen, read on a phone, and it was five lines of rules above
                   the first row.
@@ -443,9 +437,23 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                 {' '}รายการที่ไม่อนุมัติ กด “ส่งใหม่” ยื่นจากข้อมูลเดิมได้ <strong>1 ครั้ง</strong>
               </div>
             </div>
-            <div className="field" style={{ maxWidth: 180, flex: 'none' }}>
-              <label>ประจำเดือน</label>
-              <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
+            {/* Picker, then ล่าสุด — the order รายการล่าสุด draws its picker
+                and ทั้งหมด in. `flex-end` puts the button on the picker's line
+                rather than its label's, and `--field-h` gives it the full-size
+                picker's height: `.btn.sm` alone is about 37px beside a box
+                that is taller. */}
+            <div className="row" style={{ gap: 8, alignItems: 'flex-end', flex: 'none' }}>
+              <div className="field" style={{ maxWidth: 180, flex: 'none' }}>
+                <label>ประจำเดือน</label>
+                <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
+              </div>
+              <button
+                className="btn ghost sm"
+                style={{ flex: 'none', minHeight: 'var(--field-h)' }}
+                onClick={() => setShowAll(false)}
+              >
+                ล่าสุด
+              </button>
             </div>
           </div>
 
