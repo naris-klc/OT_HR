@@ -8078,6 +8078,20 @@ tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
   font-variant-numeric: normal;
 }
 
+/* THE SAME QUIET NOTE, BESIDE THE THING IT QUALIFIES RATHER THAN UNDER IT.
+
+   `.cell-sub` is a second LINE and costs the row one; this is a second CLAUSE
+   and costs it nothing. Added 2026-09-11 for รวมทุกบริษัท, where the cell says
+   `PM · ไพรมัส · Primus Instrument Co., Ltd.` — a name, its code and its legal
+   name, which is one fact about one company and was being set as a paragraph
+   (*"คอลัม บริษัทปรับให้แสดงผลกระชับแถวเดียว"*).
+
+   --sans AND NOT --mono, which is the whole reason this is not `.cell-sub`
+   worn on a span: that rule is mono because it was written for employee codes
+   read down a column, and a company's legal name is neither. Same 12px, same
+   `--muted`, no margin of its own — it lives on the line it is part of. */
+.cell-tail { font: 400 12px/1.45 var(--sans); color: var(--muted); }
+
 /* ตั้งโดย ฝ่ายบุคคล — who set the rule set, under which rule set it is.
 
    It was an inline `fontSize: 11.5` on `--muted`, which is the same grey the
@@ -9297,6 +9311,40 @@ th.act-col { width: 258px; }
   .acct-table th.dept-col { width: 168px; }
   .acct-table th.total-col { width: 80px; }
   .acct-table th.note-col { width: 260px; }
+}
+
+/* ── รวมทุกบริษัท — THE SAME DEFECT ONE CARD UP, AND THE SAME FIX ──────────
+
+   This table had the shared `th.who-col` 168 and the three rate figures, and
+   nothing else declared anything. Measured in a 1178px card on 2026-09-11:
+   `จำนวนคน` came out **419.8** and `รวม ชม.` **420.3** — 840px between two
+   columns holding `23` and `592` — while บริษัท sat at the queue's 168 and
+   wrapped a cell that wanted 207.6 onto a second and a third line. Rows were
+   82px tall to say what fits on 46.
+
+   Reported as *"คอลัม บริษัทปรับให้แสดงผลกระชับแถวเดียว"*, which is the CELL;
+   these widths are why it had to wrap in the first place. Measured the same way
+   as the sheet above — text + the cell's two 12px gutters, rounded up:
+
+     บริษัท    252  `PM · ไพรมัส` 72.4 + ` · Primus Instrument Co., Ltd.` 154.6
+                    = 227 + 24 = 251. The THT row is shorter (84.5 + 107.5) and
+                    `รวมทั้งหมด` shorter still, so PM is what sizes it.
+     จำนวนคน    80  the heading, 55.5 + 24 = 79.5 — the cells are one or two
+                    digits and never come near it.
+     รวม ชม.    80  the heading again, 55.6 + 24 = 79.6. Same number as the
+                    sheet above it, for the same two words.
+
+   Six columns come to 580 against a 1178 card, so this one stretches further
+   than the sheet does — every column by 2.03. That is the leftover being SHARED
+   rather than handed to whichever column declared nothing, which is the whole
+   point: 511 · 162 · 105 · 118 · 118 · 162, one line a row, 46px tall.
+
+   ABOVE 860px ONLY — below it this table is `width: max-content`, scrolls
+   sideways with บริษัท frozen, and caps that column at 112. */
+@media (min-width: 861px) {
+  .allco-table th.who-col { width: 252px; }
+  .allco-table th.head-col { width: 80px; }
+  .allco-table th.total-col { width: 80px; }
 }
 
 /* AND IT STAYS ON SCREEN.
