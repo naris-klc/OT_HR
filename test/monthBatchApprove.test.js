@@ -111,6 +111,9 @@ test('every derived value is declared after the one it reads', () => {
     // above nothing that would rather have it higher; the comment over it in
     // components/HrView.jsx says why it is not beside `showScanCol`.
     ['const canPick = React.useMemo', 'const showPickCol = mayCorrect'],
+    // `showBatchBar` reads `canPick` too and landed beside it on 2026-09-11,
+    // when the column stopped disappearing and the bar kept doing so.
+    ['const canPick = React.useMemo', 'const showBatchBar = mayCorrect'],
     ['const showPickCol = mayCorrect', 'const colCount = 10 +'],
   ];
   for (const [first, second] of chain) {
@@ -132,7 +135,54 @@ test('the tick rule is one function, and it asks the server’s answer first', (
   );
   // การเงิน and the three signers get `approvable: null` from the route, so
   // `Boolean(null?.count)` is false and they need no rule of their own here.
-  assert.match(hrView, /const showPickCol = mayCorrect && canPick\.length > 0;/);
+  assert.match(hrView, /const showPickCol = mayCorrect;/);
+});
+
+/**
+ * THE COLUMN IS DRAWN ON EVERY MONTH ITS READER SIGNS ON, AND WAS NOT.
+ *
+ * `showPickCol` read `mayCorrect && canPick.length > 0` until 2026-09-11, so a
+ * month with nothing outstanding — สถานะที่นับ at อนุมัติแล้วเท่านั้น, most
+ * plainly — lost the tick column AND the ยืนยัน button on the row, together.
+ * The argument written for it in components/HrView.jsx was *a column of
+ * permanently disabled boxes is an offer with nothing behind it*.
+ *
+ * It was reported off the screen, twice. The instruction came first —
+ * *"หากรายการไหนอนุมัติไม่ได้ให้ disable ปุ่มไว้"* — and the report followed with
+ * a screenshot: *"ทำไมตารางไม่มีปุ่มให้อนุมัติตามที่คุยกัน"*. A control that
+ * VANISHES cannot be told apart from one the screen never had, and it takes the
+ * sentence saying why with it; a disabled one carries that sentence on `title`.
+ *
+ * So this pins the three halves of the repair that could each silently revert:
+ * the gate, the bar that deliberately did NOT move with it, and the header box,
+ * which would otherwise be a live control sitting on a column of dead ones.
+ */
+test('คอลัมน์ติ๊กกับปุ่มยืนยัน วาดทุกเดือนที่ผู้อ่านเซ็นได้ — กดไม่ได้ก็ยังวาดแต่ disable', () => {
+  // ⚠ NOT `&& canPick.length > 0`. The whole repair is this line.
+  assert.match(hrView, /const showPickCol = mayCorrect;\r?\n/);
+  assert.doesNotMatch(
+    hrView,
+    /const showPickCol = mayCorrect &&/,
+    'คอลัมน์กลับไปหายทั้งคอลัมน์อีกแล้วเมื่อไม่มีแถวที่กดได้',
+  );
+
+  // …AND THE BAR DID NOT MOVE WITH IT, on purpose. It is not in the table: it
+  // is a sentence ABOUT the month, and `ยืนยันได้ 0 คน · 0 รายการ` is noise
+  // rather than an offer. Its own note in the component says it disappears on a
+  // month with nothing outstanding.
+  assert.match(hrView, /const showBatchBar = mayCorrect && canPick\.length > 0;/);
+  assert.match(hrView, /\{showBatchBar && \(\r?\n\s*<div className=\{`batch-bar/);
+
+  // The header box is the one control that would otherwise still be live over a
+  // column where every box beneath it is disabled.
+  const head = hrView.slice(hrView.indexOf('<th className="check">'));
+  const box = head.slice(0, head.indexOf('</th>'));
+  assert.match(box, /disabled=\{canPick\.length === 0\}/);
+  assert.match(box, /ไม่มีรายการที่รอยืนยันในเดือนนี้ ตามสถานะที่นับที่เลือกอยู่/);
+
+  // And the row button says ยืนยัน, not "ยืนยัน 0 ใบ" — a quantity of none
+  // reads as a template that failed to fill itself in.
+  assert.match(hrView, /\? `ยืนยัน \$\{row\.approvable\.count\} ใบ`\r?\n\s*: 'ยืนยัน'/);
 });
 
 test('§5.2 — a row the scan comparison flagged is disabled, and says why', () => {
