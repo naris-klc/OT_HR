@@ -2024,7 +2024,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2631 tests
+and the engine know nothing about Next.js, so the whole suite — **2634 tests
 across 146 files**, measured 2026-09-11 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "2621 tests across 145 files" until **คอลัมน์ รายการ แยกใบตามสถานะ** later the
@@ -13074,10 +13074,12 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2631 tests**, about 4 s, measured 2026-09-11 across 146
+- `npm test` — **2634 tests**, about 4 s, measured 2026-09-11 across 146
   files, all green. It read **"2621 tests … across 145"** until คอลัมน์ รายการ
   was split by status the same day — `monthCountStatus` is the file, eight
-  cases. Before that it read **"2610 tests … across 144"** until สถานะที่นับ
+  cases; **the other five are two other sessions'**, merged onto `dev` between
+  that branch being taken and it landing, which is the ordinary state of this
+  repository rather than an anomaly. Before that it read **"2610 tests … across 144"** until สถานะที่นับ
   gained its two single-status rows the same day — `monthStatusFilter` is the
   file, five cases, and six of the eleven were already on disk unmeasured.
   Before that it read **"2599 tests … across 144"** until คิวรออนุมัติ
