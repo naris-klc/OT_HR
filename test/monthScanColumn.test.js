@@ -238,24 +238,25 @@ test('คอลัมน์สแกน is drawn as soon as this screen knows ab
   assert.ok(!hrView.includes('colSpan={10}'), 'a full-width row still assumes ten columns');
 });
 
-test('a month with no file says ยังไม่นำเข้า on every row, in grey', () => {
+test('a month with no file says รอนำเข้า on every row, in grey', () => {
   // Asked for on 2026-09-11 with the table in the picture: *"…ให้แสดงข้อความ
-  // ตรงคอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า ไม่ตรง"*.
+  // ตรงคอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า ไม่ตรง"* — and the
+  // word became `รอนำเข้า` later the same day: *"เปลี่ยนคำว่า ยังไม่นำเข้า เป็น
+  // คำว่า รอนำเข้า ทั้งหมด"*.
   assert.match(hrView, /if \(!scan\.punchCount\) \{/);
-  assert.match(hrView, /<span\s+className="scan-wait"/);
-  assert.match(hrView, /ยังไม่นำเข้า/);
+  assert.match(hrView, /<span\s+className="chip scan-wait"/);
+  assert.match(hrView, /รอนำเข้า/);
+  assert.ok(!hrView.includes('>ยังไม่นำเข้า'), 'คำเก่ายังถูกวาดอยู่บนจอ');
 
   // ⚠ GREY IS THE STATEMENT, NOT THE STYLING. `ตรง` is green because the machine
   // agreed and `เวลาไม่ตรง` is red because it did not; this row has had no
   // verdict at all, and a third colour ON that scale would place it between
-  // agreeing and disagreeing — the one thing it is not. `--muted` is the same
-  // grey `.chip.scan-none` wears for a day with no punches, one level down.
-  assert.match(css, /\.hr-table td\.scan-col \.scan-wait \{ font: 400 12px\/1\.4 var\(--sans\); color: var\(--muted\); \}/);
+  // agreeing and disagreeing — the one thing it is not. `--muted` on
+  // `--neutral-wash` is `.chip.scan-none` exactly — the grey `ไม่ตรง` this
+  // column was asked to look like — one level down.
+  assert.match(css, /\.hr-table td\.scan-col \.scan-wait \{ background: var\(--neutral-wash\); color: var\(--muted\); \}/);
   const chip = css.slice(css.indexOf('.chip.scan-none {'));
-  assert.match(chip.slice(0, chip.indexOf('}')), /color: var\(--muted\)/);
-  // Regular weight, not the 600 the red carries: a fact about the month, not an
-  // errand for a person.
-  assert.ok(!/\.scan-wait \{ font: 600/.test(css), 'ยังไม่นำเข้า is shouting');
+  assert.match(chip.slice(0, chip.indexOf('}')), /background: var\(--neutral-wash\); color: var\(--muted\)/);
 
   // ⚠ AND IT CHANGES NOTHING DOWNSTREAM. `loadScan` does not ask for the
   // comparison at all without punches, so `flaggedBy` is empty by construction
@@ -356,7 +357,7 @@ test('a row the machine agrees with says so — green, and never left blank', ()
   // to be spoken. On a month that WAS compared, a blank cell is
   // indistinguishable from a month that was not — and those are opposite
   // answers, which is the same trap the card's own first state is about.
-  assert.match(hrView, /return <span className="scan-ok">ตรง<\/span>;/);
+  assert.match(hrView, /return <span className="chip scan-ok">ตรง<\/span>;/);
 
   // ── ⚠ RED AND GREEN, AND IT WAS AMBER AND GREY FOR A FEW HOURS ──────────
   //
@@ -382,6 +383,37 @@ test('a row the machine agrees with says so — green, and never left blank', ()
   // dropped the people whose only marked rows are flat days. A flat day is a
   // fact, not an errand.
   assert.ok(!hrView.includes('flag.flatDaily'), 'flat days are back in the errand column');
+});
+
+test('ทั้งสามสถานะเป็นป้ายมีพื้นหลัง และยืมทรงมาจาก .chip ไม่ได้วัดเอง', () => {
+  /* *"ทุกสถานะในคอลัมน์ สแกน ให้เป็นรูปแบบป้ายมีพื้นหลัง เหมือนหน้า รออนุมัติ OT"*
+     (11 ก.ย. 2569) · หน้านั้นวาดป้ายด้วย `StatusChip` ซึ่งก็คือ `.chip` ตัวเดียว
+     กับที่ทุกป้ายในแอปใส่ */
+  assert.match(hrView, /<span className="chip scan-ok">ตรง<\/span>/);
+  assert.match(hrView, /<span className="chip n">เวลาไม่ตรง \{flag\.mismatch\}<\/span>/);
+  assert.match(hrView, /<span className="chip n">ไม่มีสแกน \{flag\.noScan\}<\/span>/);
+  assert.match(hrView, /className="chip scan-wait"/);
+
+  /* ⚠ แต่ละกฎในคอลัมน์นี้บอก **สองสีเท่านั้น** ทรงของเม็ดยา — padding, มุม 20px,
+     600/11.5 และเลขความกว้างเท่ากัน — อยู่ที่ `.chip` ที่เดียว การวัดเม็ดยาซ้ำ
+     ตรงนี้คือวิธีที่เม็ดยาหนึ่งกลายเป็นสองแบบที่ค่อย ๆ ไม่เหมือนกัน */
+  for (const cls of ['.scan-ok', '.scan-flag .n', '.scan-wait']) {
+    const at = css.indexOf(`.hr-table td.scan-col ${cls} {`);
+    assert.ok(at > 0, `หากฎของ ${cls} ไม่เจอ`);
+    const body = css.slice(at, css.indexOf('}', at));
+    assert.ok(!body.includes('font:'), `${cls} วัดตัวอักษรเอง แทนที่จะรับจาก .chip`);
+    assert.ok(!body.includes('padding'), `${cls} วัดระยะขอบเอง`);
+    assert.ok(!body.includes('border-radius'), `${cls} วัดมุมเอง`);
+    assert.match(body, /background: var\(--/, `${cls} ไม่มีพื้นหลัง`);
+  }
+
+  // ทรงที่ยืมมา ต้องเป็นทรงที่มีอยู่จริง และเป็นทรงเดียวกับที่ `StatusChip` ใส่
+  assert.match(css, /^\.chip \{\s*\n\s*display: inline-block; padding: 4px 10px; border-radius: 20px;/m);
+  assert.match(read('components/common.jsx'), /className=\{`chip st-\$\{status\}`\}/);
+
+  // สองเม็ดที่ซ้อนกันต้องไม่ชนกัน — ป้ายสองใบที่ติดกันอ่านเป็นป้ายใบเดียวที่ขาด
+  const flagBody = css.slice(css.indexOf('.hr-table td.scan-col .scan-flag {'));
+  assert.match(flagBody.slice(0, flagBody.indexOf('}')), /gap: 3px/);
 });
 
 test('the phone card shows the warning too, and the paper shows none of it', () => {

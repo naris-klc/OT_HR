@@ -7130,7 +7130,7 @@ taking it past — `รวมรออนุมัติ 45 / 40` is **the only 
 knows**. The alarm colour was on the half that was fine and the footnote voice on
 the half that was not.
 
-#### ยังไม่นำเข้า — THE THIRD STATE, AND IT IS OFF THE GREEN–RED SCALE
+#### รอนำเข้า — THE THIRD STATE, AND IT IS OFF THE GREEN–RED SCALE
 
 **2026-09-11:** *"หากรายการไหนยังไม่ได้นำเข้าไฟล์สแกนเวลา ให้แสดงข้อความตรงคอลัมน์
 สแกน ว่า ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า ไม่ตรง"*.
@@ -7140,7 +7140,7 @@ that day**, so a month with no file simply had no สแกน column at all. Th
 under it said *sixty cells of `—` read as sixty people the machine disagrees with,
 or as sixty rows nobody checked, and a reader cannot tell which* — **which is
 still true of a column of `—`, and is exactly what the cell now answers instead
-of dodging.** `ยังไม่นำเข้า` is the sentence that resolves that ambiguity,
+of dodging.** `รอนำเข้า` is the sentence that resolves that ambiguity,
 printed where the reader is looking rather than only in the notice above the
 table. The guard is `scan?.slots` now — the four-slot grid the route builds for
 any named งวด — so the column is absent only while the request is in flight or
@@ -7154,6 +7154,10 @@ disagreeing — the one thing it is not. `--muted` is the same grey `.chip.scan-
 wears on the row marks for a day with no punches, which is the same statement one
 level down. Regular weight, not the 600 the red carries: a fact about the month,
 not an errand for a person.
+
+> **It read "ยังไม่นำเข้า" until later the same day** — *"เปลี่ยนคำว่า ยังไม่นำเข้า
+> เป็นคำว่า รอนำเข้า ทั้งหมด"*. Shorter, and it names what happens next instead of
+> what has not happened: the other two states are settled and this one is a queue.
 
 **It changes nothing downstream, by construction.** `loadScan` does not ask for
 the comparison at all without punches, so on exactly the month this branch draws,
@@ -7190,11 +7194,11 @@ month with no import ticks normally* becomes *a company with no import ticks
 normally*, and a month with no file at all is simply every company at once, not a
 second rule. `counts` then describes only the half that was genuinely read.
 
-**The cell says `ยังไม่นำเข้า` in the same grey**, with the company named in its
+**The cell says `รอนำเข้า` in the same grey**, with the company named in its
 `title` because both payrolls share one table. **The screen reads that list off
 the comparison and never derives it from `slots`**, which it holds: the server
 used the same list to decide who is flagged, and the day two derivations
-disagreed a row would read `ยังไม่นำเข้า` while its tick-box stayed disabled for
+disagreed a row would read `รอนำเข้า` while its tick-box stayed disabled for
 carrying a flag — one row making two contradictory claims.
 
 **⚠ The price is that ผลเทียบ must say what it left out.** `✓ ทุกแถวที่เทียบได้
@@ -7216,6 +7220,35 @@ the punches of **the people in the list it was given**, and a เดมเทค
 list has none — so that screen already said *ยังไม่ได้เทียบกับไฟล์สแกนนิ้ว —
 เดือนนี้ยังไม่มีข้อมูลสแกนของพนักงานคนนี้*. The month-wide comparison, which is
 the one list that mixes both payrolls, was the only place the lie could live.
+
+#### ป้ายมีพื้นหลังทั้งสามสถานะ — the column wears `.chip`
+
+**2026-09-11:** *"ทุกสถานะในคอลัมน์ สแกน ให้เป็นรูปแบบป้ายมีพื้นหลัง เหมือนหน้า
+รออนุมัติ OT"*.
+
+**They were bare coloured words** — `font: 500 12px/1.4` green, `600` red, `400`
+grey — sitting on the row's own ground. They are now pills: `<span className="chip
+scan-ok">` and so on, where **`chip` is the geometry every badge in the app
+already wears**, `StatusChip` on คิวรออนุมัติ included (4px/10px, a 20px radius,
+600/11.5, tabular figures, stated once in `app/styles.css`). Each class beside it
+now adds **two colours and nothing else**; a pill measured again inside the
+column is how one pill becomes two that slowly disagree.
+
+**No ink moved.** Each simply gained the ground that already belongs to it —
+`--reject-bg` under `--reject-ink` is the pair ปฏิเสธ wears, `--green-bg` under
+`--green-dark` is `.chip.green`, and `--neutral-wash` under `--muted` is
+`.chip.scan-none` exactly, which is the grey `ไม่ตรง` this column was asked to
+look like in the first place.
+
+> **⚠ The grey is 600 now, and it was 400 on purpose.** It read *"regular weight,
+> not the 600 the red carries: a fact about the month, not an errand for a
+> person"* until this round. **On a ground that argument inverts**: among pills of
+> one weight a 400 pill does not read as quieter, it reads as a pill that failed
+> to render — and what separates the three states is now the ground, which does
+> that work better than a weight ever did.
+
+**Two stacked pills take a 3px gap** where two bare lines took 1px: pills that
+touch read as one torn label. On a phone the pair goes side by side, unchanged.
 
 #### ⚠ ตรง IS GREEN AND ต้องตรวจ IS RED, and they were grey and amber for a few hours
 

@@ -511,7 +511,7 @@ export default function HrView({
    * lines. It is taken off the comparison instead, because the server has
    * already used the same list to decide who is in `flaggedBy` above: a browser
    * that reached its own conclusion would, on the day the two disagreed, draw a
-   * row saying `ยังไม่นำเข้า` and refuse its tick-box for carrying a flag —
+   * row saying `รอนำเข้า` and refuse its tick-box for carrying a flag —
    * one row making two contradictory claims. One decider, and this is the
    * reader of it. See `compareMonthAgainstScans`.
    *
@@ -595,7 +595,7 @@ export default function HrView({
    * That is still true OF A COLUMN OF `—`, and it is what the cell now answers
    * instead of dodging: asked for on 2026-09-11 — *"หากรายการไหนยังไม่ได้นำเข้า
    * ไฟล์สแกนเวลา ให้แสดงข้อความตรงคอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา"*. A
-   * cell reading `ยังไม่นำเข้า` is not the ambiguous blank the old argument was
+   * cell reading `รอนำเข้า` is not the ambiguous blank the old argument was
    * about; it is precisely the sentence that resolves the ambiguity, printed
    * where the reader is looking rather than only in the notice above the table.
    *
@@ -2193,7 +2193,7 @@ export default function HrView({
                       {showScanCol && (
                         <td className="scan-col">
                           {(() => {
-                            /* ── ยังไม่นำเข้า — 2026-09-11 ─────────────────────
+                            /* ── รอนำเข้า — 2026-09-11 ─────────────────────
                                *"หากรายการไหนยังไม่ได้นำเข้าไฟล์สแกนเวลา ให้แสดง
                                ข้อความตรงคอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา
                                เหมือนคำว่า ไม่ตรง"*.
@@ -2232,10 +2232,10 @@ export default function HrView({
                             if (!scan.punchCount) {
                               return (
                                 <span
-                                  className="scan-wait"
+                                  className="chip scan-wait"
                                   title="ยังไม่ได้นำเข้าไฟล์สแกนนิ้วมือของเดือนนี้ — ไม่ได้แปลว่าทุกแถวตรง"
                                 >
-                                  ยังไม่นำเข้า
+                                  รอนำเข้า
                                 </span>
                               );
                             }
@@ -2261,19 +2261,31 @@ export default function HrView({
                             if (notImported.has(row.employee?.company)) {
                               return (
                                 <span
-                                  className="scan-wait"
+                                  className="chip scan-wait"
                                   title={`ยังไม่ได้นำเข้าไฟล์สแกนนิ้วมือของ ${companyLabel(row.employee.company)} ในเดือนนี้ — แถวนี้ยังไม่ได้ถูกเทียบกับอะไร`}
                                 >
-                                  ยังไม่นำเข้า
+                                  รอนำเข้า
                                 </span>
                               );
                             }
                             const flag = flaggedBy.get(String(row.employee._id));
-                            if (!flag) return <span className="scan-ok">ตรง</span>;
+                            /* ── ⚠ ALL THREE ARE `chip` — 2026-09-11 ─────────
+                               *"ทุกสถานะในคอลัมน์ สแกน ให้เป็นรูปแบบป้ายมีพื้นหลัง
+                               เหมือนหน้า รออนุมัติ OT"*.
+
+                               `chip` AND NOT A PILL OF THIS COLUMN'S OWN. The
+                               geometry — 4px/10px, the 20px radius, 600/11.5 and
+                               tabular figures — is stated once in app/styles.css
+                               and worn by every badge in the app, คิวรออนุมัติ's
+                               `StatusChip` included. Each class beside it adds
+                               its two colours and nothing else; a second set of
+                               pill measurements here is how two pills that
+                               slowly disagree come from one. */
+                            if (!flag) return <span className="chip scan-ok">ตรง</span>;
                             return (
                               <span className="scan-flag">
-                                {flag.mismatch > 0 && <span className="n">เวลาไม่ตรง {flag.mismatch}</span>}
-                                {flag.noScan > 0 && <span className="n">ไม่มีสแกน {flag.noScan}</span>}
+                                {flag.mismatch > 0 && <span className="chip n">เวลาไม่ตรง {flag.mismatch}</span>}
+                                {flag.noScan > 0 && <span className="chip n">ไม่มีสแกน {flag.noScan}</span>}
                               </span>
                             );
                           })()}

@@ -8908,34 +8908,61 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
 
    `--green-dark` and `--reject-ink` are the app's own pair — the same two the
    approve and refuse controls wear everywhere else — rather than a green and a
-   red chosen here. */
-.hr-table td.scan-col .scan-ok { font: 500 12px/1.4 var(--sans); color: var(--green-dark); }
+   red chosen here.
 
-/* THE PILE THAT NEEDS A PERSON. Amber, and stacked when a row carries both
-   counts — `เวลาไม่ตรง 2` over `ไม่มีสแกน 1` is two facts about one month, and
-   run together on one line at this width they wrap mid-phrase. */
+   ── ⚠ AND SINCE 2026-09-11 ALL THREE ARE `.chip` ─────────────────────────
+
+   *"ทุกสถานะในคอลัมน์ สแกน ให้เป็นรูปแบบป้ายมีพื้นหลัง เหมือนหน้า รออนุมัติ OT"*.
+   Bare coloured words until then: `font: 500 12px/1.4` green, `font: 600 12px/1.4`
+   red, `font: 400 12px/1.4` grey.
+
+   THE INKS DID NOT MOVE — each simply gained the ground that already belongs to
+   it (`--reject-bg` under `--reject-ink` is the pair ปฏิเสธ wears; `--green-bg`
+   under `--green-dark` is `.chip.green`'s; `--neutral-wash` under `--muted` is
+   `.chip.scan-none`'s). Every rule below now states TWO COLOURS AND NOTHING
+   ELSE: the padding, the 20px radius, 600/11.5 and the tabular figures all come
+   from `.chip` in the chips section, which is `StatusChip`'s geometry on
+   คิวรออนุมัติ and every other badge in the app. A pill measured again down here
+   is how one pill becomes two that slowly disagree.
+
+   ⚠ THE GREY IS 600 NOW, AND IT WAS 400 ON PURPOSE. The note under it argued a
+   fact about the month should not be drawn as loudly as an errand for a person.
+   On a ground that argument inverts: among pills of one weight a 400 pill does
+   not read as quieter, it reads as a pill that failed to render — and the thing
+   that separates the three is now the ground, which is doing that work better
+   than a weight ever did. `.chip.scan-none`, the grey `ไม่ตรง` this column was
+   asked to look like in the first place, has been 600 all along. */
+.hr-table td.scan-col .scan-ok { background: var(--green-bg); color: var(--green-dark); }
+
+/* THE PILE THAT NEEDS A PERSON, and stacked when a row carries both counts —
+   `เวลาไม่ตรง 2` over `ไม่มีสแกน 1` is two facts about one month, and run
+   together on one line at this width they wrap mid-phrase. The gap is 3px
+   rather than the 1px two bare lines needed: pills that touch read as one
+   torn label. */
 .hr-table td.scan-col .scan-flag {
-  display: inline-flex; flex-direction: column; gap: 1px; align-items: center;
+  display: inline-flex; flex-direction: column; gap: 3px; align-items: center;
 }
 .hr-table td.scan-col .scan-flag .n {
-  font: 600 12px/1.4 var(--sans); color: var(--reject-ink);
+  background: var(--reject-bg); color: var(--reject-ink);
 }
 
-/* ── ยังไม่นำเข้า — THE THIRD STATE, AND IT IS OFF THE SCALE ────────────────
+/* ── รอนำเข้า — THE THIRD STATE, AND IT IS OFF THE SCALE ───────────────────
 
    2026-09-11: *"หากรายการไหนยังไม่ได้นำเข้าไฟล์สแกนเวลา ให้แสดงข้อความตรง
-   คอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า ไม่ตรง"*.
+   คอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า ไม่ตรง"* — **the word
+   became `รอนำเข้า` later the same day** (*"เปลี่ยนคำว่า ยังไม่นำเข้า เป็นคำว่า
+   รอนำเข้า ทั้งหมด"*). Shorter, and it names what happens next rather than what
+   has not happened: the other two states are settled and this one is a queue.
 
    The two above are a verdict: green agreed, red did not, and the pair is read
    from the corner of the eye down sixty rows. This row has had NO VERDICT — the
    file is not in — and a third colour ON that scale would place it somewhere
    between agreeing and disagreeing, which is the one thing it is not.
 
-   `--muted` is the same grey `.chip.scan-none` wears on the row marks for a day
-   with no punches, which is the same statement one level down: nothing was
-   compared here. Regular weight, not the 600 the red carries: a fact about the
-   month, not an errand for a person. */
-.hr-table td.scan-col .scan-wait { font: 400 12px/1.4 var(--sans); color: var(--muted); }
+   `--muted` on `--neutral-wash` is `.chip.scan-none` exactly — the grey `ไม่ตรง`
+   on the row marks for a day with no punches, which is the same statement one
+   level down: nothing was compared here. */
+.hr-table td.scan-col .scan-wait { background: var(--neutral-wash); color: var(--muted); }
 
 /* ── ทั้งแถวกดได้ — 2026-09-10 ─────────────────────────────────────────────
 
