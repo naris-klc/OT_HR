@@ -189,8 +189,10 @@ const READABLE = [
   // status, so its weights are the neutral ones, and neither was checked
   // against that background until the banner existed.
   //
-  // `--ink` is the banner's body and heading, `--muted` the weekday beside each
-  // date, `--ink-2` the holiday's name under it.
+  // `--ink` is the banner's body and heading, `--muted` the weekday in brackets
+  // after each date, `--ink-2` the holiday's own name after that. All three sit
+  // on ONE LINE since 2026-09-11 — they were a stacked entry per holiday until
+  // then — which moved where they are drawn and not which of them is quietest.
   //
   // `--ink-2` HAS BEEN IN THIS LIST TWICE AND OUT OF IT ONCE, which is worth a
   // line because the removal was right at the time. It first coloured the rates

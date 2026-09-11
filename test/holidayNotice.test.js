@@ -131,10 +131,10 @@ const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
  */
 const bannerCode = banner.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-/** The `.announce .fold-pill` inside the phone block, not the base one above it. */
+/** The `.announce > .fold-pill` inside the phone block, not the base one above it. */
 const phonePill = (() => {
   const media = css.indexOf('@media (max-width: 860px)', css.indexOf('\n.announce {'));
-  const at = css.indexOf('.announce .fold-pill {', media);
+  const at = css.indexOf('.announce > .fold-pill {', media);
   return { media, at, rule: at > 0 ? css.slice(at, css.indexOf('}', at)) : '' };
 })();
 
@@ -148,13 +148,17 @@ test('the banner is on BOTH employee screens — the dashboard and the form', ()
   assert.ok(employee.includes("import HolidayBanner from './HolidayBanner.jsx'"));
 });
 
-test('it folds, and there is no state in which it disappears', () => {
-  // THE REQUIREMENT SURVIVED THE FEATURE THAT LOOKED LIKE ITS OPPOSITE. The
-  // banner was built to "ให้คงอยู่บนหน้าจอ ไม่หายไปเอง เพื่อให้พนักงานรับรู้
-  // ข้อมูลตรงกัน" and shipped with no dismiss control at all; a fold with
-  // persistence was added on 2026-08-28. That is compatible, and the reason is
-  // this test: folded, the month and the day count are still on screen and only
-  // the detail goes. What must never exist is a branch that returns nothing
+test('there is no state in which it disappears, and none in which it is half-drawn', () => {
+  // THE REQUIREMENT THIS BANNER WAS BUILT TO — "ให้คงอยู่บนหน้าจอ ไม่หายไปเอง
+  // เพื่อให้พนักงานรับรู้ข้อมูลตรงกัน" — has now outlived both features that
+  // looked like its opposite. It shipped with no dismiss control; a fold with
+  // persistence was added on 2026-08-28 and this test explained why that was
+  // compatible (folded, the month and the day count were still on screen).
+  //
+  // ⚠ THE FOLD IS GONE SINCE 2026-09-11 and the requirement is stronger for it:
+  // the panel is ONE ROW before anybody presses anything, so there is no
+  // collapsed state to argue about and nothing to be shown "after" a press.
+  // What must never exist is a branch that draws less than the whole row
   // because somebody pressed something.
   //
   // `!holidays` is the one early return and it is about the FETCH, not about a
@@ -164,39 +168,112 @@ test('it folds, and there is no state in which it disappears', () => {
   assert.ok(/if \(!holidays\) return null/.test(bannerCode), 'ทางเดียวที่ไม่วาดต้องเป็นตอนที่ยังโหลดปฏิทินไม่เสร็จ');
   assert.ok(!/alertsDismissed|alert-x/.test(bannerCode), 'แถบประกาศรับกลไกปิดถาวรมาจากที่อื่น');
 
-  // Folded, the heading is the whole announcement — so the count rides in it.
-  assert.ok(bannerCode.includes('{collapsed && <span className="announce-count">'),
-    'ย่อแล้วไม่ได้บอกจำนวนวัน — แถบสรุปบรรทัดเดียวต้องยังบอกว่ามีอะไรอยู่ข้างใน');
-  assert.ok(/hidden=\{collapsed\}/.test(bannerCode), 'รายละเอียดไม่ได้ถูกซ่อนด้วยสถานะย่อ');
+  // NOTHING IS HIDDEN AND NOTHING REMEMBERS A PRESS. `hidden={...}`, the ▲/▼,
+  // `aria-expanded`, the localStorage key and the state it was read into all
+  // went together; any one of them coming back is the fold coming back.
+  for (const gone of ['hidden={', 'announce-fold', 'aria-expanded', 'collapsed', 'ot-holiday-fold', 'localStorage']) {
+    assert.ok(!bannerCode.includes(gone), `แถบประกาศมี ${gone} อีกแล้ว — มันควรเหลือแถวเดียวโดยไม่มีอะไรพับ`);
+  }
 
-  // ▲/▼ and not ✕: the mark has to be honest about what the press does. An ✕
-  // promises the notice is gone, and this one comes back on the next screen.
-  assert.ok(bannerCode.includes("collapsed ? '▼' : '▲'"), 'ปุ่มย่อไม่ได้ใช้ลูกศร — ✕ สัญญาในสิ่งที่ปุ่มนี้ทำไม่ได้');
-  assert.match(bannerCode, /aria-expanded=\{!collapsed\}/, 'ไม่ได้บอกสถานะย่อ/กางให้ screen reader');
-  assert.match(bannerCode, /aria-controls=\{panelId\}/, 'ปุ่มไม่ได้ชี้ว่ามันคุมอะไร');
-
-  // `onClose` on the calendar dialog is a different thing and must stay.
+  // `onClose` and the dialog's own state are a different thing and must stay:
+  // the calendar is a Modal somebody opened, not a part of the row being hidden.
   assert.ok(bannerCode.includes('setShowCalendar(false)'), 'ปฏิทินต้องปิดได้');
 });
 
-test('the fold is remembered in this browser, and read on mount rather than in render', () => {
-  // Same rule `ThemeChoice` in components/ProfileView.jsx follows: this
-  // component renders on the server too, where there is no localStorage, and a
-  // first render that read it would throw or disagree with what the browser
-  // holds — and React would hydrate the mismatch.
-  assert.ok(/useEffect\(\(\) => \{\s*try \{\s*setCollapsed\(localStorage/.test(bannerCode),
-    'อ่าน localStorage ตอน render — จะ hydrate ไม่ตรงกับที่เบราว์เซอร์เก็บไว้');
-  // Storage throws rather than returning null in a locked-down browser, and a
-  // fold preference is not worth a blank screen.
-  assert.equal((bannerCode.match(/catch \{/g) || []).length, 2, 'การอ่านหรือการเขียน localStorage ไม่ได้อยู่ใน try/catch');
-  // `ot-` prefixed like `ot-theme`, and ONE key for both screens the banner is
-  // on: folding it on the dashboard is not a request to see it again on the form.
-  assert.ok(bannerCode.includes("const FOLD_KEY = 'ot-holiday-fold'"), 'คีย์ที่เก็บสถานะเปลี่ยนชื่อหรือหายไป');
-  assert.equal((bannerCode.match(/FOLD_KEY/g) || []).length, 4, 'มีคีย์เก็บสถานะมากกว่าหนึ่งที่');
-  // Absent key IS the default — the same shape the theme stores in, so a
-  // cleared browser and a browser never asked behave identically.
-  assert.ok(/localStorage\.removeItem\(FOLD_KEY\)/.test(bannerCode),
-    'กางแล้วไม่ได้ลบคีย์ทิ้ง — ค่าเริ่มต้นควรเป็น "ไม่มีคีย์"');
+test('the row says the whole announcement — heading, count, days, and the empty month', () => {
+  // *"กระชับให้เป็นแถวเดียว แต่ได้เนื้อหาครบถ้วน"*, 2026-09-11. The second half
+  // is the one a compression breaks, so it is the one pinned: every fact the
+  // three-row version carried is still written by this component.
+  assert.ok(bannerCode.includes('ประกาศวันหยุดประจำเดือน {periodLabel(period)}'), 'หัวข้อหายไปจากแถว');
+  assert.ok(bannerCode.includes('{inMonth.length} วัน'), 'จำนวนวันหยุดของเดือนหายไป');
+  assert.ok(bannerCode.includes('เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้'), 'เดือนที่ไม่มีวันหยุดกลับไปเงียบ');
+  assert.ok(bannerCode.includes('วันหยุดถัดไปคือ'), 'วรรควันหยุดถัดไปหายไป');
+  assert.ok(bannerCode.includes('{h.name}'), 'ชื่อวันหยุดหายไปจากแถว');
+
+  // ONE FLOW AND NOT FOUR BLOCKS, which is the mechanism rather than the
+  // result. A `<ul>`, a `<p>` and an `<h3>` cannot share a line however short
+  // they are; written as text in one container the row breaks where a SENTENCE
+  // breaks. `.announce-days` and `.announce-none` were those blocks.
+  assert.ok(bannerCode.includes('<div className="announce-line">'), 'ไม่มีสายข้อความเดียวของแถว');
+  for (const block of ['announce-days', 'announce-none', '<ul', '<li', '<p ']) {
+    assert.ok(!bannerCode.includes(block), `${block} ยังอยู่ — แถวจะแตกเป็นก้อนแทนที่จะตัดแบบประโยค`);
+  }
+
+  // STILL AN <h3>. Inline is where it is drawn, not what it is: a screen reader
+  // has to be able to find the announcement as a heading.
+  assert.match(bannerCode, /<h3 className="announce-head">/, 'หัวข้อไม่ใช่ heading อีกแล้ว');
+  const head = css.slice(css.indexOf('\n.announce-head {'), css.indexOf('}', css.indexOf('\n.announce-head {')));
+  assert.match(head, /display: inline/, 'หัวข้อยังเป็น block — มันจะกินบรรทัดของตัวเอง');
+  assert.ok(!/margin: 0 0 \d/.test(head), 'หัวข้อยังมีระยะใต้ตัวเอง ทั้งที่ไม่มีอะไรอยู่ใต้มันแล้ว');
+});
+
+test('เดือนยาว ๆ บอกสามวันแล้วนับที่เหลือ — และที่เหลืออยู่หลังปุ่มที่เห็นอยู่', () => {
+  // "ทั้งสองสถานะ แต่เกิน 3 วันให้ย่อ", 2026-09-11. สงกรานต์ alone is three
+  // days; a month at five or six spelled out is a paragraph pretending to be a
+  // row, which is the thing being fixed.
+  assert.ok(bannerCode.includes('const NAMED = 3'), 'จำนวนวันที่เอ่ยชื่อไม่ใช่ค่าคงที่ที่อ่านได้แล้ว');
+  assert.ok(bannerCode.includes('inMonth.slice(0, NAMED)'), 'แถวไม่ได้ตัดที่ NAMED');
+  assert.ok(bannerCode.includes('และอีก ${rest} วัน'), 'ไม่ได้บอกว่าที่เหลือมีกี่วัน');
+
+  // AND THE REST IS NOT BEHIND A PRESS NOBODY CAN FIND, which is what
+  // `test/disclosure.test.js` refuses in ScanImport. ปฏิทินวันหยุดประจำปี is
+  // the next thing on the same row and it lists the whole year by month.
+  assert.ok(bannerCode.includes('setShowCalendar(true)'), 'ไม่มีปุ่มเปิดปฏิทินที่จะไปดูวันที่เหลือ');
+  assert.ok(bannerCode.includes('ดูปฏิทินวันหยุดประจำปี'), 'ปุ่มไม่ได้บอกว่ามันพาไปดูอะไร');
+});
+
+test('a day in the row is a number, a weekday in brackets, and a name — in that rank', () => {
+  // THE DAY NUMBER AND NOT `thaiDate`, and that follows the app's one-date-form
+  // rule rather than breaking it: under a heading that already says สิงหาคม
+  // 2569, `12/08/2569` is three quarters of a repetition — the same reason the
+  // ปฏิทินวันหยุดประจำปี table prints a day number under its month heading.
+  assert.match(bannerCode, /className="when">\{Number\(h\.date\.slice\(8, 10\)\)\}/, 'วันที่ในแถวยังพิมพ์เดือนซ้ำกับหัวข้อ');
+  // THE WEEKDAY IS ABBREVIATED, AND ONLY HERE. It is a CHECK on the date, and
+  // three of `(วันพุธ)` in one row is the row this change exists to shorten.
+  // The empty-month clause keeps the long form: one date, in prose, in another
+  // month from the heading.
+  assert.match(bannerCode, /className="dow">\(\{dayAbbr\(h\.date\)\}\)/, 'ชื่อวันในแถวไม่ได้ย่อ');
+  assert.match(bannerCode, /\(วัน\$\{dayName\(upcoming\.date\)\}\)/, 'วันหยุดถัดไปเสียชื่อวันแบบเต็มไป');
+
+  // THE RANK IS THE ONE THE STACKED ENTRY HAD — only the axis moved. The
+  // weekday is the quietest (`--muted`): it is read once, to check the date.
+  // The name is the announcement's CONTENT and must not be as quiet as its own
+  // cross-check (`--ink-2`, the step between `--muted` and the date's `--ink`)
+  // — it read `--muted` for one round in 2026-08 and was reported as too faint.
+  const rule = (sel) => css.slice(css.indexOf(sel), css.indexOf('}', css.indexOf(sel)));
+  assert.match(rule('.announce-line .when {'), /font-weight: 600/, 'วันที่ไม่ได้หนักกว่าคำรอบข้าง');
+  assert.match(rule('.announce-line .dow {'), /color: var\(--muted\)/, 'ชื่อวันไม่ใช่เสียงที่เบาที่สุดแล้ว');
+  assert.match(rule('.announce-line .what {'), /color: var\(--ink-2\)/, 'ชื่อวันหยุดจางเท่าตัวตรวจสอบวันที่');
+
+  // AND NOT A STEP SMALLER, which is the one thing that changed with the axis.
+  // Stacked, the name and the weekday were 12.5px under a 13.5px date — the
+  // second line of an entry is subordinate by position too. On one line there
+  // is no second line, and 12.5px beside 13.5px inside a sentence is a wobble
+  // in the type rather than a rank.
+  for (const sel of ['.announce-line .dow {', '.announce-line .what {']) {
+    assert.ok(!/font-size/.test(rule(sel)), `${sel} ยังย่อขนาดตัวอักษร — ในประโยคเดียวกันมันจะอ่านเป็นตัวสั่น ไม่ใช่ลำดับ`);
+  }
+});
+
+test('the browser is not asked to remember anything about this banner', () => {
+  // ⚠ IT WAS, FROM 2026-08-28 TO 2026-09-11. `ot-holiday-fold` held "folded or
+  // nothing" per browser, read in a mount effect rather than during render —
+  // the rule `ThemeChoice` in components/ProfileView.jsx still follows, because
+  // this component renders on the server too and a first render that read
+  // storage would throw or disagree with what the browser holds.
+  //
+  // ALL OF IT WENT WITH THE FOLD, and that is the point of this test rather
+  // than a footnote to it: the stored value answered "did somebody collapse the
+  // three-row panel", and the panel is one row before anybody presses anything.
+  // A key kept for a question nobody asks is a value that drifts and then gets
+  // read by mistake. The `ot-` family is `ot-theme` and Delegation's own note
+  // fold now; components/Delegation.jsx still cites this one's arrangement, and
+  // that citation is to a design, not to a live key.
+  assert.ok(!bannerCode.includes('localStorage'), 'แถบประกาศกลับไปจำอะไรไว้ในเบราว์เซอร์อีกแล้ว');
+  assert.ok(!bannerCode.includes('FOLD_KEY'), 'คีย์เก็บสถานะย่อกลับมา');
+  assert.ok(!/useState\(false\)[\s\S]{0,40}collapsed/.test(bannerCode), 'สถานะย่อกลับมาเป็น state');
+  // useId went with the panel it identified: there is no panel to point at.
+  assert.ok(!bannerCode.includes('useId'), 'ยังสร้าง id ของแผงที่ไม่มีอยู่แล้ว');
 });
 
 test('the banner is in flow and is not a third pinned band', () => {
@@ -281,31 +358,29 @@ test('the rates sentence is gone and has not crept back', () => {
   assert.ok(!bannerCode.includes('announce-rule'), 'ย่อหน้าเงื่อนไขยังอยู่ในคอมโพเนนต์');
 });
 
-test('each holiday is two lines: the date, then its name under it', () => {
-  // The name rode ON the date's line, then was removed, then came back as a
-  // line of its own — three rounds on 2026-08-28. The column is what survives a
-  // long name: `วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชชนนีพันปีหลวง` beside its date
-  // wraps to three lines on a phone and drags the entries under it out of
-  // alignment.
-  const li = css.slice(css.indexOf('.announce-days li {'), css.indexOf('}', css.indexOf('.announce-days li {')));
-  assert.match(li, /flex-direction: column/, 'รายการกลับไปเป็นบรรทัดเดียว ชื่อยาวจะดันรายการอื่นเสียแนว');
-  const what = css.slice(css.indexOf('.announce-days .what {'), css.indexOf('}', css.indexOf('.announce-days .what {')));
-  assert.match(what, /font-size: 12\.5px/, 'ชื่อวันหยุดไม่ได้เล็กกว่าบรรทัดวันที่');
-  // ONE STEP BRIGHTER THAN `.dow`, ONE STEP QUIETER THAN THE DATE. It was
-  // `--muted` — the weekday's own value — for one round and read as too faint on
-  // a phone. The weekday is a CHECK on the date, read once; the name is the
-  // announcement's content. `--ink-2` is the step between them.
-  assert.match(what, /color: var\(--ink-2\)/, 'ชื่อวันหยุดจางเท่าชื่อวัน — เนื้อหาหลักไม่ควรเงียบเท่าตัวตรวจสอบ');
-  const dow = css.slice(css.indexOf('.announce-days .dow {'), css.indexOf('}', css.indexOf('.announce-days .dow {')));
-  assert.match(dow, /color: var\(--muted\)/, 'ชื่อวันหายไปจากโทนที่เบากว่า — ลำดับสองชั้นจะพัง');
+test('a long holiday name wraps instead of pushing the pill off the right edge', () => {
+  // ⚠ THIS TEST USED TO SAY "each holiday is two lines". The name rode ON the
+  // date's line, was removed, and came back as a line of its own — three rounds
+  // on 2026-08-28 — because `วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชชนนีพันปีหลวง`
+  // beside its date wrapped to three lines on a phone and dragged the entries
+  // under it out of alignment. That failure was about a COLUMN of entries
+  // losing its left edge, and there is no column now: one sentence has no rows
+  // to knock out of line, and `YEAR` above keeps that name as the fixture.
+  //
+  // WHAT THE SAME NAME CAN STILL DO IS PUSH THE ROW'S OTHER ITEM OFF THE EDGE,
+  // and the answer is the rule §Responsive in AGENTS.md names first: a flex
+  // child refuses to shrink below its content without `min-width: 0`.
+  const line = css.slice(css.indexOf('\n.announce-line {'), css.indexOf('}', css.indexOf('\n.announce-line {')));
+  assert.match(line, /min-width: 0/, 'ชื่อวันหยุดยาว ๆ จะดันปุ่มปฏิทินตกขอบแทนที่จะตัดบรรทัด');
+  assert.match(line, /flex: 1/, 'สายข้อความไม่ได้กินที่ที่เหลือ — ปุ่มจะไม่ไปชิดขวา');
 
-  // The gap between two holidays must beat the gap inside one, or a
-  // three-holiday month reads as six loose lines. 7px was tried and reported as
-  // too tight: the previous entry's NAME sits directly above the next entry's
-  // DATE, and those are the two lines that must not look like a pair.
-  const list = css.slice(css.indexOf('.announce-days {'), css.indexOf('}', css.indexOf('.announce-days {')));
-  assert.match(list, /gap: 10px/, 'ระยะระหว่างวันหยุดสองวันไม่พอ ชื่อของรายการก่อนจะชิดวันที่ของรายการถัดไป');
-  assert.match(li, /gap: 1px/, 'ระยะระหว่างวันที่กับชื่อของมันเองกว้างเกินไป');
+  // AND THE PILL IS THE ROW'S OTHER ITEM, held at the far end whatever the
+  // sentence's length — "ดันไปชิดขอบขวาของแถว", 2026-09-11. `.fold-pill`'s own
+  // 8px top margin separates a control from a paragraph ABOVE it; beside one it
+  // would push the pill off the line.
+  const pill = css.slice(css.indexOf('\n.announce > .fold-pill {'), css.indexOf('}', css.indexOf('\n.announce > .fold-pill {')));
+  assert.match(pill, /flex: none/, 'ปุ่มปฏิทินยืดหดตามแถว');
+  assert.ok(!/margin: 0 0 0|margin-top: (8|10)px/.test(pill), 'ปุ่มปฏิทินยังถูกดันลงจากบรรทัด');
 });
 
 test('the name drawn is whatever the calendar says, with nothing reading the text', () => {
@@ -317,8 +392,11 @@ test('the name drawn is whatever the calendar says, with nothing reading the tex
   // paid OT at the wrong rate for months. A day named badly is fixed where the
   // name is, on ตั้งค่าระบบ → วันหยุดบริษัท.
   assert.ok(!/ทดสอบ/.test(bannerCode), 'คอมโพเนนต์รู้จักชื่อวันหยุดเฉพาะราย — ห้ามกรองตามเนื้อหา');
-  const list = bannerCode.slice(bannerCode.indexOf('announce-days'), bannerCode.indexOf('function HolidayCalendar'));
+  const list = bannerCode.slice(bannerCode.indexOf('announce-line'), bannerCode.indexOf('function HolidayCalendar'));
   assert.ok(list.includes('{h.name}'), 'รายการในแถบไม่ได้แสดงชื่อวันหยุด');
+  // `named` IS A SLICE AND NOTHING ELSE — the only reason a day is not spelled
+  // out is that it is the fourth, never that of what it is called.
+  assert.ok(!/named\s*=\s*inMonth\.filter/.test(bannerCode), 'การตัดสามวันกลายเป็นการกรอง ไม่ใช่การตัดท้าย');
   assert.ok(!/name\s*(===|!==|\.includes|\.match|\.startsWith)/.test(bannerCode),
     'มีการอ่านเนื้อหาของชื่อวันหยุดมาตัดสินใจ');
   // …and the dialog still prints all three columns.
@@ -326,15 +404,22 @@ test('the name drawn is whatever the calendar says, with nothing reading the tex
   assert.ok(dialog.includes('{h.name}'), 'ปฏิทินทั้งปีต้องยังบอกชื่อวันหยุด');
 });
 
-test('the calendar button sits against the list, not where the sentence was', () => {
-  // `.fold-pill`'s own 8px separates a control from a paragraph. With the
-  // paragraph gone it left the button floating with the sentence's worth of air
-  // still under it — reported the same day as "พื้นที่ว่างส่วนเกิน". 10px,
-  // which has to beat the 3px between the list's own rows or the button reads
-  // as a fourth date.
-  const at = css.indexOf('.announce .fold-pill { margin-top');
-  assert.ok(at > 0, 'แถบไม่ได้กำหนดระยะห่างของปุ่มเอง');
-  assert.match(css.slice(at, css.indexOf('}', at)), /margin-top: 10px/);
+test('on a phone the pill drops to its own line by asking for the whole width', () => {
+  // ⚠ THIS TEST PINNED `margin-top: 10px` UNTIL 2026-09-11 — the gap between a
+  // stacked list of dates and the button under it, tuned against the 3px
+  // between that list's rows so the button did not read as a fourth date. There
+  // is no list and no stack: the pill is the row's right-hand corner now, and
+  // what needs pinning is the one width at which it stops being one.
+  //
+  // `flex-basis: 100%` AND `flex-wrap` ON THE ROW, and no second container.
+  // The mark and the sentence have already taken the first line, so an item
+  // asking for the full width cannot join them and wraps below — which is why
+  // there is no phone-only copy of this button to keep in step with the
+  // desktop one.
+  const row = css.slice(phonePill.media, css.indexOf('.announce-mark', phonePill.media));
+  assert.match(row, /\.announce \{[^}]*flex-wrap: wrap/, 'แถวไม่ได้ยอมให้ตัดบรรทัด ปุ่มจะเบียดอยู่บรรทัดเดียวกัน');
+  assert.match(phonePill.rule, /flex: 1 0 100%/, 'ปุ่มไม่ได้ขอความกว้างทั้งแถว จึงไม่ตกลงมาเป็นแถวของตัวเอง');
+  assert.ok(!/margin-top/.test(phonePill.rule), 'ปุ่มบนมือถือยังถือระยะบนของตัวเอง ทั้งที่ gap ของแถวจัดการให้แล้ว');
 });
 
 test('the year is fetched per year, not per month', () => {
@@ -345,30 +430,26 @@ test('the year is fetched per year, not per month', () => {
   assert.ok(banner.includes('/holidays?year=${year}'), 'ไม่ได้ขอเฉพาะปีที่ต้องใช้');
 });
 
-test('ปุ่มย่อไม่ตอบเรื่องกรอบสีฟ้าเอง — มันรับจากกฎพื้นฐาน เหลือไว้แต่ระยะวงแหวน', () => {
-  // THIS BUTTON IS WHERE THE REPORT CAME FROM AND IT IS NOT WHERE THE FIX IS.
-  // A blue rectangle appeared over the arrow when it was pressed on a phone;
-  // the fix landed here first, on 2026-08-28, and moved to `html` and the base
-  // `:focus-visible` the same day when the next report said "ทุกปุ่มในระบบ".
-  // `test/pressChrome.test.js` owns the base rules; what this one pins is that
-  // the banner did not keep a copy — a second answer to a question that already
-  // has one is how two rules that disagree get written.
-  const at = css.indexOf('.announce-fold {');
-  assert.ok(at > 0, 'ไม่พบกฎ .announce-fold');
-  const rule = css.slice(at, css.indexOf('}', at));
-  assert.ok(!/-webkit-tap-highlight-color/.test(rule),
-    'ปุ่มย่อประกาศสี highlight ตอนแตะเอง ทั้งที่คุณสมบัตินี้สืบทอดมาจาก html แล้ว');
-  assert.ok(!/outline:/.test(rule), 'ปุ่มย่อไปตอบเรื่องกรอบ focus เองอีกแล้ว');
-
-  // WHAT IS LEFT IS THE OFFSET, AND ONLY THE OFFSET. 1px and not the base 2px,
-  // because on a phone this button carries a 44px hit area held out of the
-  // layout by negative margins — at 2px the ring is drawn into the heading
-  // beside it. The 6px radius is here for the same reason: the ring follows the
-  // box, and every other corner in this panel is round.
-  const fv = css.indexOf('.announce-fold:focus-visible');
-  assert.ok(fv > 0, 'ปุ่มย่อไม่ได้ขยับระยะวงแหวนแล้ว — ที่ 2px วงแหวนจะกินเข้าไปในหัวข้อข้างๆ บนมือถือ');
-  assert.match(css.slice(fv, css.indexOf('}', fv)), /outline-offset: 1px/);
-  assert.match(rule, /border-radius: 6px/, 'ไม่มีมุมโค้ง วงแหวน focus จะเป็นกล่องเหลี่ยมในแผงที่ทุกมุมโค้ง');
+test('กฎของปุ่มย่อถูกลบทิ้งจริง ไม่ได้เหลือค้างไว้เฉย ๆ', () => {
+  // ⚠ THIS TEST PINNED THE ▲/▼'s FOCUS RING UNTIL 2026-09-11, and the history
+  // is worth keeping because it is the reason the rule had four declarations to
+  // begin with. A blue rectangle appeared over the arrow when it was pressed on
+  // a phone; the fix landed on `.announce-fold` on 2026-08-28 and moved to
+  // `html` + the base `:focus-visible` the same day when the next report said
+  // "ทุกปุ่มในระบบ". What this pinned afterwards was that the banner had not
+  // kept a private copy — `test/pressChrome.test.js` owns the base rules.
+  //
+  // THE BUTTON IS GONE AND SO IS ITS RULE. A stylesheet that keeps selectors
+  // for elements nothing renders is a stylesheet the next reader has to test
+  // against the markup to trust — and this file has already deleted
+  // `.announce-rule` once for exactly that reason (see the test above).
+  for (const gone of ['.announce-fold', '.announce-body', '.announce-top', '.announce-days', '.announce-none', '.announce.is-folded']) {
+    assert.ok(!css.includes(`${gone} {`) && !css.includes(`${gone},`),
+      `กฎ ${gone} ยังค้างอยู่ทั้งที่ไม่มีใครวาดแล้ว`);
+  }
+  // The other ▲/▼ in this app is a different control on a different panel and
+  // keeps its 44px target — the phone block still has `.alert-fold`.
+  assert.match(css.slice(phonePill.media), /\.alert-fold \{/, 'ปุ่มย่อของกล่องแจ้งเตือนหายไปด้วย');
 });
 
 /**

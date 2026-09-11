@@ -3394,37 +3394,83 @@ something that just happened and removes itself after four seconds
 (`components/Toast.jsx`); this is true all month, nothing happened to cause it,
 and the point is that everybody has read the same thing **before** they file.
 
-**What it says.** The month's announced holidays — each one two lines, the date
-with its weekday and then the holiday's name under it, smaller and one step
-quieter — and a pill that opens the year's calendar. On a month with none it says so out
-loud (`เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้`) and names the next one, because an
-empty month and a month nobody has entered look identical from the screen, and
-the reader who assumes the second files a normal-rate request for a day the
-company was shut.
+**What it says, and it says it in ONE ROW — since 2026-09-11.** The heading, the
+month's day count, the days themselves and a pill that opens the year's calendar,
+all on one line: *"📢 ประกาศวันหยุดประจำเดือน สิงหาคม 2569 · 3 วัน — 12 (พ.)
+วันแม่แห่งชาติ · 13 (พฤ.) ชดเชยวันแม่แห่งชาติ · 28 (ศ.) หยุดบริษัท"*, with
+`ดูปฏิทินวันหยุดประจำปี 2569 📅` against the right edge. On a month with none it
+says so out loud (`เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้`) and names the next
+one, because an empty month and a month nobody has entered look identical from
+the screen, and the reader who assumes the second files a normal-rate request for
+a day the company was shut.
+
+> **It read** *"each one two lines, the date with its weekday and then the
+> holiday's name under it"* **until 2026-09-11**, and the banner it describes was
+> three rows tall in the state the request arrived with a picture of — a heading,
+> the empty-month sentence, and the calendar button on a row of its own:
+> *"การแจ้งเตือนนี้กระชับให้เป็นแถวเดียว แต่ได้เนื้อหาครบถ้วน"*.
+
+**Four blocks became one flow, and that is the mechanism rather than the
+result.** The pieces were an `<h3>`, a `<ul>` of two-line entries and a `<p>`,
+and a block cannot share a line with the sentence that continues it however short
+both are. Written as one flow the row breaks where a **sentence** breaks when the
+window narrows, instead of breaking once per piece — the same move `MonthAlerts`
+and the งวด band made earlier the same day. The heading is still an `<h3>`: it is
+drawn `display: inline`, which moves where it sits and not what a screen reader
+finds it as.
+
+**A day is a number, a weekday in brackets, and a name.** The day number and not
+`thaiDate`: the app writes one date form, DD/MM/YYYY, and this is the case that
+same rule already carves out — under a heading that says สิงหาคม 2569,
+`12/08/2569` is three quarters of a repetition, which is why the
+ปฏิทินวันหยุดประจำปี table prints a day number under its month band too. The
+weekday is abbreviated **here and nowhere else in this component**: it is a
+*check* on the date, and three of `(วันพุธ)` in one row is the row this change
+exists to shorten. The empty-month clause keeps the long form — one date, in
+prose, in a different month from the heading.
+
+**Three days named, then `และอีก N วัน`.** สงกรานต์ alone is three; a month at
+five or six spelled out is a paragraph pretending to be a row. The remainder is
+not behind a press nobody can find — ปฏิทินวันหยุดประจำปี is the next thing on
+the same row and lists the whole year by month, which is the difference between
+this and the `…และอีก N` that `test/disclosure.test.js` refuses in ScanImport.
 
 It said more when it shipped: a sentence of rates — *"ยื่นคำขอ OT ตรงกับวันเหล่านี้
 ระบบจะคิดเป็น OT วันหยุด ให้อัตโนมัติ — 08:00–17:00 ×1.5 · นอกเวลา ×3 ·
 เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้วโดยไม่ต้องประกาศ"* — which was argued for here and
 removed on request the same day.
 
-**The name took three rounds to find its line, and the shape is the reason.** It
-began beside the date, was removed altogether, and came back underneath. Beside
-the date it is fine until a name is `วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชชนนี
-พันปีหลวง`, which on a phone wrapped to three lines and dragged the entries below
-it out of alignment; on its own line it wraps inside its own block and every
-entry still starts at the same left edge. The list gaps carry the grouping —
-**10px between two holidays against 1px between a date and its own name** — or a
-three-holiday month reads as six loose lines. It was 7px for one round and read
-as too tight, which the ratio explains: the line above a date is the previous
-holiday's NAME, and those two are exactly the pair that must not look like one.
+**The name took three rounds to find its line, and then the line went.** It began
+beside the date, was removed altogether, and came back underneath — because
+beside the date it is fine until a name is `วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราช
+ชนนีพันปีหลวง`, which on a phone wrapped to three lines and dragged the entries
+below it out of alignment. **That failure was about a COLUMN of entries losing
+its left edge, and there is no column since 2026-09-11**: one sentence has no
+rows to knock out of line. What the same name can still do is push the pill off
+the right edge, and the answer to that is `min-width: 0` on `.announce-line` —
+the first rule §Responsive in `AGENTS.md` names, and the one a flex child needs
+before it will shrink below its content.
 
-**Three quiet levels, not two.** The date is `--ink`, the holiday's name
-`--ink-2`, the weekday `--muted`. The name and the weekday shared `--muted` for
-a round, on the reasoning that both are the date's supporting cast — and on a
-phone that turned out to be wrong in a way worth recording: the weekday is a
-*check* on the date, read once and never again, while the name is the
-announcement's actual content. All three are pinned against `--green-bg` in
-`test/theme.test.js`.
+> **Gone with the column:** the list gaps that carried the grouping — *"10px
+> between two holidays against 1px between a date and its own name"*, arrived at
+> after 7px read as too tight, because the line above a date was the previous
+> holiday's NAME and those two were exactly the pair that must not look like one.
+> There is no line above a date any more.
+
+**Three quiet levels, not two, and the rank outlived the layout.** The date is
+`--ink`, the holiday's name `--ink-2`, the weekday `--muted`. The name and the
+weekday shared `--muted` for a round, on the reasoning that both are the date's
+supporting cast — and on a phone that turned out to be wrong in a way worth
+recording: the weekday is a *check* on the date, read once and never again, while
+the name is the announcement's actual content. All three are pinned against
+`--green-bg` in `test/theme.test.js`.
+
+**What DID change with the axis is the size: there is no longer one.** Stacked,
+the name and the weekday were 12.5px under a 13.5px date, because the second line
+of an entry is subordinate by position as well as by colour. On one line there is
+no second line, and 12.5px beside 13.5px inside a sentence reads as a wobble in
+the type rather than as a rank — so the three levels are carried by colour alone
+now, and `test/holidayNotice.test.js` refuses a `font-size` on either of them.
 
 **Where the เสาร์–อาทิตย์ clause went, and why it mattered.** Saturday and Sunday
 are holidays *by rule* and are deliberately not rows in the collection — the
@@ -3521,17 +3567,23 @@ only a decision if the numbers that make it are written down:
 
 | | value | why it is that and not the next number |
 | --- | --- | --- |
-| holiday entry | two lines | the date with its weekday, the name under it |
-| date | 13.5px / 600 / `--ink` | the thing being announced |
-| holiday name | 12.5px / `--ink-2` | content, subordinate to its date |
-| weekday | 12.5px / `--muted` | a *check* on the date, read once |
-| between two holidays | **10px** | the line above a date is the previous holiday's NAME |
-| date to its own name | **1px** | ten against one is what makes the pair obvious |
+| holiday entry | one phrase in a sentence | `12 (พ.) วันแม่แห่งชาติ`, joined by ` · ` |
+| date | 600 / `--ink` | the thing being announced |
+| holiday name | `--ink-2` | content, subordinate to its date |
+| weekday | `--muted` | a *check* on the date, read once |
+| days spelled out | **3**, then `และอีก N วัน` | สงกรานต์ alone is three |
 | calendar button | full width, centred, **44px** | the phone target this app uses everywhere |
 | its edge | `currentColor` at 55%, no fill | outlined, and never the brand green — see below |
-| list to button | **10px** | must beat the 3px inside the list |
-| fold control | ▲/▼ top right, 44px target | added 2026-08-28; ▲/▼ and never ✕ — see below |
-| folded height | **65px** against 253px open | 8.4% of a 390px phone against 32.5% |
+| how it drops there | `flex-basis: 100%` on a wrapping row | no second container, no hidden copy |
+| sentence to button | the row's own **9px** gap | one number for the wrap, not a margin beside it |
+
+> **Five rows of this table were withdrawn on 2026-09-11**, when the banner
+> became one row. They read: *"holiday entry | two lines"*, *"holiday name |
+> 12.5px / `--ink-2`"* and *"weekday | 12.5px / `--muted`"* (the sizes went — see
+> above; the colours did not), *"between two holidays | **10px**"* against
+> *"date to its own name | **1px**"*, *"list to button | **10px**"*, and *"fold
+> control | ▲/▼ top right, 44px target"* with *"folded height | **65px** against
+> 253px open"*. Every one of them described a stack that no longer exists.
 
 **Every one of those is asserted in `test/holidayNotice.test.js`**, so this is a
 template the build enforces rather than a paragraph somebody has to remember. A
@@ -3545,56 +3597,54 @@ second green control one card away — even an outlined one — makes the reader
 decide which is the point. Anything copying this template onto another screen
 inherits that constraint, not just the numbers.
 
-### ย่อ / กาง — and why it does not contradict "ไม่หายไปเอง"
+### ~~ย่อ / กาง~~ — withdrawn 2026-09-11, and the requirement is stronger without it
 
-**Added 2026-08-28**, after the template was signed off, and it is the one
-change to it that had to be argued rather than measured. This banner was built
-to a requirement that reads like the opposite of a fold — *"ให้คงอยู่บนหน้าจอ
-ไม่หายไปเอง เพื่อให้พนักงานรับรู้ข้อมูลตรงกันก่อนยื่นเอกสาร"* — and shipped with no
-dismiss control at all, pinned by a test that said so.
+**The fold is gone.** *"การแจ้งเตือนนี้กระชับให้เป็นแถวเดียว แต่ได้เนื้อหา
+ครบถ้วน"* — and a panel that is one row before anybody presses anything has
+nothing left to hide. The ▲/▼, `ot-holiday-fold` in localStorage, the state it
+was read into, `aria-expanded`/`aria-controls` and the `.announce-fold` rule went
+together; `test/holidayNotice.test.js` now refuses each of them by name, because
+they only make sense as a set and any one of them coming back is the fold coming
+back.
 
-That requirement is about the announcement being **seen**, not about its height.
-Folded, the month and the day count are still on the screen — *"📢 ประกาศวันหยุด
-ประจำเดือน สิงหาคม 2569 (3 วัน) ▼"* — and only the detail goes. **There is no
-state in the component where the section is not rendered**, and the one early
-`return null` is about the fetch, not about a press. That is now what the test
-pins, which is a better invariant than "no control exists": it survives the
-feature instead of forbidding it.
+**The requirement it was argued against is now true by construction.** This
+banner was built to *"ให้คงอยู่บนหน้าจอ ไม่หายไปเอง เพื่อให้พนักงานรับรู้ข้อมูล
+ตรงกันก่อนยื่นเอกสาร"* and shipped with no dismiss control at all, pinned by a
+test that said so. The fold was compatible with it — the requirement is about the
+announcement being **seen**, not about its height — and the invariant that
+replaced "no control exists" was better: **there is no state in the component
+where the section is not rendered**, the one early `return null` being about the
+fetch and not about a press. That invariant survives, and there is now no press
+for it to survive.
 
-**▲/▼ and never ✕**, though the request offered both. A mark has to be honest
-about what the press does. An ✕ on a notice means *"I have dealt with this, take
-it away"* — a promise this control cannot keep, because the banner is back on
-the next screen either way, and a reader who pressed ✕ and saw it again reads
-that as a bug rather than as a fold.
+**What the fold is worth keeping on the record for** is the argument it settled,
+because the same one comes back on every notice in this app:
 
-**The frame is the press target, not only the arrow — since 2026-09-10**, asked
-for as *"แค่กดที่พื้นในกรอบการแจ้งเตือน ข้อมูลก็ขยายให้อ่านได้"*. Folded, a
-press anywhere inside the banner opens it; open, only the heading line folds it,
-so reading the list or pressing ดูปฏิทินวันหยุด never shuts it by accident, and
-a press that ends a text selection does nothing. The ▲/▼ is still there and
-still the keyboard's way in, but carries no handler of its own — Enter on it is
-a click that bubbles to the frame. The same `foldClick` (components/common.jsx)
-drives the three ▲/▼ alerts: the notices above an F-HR-027, ผู้รับช่วงอนุมัติ
-แทน's explanation, and the password warning on ข้อมูลส่วนตัว. None of the
-figures in the table above moved.
+- **▲/▼ and never ✕**, though the request of 2026-08-28 offered both. A mark has
+  to be honest about what the press does. An ✕ on a notice means *"I have dealt
+  with this, take it away"* — a promise the control could not keep, because the
+  banner is back on the next screen either way, and a reader who pressed ✕ and
+  saw it again reads that as a bug rather than as a fold.
+- **The frame is the press target, not only the arrow**, asked for on 2026-09-10
+  as *"แค่กดที่พื้นในกรอบการแจ้งเตือน ข้อมูลก็ขยายให้อ่านได้"*. That is still how
+  `foldClick` (`components/common.jsx`) behaves, and it still drives the three
+  ▲/▼ **alerts** — the notices above an F-HR-027, ผู้รับช่วงอนุมัติแทน's
+  explanation, and the password warning on ข้อมูลส่วนตัว. The banner was its
+  fourth caller and is not one now; `test/disclosure.test.js` lost that row from
+  its loop and gained an assertion that the banner has no `foldClick` at all.
+- **The state was a browser preference, not an account setting** —
+  `ot-holiday-fold` in localStorage, `ot-` prefixed like `ot-theme`, stored as
+  *"folded, or nothing at all"* so an absent key IS the default, and read in a
+  mount effect rather than during render because this component renders on the
+  server too. `components/Delegation.jsx` cites that arrangement for its own note
+  fold and still does; the citation is to the design, not to a live key.
 
-**The state is a browser preference, not an account setting.** `ot-holiday-fold`
-in localStorage, `ot-` prefixed like `ot-theme`, stored as *"folded, or nothing
-at all"* so an absent key IS the default — a cleared browser and a browser that
-has never been asked behave identically. **Read in a mount effect and never
-during render**, the rule `ThemeChoice` follows for the same reason: this
-component renders on the server too, and a first render that read localStorage
-would throw or disagree with what the browser holds, and React would hydrate the
-mismatch. Unlike the theme it needs no boot script and has no flash — the banner
-draws nothing until its fetch returns, by which time the effect has long run.
-One key for both employee screens: folding it on the dashboard is not a request
-to see it again on the form.
-
-**Driven end to end on the built app**, because a persistence feature checked
-without a reload is a state variable: open **253px** → press ▲ → **65px**, key
-`"1"` → *reload* → still 65px → press ▼ → 253px, key removed → *reload* → still
-open. On a 390px phone that hands **188px** back to the ชั่วโมง OT card, which
-is 24% of the viewport.
+> **Measured while it existed**, on the built app, because a persistence feature
+> checked without a reload is a state variable: open **253px** → press ▲ →
+> **65px**, key `"1"` → *reload* → still 65px → press ▼ → 253px, key removed →
+> *reload* → still open. On a 390px phone that handed **188px** back to the
+> ชั่วโมง OT card, 24% of the viewport. One row gives back more than the fold did
+> and gives it back without being asked.
 
 **Two things it got wrong on a phone, reported the day it shipped.** The
 calendar pill sat at the end of a line of text, which is right on a desktop
@@ -3621,13 +3671,18 @@ text there.
 
 **And with the sentence gone, the button had its air taken back.** `.fold-pill`
 carries `margin-top: 8px` for the panel it was written for, where it follows a
-paragraph; here it now follows a list of dates, and 8px left it floating with the
-removed sentence's worth of space still under it. `.announce .fold-pill` sets
-**10px** — which has to beat the 3px between the list's own rows, or the button
-reads as a fourth date. Measured after, on the built app: the banner is **176px
-on a 390px phone**, 22.6% of that viewport, down from 289px and 37%. It reads
-**247px, 31.7%** now that the names are back on lines of their own — the whole
-of the difference, and what a three-holiday month costs to say properly.
+paragraph.
+
+> **That gap read** *"`.announce .fold-pill` sets **10px** — which has to beat
+> the 3px between the list's own rows, or the button reads as a fourth date"*
+> **until 2026-09-11**, and the heights measured beside it were **176px on a
+> 390px phone** (22.6%, down from 289px and 37%) and then **247px, 31.7%** once
+> the names came back on lines of their own. There is no list to beat and no
+> stack to measure: the pill is the row's right-hand corner now, and the only
+> number it still owns is the one width at which it stops being one.
+> `.announce > .fold-pill` carries **no top margin at all** — the row's own 9px
+> gap is what sits above it once `flex-basis: 100%` has dropped it to a line of
+> its own below 860px.
 
 **And a blue box under the thumb, reported the same day.** Pressing the arrow on
 a phone drew a square of the browser's own highlight colour over it, and the
@@ -3643,11 +3698,15 @@ report said *"น่าจะเป็นทุกปุ่มที่อยู
 [The two rectangles a browser draws](#the-two-rectangles-a-browser-draws-on-a-control).
 `-webkit-tap-highlight-color` is inherited and is now declared once on `html`;
 the ring is a base `:focus-visible` at the lowest specificity in the file.
-`.announce-fold` keeps **one declaration** out of all of it — `outline-offset:
-1px` instead of the base 2px, because this button's 44px hit area is held out of
-the layout by negative margins and a ring 2px out is drawn into the heading
-beside it. The 6px radius stays with it, for the same reason: the ring follows
-the box, and every other corner in this panel is round.
+
+> **It went on to read** *"`.announce-fold` keeps **one declaration** out of all
+> of it — `outline-offset: 1px` instead of the base 2px, because this button's
+> 44px hit area is held out of the layout by negative margins and a ring 2px out
+> is drawn into the heading beside it"*, with a 6px radius for the same reason.
+> **The button and its rule were deleted on 2026-09-11** with the fold. The
+> offset and the radius live on in `.alert-fold`, which is the other ▲/▼ in this
+> app, on a different panel, and keeps its 44px target — it was written from
+> these numbers and is the only copy of them now.
 
 
 ### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — two flags, and a remark that moved
@@ -10745,6 +10804,12 @@ and are **one declaration each** now:
 .announce-fold:focus-visible        { outline-offset: 1px; }
 ```
 
+> **The last of those five is gone since 2026-09-11**, listed here as the block
+> stood on 2026-08-28. `.announce-fold` was the holiday banner's ▲/▼ and the
+> control this whole report started on; the banner became one row and the fold,
+> the button and the rule went with it. Four remain, and the 1px offset itself
+> lives on in `.alert-fold` — the other ▲/▼, on the alert boxes.
+
 **Two deviations are real and stay whole.** The sidebar keeps `--green-lift`
 and an inward `-2px`. The offset is the durable half of that: a nav row is the
 full width of the rail, so an outward ring would be drawn on the rail's own
@@ -13737,8 +13802,10 @@ build แล้ว
   `test/holidayNotice.test.js`**, which arrived with
   ประกาศวันหยุดบริษัท: nine cases over the pure filters in `lib/holidayNotice.js`
   — month boundaries as string comparisons, a row with an unusable date dropped
-  rather than repaired, วันหยุดถัดไป counting today itself — and twelve over the
-  decisions that are not arithmetic. Those last are the ones worth having: that
+  rather than repaired, วันหยุดถัดไป counting today itself — and **twenty-six**
+  over the decisions that are not arithmetic (it read "twelve" until 2026-09-11,
+  by which time it was 23 and had been wrong for weeks). Those last are the ones
+  worth having: that
   the banner is mounted on both employee screens (one component returns the form
   *instead of* the dashboard, so a single mount would miss the screen where the
   date is chosen) **and on the landing tab of every other role** — the second
@@ -13750,7 +13817,13 @@ build แล้ว
   card's own 44px row and stays outlined rather than taking the brand green off
   the primary button a card away, and — after the rates sentence was removed on
   request — that the fact about เสาร์–อาทิตย์ is still stated in the calendar
-  dialog. **That last pair is why the file reads the component with its comments
+  dialog. **Since 2026-09-11 it also pins the one row**: that the heading, the
+  count, the days and both halves of the empty-month sentence are all still
+  written; that they are one flow and not four blocks (no `<ul>`, no `<p>`, an
+  `<h3>` drawn `display: inline`); that the fold is gone in every piece it was
+  made of — the arrow, the `aria-expanded`, the `localStorage` key and the state
+  behind them — and that the CSS rules for all of it were deleted rather than
+  left standing. **That last pair is why the file reads the component with its comments
   stripped**: the comments quote what was deleted and why, so an assertion made
   against the raw file would pass on the strength of an explanation of its own
   failure. The same trick holds the rule that the holiday NAMES are dropped for
