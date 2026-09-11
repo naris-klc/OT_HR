@@ -524,8 +524,10 @@ test('ตรวจสอบรายเดือน still opens on อนุม�
     /useState\(DEFAULT_STATUS\)/,
     'สถานะที่นับ no longer opens on DEFAULT_STATUS',
   );
-  // And อนุมัติแล้วเท่านั้น is still one of the three rows, because the tests
-  // above compare the queue against it and a reader can still ask for it.
+  // And อนุมัติแล้วเท่านั้น is still one of the rows, because the tests above
+  // compare the queue against it and a reader can still ask for it. ("one of
+  // the three rows" until 2026-09-11 — there are five, and how many there are
+  // was never what this assertion was protecting.)
   assert.match(
     view,
     new RegExp(`value: '${HR_APPROVED_ONLY}', label: 'อนุมัติแล้วเท่านั้น'`),

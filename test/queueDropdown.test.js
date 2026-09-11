@@ -567,8 +567,9 @@ test('แถวที่ถูกปิดไว้ — เห็นได้ �
  * can hold for that row to mean anything. แผนก and เดือน on รายการรออนุมัติ can:
  * empty is "every department", "every month". สถานะที่นับ cannot — its widest
  * setting is ทั้งหมดที่ยังไม่ถูกปฏิเสธ, which is a real value naming three
- * statuses, and a fourth row above it carrying `''` would be a สถานะที่นับ the
- * screen has no reading for.
+ * statuses, and an extra row above it carrying `''` would be a สถานะที่นับ the
+ * screen has no reading for. ("a FOURTH row" until 2026-09-11, when the control
+ * itself went from three rows to five — the position moved, the claim did not.)
  *
  * SO `allLabel` IS OPTIONAL, and the two things that counted rows against a
  * literal `1` are what this holds down: `hasAll` decides whether the empty
@@ -580,8 +581,10 @@ test('ลิสต์ที่ไม่มีแถว "ทั้งหมด" �
   assert.match(source, /rows\.length === \(hasAll \? 1 : 0\) && <li className="none"/);
 
   // AND THE CALLER, so the option that exercises it cannot quietly go away.
-  // สถานะที่นับ hands three rows and no `allLabel`; the values are the route's
-  // own and are pinned in test/queueCapUsage.test.js, not here.
+  // สถานะที่นับ hands its rows and no `allLabel`; the list itself — five rows
+  // since 2026-09-11, three before it — is pinned in
+  // test/monthStatusFilter.test.js, and the two values the ceiling tests
+  // compare against in test/queueCapUsage.test.js. Neither is this file's.
   //
   // STRIPPED FIRST, for the reason the block over `strip` gives: the paragraph
   // in HrView.jsx explaining why there is no `<select>` on that screen quotes

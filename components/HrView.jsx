@@ -44,22 +44,54 @@ import { mayCorrectEntries } from '@/lib/entries.js';
 const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
 
 /**
- * สถานะที่นับ — the three questions this screen can be asked about a month.
+ * สถานะที่นับ — the five questions this screen can be asked about a month.
  *
  * OUT OF THE JSX AND INTO A CONSTANT because the control changed shape on
  * 2026-09-01: three `<option>` children became a `options` array handed to
  * `PickOne`. The values are the ones the route already reads and are unchanged
- * to the character — `approved`, `approved,pending_hr`, and `ALL_LIVE_STATUSES`
- * — so nothing about the request this screen makes moved with the list.
+ * to the character, so nothing about the request this screen makes moved with
+ * the list.
+ *
+ * ⚠ IT READ "the three questions" AND HELD THREE ROWS UNTIL 2026-09-11 —
+ * `approved`, `approved,pending_hr` and `ALL_LIVE_STATUSES`, a list that only
+ * ever WIDENED. Asked for by name that day: *เพิ่มตัวกรองสถานะ "รอ HR"*, with
+ * รอหัวหน้าเท่านั้น agreed alongside it in the same answer.
+ *
+ * A SINGLE-STATUS ROW IS NOT A NARROWER VERSION OF ITS NEIGHBOURS — it is a
+ * different question. The three old rows all answer *how much of this month
+ * counts*; รอ HR เท่านั้น answers *which step is this month waiting on*, and
+ * the screen had no way to ask it. On a month like สิงหาคม 2569 — 225 รอ HR, 73
+ * รอหัวหน้า, no `approved` — the two combinations and ทั้งหมด all draw very
+ * nearly the same table, and none of them says which of the 298 are HR's to
+ * act on.
+ *
+ * SO THE ORDER IS NO LONGER NARROW-TO-WIDE, AND THAT IS THE POINT: the three
+ * single statuses first, in the order a ใบ passes through them, then the two
+ * combinations. Sorted by width instead, รอ HR เท่านั้น would sit between two
+ * rows that both include `approved` and read as a third size of one question
+ * rather than a different one.
+ *
+ * THE ROUTE WAS NOT TOUCHED AND DID NOT NEED TO BE. `reportStatuses` in
+ * lib/reports.js keeps whatever of `REPORTABLE_STATUSES` it is handed, so
+ * `pending_hr` on its own has always been a legal answer — there was simply no
+ * control that could say it. The table, both CSVs and the print buttons read
+ * this one string as they always have.
+ *
+ * WHAT THE เพดาน COLUMN DOES AT THE NEW ROWS: nothing different. It is counted
+ * from every live ใบ whatever this is set to (`capEntriesByEmployee`), and the
+ * new rows pay the same extra read อนุมัติแล้วเท่านั้น already paid — only
+ * ทั้งหมดที่ยังไม่ถูกปฏิเสธ gets the short circuit, and it still does.
  *
  * NO "ทั้งหมด" ROW IS ADDED UNDER IT. `PickOne`'s `allLabel` names a row
  * carrying `''` that means "do not narrow", and `''` is not a สถานะที่นับ this
  * screen can hold: the widest setting here is ทั้งหมดที่ยังไม่ถูกปฏิเสธ, which
- * is the third row and a real value. See the note over `rows` in
+ * is the last row and a real value. See the note over `rows` in
  * components/common.jsx.
  */
 const STATUS_FILTERS = [
   { value: 'approved', label: 'อนุมัติแล้วเท่านั้น' },
+  { value: 'pending_hr', label: 'รอ HR เท่านั้น' },
+  { value: 'pending_mgr', label: 'รอหัวหน้าเท่านั้น' },
   { value: 'approved,pending_hr', label: 'อนุมัติแล้ว + รอ HR' },
   { value: ALL_LIVE_STATUSES, label: 'ทั้งหมดที่ยังไม่ถูกปฏิเสธ' },
 ];
@@ -67,8 +99,11 @@ const STATUS_FILTERS = [
 /**
  * WHAT ล้างตัวกรอง PUTS สถานะที่นับ BACK TO — the same string `useState` opens
  * with, named once so the button and the initial value cannot drift apart. It
- * is the middle row of `STATUS_FILTERS`: อนุมัติแล้ว + รอ HR, which is the set
- * ตรวจสอบประจำเดือน exists to check.
+ * is the FOURTH row of `STATUS_FILTERS`: อนุมัติแล้ว + รอ HR, which is the set
+ * ตรวจสอบประจำเดือน exists to check. ("the middle row" until 2026-09-11, when
+ * two single-status rows went in above it and the middle stopped being a place
+ * — which is exactly the kind of description this sentence was told once
+ * already not to lean on.)
  */
 const DEFAULT_STATUS = 'approved,pending_hr';
 
@@ -690,6 +725,14 @@ export default function HrView({
    * every `approvable` is empty and the column is not drawn — a column of
    * permanently disabled boxes is an offer with nothing behind it, and this
    * screen's default filter is the one where the offer is real.
+   *
+   * ⚠ TWO FILTERS DO THAT NOW, AND ONE DOES THE OPPOSITE — 2026-09-11, when
+   * รอ HR เท่านั้น and รอหัวหน้าเท่านั้น were added. รอหัวหน้าเท่านั้น is the
+   * second filter with no `pending_hr` row in it, and the column vanishes there
+   * for the same reason. รอ HR เท่านั้น is the other end: every row in the month
+   * is one HR may act on, so the column is drawn for all of them and เลือกทั้งหมด
+   * means the month. Neither is a new rule — `canPick` was already counting the
+   * rows rather than reading the filter, which is why both fall out for free.
    *
    * TWO OPTIONAL COLUMNS MAKE THE TABLE TEN, ELEVEN OR TWELVE WIDE, and every
    * full-width row in it has to know. `colCount` is that number in one place;
