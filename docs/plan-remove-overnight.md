@@ -137,7 +137,10 @@ _id 6a9faedf07b147c3cb7b62a3 · workDate 2026-09-09 · 21:00–21:00 · pending_
     `END_BEFORE_START` (ไม่ใช่แค่ลบของเก่าแล้วจบ)
 21. **เอกสาร** — `README.md` (§ทำงานข้ามคืนไม่ใช่คำถามอีกต่อไป และอีกหลายย่อหน้า) ·
     `docs/features.md` · `docs/hr-briefing.md` · `docs/demo-runbook.md` ·
-    `docs/contingency.md` · `docs/testing-safely.md` · `docs/manual-redesign.html`
+    `docs/contingency.md` · `docs/testing-safely.md` · และ docs/manual-redesign.html
+    ซึ่ง **ถูกลบทิ้งทั้งไฟล์เมื่อ 11 ก.ย. 2569** จึงไม่เหลือย่อหน้าให้ไล่แก้ (ชื่อไฟล์
+    ตรงนี้จงใจไม่ใส่ backtick แล้ว — `test/docsMatchCode.test.js` ล้มบิลด์เมื่อเจอ
+    พาธในเครื่องหมายนั้นที่ไม่มีอยู่จริง)
     ตามกติกาใน AGENTS.md: ย่อหน้าที่เล่าของเก่าให้ใส่เครื่องหมายคำพูด ตัวเลขที่ยัง
     จริงห้ามใส่
 22. **ตัวเลขที่ `test/docsMatchCode.test.js` ปัก** — ลบไฟล์เทสต์ไปหนึ่งไฟล์
