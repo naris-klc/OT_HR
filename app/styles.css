@@ -4071,6 +4071,16 @@ td > .approver-line { margin-top: 5px; }
    day was about. The paragraph above is kept because it is the account of how
    this box came to be a `<Field>`, which is still what it is. */
 
+/* ── WHERE ถัดไป LANDS ON ทะเบียนพนักงาน ───────────────────────────────────
+   `goPage` in components/AdminView.jsx scrolls this wrap back into view on
+   every page press, and what has to be cleared above it is `.appbar` — 62px,
+   sticky at 0 and never leaving — and nothing else. ONE NUMBER WHERE
+   คิวรออนุมัติ NEEDS FOUR: that screen stacks `.batch-bar` and
+   `.queue-mobile-bar` under the app bar and has to be sized per state; this one
+   has no sticky bar of its own at any width, so the phone reads the same rule.
+   14px of clearance, the landing `.manual-sec` and `.profile-password` take. */
+.table-wrap.roster-list { scroll-margin-top: calc(62px + 14px); }
+
 /* ── ค้นหาบนตรวจสอบรายเดือน ────────────────────────────────────────────────
    The same box as ทะเบียนพนักงาน's, and since 2026-09-10 it is the first field
    of a `.queue-tools` bar rather than a row of its own.

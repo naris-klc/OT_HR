@@ -30,10 +30,12 @@ import { dirname, join } from 'node:path';
  * ─────────────────────────────────────────────────────────────────────────────
  * ONE COMPONENT FOR BOTH, AND WHAT IT IS NOT
  *
- * `TablePager` is drawn under FOUR tables, and this file reads all of them:
- * the two on บันทึกประวัติระบบ (§1–8), ประวัติเวอร์ชันนโยบาย (§9) and
- * คิวรออนุมัติ (§11). It read "both tables" until 2026-09-11, when the queue
- * took one — the sentence had already outlived ประวัติเวอร์ชันนโยบาย.
+ * `TablePager` is drawn under FIVE tables, and this file reads all of them:
+ * the two on บันทึกประวัติระบบ (§1–8), ประวัติเวอร์ชันนโยบาย (§9),
+ * คิวรออนุมัติ (§11) and ทะเบียนพนักงาน (§12). It read "both tables" until
+ * 2026-09-11, when the queue took one — the sentence had already outlived
+ * ประวัติเวอร์ชันนโยบาย — and "FOUR" for the few hours between that band and
+ * the roster's.
  *
  * `HrView`'s `.pager-row` is the one pager deliberately NOT folded into it:
  * that one is a `<td>` inside a `<tbody>`, `display: none` above 860px, laid
@@ -114,8 +116,9 @@ test('the four sizes are 10 · 20 · 50 · 100, and บันทึกประ�
   // the un-paged table it replaced on the first paint.
   //
   // WHICH SIZE A TABLE OPENS ON IS THE SCREEN'S CHOICE, not the kit's: the list
-  // offered is the same four everywhere, and คิวรออนุมัติ opens on 20 because
-  // it is read to be emptied rather than searched — §11.
+  // offered is the same four everywhere. คิวรออนุมัติ opens on 20 because it is
+  // read to be emptied rather than searched (§11), and ทะเบียนพนักงาน on the
+  // same 20 because the way a register is read is by searching it (§12).
   assert.equal(logsCode.match(/useState\(10\)/g)?.length, 2,
     'a table opens on some other page size than the one the selector lists first');
   assert.equal(logsCode.match(/const \[pageSize, setPageSize\] = useState\(10\);/g)?.length, 2);
@@ -484,12 +487,28 @@ test('the band closes the section, with the wider gap that asks for', () => {
 });
 
 test('a page change here scrolls nothing either', () => {
-  // The same ban as on บันทึกประวัติระบบ, on the file that now draws a third
-  // pager. `AdminView` has one `scrollIntoView` and it is the roving highlight
-  // inside an open dropdown — `block: 'nearest'` on a list row, not the page.
-  const scrolls = adminCode.match(/scrollIntoView|window\.scrollTo|scrollTop\s*=/g) || [];
-  assert.deepEqual(scrolls, ['scrollIntoView'],
-    'a scroll call was added to ตั้งค่าระบบ — a pager must not move the page');
+  /**
+   * THE BAN IS ประวัติเวอร์ชันนโยบาย'S, NOT THE FILE'S — and it read the whole
+   * file until 2026-09-11, when ทะเบียนพนักงาน took a band that deliberately
+   * DOES scroll (§12). A ban stated over 7600 lines was only ever a ban on this
+   * one component; now it says so, sliced the way §12 slices the roster.
+   *
+   * Here a scroll would be the bug บันทึกประวัติระบบ was repaired for: this
+   * table is ten rows under a heading with the whole of ตั้งค่าระบบ above it,
+   * and the pager is already on screen when it is pressed.
+   */
+  const policy = adminCode.slice(
+    adminCode.indexOf('function PolicyHistory({'),
+    adminCode.indexOf('function PolicyChanges('),
+  );
+  assert.ok(policy.length > 1000, 'the slice for PolicyHistory came out empty — the anchors moved');
+  const scrolls = policy.match(/scrollIntoView|window\.scrollTo|scrollTop\s*=/g) || [];
+  assert.deepEqual(scrolls, [],
+    'a scroll call was added to ประวัติเวอร์ชันนโยบาย — a pager under a short table must not move the page');
+  // The file's other two are accounted for: the roving highlight inside an open
+  // dropdown — `block: 'nearest'` on a list row, not the page — and the
+  // roster's own landing, which §12 pins to the handler.
+  assert.equal(adminCode.match(/scrollIntoView/g)?.length, 2);
   assert.match(adminCode, /listRef\.current\?\.querySelector\('\[data-active="1"\]'\)\?\.scrollIntoView\(\{ block: 'nearest' \}\)/);
   // Nothing empties the table on a page press: the slice is synchronous and
   // `load()` is not in the path at all.
@@ -498,6 +517,9 @@ test('a page change here scrolls nothing either', () => {
 });
 
 test('a list this short is offered 5 · 10 · 20, and opens at 10', () => {
+  // ทะเบียนพนักงาน opens on 20 out of the same file — see §12. Two tables in
+  // one component may differ; what they may not do is offer different SIZES for
+  // the same kind of list.
   assert.match(adminCode, /const \[pageSize, setPageSize\] = useState\(10\);/);
   assert.match(adminCode, /usePageReset\(setPage, \[pageSize\]\);/);
   // NOT on `versions`: recordLive() reloads the list after adding a version,
@@ -681,4 +703,111 @@ test('the pager names the queue it is under, and the queue is named once', () =>
   assert.match(queueCode, /const queueName = delegatedOnly \? 'รออนุมัติ · ทีมที่รับช่วง'/);
   assert.match(queueCode, /<span className="t-name">\{queueName\}<\/span>/);
   assert.match(queueCode, /label=\{queueName\}/);
+});
+
+// ── 12. ทะเบียนพนักงาน ──────────────────────────────────────────────────────
+
+/**
+ * THE FIFTH TABLE, AND THE FIRST WITH A SENTENCE OF ITS OWN ABOVE IT.
+ *
+ * This screen already counted, and it counted a different thing: `แสดง 9 จาก
+ * 214 คน` on the filter bar is what ค้นหาพนักงาน is HIDING, and it is read off
+ * the register. The band says which slice of those 9 is drawn. Both were asked
+ * for on 2026-09-11 — *"เก็บทั้งสองบรรทัด"* — and the cases below pin the two
+ * apart, because the obvious later "simplification" is to point the bar's
+ * figure at the page and lose the only sentence saying the short list is a
+ * filter.
+ */
+
+/**
+ * `Employees` — from its own `function` line to the next top-level one.
+ * `adminCode` is §9's binding: AdminView is read once and sliced twice, because
+ * the two bands in it are 4000 lines apart and every assertion below would
+ * otherwise be able to pass on ประวัติเวอร์ชันนโยบาย's code by accident.
+ */
+const roster = adminCode.slice(
+  adminCode.indexOf('function Employees({ user })'),
+  adminCode.indexOf('function AddEmployee('),
+);
+
+test('the roster draws the shared band, once, and asks for no sizes of its own', () => {
+  assert.ok(roster.length > 1000, 'the slice for Employees came out empty — the anchors moved');
+  assert.equal(roster.match(/<TablePager\b/g)?.length, 1,
+    'ทะเบียนพนักงาน draws more than one band — one table has one foot');
+  assert.match(adminCode, /^\s*ClearButton, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,$/m,
+    'the pager is not imported from ./common.jsx — a second copy is how two bands begin to disagree');
+  assert.ok(!/<TablePager[\s\S]*?sizes=/.test(roster),
+    'the roster narrowed its own size list — 10 · 20 · 50 · 100 is the app\'s answer');
+  assert.match(roster, /const \[pageSize, setPageSize\] = useState\(20\);/);
+  // คน, not รายการ: a row is a person, and the bar above it counts in คน.
+  assert.match(roster, /unit="คน"/);
+  assert.match(roster, /label="ทะเบียนพนักงาน"/);
+});
+
+test('the page is cut out of the search result, and the bar still counts the register', () => {
+  /**
+   * `pageRows` EXISTS TWICE IN THIS COMPONENT: where it is cut, and where the
+   * `<tbody>` maps it. A third mention is A PAGE IS NOT A FILTER being broken.
+   */
+  assert.equal(roster.match(/pageRows/g)?.length, 2,
+    'something other than the table reads pageRows — a count or an empty state now means "on this page"');
+  assert.match(roster, /const pageRows = shown\.slice\(\(at - 1\) \* pageSize, at \* pageSize\);/);
+  assert.match(roster, /\{pageRows\.map\(\(p\) => \(/);
+  // THE TWO SENTENCES, AND THEY ARE NOT THE SAME SENTENCE. The bar's is
+  // filtered-of-register; the band's is page-of-filtered.
+  assert.match(roster, /แสดง <strong>\{shown\.length\}<\/strong> จาก <strong>\{rows\.length\}<\/strong> คน/);
+  assert.match(roster, /total=\{shown\.length\}/);
+  assert.ok(!/total=\{(rows|pageRows)\.length\}/.test(roster),
+    'the band counts the register or the page — it is the search result that is being paged');
+});
+
+test('the reset is the search, never the register', () => {
+  assert.match(roster, /usePageReset\(setPage, \[find, pageSize\]\);/);
+  // `load()` runs after แก้ไข, รีเซ็ตรหัสผ่าน and every CSV import.
+  assert.ok(!/usePageReset\(setPage, \[(rows|shown)/.test(roster),
+    'editing one row throws the reader back to page 1');
+});
+
+test('the page is clamped before the slice here too', () => {
+  assert.match(roster, /const pageCount = Math\.max\(1, Math\.ceil\(shown\.length \/ pageSize\)\);/);
+  assert.match(roster, /const at = Math\.min\(Math\.max\(page, 1\), pageCount\);/);
+  assert.match(roster, /page=\{at\}/);
+});
+
+test('the band is withheld on a search that matched nobody', () => {
+  // `Empty` and a band claiming หน้า 1 / 1 are two answers to one question.
+  assert.match(roster, /\{shown\.length > 0 && \(\s*<TablePager/);
+  const empty = roster.indexOf('ไม่พบพนักงานที่ตรงกับ');
+  assert.ok(empty > 0 && empty < roster.indexOf('<TablePager'),
+    'the band is drawn beside the ไม่พบพนักงาน line');
+});
+
+test('ถัดไป lands the reader at the top, from the handler, on one number', () => {
+  assert.match(roster, /function goPage\(next\) \{\s*setPage\(next\);\s*listRef\.current\?\.scrollIntoView\(\{ block: 'start' \}\);\s*\}/);
+  assert.match(roster, /onPage=\{goPage\}/);
+  assert.match(roster, /<div className="table-wrap roster-list" ref=\{listRef\}>/);
+  // FROM THE HANDLER. An effect on `page` would fire on the reset above too,
+  // dragging the table into view on every letter typed into ค้นหาพนักงาน.
+  assert.ok(!/useEffect\([^)]*\)[\s\S]{0,200}?scrollIntoView/.test(roster),
+    'the scroll moved into an effect — typing in ค้นหาพนักงาน now jerks the page');
+  /**
+   * ONE `scroll-margin-top` WHERE คิวรออนุมัติ NEEDS FOUR, and that is a fact
+   * about the screen rather than a shortcut: nothing on ทะเบียนพนักงาน is
+   * `position: sticky` except `.appbar`, at either width. A second rule here
+   * would be a bar somebody has added — and then it needs measuring, not
+   * copying.
+   */
+  assert.match(css, /\.table-wrap\.roster-list \{ scroll-margin-top: calc\(62px \+ 14px\); \}/);
+  assert.equal(css.match(/\.table-wrap\.roster-list/g)?.length, 1);
+  assert.ok(!/scroll-margin|62px/.test(roster),
+    'a sticky bar\'s height is being measured in the component');
+});
+
+test('the band takes the card\'s own padding, and adds no rule to the sheet', () => {
+  // `.card`, not `.card.flush`: 18px is already under the band, which is what
+  // คิวรออนุมัติ had to put back by hand. So no class, and no CSS.
+  assert.ok(!/<TablePager[\s\S]*?className=/.test(roster),
+    'the roster band took a class — its card already has the padding one would add back');
+  assert.ok(!/\.table-pager\.roster/.test(css),
+    'a rule was written for a band that needed none');
 });

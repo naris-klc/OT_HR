@@ -2024,9 +2024,13 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2621 tests
+and the engine know nothing about Next.js, so the whole suite — **2630 tests
 across 145 files**, measured 2026-09-11 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2621 tests across 145 files" until **ทะเบียนพนักงาน แบ่งหน้าแล้ว** the same day
+— seven cases as §12 of `tablePager`, no new file, and **two of the nine were
+already on disk unmeasured**: `monthStatusFilter`'s round landed between the two
+sentences. And it read
 "2610 tests across 144 files" until **สถานะที่นับ ได้แถว รอ HR เท่านั้น และ
 รอหัวหน้าเท่านั้น** the same day — `monthStatusFilter` is the file, five cases
 over the one control, and **six of the eleven were already on disk unmeasured**:
@@ -8099,7 +8103,7 @@ everybody feels.
 > moment the box is answered. The inset rule is scoped to `.queue-tools` and
 > `test/filterBar.test.js` fails if it ever reaches `.form-grid`.
 
-### แถบเปลี่ยนหน้าเดียวทั้งแอป — คิวรออนุมัติ แบ่งหน้าแล้ว — 2026-09-11
+### แถบเปลี่ยนหน้าเดียวทั้งแอป — คิวรออนุมัติ และ ทะเบียนพนักงาน แบ่งหน้าแล้ว — 2026-09-11
 
 **ขอมาเป็นประโยคเดียว:** *"ตารางหน้า รออนุมัติ OT เพิ่ม pagination รูปแบบเดียว
 กับที่ app ใช้อยู่แล้ว"* — และคำว่า *รูปแบบเดียวกับที่ app ใช้อยู่แล้ว* คือ**ทั้ง
@@ -8177,6 +8181,42 @@ everybody feels.
 ของตาราง, 12px ใต้ 860px ให้ตรงกับการ์ดที่ `tbody` เยื้องไว้ · **เส้นคั่นตั้งใจไม่
 เยื้องตาม** เพราะขอบกินถึงขอบกล่อง มันจึงยังพาดเต็มความกว้างเหมือนเส้นใต้แถวข้างบน
 และตัวควบคุมนั่งอยู่ข้างใน
+
+#### และตารางเดียวกันลงใต้ ทะเบียนพนักงาน — วันเดียวกัน
+
+**ขอมาสั้นกว่านั้นอีก:** *"ตาราง พนักงาน เพิ่ม pagination เหมือนกัน"* — และ
+*เหมือนกัน* ก็เป็นคำตอบเกือบทั้งหมดจริง ๆ แถบเดียวกัน ขนาดเดียวกันสี่ค่า เริ่มที่
+**20** เหมือนกัน และเลื่อนขึ้นหัวตารางเหมือนกัน สิ่งที่จอนี้ตอบไม่เหมือนคิวมีสามข้อ
+และทั้งสามข้อทำให้งาน**น้อยลง** ไม่ใช่มากขึ้น
+
+**หนึ่ง — ไม่มีติ๊ก จึงไม่มี A PAGE IS NOT A FILTER เวอร์ชันยาก** ที่ต้องระวังบน
+จอนี้เหลือข้อเดียวคือแถบตัดจาก `shown` ซึ่งคือ**ผลค้นหา** ไม่ใช่ `rows` ซึ่งคือ
+ทะเบียนทั้งเล่ม
+
+**สอง — มีสองประโยคที่ขึ้นต้นด้วยคำว่า แสดง และทั้งคู่ถูกเก็บไว้** ขอไว้ตรง ๆ
+เมื่อ 2026-09-11 ว่า *"เก็บทั้งสองบรรทัด"* เพราะมันตอบคนละคำถาม
+
+| บรรทัด | อยู่ที่ไหน | ขึ้นเมื่อไร | นับอะไร |
+|---|---|---|---|
+| `แสดง 9 จาก 214 คน` | บนแถบค้นหา (`.queue-tools .found`) | เฉพาะตอนพิมพ์ค้นหา | **ตัวกรองซ่อนไปกี่คน** — อ่านจากทะเบียนทั้งเล่ม |
+| `แสดง 1–9 จากทั้งหมด 9 คน` | ใต้ตาราง | เมื่อมีแถว | **หน้านี้คือช่วงไหนของเก้าคนนั้น** |
+
+ถ้าวันหนึ่งมีคนเอาบรรทัดบนออกเพราะ "ซ้ำกัน" จอนี้จะเลิกบอกว่ารายชื่อสั้น ๆ ตรงหน้า
+คือผลกรอง ไม่ใช่ทะเบียน — ซึ่งเป็นเหตุผลที่บรรทัดนั้นถูกเขียนขึ้นมาแต่แรก
+`test/tablePager.test.js` §12 ตรึงทั้งสองประโยคไว้คู่กัน
+
+**สาม — `scroll-margin-top` ค่าเดียว ไม่ใช่สี่ค่า** เพราะบนจอนี้ไม่มีอะไร
+`position: sticky` นอกจากแถบแอป ทั้งบนเดสก์ท็อปและใต้ 860px:
+`.table-wrap.roster-list { scroll-margin-top: calc(62px + 14px); }` และนั่นคือ
+**CSS ทั้งหมด**ที่งานนี้เพิ่ม — การ์ดของจอนี้เป็น `.card` ธรรมดาที่มี padding 18px
+ของตัวเองอยู่แล้ว แถบจึงไม่ต้องพกระยะขอบมาเองแบบที่คิวต้องทำให้ `.card.flush`
+
+**`usePageReset` รับ `[find, pageSize]`** — `load()` ทำงานใหม่หลังทุก แก้ไข ทุก
+รีเซ็ตรหัสผ่าน และทุกไฟล์ CSV ที่นำเข้า ถ้าผูกกับ `rows` การแก้ข้อมูลคนที่อยู่
+หน้า 3 จะเด้งคนแก้กลับหน้า 1 ทุกครั้ง · **ไม่ขึ้นตอนค้นแล้วไม่เจอใคร** เพราะ
+`ไม่พบพนักงานที่ตรงกับ "…"` พูดไปแล้ว และแถบที่เขียนว่า `หน้า 1 / 1` ใต้ประโยคนั้น
+คือกรอบรอบประโยค
+
 
 ### นโยบายการพิมพ์ใบขออนุมัติ OT — which rows reach the paper
 
@@ -12970,8 +13010,11 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2621 tests**, about 4 s, measured 2026-09-11 across 145
-  files, all green. It read **"2610 tests … across 144"** until สถานะที่นับ
+- `npm test` — **2630 tests**, about 4 s, measured 2026-09-11 across 145
+  files, all green. It read **"2621 tests … across 145"** until ทะเบียนพนักงาน
+  took the shared pager the same day — seven cases as §12 of `tablePager`, no
+  new file, and two of the nine were already on disk unmeasured. Before that it
+  read **"2610 tests … across 144"** until สถานะที่นับ
   gained its two single-status rows the same day — `monthStatusFilter` is the
   file, five cases, and six of the eleven were already on disk unmeasured.
   Before that it read **"2599 tests … across 144"** until คิวรออนุมัติ

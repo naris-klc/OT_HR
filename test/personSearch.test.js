@@ -319,12 +319,23 @@ test('the roster table draws the narrowed list, not the register', () => {
   /**
    * The bug this pins is a one-word one and it renders perfectly: the box
    * filters `shown`, the table maps `rows`, and typing does nothing at all
-   * while the count beside the box counts down. Both names are in scope, both
-   * are arrays of the same shape, and nothing but this notices.
+   * while the count beside the box counts down. Every name in the chain is in
+   * scope, all three are arrays of the same shape, and nothing but this
+   * notices.
+   *
+   * THE CHAIN GAINED A LINK ON 2026-09-11: `rows` → `shown` → `pageRows`, when
+   * the table took the app's pager. It read `{shown.map((p) => (` until then.
+   * `shown` is still what the search decides and still what the count beside
+   * the box is measured against — see the case below — and the only thing the
+   * page is allowed to decide is which of those rows is drawn. The rest of that
+   * rule is test/tablePager.test.js §12.
    */
   assert.match(employees, /const shown = React\.useMemo\(\(\) => searchPeople\(rows, find\), \[rows, find\]\)/);
-  assert.match(employees, /\{shown\.map\(\(p\) => \(/, 'ตารางต้องวาดจาก shown');
+  assert.match(employees, /const pageRows = shown\.slice\(/, 'หน้าต้องตัดจาก shown');
+  assert.match(employees, /\{pageRows\.map\(\(p\) => \(/, 'ตารางต้องวาดจาก pageRows');
   assert.ok(!/\{rows\.map\(\(p\) => \(/.test(employees), 'ตารางต้องไม่วาดจาก rows');
+  assert.ok(!/const pageRows = rows\.slice\(/.test(employees),
+    'หน้าตัดจากทะเบียนทั้งเล่ม — ช่องค้นหาจะไม่เหลือความหมาย');
 });
 
 test('the count is measured against the whole register', () => {
