@@ -316,6 +316,18 @@ export default function HrView({
    * below, and `CapUsage` in ApprovalQueue.
    */
   const [statusFilter, setStatusFilter] = useState(DEFAULT_STATUS);
+  /**
+   * The statuses สถานะที่นับ is counting right now, as a set.
+   *
+   * ONLY the คอลัมน์ รายการ reads this, and only to decide which of its three
+   * figures are INSIDE the total above them — `row.monthStatus` is the whole
+   * month whatever the filter says (see the note on it in the monthly route),
+   * so at a narrow filter the three stop adding up to `entryCount`. Drawing the
+   * excluded ones in `--muted-2` is what makes that a statement rather than an
+   * arithmetic error: *these are real ใบ of this person's and the filter is not
+   * counting them*.
+   */
+  const counted = React.useMemo(() => new Set(statusFilter.split(',')), [statusFilter]);
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(null);
   /**
@@ -2046,7 +2058,27 @@ export default function HrView({
                     <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" /></th>
                     <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
                     <th className="num total-col">รวม ชม.</th>
-                    <th className="num count-col">รายการ</th>
+                    {/* ── รายการ, AND A LEGEND OVER THE THREE FIGURES ───────
+
+                        The words sit over the slots they name, each in the ink
+                        its own `.chip.st-*` already wears elsewhere in the app
+                        — `--green-dark`, `--amber`, `--info`. So position,
+                        colour and word are bound together in one place, and
+                        the colour is never the only thing carrying the meaning
+                        (docs/design.md §3).
+
+                        A heading gets taller ONCE; a cell gets taller on every
+                        row. That is the whole reason the legend is up here and
+                        not repeated in each cell — see the note on
+                        `.count-status`. */}
+                    <th className="num count-col">
+                      รายการ
+                      <span className="count-legend">
+                        <span className="cs-a">อนุมัติ</span>
+                        <span className="cs-m">หัวหน้า</span>
+                        <span className="cs-h">HR</span>
+                      </span>
+                    </th>
                     {/* สแกน — ONLY ON A MONTH THAT HAS A FILE TO COMPARE
                         AGAINST, and only for the people the punch log belongs
                         to. See `showScanCol`.
@@ -2232,8 +2264,56 @@ export default function HrView({
                       <td className="num total-col"><strong>{hours(row.summary.otHours)}</strong></td>
                       <td className="num count-col">
                         {row.entryCount}
-                        {row.pendingCount > 0 && (
-                          <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>ค้าง {row.pendingCount}</div>
+                        {/* ── ใบทั้งเดือนของคนนี้ อยู่ที่ขั้นไหนบ้าง ─────────
+
+                            ⚠ IT REPLACED `ค้าง {row.pendingCount}`, WHICH WAS
+                            THE SAME FACT WITH THE DETAIL REMOVED — one amber
+                            number for "not approved", which lumped a ใบ waiting
+                            on a หัวหน้า together with one waiting on this very
+                            reader. Asked for by name on 2026-09-11: *"ให้แสดง
+                            เป็นข้อมูลสถานะ เช่น อนุมัติ 5 / รอหัวหน้า 2 / รอ 3"*.
+
+                            ── WHY IT DOES NOT MAKE THE ROW TALLER ────────────
+
+                            The row is ALREADY two lines: `who-col` draws the
+                            name with the รหัส under it, and `cap-col` draws
+                            `26 / 40` with `รวมรออนุมัติ 28 / 40` under that. A
+                            row is as tall as its tallest cell, so the second
+                            line here is free and the THIRD is what would cost
+                            every row in the table at once.
+
+                            So this is one line, not three — and `ค้าง` leaving
+                            is what pays for it. The one case that still reaches
+                            three lines is `HR อนุมัติชั้นเดียว` below, which
+                            reached three before this change too and is rare.
+
+                            ── AND THE FIGURES ARE THE WHOLE MONTH ────────────
+
+                            Not what สถานะที่นับ selected — see `monthStatus` in
+                            the monthly route for why, and `counted` above for
+                            what the greying means. A zero is `–` rather than
+                            `0`: a column of real zeros competes for the eye
+                            with the figures that matter, and a blank breaks the
+                            three-slot grid the eye is scanning down. */}
+                        {row.monthStatus && (
+                          <div
+                            className="count-status"
+                            title={`ใบทั้งเดือนของคนนี้ — อนุมัติแล้ว ${row.monthStatus.approved} · `
+                              + `รอหัวหน้า ${row.monthStatus.pendingMgr} · `
+                              + `รอฝ่ายบุคคล ${row.monthStatus.pendingHr}`
+                              + ' · นับทุกใบที่ยังไม่ถูกปฏิเสธ ไม่ขึ้นกับสถานะที่นับ'
+                              + ' (ตัวเลขสีจางคือใบที่ตัวกรองตอนนี้ไม่ได้นับ)'}
+                          >
+                            <span className={counted.has('approved') ? 'cs-a' : 'cs-a out'}>
+                              {row.monthStatus.approved || '–'}
+                            </span>
+                            <span className={counted.has('pending_mgr') ? 'cs-m' : 'cs-m out'}>
+                              {row.monthStatus.pendingMgr || '–'}
+                            </span>
+                            <span className={counted.has('pending_hr') ? 'cs-h' : 'cs-h out'}>
+                              {row.monthStatus.pendingHr || '–'}
+                            </span>
+                          </div>
                         )}
                         {/* Hours nobody in this department approved. On a
                             หัวหน้า's สรุปทีม this is the whole explanation for a

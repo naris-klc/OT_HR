@@ -137,8 +137,20 @@ test('the two counts are kept apart, and neither is pendingCount', () => {
   // …and rows this reader may actually move. On nearly every month they are
   // equal; the day they differ, §6 is the difference and it has a name.
   assert.match(route, /approvable: approvableOf\(group\.entries\),/);
-  // The old field is untouched and still means what it meant. It is not
-  // repurposed, because something else reads it: the ค้าง n line on the row.
+  /* The old field is untouched and still means what it meant, and it is still
+     not repurposed.
+
+     ⚠ THE REASON GIVEN HERE WAS WRONG AFTER 2026-09-11 — it read *because
+     something else reads it: the ค้าง n line on the row*, and that line is
+     gone: คอลัมน์ รายการ now draws the month split three ways from
+     `monthStatus`, which counts the WHOLE month rather than the filtered set.
+     Nothing on ตรวจสอบประจำเดือน reads `pendingCount` any more.
+
+     It stays because `components/AccountingView.jsx` and
+     `components/DepartmentView.jsx` both draw `ค้างอนุมัติ n รายการ` off a row
+     of this shape, and because a field removed from a payload is a change to
+     every reader of it. What it must not become is a SECOND answer to the
+     question `monthStatus` answers. */
   assert.match(route, /pendingCount: group\.entries\.filter\(\(e\) => e\.status !== 'approved'\)\.length,/);
 });
 

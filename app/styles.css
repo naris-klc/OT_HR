@@ -9326,6 +9326,53 @@ th.act-col { width: 258px; }
    Scoped, like `act-col` and `who-col` above, because 224 is still right for
    the screen it was measured on. */
 .hr-table th.cap-col { width: 152px; }
+
+/* ── คอลัมน์ รายการ — เลขรวมหนึ่งบรรทัด แล้วสามช่องสถานะใต้มัน ────────────
+
+   96px AND IT HAD NO WIDTH AT ALL until 2026-09-11 — it was `auto`, which came
+   out at about 46, the width of the heading over a column of two-digit figures.
+   Three slots and the legend over them need 96, and the 50 comes out of the
+   same 194 `act-col` gave back to `who-col` and `dept-col` on 2026-09-10; both
+   keep the widths measured for them there.
+
+   CENTRED, NOT `.num`'s RIGHT. The cell stopped being one figure: a number
+   right-aligned over a three-slot grid sits off the grid's own centre line and
+   reads as a fourth thing. `scan-col` and `edits-col` on this same table are
+   centred for the same reason — a cell whose content is not a quantity to be
+   compared down the column does not owe the decimal alignment. */
+.hr-table th.count-col { width: 96px; }
+.hr-table th.count-col, .hr-table td.count-col { text-align: center; }
+
+/* THE SAME THREE-COLUMN GRID, DECLARED TWICE, so the words in the heading sit
+   exactly over the figures in every cell below them. Two elements rather than
+   one because one is in `thead` and one is in `tbody`; `1fr` each is what keeps
+   them aligned when a figure goes from one digit to two. */
+.count-legend,
+.count-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.count-legend {
+  font: 400 9.5px/1.4 var(--sans); margin-top: 3px; white-space: nowrap; letter-spacing: -0.1px;
+}
+.count-status { font: 600 11.5px/1.5 var(--sans); margin-top: 1px; }
+
+/* The ink each status already wears on its own `.chip.st-*` — inherited rather
+   than chosen, so a figure here and a chip elsewhere on the screen cannot come
+   to mean different things. */
+.count-legend .cs-a, .count-status .cs-a { color: var(--green-dark); }
+.count-legend .cs-m, .count-status .cs-m { color: var(--amber); }
+.count-legend .cs-h, .count-status .cs-h { color: var(--info); }
+
+/* ── A FIGURE THE CURRENT สถานะที่นับ IS NOT COUNTING ──────────────────────
+
+   `monthStatus` is the person's WHOLE month and the number above it is what the
+   filter selected, so at อนุมัติแล้วเท่านั้น the three stop adding up to it.
+   That gap is information — *this person has ใบ outstanding and you are not
+   looking at them* — and hiding the slots would throw it away while ALSO
+   making the column change shape as the filter moves.
+
+   So the slot stays, in `--muted-2` and at normal weight: present, readable,
+   and visibly not part of the total. Declared after the three inks above at the
+   same specificity, which is what lets it win. */
+.count-status .out { color: var(--muted-2); font-weight: 400; }
 /* The heading is one short word and the cells are one short phrase; without
    this the shared `th` nowrap holds the heading while the CELL still wraps,
    which is how a column ends up sized by neither. */
