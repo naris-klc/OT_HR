@@ -609,11 +609,18 @@ test('a ▲/▼ notice opens from anywhere in its frame, and folds from its head
   assert.match(fn, /if \(!folded && !e\.target\.closest\?\.\(head\)\) return;/, 'a tap on an open body folds it');
   assert.match(common, /onClose = null, onClick, children,/);
 
+  // ⚠ THIS LOOP HAD A FOURTH ROW UNTIL 2026-09-11, and it is worth a line
+  // because the row did not fail — it was withdrawn. ประกาศวันหยุดบริษัท was
+  // the one box here that is not an `.alert`, so it carried its own
+  // `.announce-fold` and its own `.announce-top` as the heading selector, and
+  // the assertion below it existed to say so. The banner is ONE ROW now
+  // (*"กระชับให้เป็นแถวเดียว"*) with no fold at all, so there is no press to
+  // pin: `test/holidayNotice.test.js` pins the opposite — that no state of that
+  // component draws less than the whole row. The three that remain are alerts.
   for (const [file, box, button, state, fn2] of [
     ['components/PrintForm.jsx', '<Alert kind={kind} onClick=', 'className="alert-fold"', 'folded', 'toggle'],
     ['components/Delegation.jsx', '<Alert kind="info" onClick=', 'className="alert-fold"', 'noteFolded', 'toggleNote'],
     ['components/ProfileView.jsx', '<Alert kind="warn" onClick=', 'className="alert-fold"', 'warnFolded', 'toggleWarn'],
-    ['components/HolidayBanner.jsx', 'onClick=', 'className="announce-fold"', 'collapsed', 'toggleFold'],
   ]) {
     const src = sourceOf(file);
     assert.ok(src.includes(`${box}{foldClick(${state}, ${fn2}`), `${file}: กดในกรอบแล้วไม่กาง`);
@@ -622,8 +629,8 @@ test('a ▲/▼ notice opens from anywhere in its frame, and folds from its head
     const at = src.indexOf(button);
     assert.ok(!src.slice(at, src.indexOf('</button>', at)).includes('onClick'), `${file}: ปุ่ม ▲/▼ มี onClick ของตัวเอง`);
   }
-  // The banner's heading line is `.announce-top`, not the alerts' row.
-  assert.match(sourceOf('components/HolidayBanner.jsx'), /foldClick\(collapsed, toggleFold, '\.announce-top'\)/);
+  assert.ok(!sourceOf('components/HolidayBanner.jsx').includes('foldClick'),
+    'แถบประกาศวันหยุดรับฝาพับกลับมา ทั้งที่มันเหลือแถวเดียวแล้ว');
   assert.ok(!common.includes('foldRowClick'), 'the row-only helper outlived the box one');
 });
 

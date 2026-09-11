@@ -1211,7 +1211,9 @@ a:hover { color: var(--green-dark); }
    root and reaches every control in the app, including the ones nobody has
    written yet. It was on `.appbar .mark-btn` and on `.announce-fold` before
    this and is on neither now: two copies of a rule that covers everything is
-   how a third gets added.
+   how a third gets added. (`.announce-fold` itself is gone since 2026-09-11,
+   when the holiday banner became one row and stopped having a fold; the ▲/▼
+   this paragraph reads from is `.alert-fold`'s now.)
 
    (2) THE FOCUS RING, the browser's own, drawn on `:focus-visible` — which is
    the keyboard and not the thumb, and is the reason a press does not leave one
@@ -1231,7 +1233,9 @@ a:hover { color: var(--green-dark); }
    app was full of them: EIGHT controls had written this declaration out for
    themselves one at a time — `.appbar .mark-btn`, `.dept-pill button`,
    `.searchbox-clear`, `.password-field .reveal`, `.tip-btn`, `.modal-x`,
-   `.picked-clear`, `.announce-fold` — and two of them said so in words, "Not a
+   `.picked-clear`, `.announce-fold` (the last of those written out here as it
+   stood on 2026-08-28; the rule was deleted on 2026-09-11) — and two of them
+   said so in words, "Not a
    `.btn`, so the app's focus rule does not reach it". Four were the base values
    exactly and are deleted; the other four differ only in the offset and are one
    declaration each now. That is the lesson `test/buttonBox.test.js` already
@@ -6316,10 +6320,12 @@ td > .approver-line { margin-top: 5px; }
 .alert.ok .alert-x:hover { color: var(--alert-ok-x-lift); }
 
 /* ย่อ/กาง ON A NOTICE THAT IS READ ONCE — ผู้รับช่วงอนุมัติแทน's, in
-   components/Delegation.jsx. The arrow of `.announce-fold`, sized to sit on the
-   first line of alert text (13.5px at 1.75 is a 23-24px line; 11px + 12px of
-   padding matches it) and pulled into the corner the ✕ of `.alert-x` would
-   take. */
+   components/Delegation.jsx. The arrow it draws was copied from the holiday
+   banner's `.announce-fold` — a rule that is gone since 2026-09-11, when that
+   banner became one row and had nothing left to fold — and is sized to sit on
+   the first line of alert text (13.5px at 1.75 is a 23-24px line; 11px + 12px
+   of padding matches it), pulled into the corner the ✕ of `.alert-x` would
+   take. This is the only copy of those numbers now. */
 /* THE BOX IS THE PRESS TARGET since 2026-09-10 (`foldClick` in common.jsx).
    Folded, the whole alert opens it — so the whole alert wears the pointer,
    found by the arrow's own `aria-expanded` rather than by a class the four
@@ -6604,141 +6610,103 @@ td > .approver-line { margin-top: 5px; }
    and no fill: `.alert::before` draws a coloured disc because a status needs a
    severity, and an announcement has none. */
 .announce-mark { flex: none; font-size: 17px; line-height: 1.45; }
-.announce-body { flex: 1; min-width: 0; }
-/* The heading and the fold control on one line, the control held at the far
-   end. `flex-start` and not `center`: the heading wraps to two lines at 390px
-   once it carries its count, and centring would drop the arrow to the middle of
-   a two-line block instead of leaving it beside the first line, where the thing
-   it acts on begins. */
-.announce-top { display: flex; align-items: flex-start; gap: 8px; }
-.announce-top .announce-head { flex: 1; min-width: 0; }
-/* "(3 วัน)" — drawn only while folded, inside the heading. A step quieter than
-   the heading it rides on and not a step smaller: at 14px against 14px the two
-   read as one sentence, which is what it is. */
-.announce-count { margin-left: 6px; font-weight: 400; color: var(--ink-2); }
 
-/* ▲ / ▼ — ย่อ/กาง.
+/* ⚠ THE BODY IS ONE LINE OF TEXT SINCE 2026-09-11, NOT A COLUMN OF BLOCKS.
 
-   NO BORDER AND NO FILL, unlike the calendar button below it. That one is an
-   action that opens something; this one changes the shape of the panel it sits
-   in, and a bordered box in the corner of a bordered box is two frames deep for
-   a control that should read as part of the furniture. `currentColor` at .65
-   is the same voice `.notice-fold > summary` uses for the same job.
+   It was `.announce-body`, holding `.announce-top` (a flex row of the heading
+   and a ▲/▼), then a `<ul>` of two-line entries, then the calendar pill on a
+   row of its own — three rows before anybody pressed anything, in a state
+   whose whole content was one sentence (*"กระชับให้เป็นแถวเดียว แต่ได้เนื้อหา
+   ครบถ้วน"*). Written as one flow it breaks where a SENTENCE breaks instead of
+   once per block, which is the same move `.alerts-say` and the งวด band made
+   earlier the same day.
 
-   A `<button>` AND NOT A `<summary>`: the panel it controls is not a `<details>`
-   — it has to be foldable from a value in localStorage, which `<details>` can
-   only be told about by script anyway, and `aria-expanded` + `aria-controls`
-   say the same thing to a screen reader without borrowing an element whose
-   default behaviour would then have to be fought. */
-.announce-fold {
-  flex: none; border: none; background: none; cursor: pointer;
-  color: inherit; opacity: .65;
-  padding: 2px 4px; margin: -2px -4px 0 0;
-  border-radius: 6px;
-  font: 400 11px/1.4 var(--sans);
-}
-.announce-fold:hover { opacity: 1; }
-/* THE CONTROL THIS WAS FIRST REPORTED ON, and the reason the fix is not here.
+   `min-width: 0` IS THE DECLARATION THAT MATTERS HERE, and it is the first
+   rule §Responsive in AGENTS.md names: without it a flex child refuses to
+   shrink below its content, and one long holiday name would push the pill
+   beside it off the right edge instead of wrapping. */
+.announce-line { flex: 1; min-width: 0; }
 
-   Pressing the arrow on a phone flashed a blue square over it. That is the tap
-   highlight, it was never this button's to own, and it is now transparent for
-   the whole app from the `html` rule at the top of this file — see the note
-   there for why one inherited declaration replaced the two local ones this was
-   the second of.
+/* THE HEADING IS THE ROW'S FIRST PHRASE, WHICH IS WHY IT IS `inline`.
 
-   WHAT STAYS HERE IS THE OFFSET, AND ONLY THE OFFSET. The base ring is 2px of
-   green 2px out; this one is 1px out, because on a phone the button carries a
-   44px hit area held out of the layout by negative margins, and 2px pushes the
-   ring into the heading beside it. The 6px radius above is here for the same
-   reason: a ring around a sharp box, in a panel whose every other corner is
-   round. */
-.announce-fold:focus-visible { outline-offset: 1px; }
-/* The heading's own bottom margin is the gap to the list. Folded there is no
-   list, and 6px of it would hang under the last thing on the panel. */
-.announce.is-folded .announce-head { margin-bottom: 0; }
-/* The same press target as a ▲/▼ alert (`foldClick`, 2026-09-10): folded, the
-   whole frame opens it; open, only the heading line folds it. The pointer and
-   the lit arrow follow exactly where a press would land. */
-.announce.is-folded,
-.announce-top { cursor: pointer; }
-.announce.is-folded:hover .announce-fold,
-.announce-top:hover .announce-fold { opacity: 1; }
-/* An <h3> by markup and 14px by eye. It is a heading — a screen reader should
+   An <h3> by markup and 14px by eye. It is a heading — a screen reader should
    find it as one — and it is not a card title: `.card h2` is 15px and this sits
    INSIDE the page above one, so matching it would put two titles on the screen
-   with no way to tell which owns which. */
-.announce-head { margin: 0 0 6px; font: 600 14px/1.4 var(--sans); color: var(--ink); }
-/* The dates. A list by markup, a stack of two-line entries by layout:
-   `list-style: none` because the marker would be a second mark on a panel that
-   already has one.
+   with no way to tell which owns which.
 
-   EACH ENTRY IS A COLUMN, NOT A LINE, and it took three rounds on 2026-08-28 to
-   arrive there. The name rode ON the date's line first, which is fine until a
-   name is `วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชชนนีพันปีหลวง`: on a phone that
-   wraps to three lines and drags the entries under it out of alignment. Then
-   the name was removed altogether. Under its own date it wraps inside its own
-   block, every entry starts at the same left edge however long the name is, and
-   the announcement is still an announcement rather than a bare list of dates.
+   `display: inline` AND NO MARGIN. A heading is a block by default, and a block
+   cannot share a line with the sentence that continues it however short both
+   are. Inline, it is the first few words of one flow — the shape
+   `.alerts-head` took in ตรวจสอบรายเดือน on the same day, for the same reason.
+   1.6 and not 1.4: the line-height is the row's now, and a phrase with a
+   tighter one in the middle of a wrapped sentence pulls its own lines closer
+   than the lines around them. */
+.announce-head { display: inline; margin: 0; font: 600 14px/1.6 var(--sans); color: var(--ink); }
+/* "3 วัน" — the count, beside the heading rather than inside it, and drawn in
+   every state rather than only while folded. A step quieter than the heading it
+   follows and not a step smaller: at 14px against 14px the two read as one
+   sentence, which is what they are. */
+.announce-count { font-weight: 600; color: var(--ink-2); }
 
-   10px BETWEEN ENTRIES AND 1px INSIDE ONE. The gap that separates two holidays
-   has to be visibly larger than the gap between a date and its own name, or a
-   three-holiday month reads as six loose lines. It was 7px for one round and
-   read as too tight — the previous entry's NAME sits directly above the next
-   entry's DATE, and those two lines are the ones that must not look like a
-   pair. Ten against one is the ratio that makes the grouping obvious without
-   the list turning into a paragraph. */
-.announce-days { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
-.announce-days li { display: flex; flex-direction: column; gap: 1px; }
-.announce-days .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 8px; }
-.announce-days .when { font-weight: 600; }
-/* วันพุธ — the weekday, which is the half of a date this app never drops: a
-   holiday's day of the week is how somebody checks the date against their own
-   memory of the week. Quieter than the date it belongs to. */
-.announce-days .dow { font-size: 12.5px; color: var(--muted); }
-/* The holiday's own name, under the date it belongs to.
+/* THE THREE VOICES OF ONE HOLIDAY. The rank is the one each had when an entry
+   was two stacked lines; only the axis moved.
 
-   ONE STEP BRIGHTER THAN THE WEEKDAY BESIDE IT, AND THAT IS A RANK ON PURPOSE.
-   This rule read `--muted` — the same as `.dow` — for one round, on the
-   reasoning that both are the date's supporting cast and separating them would
-   invent a distinction that means nothing. Read on a phone it turned out to
-   mean something: the weekday is a CHECK on the date (does 12 สิงหาคม really
-   fall on a Wednesday), read once and never again, while the name is the
-   announcement's actual content. `--ink-2` is the step between `--muted` and
-   the date's own `--ink`, so the name stays subordinate to the date it belongs
-   to and stops being as quiet as a cross-check. Pinned against `--green-bg` in
-   test/theme.test.js. */
-.announce-days .what { font-size: 12.5px; color: var(--ink-2); }
-.announce-none { margin: 0; }
+   `.when` is the day number and carries the date's own weight. `.dow` is the
+   weekday in brackets — the CHECK on that date (does 12 สิงหาคม really fall on
+   a Wednesday), read once and never again — and is `--muted`. `.what` is the
+   holiday's name, which is the announcement's actual content and must not be as
+   quiet as its own cross-check: `--ink-2`, the step between `--muted` and the
+   date's `--ink`. That rank was arrived at by being wrong once — the name read
+   `--muted` for a round and was reported as too faint on a phone. All three
+   pairs are measured against `--green-bg` in test/theme.test.js.
 
-/* THE PILL'S OWN GAP, TAKEN BACK FROM `.fold-pill`'s 8px.
+   AND NOT A STEP SMALLER, WHICH IS THE ONE THING THAT CHANGED. Stacked, the
+   name and the weekday were 12.5px under a 13.5px date, because the second line
+   of an entry is subordinate by position as well as by colour. On one line
+   there is no second line: 12.5px beside 13.5px inside a sentence is a wobble
+   in the type rather than a rank, and the colours carry the rank alone. */
+.announce-line .when { font-weight: 600; }
+.announce-line .dow { color: var(--muted); }
+.announce-line .what { color: var(--ink-2); }
 
-   `.fold-pill` sets `margin-top: 8px` for the panel it was written for, where
-   it follows a paragraph and the 8px separates a control from a sentence. Here
-   it now follows a LIST OF DATES, and 8px under the last date left the button
-   floating with the sentence's worth of air still under it after the sentence
-   itself was removed — reported the same day as "พื้นที่ว่างส่วนเกิน".
+/* THE PILL IS THE ROW'S LAST ITEM, AND IT HOLDS THE CORNER THE ▲ USED TO.
 
-   10px and not 8: the list's own rows are 3px apart, so the step out of the
-   list has to be visibly larger than the step between its lines, or the button
-   reads as a fourth date. On a phone the number is the same and the button is
-   the card's own full-width row — see the block below. */
-.announce .fold-pill { margin-top: 10px; }
+   Asked for on 2026-09-11 as "ดันไปชิดขอบขวาของแถว". `.announce-line` above
+   takes every pixel the sentence does not, so the pill lands against the right
+   edge whatever the sentence's length turns out to be — one place for the box's
+   one control, and it is the place a reader's eye already went for the fold.
+
+   NO `margin-top`. `.fold-pill`'s own 8px separates a control from a paragraph
+   ABOVE it; here it is beside one, and a top margin would push it off the line
+   it is meant to sit on. The -2px is optical: the pill is about four pixels
+   taller than the type beside it, and half of that back up puts its centre on
+   the text's. */
+.announce > .fold-pill { flex: none; margin: -2px 0 0; }
 
 @media (max-width: 860px) {
   /* The card's own padding at this width is 15px; the banner sits above a card
      and takes the same, so its left edge is the page's rather than a third
      indent. The mark drops a step with it — 17px of emoji beside 13.5px of type
      is a proportion, not a size. */
-  .announce { padding: 12px 14px; gap: 9px; }
+  /* `flex-wrap` IS WHAT LETS THE PILL DROP — see the rule below it. On a
+     desktop nothing in this row wraps, because nothing asks for more width than
+     is there. */
+  .announce { padding: 12px 14px; gap: 9px; flex-wrap: wrap; }
   .announce-mark { font-size: 15px; }
 
   /* ── THE CALENDAR BUTTON, ON A PHONE ──────────────────────────────────────
-     FULL WIDTH AND CENTRED, asked for on 2026-08-28. On a desktop the pill sits
-     at the end of a line of text and is read as part of the paragraph; on a
-     phone the paragraph above it wraps to three lines and the pill lands alone
-     under the last of them, hugging the left edge with the whole card empty to
-     its right. Stretched across the card it stops being a leftover and becomes
-     the card's one action.
+     FULL WIDTH AND CENTRED, asked for on 2026-08-28 and asked for again on
+     2026-09-11 when the row above it was compressed — "มือถือให้ปุ่มปฏิทิน
+     เต็มแถวเหมือนเดิม". On a desktop the pill is the row's right-hand corner;
+     on a phone the sentence beside it wraps to three lines and a corner is a
+     leftover, hugging the edge with the whole card empty beside it. Stretched
+     across the card it becomes the card's one action.
+
+     `flex-basis: 100%` IS WHAT PUTS IT ON ITS OWN LINE, which is why the rule
+     above turns wrapping on. The mark and the sentence have already taken the
+     first line, so an item asking for the full width cannot join them and wraps
+     below — with no second container to keep in step, and no copy of the button
+     hidden somewhere else. The gap above it is `.announce`'s own 9px.
 
      44px, WHICH IS THE NUMBER THIS APP USES EVERYWHERE ELSE ON A PHONE — see
      `.action-row > .btn` and `.pick-list .check` in the same block. The pill's
@@ -6754,25 +6722,21 @@ td > .approver-line { margin-top: 5px; }
      button and the only primary action on this screen. Giving this one the
      brand green — even as an outline — would put two green controls one card
      apart, and the reader would have to decide which one is the point. */
-  .announce .fold-pill {
+  .announce > .fold-pill {
+    flex: 1 0 100%;
     display: flex; width: 100%; justify-content: center;
-    min-height: 44px; margin-top: 10px;
+    min-height: 44px; margin: 0;
     border-color: color-mix(in srgb, currentColor 55%, transparent);
   }
 
-  /* THE FOLD ARROW GETS A THUMB'S WORTH OF TARGET, and takes it back out of the
-     layout with the negative margins. An 11px glyph is a 15px box; 44px is what
-     every other phone target in this app measures, and the four numbers below
-     grow the hit area in all directions while leaving the arrow drawn exactly
-     where the desktop puts it — beside the first line of the heading, not
-     pushing it down or in. */
-  .announce-fold {
-    min-width: 44px; min-height: 44px;
-    display: flex; align-items: flex-start; justify-content: flex-end;
-    padding: 2px 4px; margin: -2px -8px -20px 0;
-  }
-  /* The same thumb's worth for the notice arrow, held out of the layout the
-     same way: 44px of target, 23px of row. */
+  /* THE BANNER'S OWN ▲/▼ WAS HERE, with a 44px hit area held out of the layout
+     by four negative margins. It went with the fold on 2026-09-11 — the panel
+     is one row before anybody presses anything, so there was nothing left for
+     it to hide. The notice arrow below is a different control on a different
+     panel and keeps its target.
+
+     A thumb's worth for that one, held out of the layout the same way: 44px of
+     target, 23px of row. */
   .alert-fold {
     min-width: 44px; min-height: 44px;
     display: flex; align-items: flex-start; justify-content: flex-end;

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useId, useState } from 'react';
-import { api, currentPeriod, periodLabel, thaiDate, dayName } from '@/lib/api.js';
+import React, { useEffect, useState } from 'react';
+import { api, currentPeriod, periodLabel, thaiDate, dayName, dayAbbr } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
 import { holidayCalendarByMonth, holidaysInMonth, nextHoliday } from '@/lib/holidayNotice.js';
-import { Empty, Modal, foldClick } from './common.jsx';
+import { Empty, Modal } from './common.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /**
@@ -37,6 +37,29 @@ import { useBackHandler } from './nav.jsx';
  * the requirement actually asks for.
  *
  * ─────────────────────────────────────────────────────────────────────────────
+ * ⚠ ONE ROW, AND NO FOLD — 2026-09-11.
+ *
+ * It was three rows tall in the state the request arrived with a picture of:
+ * a heading, the sentence about an empty month, and the calendar button on a
+ * row of its own — *"การแจ้งเตือนนี้กระชับให้เป็นแถวเดียว แต่ได้เนื้อหาครบถ้วน"*.
+ * A month WITH holidays was taller still: a two-line entry per day.
+ *
+ * EVERYTHING IS ONE SENTENCE NOW, and that is the mechanism rather than a
+ * description of the result. The pieces used to be blocks — an `<h3>`, a `<p>`,
+ * a `<ul>` — and blocks cannot share a line however short they are. Written as
+ * one flow, the row breaks where a SENTENCE breaks when the window is narrow,
+ * instead of breaking once per piece: the same shape `PeriodStatus`'s งวด band
+ * and `MonthAlerts` landed in earlier the same day.
+ *
+ * THE FOLD WENT WITH THE HEIGHT. `ot-holiday-fold` remembered, per browser,
+ * that somebody had collapsed a three-row panel down to one; the panel is one
+ * row before anybody presses anything now, so the control had nothing left to
+ * hide and the stored answer answers a question that is gone. What the fold was
+ * careful about — that no press can make the announcement disappear — is still
+ * true and still tested, and it is now true by construction: there is no state
+ * in this component that draws less than the whole row.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
  * WHAT IT IS ALLOWED TO GET WRONG.
  *
  * Nothing here decides a rate. The engine reads the same collection on the
@@ -47,14 +70,20 @@ import { useBackHandler } from './nav.jsx';
  * have been, is a worse screen than no notice.
  */
 /**
- * ย่อ/กาง, remembered in this browser only.
+ * How many of the month's holidays the row spells out before it counts the rest.
  *
- * `ot-` prefixed like `ot-theme`, the app's other localStorage key, and ONE key
- * for both screens the banner appears on: somebody who has folded the
- * announcement on the dashboard has not asked to be shown it again the moment
- * they open the form.
+ * THREE, AND THE REST IS "และอีก N วัน" — asked for in those words on
+ * 2026-09-11. Three named days is already the long half of the year; สงกรานต์
+ * alone is three, and a month that runs to five or six is a paragraph
+ * pretending to be a row, which is the thing being fixed.
+ *
+ * THE REMAINDER IS NOT BEHIND A PRESS NOBODY CAN FIND. ปฏิทินวันหยุดประจำปี is
+ * the next thing on the row and it lists every day of the year by month — the
+ * truncation points at a door that is already open, which is the difference
+ * between this and the `…และอีก N` that `test/disclosure.test.js` refuses in
+ * ScanImport.
  */
-const FOLD_KEY = 'ot-holiday-fold';
+const NAMED = 3;
 
 export default function HolidayBanner({ period = currentPeriod() }) {
   /**
@@ -67,45 +96,7 @@ export default function HolidayBanner({ period = currentPeriod() }) {
    */
   const [holidays, setHolidays] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const panelId = useId();
   const year = Number(String(period).slice(0, 4));
-
-  /**
-   * READ ON MOUNT, NEVER DURING RENDER — the same rule `ThemeChoice` in
-   * components/ProfileView.jsx follows, and for the same reason: this component
-   * is rendered on the server too, where there is no localStorage, and a first
-   * render that read it would either throw or disagree with what the browser
-   * has stored. React would then hydrate the mismatch.
-   *
-   * NO BOOT SCRIPT AND NO FLASH, unlike the theme. `data-theme` needs one
-   * because the page paints before React wakes; this banner draws nothing at
-   * all until its fetch returns (`if (!holidays) return null` below), and this
-   * effect has long since run by then. The stored answer is in hand before
-   * there is anything on screen to be wrong.
-   */
-  useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem(FOLD_KEY) === '1');
-    } catch { /* a browser with storage blocked: the banner opens, which is the safe way to be wrong */ }
-  }, []);
-
-  /**
-   * Written as "collapsed or nothing", the way the theme stores "dark or light
-   * or nothing at all": the absent key IS the default, so a cleared browser and
-   * a browser that has never been asked behave identically, and the default can
-   * be changed later without a migration for people carrying a stale value.
-   */
-  function toggleFold() {
-    setCollapsed((was) => {
-      const next = !was;
-      try {
-        if (next) localStorage.setItem(FOLD_KEY, '1');
-        else localStorage.removeItem(FOLD_KEY);
-      } catch { /* the fold still applies to this tab */ }
-      return next;
-    });
-  }
 
   useEffect(() => {
     let live = true;
@@ -131,101 +122,71 @@ export default function HolidayBanner({ period = currentPeriod() }) {
    * middle of a screen about July.
    */
   const upcoming = period === currentPeriod() ? nextHoliday(holidays, today()) : null;
-
-  /**
-   * WHAT THE FOLDED BANNER STILL SAYS, and the reason this feature does not
-   * contradict the one above it.
-   *
-   * The requirement this banner was built to — "ให้คงอยู่บนหน้าจอ ไม่หายไปเอง
-   * เพื่อให้พนักงานรับรู้ข้อมูลตรงกัน" — is about the announcement being seen,
-   * not about its height. Folded, the month and the number of days are still on
-   * the screen; what goes is the detail. There is no state in this component
-   * where the section is not rendered, and that is the invariant to keep: a ✕
-   * that removed it would be a different feature and the wrong one, which is
-   * why the control is ▲/▼ rather than the ✕ the request offered as an
-   * alternative.
-   */
-  const summary = inMonth.length > 0 ? `(${inMonth.length} วัน)` : '(ไม่มีวันหยุด)';
+  const named = inMonth.slice(0, NAMED);
+  const rest = inMonth.length - named.length;
 
   return (
     <>
-      {/* THE FRAME IS THE PRESS TARGET, 2026-09-10 — "แค่กดที่พื้นในกรอบ".
-          Folded, anywhere inside it opens it; open, only the heading line
-          folds it, so reading the list or pressing ดูปฏิทินวันหยุด never shuts
-          it by accident. See `foldClick` in common.jsx. */}
-      <section
-        className={`announce no-print${collapsed ? ' is-folded' : ''}`}
-        aria-label="ประกาศวันหยุดบริษัท"
-        onClick={foldClick(collapsed, toggleFold, '.announce-top')}
-      >
+      <section className="announce no-print" aria-label="ประกาศวันหยุดบริษัท">
+        {/* The emoji is the alert family's mark column, and it says nothing a
+            screen reader needs: the heading beside it names the panel. */}
         <span className="announce-mark" aria-hidden="true">📢</span>
-        <div className="announce-body">
-          <div className="announce-top">
-            <h3 className="announce-head">
-              ประกาศวันหยุดประจำเดือน {periodLabel(period)}
-              {/* THE COUNT IS DRAWN ONLY WHEN FOLDED, and it is drawn INSIDE the
-                  heading rather than beside it: folded, the heading is the whole
-                  of the announcement and "(3 วัน)" is part of what it says. Open,
-                  the list is directly underneath and a count over it is a number
-                  the reader can see for themselves. */}
-              {collapsed && <span className="announce-count">{summary}</span>}
-            </h3>
-            {/* ▲/▼ AND NOT ✕. Both were offered; the mark has to be honest about
-                what the press does, and this one folds rather than closes. An ✕
-                on a notice means "I have dealt with this, take it away", which is
-                a promise this control cannot keep — the banner comes back on the
-                next screen either way, and a reader who pressed ✕ and saw it
-                again would read that as a bug rather than as a fold. */}
-            <button
-              type="button"
-              className="announce-fold"
-              aria-expanded={!collapsed}
-              aria-controls={panelId}
-              aria-label={collapsed ? 'กางประกาศวันหยุด' : 'ย่อประกาศวันหยุด'}
-            >
-              {collapsed ? '▼' : '▲'}
-            </button>
-          </div>
 
-          <div id={panelId} hidden={collapsed}>
+        {/* ONE FLOW, AND THE HEADING IS ITS FIRST PHRASE. An `<h3>` because a
+            screen reader should still find the announcement as a heading — it
+            is drawn `display: inline`, which changes where it sits and not what
+            it is. Everything after it is text in the same flow, so a narrow
+            window wraps the sentence instead of stacking four boxes. */}
+        <div className="announce-line">
+          <h3 className="announce-head">
+            ประกาศวันหยุดประจำเดือน {periodLabel(period)}
+          </h3>
 
-          {/* TWO LINES PER HOLIDAY: the date and its weekday, then the name
-              under them, smaller and quieter.
-
-              THE NAME WAS ON THIS LINE, THEN GONE, AND IS NOW A LINE OF ITS OWN
-              — three rounds on 2026-08-28, and the shape it landed in is the
-              one that survives a long name. `วันเฉลิมพระชนมพรรษาสมเด็จพระบรม
-              ราชชนนีพันปีหลวง` beside its date wrapped to three lines on a phone
-              and pushed the two short entries under it out of alignment; under
-              its date it wraps within its own line and every entry still starts
-              at the same left edge.
-
-              IT IS `h.name`, WHATEVER `h.name` SAYS. Nothing here reads the text
-              to decide whether to draw it. A rule that hid a row, or a name,
-              because of what it said would put this screen and `loadHolidaySet()`
-              on different lists of WHICH DAYS ARE HOLIDAYS — the exact shape of
-              the `Holiday.year` bug that paid OT at the wrong rate for months.
-              A day named badly is fixed where the name is: ตั้งค่าระบบ →
-              วันหยุดบริษัท. */}
           {inMonth.length > 0 ? (
-            <ul className="announce-days">
-              {inMonth.map((h) => (
-                <li key={h.date}>
-                  <div className="head">
-                    <span className="when">{thaiDate(h.date)}</span>
-                    <span className="dow">วัน{dayName(h.date)}</span>
-                  </div>
-                  <div className="what">{h.name}</div>
-                </li>
+            <>
+              {' · '}
+              <span className="announce-count">{inMonth.length} วัน</span>
+              {' — '}
+              {/* THE DAY NUMBER ALONE, NOT `thaiDate`, AND THAT IS THE APP'S
+                  RULE RATHER THAN AN EXCEPTION TO IT. One date form, DD/MM/YYYY
+                  (see `thaiDate` in lib/api.js) — and the same file carries the
+                  case this is: under a heading that already says สิงหาคม 2569,
+                  `12/08/2569` is three quarters of a repetition, which is why
+                  the ปฏิทินวันหยุดประจำปี table below prints the day number
+                  too. Here the month is four words to the left.
+
+                  THE WEEKDAY IS ABBREVIATED, AND ONLY HERE. It is a CHECK on
+                  the date — does 12 สิงหาคม really fall on a Wednesday — and
+                  three of `(วันพุธ)` in one row is the row this change exists
+                  to shorten. The empty-month line below keeps the long form:
+                  one date, in prose, in a different month from the heading.
+
+                  IT IS `h.name`, WHATEVER `h.name` SAYS. Nothing here reads the
+                  text to decide whether to draw it. A rule that hid a row, or a
+                  name, because of what it said would put this screen and
+                  `loadHolidaySet()` on different lists of WHICH DAYS ARE
+                  HOLIDAYS — the exact shape of the `Holiday.year` bug that paid
+                  OT at the wrong rate for months. A day named badly is fixed
+                  where the name is: ตั้งค่าระบบ → วันหยุดบริษัท. */}
+              {named.map((h, i) => (
+                <React.Fragment key={h.date}>
+                  {i > 0 && ' · '}
+                  <span className="when">{Number(h.date.slice(8, 10))}</span>
+                  {' '}
+                  <span className="dow">({dayAbbr(h.date)})</span>
+                  {' '}
+                  <span className="what">{h.name}</span>
+                </React.Fragment>
               ))}
-            </ul>
+              {rest > 0 && <span className="what">{` · และอีก ${rest} วัน`}</span>}
+            </>
           ) : (
             /* SAID OUT LOUD RATHER THAN LEFT BLANK. An empty month and a month
                nobody has entered yet look identical from here, and the reader
                who assumes the second one files a normal-rate request for a day
                the company was shut. */
-            <p className="announce-none">
-              เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้
+            <>
+              {' · เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้'}
               {upcoming && (
                 <>
                   {' · วันหยุดถัดไปคือ '}
@@ -233,37 +194,43 @@ export default function HolidayBanner({ period = currentPeriod() }) {
                   {` (วัน${dayName(upcoming.date)})`}
                 </>
               )}
-            </p>
+            </>
           )}
-
-          {/* THE SENTENCE ABOUT RATES USED TO BE HERE, and it is worth saying
-              what went with it. It read "ยื่นคำขอ OT ตรงกับวันเหล่านี้ ระบบจะคิด
-              เป็น OT วันหยุด ให้อัตโนมัติ — 08:00–17:00 ×1.5 · นอกเวลา ×3 ·
-              เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้วโดยไม่ต้องประกาศ", and the last
-              clause was the one doing work: Saturday and Sunday are holidays BY
-              RULE and are deliberately not rows in this collection, so a list of
-              announced days read on its own implies an unlisted Sunday is an
-              ordinary working day.
-
-              REMOVED ON REQUEST 2026-08-28, and the fact is still on screen
-              twice over — the ปฏิทินวันหยุดประจำปี dialog's subtitle says it in
-              the same words, and the OT form labels the day it is given and
-              splits the rates in front of the person filing. What is gone is the
-              standing reminder, not the answer. */}
-
-          {/* `.fold-pill` — the mini pill ตรวจสอบรายเดือน's alert panel already
-              uses. It is drawn from `currentColor`, so it takes this panel's
-              green without knowing it is in one, and reusing it keeps one press
-              target in the app rather than two that drift apart. */}
-            <button
-              type="button"
-              className="fold-pill"
-              onClick={() => setShowCalendar(true)}
-            >
-              ดูปฏิทินวันหยุดประจำปี {year + 543} 📅
-            </button>
-          </div>
         </div>
+
+        {/* THE SENTENCE ABOUT RATES USED TO BE HERE, and it is worth saying
+            what went with it. It read "ยื่นคำขอ OT ตรงกับวันเหล่านี้ ระบบจะคิด
+            เป็น OT วันหยุด ให้อัตโนมัติ — 08:00–17:00 ×1.5 · นอกเวลา ×3 ·
+            เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้วโดยไม่ต้องประกาศ", and the last
+            clause was the one doing work: Saturday and Sunday are holidays BY
+            RULE and are deliberately not rows in this collection, so a list of
+            announced days read on its own implies an unlisted Sunday is an
+            ordinary working day.
+
+            REMOVED ON REQUEST 2026-08-28, and the fact is still on screen
+            twice over — the ปฏิทินวันหยุดประจำปี dialog's subtitle says it in
+            the same words, and the OT form labels the day it is given and
+            splits the rates in front of the person filing. What is gone is the
+            standing reminder, not the answer. */}
+
+        {/* `.fold-pill` — the mini pill ตรวจสอบรายเดือน's alert panel already
+            uses. It is drawn from `currentColor`, so it takes this panel's
+            green without knowing it is in one, and reusing it keeps one press
+            target in the app rather than two that drift apart.
+
+            A SIBLING OF THE SENTENCE, NOT A PIECE OF IT — 2026-09-11, asked for
+            as "ดันไปชิดขอบขวาของแถว". It is the panel's one action and it now
+            holds the corner the ▲ used to, so it sits where a reader's eye
+            already goes for this box's control, in the same place whatever the
+            sentence's length turns out to be. On a phone it stops being a
+            corner and becomes the card's own row — see app/styles.css. */}
+        <button
+          type="button"
+          className="fold-pill"
+          onClick={() => setShowCalendar(true)}
+        >
+          ดูปฏิทินวันหยุดประจำปี {year + 543} 📅
+        </button>
       </section>
 
       {showCalendar && (
@@ -289,6 +256,10 @@ export default function HolidayBanner({ period = currentPeriod() }) {
  * It takes the rows the banner already loaded rather than fetching again: they
  * are the same year and the same request, and a second call would put a second
  * line in บันทึกระบบ saying the same thing.
+ *
+ * SINCE 2026-09-11 IT IS ALSO WHERE THE MONTH'S FOURTH HOLIDAY IS. The banner
+ * names three of them and counts the rest; this dialog is the rest, one press
+ * away and named on the press target itself.
  */
 function HolidayCalendar({ year, holidays, onClose }) {
   const months = holidayCalendarByMonth(holidays);
