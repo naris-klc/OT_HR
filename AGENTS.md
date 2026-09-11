@@ -189,6 +189,24 @@ rm -rf .next-verify
 `.next-*/` is git-ignored. Deploying is the user's call, not a step you take on
 the way to finishing something.
 
+**In a worktree, that build needs `--webpack`.** The junction the recipe above
+tells you to make points at `..\OT_HR\node_modules`, which is outside the
+worktree, and Turbopack — the default builder since Next 16 — refuses it:
+*Symlink [project]/node_modules is invalid, it points out of the filesystem
+root*, wrapped in a `TurbopackInternalError` whose stack says nothing about
+junctions. Walked on 2026-09-11. The webpack builder follows it happily:
+
+```bash
+VERIFY_DIST_DIR=.next-verify-<task> npx next build --webpack
+```
+
+It builds the same tree and catches the same compile errors; what it does not
+prove is that the Turbopack build — the one `npm run build` runs in the main
+tree, and the one a deploy uses — is green. For a change that touches only
+application code that is the same question; for one that touches
+`next.config.js`, a loader, or anything the bundler itself reads, it is not,
+and that build belongs in the main tree with a scratch `distDir`.
+
 ## จอใหม่ไม่ได้เริ่มจากศูนย์ — Ask first, agree first, then inherit
 
 **The user decides the UX, and they decide it before the first line of JSX
