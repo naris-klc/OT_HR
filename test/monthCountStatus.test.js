@@ -5,37 +5,42 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 /**
- * คอลัมน์ รายการ บน ตรวจสอบประจำเดือน — เลขรวม แล้วสามช่องสถานะใต้มัน.
+ * คอลัมน์ รายการ บน ตรวจสอบประจำเดือน — จำนวนใบทั้งเดือน แล้วบรรทัดที่บอกว่า
+ * ค้างอยู่ที่ขั้นไหน.
  *
- * ── WHAT WAS ASKED, AND THE QUESTION THAT DECIDED THE SHAPE ─────────────────
+ * ── WHAT WAS ASKED ─────────────────────────────────────────────────────────
  *
  * 2026-09-11: *"ตรงคอลัมน์ รายการ ให้แสดงเป็นข้อมูลสถานะ เช่น อนุมัติ 5 /
- * รอหัวหน้า 2 / รอ 3 · ช่วยออกแบบหน่อยทำยังไงให้ความสูงของแถวไม่เพิ่ม"* — and
- * then, before a line was written: *"แล้วใบที่ค้างจะแสดงยังไง"*.
+ * รอหัวหน้า 2 / รอ 3 · ช่วยออกแบบหน่อยทำยังไงให้ความสูงของแถวไม่เพิ่ม"*, then
+ * *"แล้วใบที่ค้างจะแสดงยังไง"*, and then — against the built screen —
+ * **"ผมว่าจะต้องออกแบบใหม่ครับ ดูแล้วเข้าใจยาก"**.
  *
- * That second question is the one this file is mostly about. The obvious build
- * counts the three over `group.entries`, the rows สถานะที่นับ selected — and at
- * อนุมัติแล้วเท่านั้น that reports `รอหัวหน้า 0 · รอ HR 0` on somebody with
- * fifteen ใบ outstanding. True of the filter, a lie about the person, and
- * indistinguishable from a month that is genuinely finished.
+ * ── THE VERSION THAT WAS THROWN AWAY, AND WHY ──────────────────────────────
  *
- * So the three are counted over the WHOLE month. It is the argument the เพดาน
- * column one cell over already makes for itself — *a department's remaining
- * allowance is not a display preference* — and it costs nothing: the rows are
- * the ones `capEntriesByEmployee` has already fetched for that column.
+ * The first build drew `entryCount` over three fixed slots (`อนุมัติ · หัวหน้า
+ * · HR`) with a legend in the heading, `–` for zero, and the slots the filter
+ * did not count greyed. The screenshot killed it in two ways at once:
  *
- * ── THE THREE MISTAKES THIS FILE EXISTS TO PREVENT ──────────────────────────
+ *   1. **TWO BASES IN ONE CELL.** A row read `11`, then `11  1` beneath it —
+ *      the top filtered by สถานะที่นับ, the three the whole month. Both true,
+ *      and together they read as a table that cannot add up. The grey existed
+ *      to explain that gap and was one more thing to decode instead.
+ *   2. **NEARLY EVERY SLOT WAS A DASH.** `อนุมัติ` all but equals the total on
+ *      almost every row, so two thirds of the column and all of its legend went
+ *      to restating what the reader already had.
  *
- *  1. **Counting over the filtered set.** Cheaper to write, silently wrong, and
- *     wrong in the direction that makes a month look safe to sign.
- *  2. **A SECOND read to get the unfiltered month.** This route is already two
- *     queries and the ceiling one was deliberately shared with สรุปรายเดือน
- *     (CSV) so the file and the screen cannot disagree. A third read for the
- *     same rows would undo that on both counts.
- *  3. **A third line in the cell.** The row is two lines tall today because
- *     `who-col` draws the รหัส under the name; a cell that takes a third line
- *     makes EVERY row in the table taller, which is the one thing the ask ruled
- *     out. `ค้าง n` leaving is what pays for this line.
+ * ── THE THREE THINGS THE REPLACEMENT HAS TO KEEP TRUE ──────────────────────
+ *
+ *  1. **ONE BASIS.** Every figure in the cell is the whole month, so they add
+ *     up by construction and there is nothing left to grey. This is what the
+ *     fix actually was: not a better way to show the gap, but removing it.
+ *  2. **ONLY WHAT IS OUTSTANDING GETS INK.** No `อนุมัติ` figure at all — it is
+ *     the total minus what is written. A reader scanning the column sees words
+ *     exactly on the rows that want them.
+ *  3. **TWO LINES AT MOST.** The row is already two lines (`who-col` draws the
+ *     รหัส under the name), so the second is free and a third makes EVERY row
+ *     in the table taller — the one thing the ask ruled out. Both pending kinds
+ *     share one line and that line may not wrap.
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,37 +51,60 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
  * stripper verbatim, which carries that file's rule and its reason: a BAN
  * PROVES NOTHING WITHOUT IT.
  *
- * ⚠ AND THIS FILE PROVED IT ON ITS FIRST RUN, twice in one go. Two checks below
- * are bans — that `ค้าง {row.pendingCount}` is gone from the cell, and that the
- * legend's words are in the heading and not repeated in every row — and both
- * matched the PARAGRAPH IN THE CELL explaining that the line was removed and
- * where the words went. A ban read against the sentence that says the code is
- * gone passes on the strength of that sentence.
+ * ⚠ THIS FILE PROVED IT ON ITS FIRST RUN, twice in one go, in its previous
+ * shape. Two of the checks below are bans, and both matched the PARAGRAPH
+ * explaining that the code had been removed. A ban read against the sentence
+ * that says the code is gone passes on the strength of that sentence.
  */
 const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const route = read('app/api/reports/monthly/[period]/route.js');
 const view = read('components/HrView.jsx');
+const code = strip(view);
 const css = read('app/styles.css');
+/**
+ * ⚠ AND THE STYLESHEET NEEDS IT TOO, which this file learnt one run later: the
+ * ban on `.count-legend` matched the ⚠ paragraph in app/styles.css that records
+ * the grid being REMOVED. Same failure as the component's, same fix.
+ */
+const cssCode = strip(css);
 
-/** The คอลัมน์ รายการ cell, from its `<td>` to the one after it. */
-const cell = (() => {
-  const at = view.indexOf('<td className="num count-col">');
-  assert.ok(at > 0, 'คอลัมน์ รายการ ไม่มี <td> ของตัวเองแล้ว');
-  return view.slice(at, view.indexOf('</td>', at));
+/** `monthCount`, the helper the cell is, with its prose taken off. */
+const helper = (() => {
+  const at = view.indexOf('function monthCount(row) {');
+  assert.ok(at > 0, 'monthCount หายไปจาก components/HrView.jsx');
+  return strip(view.slice(at, view.indexOf('\n}', at)));
 })();
 
-/** The same cell with the prose gone — what the two bans below are read against. */
-const cellCode = strip(cell);
+/** The `<td>` itself, also stripped — the bans at the bottom read this. */
+const cellCode = (() => {
+  const at = code.indexOf('<td className="num count-col">');
+  assert.ok(at > 0, 'คอลัมน์ รายการ ไม่มี <td> ของตัวเองแล้ว');
+  return code.slice(at, code.indexOf('</td>', at));
+})();
 
-// ── 1. the basis ────────────────────────────────────────────────────────────
+// ── 1. the basis, which is the whole repair ─────────────────────────────────
 
-test('สามช่องสถานะนับจากทั้งเดือน ไม่ใช่จากชุดที่ สถานะที่นับ กรองมา', () => {
+test('ทุกตัวเลขในเซลล์มาจากฐานเดียวกัน — ใบทั้งเดือน ไม่ใช่ชุดที่ตัวกรองเลือก', () => {
+  /* ⚠ THE TOTAL IS THE SUM OF THE THREE, COMPUTED — not `entryCount` read off
+     the payload. That is what makes "the figures add up" structurally true
+     rather than a coincidence that holds until somebody narrows the filter. */
+  assert.match(helper, /const total = m\.approved \+ m\.pendingMgr \+ m\.pendingHr;/);
+  assert.doesNotMatch(
+    cellCode,
+    /\{row\.entryCount\}/,
+    'เซลล์กลับไปวาด entryCount ซึ่งนับตามตัวกรอง — สองฐานในเซลล์เดียวคือปัญหาที่รอบนี้แก้',
+  );
+
+  // `entryCount` survives only as the fallback for a payload with no
+  // `monthStatus` — an old response in a tab nobody reloaded, not a design.
+  assert.match(helper, /if \(!m\) return row\.entryCount;/);
+});
+
+test('สามเลขมาจาก live ของเราต์ ซึ่งเป็นใบทั้งเดือนทุกสถานะ', () => {
   const at = route.indexOf('monthStatus: {');
   assert.ok(at > 0, 'เราต์เลิกส่ง monthStatus แล้ว');
   const tally = route.slice(at, route.indexOf('},', at));
-
-  // ⚠ `live`, NEVER `group.entries`. The whole point of the field.
   for (const [key, status] of [
     ['approved', 'approved'],
     ['pendingMgr', 'pending_mgr'],
@@ -85,25 +113,18 @@ test('สามช่องสถานะนับจากทั้งเด�
     assert.match(
       tally,
       new RegExp(`${key}: live\\.filter\\(\\(e\\) => e\\.status === '${status}'\\)\\.length`),
-      `${key} ไม่ได้นับจาก live — ถ้ามันนับจากชุดที่กรองแล้ว ที่ อนุมัติแล้วเท่านั้น จะรายงานว่าไม่มีใบค้าง`,
+      `${key} ไม่ได้นับจาก live — ที่ อนุมัติแล้วเท่านั้น คอลัมน์จะบอกว่าไม่มีใบค้าง`,
     );
   }
-  assert.doesNotMatch(
-    tally,
-    /group\.entries/,
-    'สามช่องสถานะกลับไปนับจากชุดที่ตัวกรองเลือกแล้ว',
-  );
+  assert.doesNotMatch(tally, /group\.entries/, 'กลับไปนับจากชุดที่ตัวกรองเลือกแล้ว');
 });
 
 test('ไม่มีการอ่านฐานข้อมูลเพิ่ม — ใช้แถวชุดเดียวกับที่คอลัมน์ เพดาน ดึงมาแล้ว', () => {
-  // `live` is bound once, from the map the ceiling column already awaited, and
-  // `capColumn` is handed that same binding rather than a second `.get()`.
   assert.match(
     route,
     /const live = capByEmployee\.get\(String\(group\.employee\?\._id\)\) \|\| \[\];\r?\n\s*const cap = capColumn\(\{\r?\n\s*shown: group\.entries,\r?\n\s*live,/,
     'live ไม่ได้มาจาก capByEmployee แล้ว — อาจมีการอ่านฐานรอบที่สองแอบเข้ามา',
   );
-  // One `await` for the ceiling rows, as before. A second would be a new read.
   assert.equal(
     (route.match(/await capEntriesByEmployee\(/g) || []).length,
     1,
@@ -111,110 +132,63 @@ test('ไม่มีการอ่านฐานข้อมูลเพิ�
   );
 });
 
-// ── 2. the cell, and the height budget ──────────────────────────────────────
+// ── 2. only what is outstanding gets ink ────────────────────────────────────
 
-test('เซลล์เป็นสองบรรทัด — เลขรวม แล้วสามช่อง และ ค้าง n ถูกแทนที่ไปแล้ว', () => {
-  assert.match(cell, /\{row\.entryCount\}/);
-  assert.match(cell, /<div\r?\n?\s*className="count-status"/);
+test('วาดเฉพาะส่วนที่ค้าง — ไม่มีเลข อนุมัติ และไม่มีขีดแทนศูนย์', () => {
+  // Guarded by `> 0`, so a person with nothing pending draws a bare number and
+  // the column's blank rows are the answer rather than the absence of one.
+  assert.match(helper, /m\.pendingMgr > 0 && <span key="m" className="cs-m">หัวหน้า \{m\.pendingMgr\}<\/span>/);
+  assert.match(helper, /m\.pendingHr > 0 && <span key="h" className="cs-h">HR \{m\.pendingHr\}<\/span>/);
+  assert.match(helper, /\.filter\(Boolean\)/);
 
-  /* ⚠ THE LINE THAT PAID FOR THE NEW ONE. `ค้าง n` was `pendingCount` — one
-     amber number for "not approved", which lumped a ใบ waiting on a หัวหน้า in
-     with one waiting on this very reader. Its replacement says both, in the
-     same one line. If it comes back the cell is three lines and every row in
-     the table is taller. */
-  assert.doesNotMatch(cellCode, /ค้าง \{row\.pendingCount\}/, 'ค้าง n กลับมาแล้ว — เซลล์จะเป็นสามบรรทัด');
-  assert.doesNotMatch(cellCode, /row\.pendingCount/, 'เซลล์กลับไปอ่าน pendingCount แล้ว');
-
-  /* `HR อนุมัติชั้นเดียว` IS STILL ALLOWED TO BE THE THIRD LINE. It is a
-     different fact (ใบ that carry no หัวหน้า signature at all), it is rare, and
-     it reached three lines before this change too — so it is not a regression
-     this test should forbid. Named here so that is a decision rather than an
-     oversight. */
-  assert.match(cellCode, /row\.hrVerified > 0/);
+  /* ⚠ NO `อนุมัติ` FIGURE AND NO `–` — both were in the version the screenshot
+     rejected. `อนุมัติ` is the resting state and is the total minus what is
+     written; a dash is ink spent saying "none of this kind" on a column where
+     "none" is the usual answer. */
+  assert.doesNotMatch(helper, /cs-a/, 'ช่อง อนุมัติ กลับมาอยู่ในเซลล์แล้ว');
+  assert.doesNotMatch(helper, /'–'/, 'ขีดแทนศูนย์กลับมาแล้ว');
+  assert.doesNotMatch(cssCode, /\.count-status \.out/, 'กฎทำสีจางยังอยู่ — ไม่มีช่องว่างให้อธิบายอีกแล้ว');
+  assert.doesNotMatch(cssCode, /\.count-legend/, 'คำอธิบายที่หัวคอลัมน์ยังอยู่ ทั้งที่เซลล์บอกชื่อสถานะเองแล้ว');
+  assert.doesNotMatch(code, /const counted = React\.useMemo/, 'counted ยังอยู่ — ไม่มีอะไรให้มันตัดสินแล้ว');
 });
 
-test('สามช่องเรียง อนุมัติ · หัวหน้า · HR และศูนย์วาดเป็นขีด', () => {
-  const slots = [...cell.matchAll(/className=\{counted\.has\('(\w+)'\) \? '(cs-\w)' : '\2 out'\}/g)]
-    .map(([, status, cls]) => [status, cls]);
-  assert.deepEqual(slots, [
-    ['approved', 'cs-a'],
-    ['pending_mgr', 'cs-m'],
-    ['pending_hr', 'cs-h'],
-  ]);
-
-  // A zero is `–`. `0` competes for the eye with the figures that matter and a
-  // blank breaks the grid the eye is scanning down.
-  for (const key of ['approved', 'pendingMgr', 'pendingHr']) {
-    assert.match(cell, new RegExp(`\\{row\\.monthStatus\\.${key} \\|\\| '–'\\}`));
-  }
-});
-
-test('ช่องที่ตัวกรองไม่ได้นับ วาดจาง ไม่ใช่ซ่อน', () => {
-  /* Hiding the slot would throw away the one thing the gap is telling the
-     reader — *this person has ใบ outstanding and you are not looking at them* —
-     and would make the column change shape every time สถานะที่นับ moves. */
-  assert.match(view, /const counted = React\.useMemo\(\(\) => new Set\(statusFilter\.split\(','\)\), \[statusFilter\]\);/);
-  assert.match(css, /\.count-status \.out \{ color: var\(--muted-2\); font-weight: 400; \}/);
-
-  // …and it is declared AFTER the three inks, at equal specificity, which is
-  // the only reason it wins over them.
-  assert.ok(
-    css.indexOf('.count-status .out {') > css.indexOf('.count-status .cs-h {'),
-    '.out ถูกประกาศก่อนสีทั้งสาม — มันจะแพ้และช่องที่ไม่ได้นับจะไม่จาง',
+test('มีทั้งสองอย่างก็ยังบรรทัดเดียว และบรรทัดนั้นห้ามตัดคำ', () => {
+  /* THE HEIGHT BUDGET, ENFORCED IN TWO PLACES. One `<div>` holds both, joined
+     by a separator rather than one block each — and `nowrap` is what turns a
+     cell too narrow into a visible overflow instead of a silent third line that
+     makes every row in the table taller. */
+  assert.match(helper, /waiting\.length === 2 \? \[waiting\[0\], ' · ', waiting\[1\]\] : waiting/);
+  assert.equal(
+    (helper.match(/<div className="count-status">/g) || []).length,
+    1,
+    'มี .count-status มากกว่าหนึ่งบล็อก — สองอย่างจะกลายเป็นสองบรรทัด',
   );
-});
+  assert.match(css, /\.count-status \{\r?\n\s*font: 600 11\.5px\/1\.5 var\(--sans\); margin-top: 1px; white-space: nowrap;\r?\n\}/);
 
-// ── 3. the heading, and the grid that binds it to the cells ─────────────────
-
-test('หัวคอลัมน์ถือคำอธิบายอยู่เหนือช่องของมันเอง', () => {
-  const at = view.indexOf('<th className="num count-col">');
-  const th = view.slice(at, view.indexOf('</th>', at));
-  assert.match(th, /<span className="count-legend">/);
-  for (const [cls, word] of [['cs-a', 'อนุมัติ'], ['cs-m', 'หัวหน้า'], ['cs-h', 'HR']]) {
-    assert.match(th, new RegExp(`<span className="${cls}">${word}</span>`));
-  }
-
-  /* A HEADING GETS TALLER ONCE; A CELL GETS TALLER ON EVERY ROW. That is why
-     the words are here and not repeated in each cell, and it is the same trade
-     `RateHead` makes for the three rate columns. */
-  /* ⚠ SCOPED TO THE THREE SLOTS, and this assertion was WRONG ON ITS FIRST RUN
-     in a way worth keeping. Read against the whole cell it failed on
-     `HR อนุมัติชั้นเดียว`, which is real drawn text with every right to be
-     there. The claim is not *no Thai in this cell*; it is *the legend is not
-     repeated on every row*, and that is a claim about the slots.
-
-     The `title` on the wrapper is outside the scope for the same reason — it
-     spells all three statuses out in words for a reader on a pointer, and a
-     tooltip costs no height. */
-  const from = cellCode.indexOf('<span className=');
-  const slots = cellCode.slice(from, cellCode.lastIndexOf('</span>'));
-  assert.ok(from > 0 && slots.includes('cs-h'), 'หาสามช่องในเซลล์ไม่เจอ');
-  assert.doesNotMatch(slots, /อนุมัติ|หัวหน้า/, 'คำอธิบายหลุดลงไปอยู่ในเซลล์ — ทุกแถวจะสูงขึ้น');
-});
-
-test('หัวคอลัมน์กับเซลล์ใช้กริดสามช่องเท่ากัน ตัวเลขจึงตรงกับคำที่กำกับ', () => {
-  assert.match(
-    css,
-    /\.count-legend,\r?\n\.count-status \{ display: grid; grid-template-columns: repeat\(3, 1fr\); gap: 2px; \}/,
-  );
-  // 96px and centred — the cell stopped being one figure, so `.num`'s right
-  // alignment would put the total off the grid's own centre line.
+  // 96px is what the widest line — `หัวหน้า 1 · HR 2` — is measured against.
   assert.match(css, /\.hr-table th\.count-col \{ width: 96px; \}/);
-  assert.match(css, /\.hr-table th\.count-col, \.hr-table td\.count-col \{ text-align: center; \}/);
 });
 
-test('สีของสามช่อง เป็นสีเดียวกับป้ายสถานะที่แอปวาดอยู่แล้ว', () => {
-  /* INHERITED, NOT CHOSEN. A figure here and a `.chip` elsewhere on the same
-     screen must not come to mean different things — docs/design.md §1. */
+test('หัวคอลัมน์กลับมาเป็นคำเดียว และบอกไว้ว่ามันไม่ขึ้นกับ สถานะที่นับ', () => {
+  const at = code.indexOf('className="num count-col"');
+  assert.ok(at > 0, 'หัวคอลัมน์ รายการ เปลี่ยนรูปไปแล้ว');
+  const th = code.slice(code.lastIndexOf('<th', at), code.indexOf('</th>', at));
+
+  // The one thing about this column a reader cannot work out by looking at it.
+  assert.match(th, /title="[^"]*ไม่ขึ้นกับสถานะที่นับ"/);
+  // …and the three-word key is gone, because the cell names its own statuses.
+  assert.doesNotMatch(th, /<span/, 'คำอธิบายสามคำกลับมาอยู่ที่หัวคอลัมน์แล้ว');
+  assert.match(th, /รายการ/);
+});
+
+test('สีของส่วนที่ค้าง เป็นสีเดียวกับป้ายสถานะที่แอปวาดอยู่แล้ว', () => {
+  /* INHERITED, NOT CHOSEN — docs/design.md §1. And the words carry the meaning
+     on their own here, so the colour is a help rather than the only key. */
   for (const [cls, token, chip] of [
-    ['cs-a', '--green-dark', '.chip.st-approved'],
     ['cs-m', '--amber', '.chip.st-pending_mgr'],
     ['cs-h', '--info', '.chip.st-pending_hr'],
   ]) {
-    assert.match(
-      css,
-      new RegExp(`\\.count-legend \\.${cls}, \\.count-status \\.${cls} \\{ color: var\\(${token}\\); \\}`),
-    );
+    assert.match(css, new RegExp(`\\.count-status \\.${cls} \\{ color: var\\(${token}\\); \\}`));
     const at = css.indexOf(`${chip} {`);
     assert.ok(at > 0, `${chip} หายไปจากสไตล์ชีต`);
     assert.match(
@@ -223,4 +197,12 @@ test('สีของสามช่อง เป็นสีเดียวก�
       `${chip} เลิกใช้ ${token} แล้ว — ตัวเลขกับป้ายจะคนละสีทั้งที่หมายถึงสถานะเดียวกัน`,
     );
   }
+});
+
+test('ค้าง n ของเดิมไม่กลับมา และ HR อนุมัติชั้นเดียว ยังอยู่', () => {
+  assert.doesNotMatch(cellCode, /row\.pendingCount/, 'เซลล์กลับไปอ่าน pendingCount แล้ว');
+  /* `HR อนุมัติชั้นเดียว` is a different fact — ใบ carrying no หัวหน้า
+     signature at all — it is rare, and it was the third line before any of this
+     began. Named here so its survival is a decision rather than an oversight. */
+  assert.match(cellCode, /row\.hrVerified > 0/);
 });
