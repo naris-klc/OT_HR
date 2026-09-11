@@ -16654,15 +16654,23 @@ table.mini tbody tr:hover { background: none; }
  * was most of the first screen.
  */
 .manual-intro-head {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-  margin-bottom: 6px;
+  position: relative;
+  display: flex; flex-wrap: wrap; align-items: baseline; align-content: start;
+  gap: 6px 12px; min-height: 34px;
+  /* The room the printer stands in. It is taken out of the row rather than out
+     of the button's own position, so nothing in the row can ever run under it —
+     and the one thing that wants the full width takes the 44px back below. */
+  padding-right: 44px;
 }
-/* The heading's own 4px is the gap to a line under it; here the row below is
-   what carries the spacing, and 4px more would be a gap nothing asked for. */
+/* The heading's own 4px is the gap to a line under it; here there is no line
+   under it — the subtitle is beside it — and the row's own gap is the spacing. */
 .manual-intro-head h2 { margin-bottom: 0; }
 /* Square, because the label is clipped out of it and `.btn.sm`'s 13px of side
-   padding would otherwise draw a wide button round a 16px glyph. */
-.manual-intro-print { flex: none; padding: 9px; }
+   padding would otherwise draw a wide button round a 16px glyph. Out of the
+   flow since 2026-09-11, so that a row which wraps at 390px cannot carry the
+   card's one action down to the bottom of it: the printer is at the top right
+   at every width, and `padding-right` above is the space kept clear for it. */
+.manual-intro-print { position: absolute; top: 0; right: 0; flex: none; padding: 9px; }
 /* THE WORD IS OFF THE SCREEN AND STILL IN THE DOCUMENT — `clip-path` and not
    `display: none`, for the reason written over `.icon-btn`: display: none takes
    the label out of the accessibility tree and leaves the button named by its
@@ -16672,8 +16680,34 @@ table.mini tbody tr:hover { background: none; }
   clip-path: inset(50%); white-space: nowrap;
 }
 /* 8px and not the card's usual 14px: what follows is not a section of the card,
-   it is the control that opens the rest of this same sentence. */
+   it is the rest of the same sentence. What it still reaches is the paragraphs
+   INSIDE the fold; the subtitle up on the row carries no margin at all. */
 .manual-intro-card .hint { margin-bottom: 8px; }
+.manual-intro-head > .hint { margin-bottom: 0; }
+
+/* ── THE FOLD SITS IN THE ROW, AND ITS BODY DOES NOT ───────────────────────
+   `Disclosure` hands back one `<div>` holding a body and the control that opens
+   it, and the two want different places: ดูคำอธิบาย belongs on the row beside
+   the subtitle (asked for 2026-09-11, *ปรับให้การแสดงผลกระชับในแถวเดียว*), the
+   prose belongs on a line of its own under everything, at the full width of the
+   card.
+
+   `display: contents` is what lets both happen without a wrapper this file
+   cannot reach: the div stops generating a box, its two children become items
+   of the row itself, and `order` puts the control ahead of the body that comes
+   before it in the document. The div carries no role and no style of its own,
+   which is the one case where contents costs nothing. */
+.manual-intro-head > .disclosure { display: contents; }
+.manual-intro-head .disclosure-more { order: 1; }
+.manual-intro-head .disclosure-slide {
+  order: 2; flex-basis: 100%;
+  /* …and the paragraphs take the printer's 44px back: nothing is beside them. */
+  margin-right: -44px;
+}
+/* Padding and not a margin on the slide: it is INSIDE the row that `overflow:
+   hidden` clips, so a closed fold is 0px and not 0px plus a gap. */
+.manual-intro-head .disclosure-body { padding-top: 10px; }
+.manual-intro-head .disclosure-body > :last-child { margin-bottom: 0; }
 
 /* THE PROSE, AND THE ONE MEASURE IT IS SET TO. A manual is read a paragraph at
    a time and a 1180px `.stack` is about 150 characters of Thai on one line,

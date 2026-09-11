@@ -3399,12 +3399,25 @@ export default function ManualView({ user, navGroups = [], barSlots = [] }) {
   return (
     <div className="stack manual-page">
       <div className="card manual-intro-card">
-        {/* ── THE HEADING ROW CARRIES THE ONE CONTROL ON THIS CARD ───────
-            Asked for on 2026-09-10: *ย้ายปุ่มบันทึก/พิมพ์ไปอยู่มุมขวาบนแถวแรก
-            ของการ์ด และใช้ไอคอนแทนข้อความ* — the shape a card's own action
-            takes everywhere else in this app, and the reason it fits here is
-            that there is exactly one. On its own line under the text it was a
-            fourth row on a card whose whole job is to be got past. */}
+        {/* ── THE WHOLE HEAD OF THIS CARD IS ONE ROW ─────────────────────
+            Two asks, a day apart, both about the same thing — the distance
+            between opening this page and the first หัวข้อ on it.
+
+            2026-09-10: *ย้ายปุ่มบันทึก/พิมพ์ไปอยู่มุมขวาบนแถวแรกของการ์ด และ
+            ใช้ไอคอนแทนข้อความ* — the shape a card's own action takes everywhere
+            else in this app, and it fits here because there is exactly one.
+
+            2026-09-11: *ปรับให้การแสดงผลกระชับในแถวเดียว* — so the subtitle and
+            the control that opens the folded prose came up onto the heading row
+            as well, and the card's head is now a single line: หัวข้อ · ฉบับของ
+            ใคร กี่หัวข้อ · ดูคำอธิบาย · and the printer at the right edge.
+
+            IT IS A ROW THAT WRAPS, AGREED THE SAME DAY: at 390px it breaks
+            wherever it has to rather than shortening what it says. The folded
+            prose is the one part that never shares the line — `display:
+            contents` on `Disclosure`'s wrapper (app/styles.css) puts its
+            control in the row and leaves its body a full-width line of its own,
+            under everything, which is where a paragraph belongs. */}
         <div className="manual-intro-head">
           <h2>คู่มือการใช้งานเบื้องต้น</h2>
           {/* The way to paper, on the card that introduces the manual rather
@@ -3429,47 +3442,47 @@ export default function ManualView({ user, navGroups = [], barSlots = [] }) {
             <Icon name="printer" />
             <span className="act-label">บันทึกเป็น PDF / พิมพ์</span>
           </button>
-        </div>
-        {/* ── THE ONE LINE THAT DOES NOT FOLD ────────────────────────────
-            Which edition this is, and how many หัวข้อ are in it. It is the
-            card's subtitle, and `Disclosure`'s own rule says a subtitle folds
-            nothing — but the reason is specific here rather than stylistic:
-            this manual is CUT to the reader, so two people comparing screens
-            see different numbers of หัวข้อ, and the sentence that explains why
-            is no use behind a control neither of them pressed. */}
-        <p className="hint">
-          คุณกำลังอ่านฉบับของ <b>{p.label}</b> — ทั้งหมด {visible.length} หัวข้อ
-        </p>
-        {/* ── AND THE REST OF IT FOLDS, ASKED FOR ON 2026-09-10 ──────────
-            *เปลี่ยนคำอธิบายส่วนนี้ให้กดซ่อน/แสดงได้*. Two paragraphs of
-            background above a page somebody re-opens to jump to one หัวข้อ:
-            read once, in the way every time after that, and on a phone they
-            are most of the first screen before a single หัวข้อ shows.
-
-            `lines={0}` and not a two-line clamp, because the ask is ซ่อน and
-            because there is no sentence here that a preview of it would
-            answer — the หัวข้อ below are what the reader came for. The words
-            are ดูคำอธิบาย / ซ่อนคำอธิบาย rather than the default อ่านต่อ for
-            the reason `Disclosure` writes down: nothing is CONTINUING behind a
-            control with no first line above it. */}
-        <Disclosure
-          as="div"
-          lines={0}
-          of="คำอธิบายคู่มือ"
-          more="ดูคำอธิบาย"
-          less="ซ่อนคำอธิบาย"
-        >
-          <p className="manual-lead">
-            ระบบนี้ใช้แทนใบขออนุมัติทำงานล่วงเวลา <b>F-HR-027</b> ที่เคยกรอกด้วยมือ
-            ขั้นตอนยังเป็น พนักงาน → หัวหน้า → ฝ่ายบุคคล เหมือนเดิม และยังพิมพ์ใบหน้าตาเดิมออกมาเซ็นเก็บเข้าแฟ้มได้
-            สิ่งที่เปลี่ยนคือ <b>ไม่ต้องคิดชั่วโมงเอง</b> — ระบบคิดให้ตั้งแต่ตอนกรอก
-          </p>
+          {/* ── THE ONE LINE THAT DOES NOT FOLD ────────────────────────────
+              Which edition this is, and how many หัวข้อ are in it. It is the
+              card's subtitle, and `Disclosure`'s own rule says a subtitle folds
+              nothing — but the reason is specific here rather than stylistic:
+              this manual is CUT to the reader, so two people comparing screens
+              see different numbers of หัวข้อ, and the sentence that explains why
+              is no use behind a control neither of them pressed. */}
           <p className="hint">
-            คู่มือหน้านี้เปิดได้ทุกบทบาท และ<b>แสดงเฉพาะวิธีใช้งานที่บทบาทของคุณใช้ได้จริง</b>
-            เลื่อนอ่านต่อกันได้ทั้งหน้า หรือกระโดดไปทีละหัวข้อจากรายการหัวข้อ —
-            อยู่ข้าง ๆ บนคอมพิวเตอร์ และอยู่ใต้ปุ่ม <b>ไปที่หัวข้อ</b> บนมือถือ
+            คุณกำลังอ่านฉบับของ <b>{p.label}</b> — ทั้งหมด {visible.length} หัวข้อ
           </p>
-        </Disclosure>
+          {/* ── AND THE REST OF IT FOLDS, ASKED FOR ON 2026-09-10 ──────────
+              *เปลี่ยนคำอธิบายส่วนนี้ให้กดซ่อน/แสดงได้*. Two paragraphs of
+              background above a page somebody re-opens to jump to one หัวข้อ:
+              read once, in the way every time after that, and on a phone they
+              are most of the first screen before a single หัวข้อ shows.
+
+              `lines={0}` and not a two-line clamp, because the ask is ซ่อน and
+              because there is no sentence here that a preview of it would
+              answer — the หัวข้อ below are what the reader came for. The words
+              are ดูคำอธิบาย / ซ่อนคำอธิบาย rather than the default อ่านต่อ for
+              the reason `Disclosure` writes down: nothing is CONTINUING behind a
+              control with no first line above it. */}
+          <Disclosure
+            as="div"
+            lines={0}
+            of="คำอธิบายคู่มือ"
+            more="ดูคำอธิบาย"
+            less="ซ่อนคำอธิบาย"
+          >
+            <p className="manual-lead">
+              ระบบนี้ใช้แทนใบขออนุมัติทำงานล่วงเวลา <b>F-HR-027</b> ที่เคยกรอกด้วยมือ
+              ขั้นตอนยังเป็น พนักงาน → หัวหน้า → ฝ่ายบุคคล เหมือนเดิม และยังพิมพ์ใบหน้าตาเดิมออกมาเซ็นเก็บเข้าแฟ้มได้
+              สิ่งที่เปลี่ยนคือ <b>ไม่ต้องคิดชั่วโมงเอง</b> — ระบบคิดให้ตั้งแต่ตอนกรอก
+            </p>
+            <p className="hint">
+              คู่มือหน้านี้เปิดได้ทุกบทบาท และ<b>แสดงเฉพาะวิธีใช้งานที่บทบาทของคุณใช้ได้จริง</b>
+              เลื่อนอ่านต่อกันได้ทั้งหน้า หรือกระโดดไปทีละหัวข้อจากรายการหัวข้อ —
+              อยู่ข้าง ๆ บนคอมพิวเตอร์ และอยู่ใต้ปุ่ม <b>ไปที่หัวข้อ</b> บนมือถือ
+            </p>
+          </Disclosure>
+        </div>
       </div>
 
       <div className="manual-layout">
