@@ -2011,7 +2011,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     143 files, run by `npm test`. Six named below as a
+test/                     144 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2024,9 +2024,14 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2561 tests
-across 143 files**, measured 2026-09-10 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2595 tests
+across 144 files**, measured 2026-09-11 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2561 tests across 143 files … measured 2026-09-10" until **reload ค้างหน้าจอ
+เดิม** — `screenInUrl` is the 144th file and twelve of the cases; **the other
+22 were already on disk when that sentence was written**, added by rounds
+between 2026-09-10 and 2026-09-11 that did not re-measure this figure. It is
+measured against `node --test` again here. And it read
 "2571 tests across 144 files" until ทำงานข้ามคืน was removed later that day —
 `quickEditOvernight` is the file that went, and the rest of the fall is cases in
 eleven other files that had a wrapped shift for a fixture, against a handful the
@@ -3255,8 +3260,16 @@ the sum of what is behind a slot; `.active` is still the only green that means
 holds — so `--nav-h` is still 79px. The requested `/supervisor/…` paths have no
 counterpart here and none was added: **this app has no routes**. Every screen in
 it is React state (`tab` in `Shell`), which is what `components/nav.jsx` and its
-`useBackHandler` exist to make survivable; there is one URL and the print sheets
-are the only things that leave it.
+`useBackHandler` exist to make survivable.
+
+> **It read "there is one URL and the print sheets are the only things that
+> leave it" until 2026-09-11**, when กด reload แล้วค้างหน้าจอเดิม put the open
+> tab in the hash — `#monthly`, written by `writeHash` in `components/App.jsx`.
+> **Still no routes**: one path, one page, and the hash never reaches the
+> server. What changed is that a reload comes back to the screen it left, and
+> the browser's back button walks the tabs instead of leaving the app. Sub-views
+> — a form, a print sheet, one employee's entries — are still React state with
+> no step of their own; see `test/screenInUrl.test.js`.
 
 ### What the longer labels cost the phone bar — measured, 2026-08-31
 
@@ -12465,8 +12478,11 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2561 tests**, about 4 s, measured 2026-09-10 across 143
-  files, all green. It read **"2571 tests … across 144"** until
+- `npm test` — **2595 tests**, about 4 s, measured 2026-09-11 across 144
+  files, all green. It read **"2561 tests … across 143"** until reload was
+  asked to stay on the screen it was on — `screenInUrl` is the file, and 22 of
+  the 34 cases were already on disk unmeasured. Before that it read
+  **"2571 tests … across 144"** until
   ทำงานข้ามคืน was removed whole later the same day — `quickEditOvernight`
   is the file that went, and the rest of the fall is cases in eleven files that
   filed a wrapped shift to make some other point, net of the ones the same
