@@ -10,19 +10,24 @@ import {
   zeroOtHoursAllowed,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
-import { resolveScope } from '@/lib/delegationQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
-export const GET = route(async (req, { params }) => {
-  const user = await requireAuth(req);
-  const { scope } = await resolveScope(user);
-  const entry = await OtEntry.findOne({ _id: params.id, ...scope }).populate(POPULATE);
-  if (!entry) return fail('ไม่พบรายการ', 404);
-  return json({ entry });
-});
+/**
+ * THERE IS NO `GET` HERE, AND THERE HAS NOT BEEN SINCE 2026-09-11.
+ *
+ * It read one entry by id, scoped with `resolveScope`, and NOTHING IN THE
+ * APPLICATION EVER CALLED IT: a list screen already holds the whole entry it
+ * opens a pop-up on, an edit posts back through the PATCH below and is handed
+ * the fresh row in the response, and the one thing a screen does fetch per
+ * entry is its chain of re-filings — `GET /api/entries/[id]/trail`, its own
+ * route. Withdrawn on the sweep that asked which endpoints nobody reaches.
+ *
+ * Put it back if a screen needs one entry it does not already have, rather
+ * than because a REST shape looks incomplete without it.
+ */
 
 // ── edit (own request while still pending_mgr, or HR / Admin) ───────────────
 

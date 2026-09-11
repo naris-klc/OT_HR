@@ -122,12 +122,47 @@ test('the reasoning is written down where the next reader will be', () => {
 
 // ── what the screen tells whoever pressed save ──────────────────────────────
 
+/**
+ * The dialog HR reads before saving, on its own. Sliced rather than matched
+ * across the whole component for the reason the ban inside it gives.
+ */
+const birthDateDialog = (view) => {
+  const at = view.indexOf('birthDate: ({ from, to })');
+  assert.notEqual(at, -1, 'หา IMPACT.birthDate ไม่เจอ');
+  const rest = view.slice(at);
+  return rest.slice(0, rest.indexOf('\n  }),'));
+};
+
 test('the roster screen reports the approved half', () => {
   const view = read('components/AdminView.jsx');
   assert.match(view, /saved\.recomputed\.approvedReplayed/);
-  // The old promise must be gone: it said approved entries were never touched.
-  assert.doesNotMatch(view, /ใบที่อนุมัติแล้วไม่ถูกแตะต้อง/);
+  /**
+   * THE OLD PROMISE MUST BE GONE, AND THIS ASSERTION USED TO BE ABLE TO MISS IT.
+   *
+   * It banned the EXACT string that had already been deleted when it was
+   * written. The dialog carried the same promise in two more words and a pair
+   * of quotation marks the whole time, and the regex walked straight past it.
+   * A sentence telling somebody a signed figure will not move, shown at the
+   * moment they decide whether to save, is the worst thing this screen can
+   * carry — so what is banned now is the CLAIM in any wording, and it is
+   * asked of the dialog alone: บทบาท's own copy says approved hours do not
+   * leave the accounting sheet, which is true and is a different sentence.
+   */
+  const dialog = birthDateDialog(view);
+  assert.doesNotMatch(dialog, /ไม่ถูกแตะต้อง|ไม่ขยับ|ไม่โดนแตะ/);
   // And so must the ⚠ line that named the months ปิดงวด kept out — there are
   // none, so a notice that could never appear is a branch nobody can test.
   assert.doesNotMatch(view, /recomputed\.closedPeriods/);
+});
+
+test('and the dialog says the opposite out loud, in red', () => {
+  const dialog = birthDateDialog(read('components/AdminView.jsx'));
+  // The claim itself — in the title, and again in the body.
+  assert.match(dialog, /อนุมัติแล้ว[” ]*ก็ถูกคำนวณใหม่/);
+  /**
+   * AND THE COLOUR, because it is half of the same statement. แผนก and บริษัท
+   * are red for restating months already sent to accounting; this restates
+   * them too, and a yellow box beside two red ones reads as the safe one.
+   */
+  assert.match(dialog, /tone: 'error'/);
 });
