@@ -265,7 +265,12 @@ test('แผงเป็น portal ผ่าน Popover — ไม่วาง�
   // Escape and a press outside are `Popover`'s too, and closing puts the cursor
   // back on the box — the way `usePicker` does for the other three, or Escape
   // leaves focus on a panel that has gone.
-  assert.match(source, /const close = React\.useCallback\(\(\) => \{\s*\n\s*setOpen\(false\);\s*\n\s*btnRef\.current\?\.focus\(\);/);
+  /* `setQuery('')` STANDS BETWEEN THE TWO LINES SINCE 2026-09-14 — the panel's
+     own search box, which `searchable` opens at the head of a long list. The
+     typing goes with the panel: a query left behind is a list that opens
+     already narrowed by something nobody can see a reason for. The two lines
+     this is actually about are still both here and still in this order. */
+  assert.match(source, /const close = React\.useCallback\(\(\) => \{[\s\S]{0,400}?setOpen\(false\);[\s\S]{0,400}?btnRef\.current\?\.focus\(\);/);
   assert.match(source, /onClose=\{close\}/);
 
   // AND A SHEET NEEDS A WAY OUT THAT IS A CONTROL. `PopFoot` draws nothing on a
@@ -467,7 +472,14 @@ test('คลิกแถวไม่ทำให้แผงหายไปก�
   // mousedown's default action moves focus, which blurs the button and unmounts
   // the list before the click can land — the same guard PickPerson carries.
   assert.match(source, /onMouseDown=\{\(e\) => e\.preventDefault\(\)\}/);
-  assert.match(source, /onBlur=\{\(\) => setOpen\(false\)\}/);
+  /* IT READ `onBlur={() => setOpen(false)}` UNTIL 2026-09-14. With a search box
+     in the panel that is no longer a way out, it is a way of never opening at
+     all: the focus leaves the button the moment the panel mounts — it goes into
+     the box — so an unguarded blur shut the list on the frame it opened. What
+     the guard protects is unchanged for every other caller, and the box's own
+     `onBlur` is what covers Tab out of a panel that has one. */
+  assert.match(source, /onBlur=\{\(\) => \{ if \(!searchable\) setOpen\(false\); \}\}/);
+  assert.match(source, /onBlur=\{\(\) => \{ setOpen\(false\); setQuery\(''\); \}\}/);
 });
 
 test('หน้าจออ่านออก — role, สถานะเปิด-ปิด และป้ายที่ชี้ไปที่ <label> จริง', () => {
@@ -513,7 +525,13 @@ test('ดัชนีแถวถูกหนีบไว้ในช่วง �
 test('ทุกแผนก / ทุกเดือน เป็นแถวแรกเสมอ และเป็นค่าว่าง', () => {
   // It is a command — "stop filtering" — not a department, so it is never
   // filtered out and ↑ from the top reaches it in one press.
-  assert.match(source, /const rows = hasAll \? \[\{ value: '', label: allLabel \}, \.\.\.\(options \|\| \[\]\)\]/);
+  /* THE LIST IS BUILT IN TWO STEPS SINCE 2026-09-14 — `allRows`, then `rows`
+     with whatever is typed into a `searchable` panel taken out of it. The ทุก…
+     row survives BOTH: it is built first here, and the filter one line down
+     keeps every `r.value === ''`, so three letters cannot hide the row that
+     undoes the three letters. */
+  assert.match(source, /const allRows = hasAll \? \[\{ value: '', label: allLabel \}, \.\.\.\(options \|\| \[\]\)\]/);
+  assert.match(source, /allRows\.filter\(\(r\) => r\.value === '' \|\|/);
   // The class is built from a list since 2026-09-04, because a row can now wear
   // `off` as well — the two are independent and the "all" row is never greyed.
   assert.match(source, /\[r\.value === '' \? 'all' : '', r\.disabled \? 'off' : ''\]/);

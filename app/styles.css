@@ -4664,6 +4664,51 @@ td > .approver-line { margin-top: 5px; }
 }
 .pop.one-pop .pick-menu.one-menu { position: static; }
 
+/* ── ...UNLESS THE PANEL HAS A BOX TO TYPE IN AT THE HEAD OF IT — 2026-09-14 ─
+
+   `searchable` on `PickOne`, which ตำแหน่ง on ทะเบียนพนักงาน is the first
+   caller of: forty Thai job titles, where the 900ms type-ahead is a guess about
+   which ผู้จัดการ was meant.
+
+   THE SKIN MOVES UP ONE LEVEL, AND THIS IS THE SAME TRADE THE SHEET BLOCK
+   MAKES. `.pop.one-pop` draws nothing because the `<ul>` inside it already
+   draws a fill, an edge, a shadow and a corner — right while the list is the
+   panel's only child. It is not, here: the search box is a sibling above it, so
+   leaving the skin on the list would put the box OUTSIDE the panel it belongs
+   to, floating on the page with no ground under it. So the shell draws the
+   panel and the list gives its own up, exactly as `.pop.sheet.one-pop` does at
+   the other end of this file, and for the same reason.
+
+   NOTHING HERE NAMES `.one-menu`, also for that block's reason: what is being
+   said is a fact about the CONTAINER and about what the list gives up inside
+   it, not about the list. `.pick-menu`'s `max-height` and `overflow-y` are
+   untouched — the rows still scroll at 264px, and the box above them does not,
+   which is the whole point of it being outside the scroll.
+
+   `:not(.sheet)` BECAUSE A PHONE ALREADY ANSWERED THIS. Below 860px the panel
+   is a bottom sheet whose shell is drawn by `.pop.sheet.one-pop` with its own
+   padding, its own top corners and no bottom edge; this rule is three classes
+   and would overrule that padding from outside the media block. */
+.pop.one-pop:not(.sheet):has(> .one-search) {
+  padding: 6px;
+  background: var(--card-lift);
+  border: 1px solid var(--line-lift); border-radius: var(--radius-sm);
+  box-shadow: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
+}
+.pop.one-pop:not(.sheet):has(> .one-search) .pick-menu {
+  padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none;
+}
+/* The band the box sits in. A rule under it rather than a gap: the rows scroll
+   and the box does not, so what a reader needs to see is where the scrolling
+   part starts — the same hairline `.queue-tools` puts under a filter bar over a
+   table. `--line-soft`, which is that hairline's token.
+
+   The `.field` inside is the app's ordinary one and keeps `--field-h`: a box
+   to type in that is shorter than every other box to type in is a box that
+   reads as a label with a border. */
+.one-search { padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--line-soft); }
+.pop.sheet .one-search { padding-bottom: 10px; margin-bottom: 6px; }
+
 /* ── AND THE FOURTH: WHAT IS BEHIND A SLOT ON THE PHONE BAR ─────────────────
    `.mobile-nav`'s รายงาน and เพิ่มเติม open this — the tabs that used to be
    buttons of their own on a bar of eight. See `BAR_SLOTS` in
@@ -7728,6 +7773,13 @@ td > .approver-line { margin-top: 5px; }
    a `div` and would clear it anyway, and saying so here keeps the pair legible
    if either ever becomes a span. */
 .empty strong { display: block; font: 600 15px/1.4 var(--sans); color: var(--ink); }
+/* A WAY OUT, INSIDE THE EMPTY STATE — ทะเบียนพนักงาน's ล้างตัวกรอง, 2026-09-14.
+   The press exists on the filter bar as well, and this is the copy that gets
+   used: an empty table is nought rows tall, so on a phone the bar has scrolled
+   off the top by the time the sentence explaining it is read. The button is
+   `.btn.ghost.sm` like the one on the bar — one act, one voice — and this rule
+   is only the air above it. */
+.empty-act { margin-top: 14px; }
 
 .hint { font: 400 12.5px/1.55 var(--sans); color: var(--muted-2); }
 /* `เฉพาะแผนกวิศวกรรม` — the clause under รออนุมัติ naming whose queue this is,
@@ -12310,6 +12362,26 @@ table.mini tbody tr:hover { background: none; }
   .card:not(.flush) > .queue-tools:first-child { margin-top: -15px; border-radius: var(--radius) var(--radius) 0 0; }
   .queue-tools:has(+ .queue-mobile-bar) { border-bottom: 0; }
   .queue-tools .field, .queue-tools .field.search { flex: 1 1 100%; }
+  /* ── ทะเบียนพนักงาน'S BAR IS FOUR FIELDS, AND FOUR SLABS IS A SCREEN ───────
+     The rule above is right for a bar of one or two and was written when no bar
+     had more: one control per line, because a filter you have to pinch at is a
+     filter nobody uses. ทะเบียนพนักงาน has ค้นหาพนักงาน plus ตำแหน่ง · แผนก ·
+     บทบาท since 2026-09-14, and stacked at full width that is 4 × 46px of
+     chrome plus the gaps before the first row of the table — on a 390px phone
+     the register starts below the fold.
+
+     THE SEARCH BOX KEEPS THE FULL WIDTH and the three dropdowns pair off.
+     Agreed at this width before the screen was built, and the asymmetry is the
+     point: the search box is TYPED INTO — a Thai name in a half-width box is a
+     box you cannot read back what you put in — while a dropdown shows a value
+     and opens a sheet that is the width of the screen either way.
+
+     บทบาท TAKES A LINE OF ITS OWN rather than sitting alone in a half-width
+     column: it is the third of three, so something is going to be odd, and a
+     lone half-width box beside an empty space reads as a layout that broke.
+     `roster-wide` is put on it by the screen — see AdminView. */
+  .queue-tools.roster-tools .field:not(.search) { flex: 1 1 calc(50% - 6px); min-width: 0; }
+  .queue-tools.roster-tools .field.roster-wide { flex: 1 1 100%; }
   .batch-progress { padding: 10px 12px; }
   /* 8px, which is what the queue and birthday cards already override to: at
      44px tall and side by side, 6px between two decisions is close enough that

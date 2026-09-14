@@ -773,7 +773,12 @@ test('the page is cut out of the search result, and the bar still counts the reg
 });
 
 test('the reset is the search, never the register', () => {
-  assert.match(roster, /usePageReset\(setPage, \[find, pageSize\]\);/);
+  /* `filters` JOINED THE LIST ON 2026-09-14 — it read `[find, pageSize]` until
+     the three boxes arrived, and they reset the page for exactly the reason the
+     search box does: page 5 of a list that just became seven rows long is an
+     empty table under a band reading หน้า 5 / 1. `rows` and `shown` are still
+     the two that may never be on it. */
+  assert.match(roster, /usePageReset\(setPage, \[find, filters, pageSize\]\);/);
   // `load()` runs after แก้ไข, รีเซ็ตรหัสผ่าน and every CSV import.
   assert.ok(!/usePageReset\(setPage, \[(rows|shown)/.test(roster),
     'editing one row throws the reader back to page 1');

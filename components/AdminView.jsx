@@ -37,6 +37,11 @@ import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
 import { inertReason, INERT_KEYS } from '@/lib/policyInert.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { searchPeople, personMatches } from '@/lib/personSearch.js';
+/* ตำแหน่ง · แผนก · บทบาท — which rows the three boxes leave, and what the boxes
+   are allowed to offer. Pure, and tested as such: see test/rosterFilters.test.js. */
+import {
+  FACETS, FACET_KEYS, anyFilter, facetOptions, filterRoster,
+} from '@/lib/rosterFilters.js';
 // The refusal sentence itself, so the dialog that opens when ลบแผนก is pressed
 // and the route that refuses the request are quoting one string rather than two
 // translations of one idea.
@@ -2176,6 +2181,18 @@ function createPayload(form) {
 const ROLE_LABEL = Object.fromEntries(ROLE_OPTIONS.map((o) => [o.value, o.label]));
 
 /**
+ * ตัวกรองที่ยังไม่ได้ตั้ง — the opening state of the three boxes, and what
+ * ล้างตัวกรอง puts back.
+ *
+ * ONE FROZEN OBJECT AT MODULE SCOPE rather than a literal written out at each
+ * of the three places that need it: `usePageReset` compares the object by
+ * identity, so a fresh `{ position: '', … }` on every render would reset the
+ * page on every keystroke in the search box. Built from `FACET_KEYS` so a
+ * fourth column added to lib/rosterFilters.js cannot arrive here half-set.
+ */
+const NO_FILTERS = Object.freeze(Object.fromEntries(FACET_KEYS.map((k) => [k, ''])));
+
+/**
  * What the consequential changes actually do — said before the save, not after
  * it.
  *
@@ -2428,6 +2445,21 @@ function Employees({ user }) {
    * throwing you back to the top of two hundred rows.
    */
   const [find, setFind] = useState('');
+  /**
+   * ตำแหน่ง · แผนก · บทบาท — the three boxes beside it, since 2026-09-14.
+   *
+   * ONE PIECE OF STATE AND NOT THREE, because nothing ever reads one of them
+   * alone: every count on the bar, every option in every box and the table
+   * itself are answers about all three at once, and `usePageReset` below takes
+   * the object as a single dependency rather than a list that has to be kept
+   * in step with this one.
+   *
+   * Client-side like the search box above it, and for the same reason —
+   * `/employees?all=1` has no limit, so `rows` is the whole register and
+   * narrowing it here can hide a name that is present, never miss one that is
+   * absent.
+   */
+  const [filters, setFilters] = useState(NO_FILTERS);
   /** Whether เพิ่มพนักงาน is open — the only way this screen creates a row. */
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
@@ -2497,8 +2529,45 @@ function Employees({ user }) {
   const isSelf = (row) => String(row._id ?? '') === String(user?.id ?? '');
   const mayReset = (row) => mayEdit(row) && !isSelf(row);
 
+  /**
+   * What ค้นหาพนักงาน leaves, BEFORE the three boxes — and it is its own name
+   * rather than a step inside `shown` because the boxes are counted against it:
+   * a list of ตำแหน่ง has to describe the rows a reader can currently see, not
+   * the register they searched their way out of.
+   */
+  const searched = React.useMemo(() => searchPeople(rows, find), [rows, find]);
   /** The rows the table draws. `rows` stays the register, for the count. */
-  const shown = React.useMemo(() => searchPeople(rows, find), [rows, find]);
+  const shown = React.useMemo(() => filterRoster(searched, filters), [searched, filters]);
+  /**
+   * What each box offers, with the number of people behind every row.
+   *
+   * EACH ONE IS COUNTED AGAINST THE OTHER TWO — `facetOptions` drops the box it
+   * is building from the filters it applies. Pick แผนกผลิต1 and ตำแหน่ง holds
+   * the titles inside that แผนก rather than all forty, thirty-odd of which
+   * would hand back an empty table. The whole register goes in as the last
+   * argument, which is only read to NAME a chosen value the other boxes have
+   * emptied out — see the ⚠ in lib/rosterFilters.js.
+   */
+  const facets = React.useMemo(() => Object.fromEntries(
+    FACET_KEYS.map((k) => [k, facetOptions(searched, filters, k, rows)]),
+  ), [searched, filters, rows]);
+  /** Is any of the three in force? — what draws ล้างตัวกรอง and the count. */
+  const filtering = anyFilter(filters);
+  /**
+   * The chosen values in words, for the empty state — `แผนก แผนกผลิต1 ·
+   * บทบาท หัวหน้างาน`.
+   *
+   * Read off `facets`, which is where the labels already are: a แผนก is an id
+   * in `filters` and naming it any other way would be a second lookup table to
+   * keep in step with the boxes. A sentence that says WHICH filters are on is
+   * the difference between "nobody matches" and "you are still filtering by
+   * something you set two minutes ago".
+   */
+  const filterWords = FACET_KEYS
+    .filter((k) => filters[k] !== '')
+    .map((k) => `${FACETS[k].label} ${facets[k].find((o) => o.value === filters[k])?.label || filters[k]}`)
+    .join(' · ');
+  const setFilter = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
 
   /**
    * ── หน้า ──────────────────────────────────────────────────────────────────
@@ -2528,7 +2597,11 @@ function Employees({ user }) {
    * SHOULD reset, because page 3 of a list that just became nine names long is
    * an empty table.
    */
-  usePageReset(setPage, [find, pageSize]);
+  /* `filters` IS ON THIS LIST FOR THE REASON `find` IS: page 5 of a list that
+     just became seven rows long is an empty table under a band reading หน้า 5 / 1.
+     The object is a new one on every change — see `setFilter` — so it compares
+     unequal exactly when something was actually chosen. */
+  usePageReset(setPage, [find, filters, pageSize]);
   const pageCount = Math.max(1, Math.ceil(shown.length / pageSize));
   /**
    * CLAMPED BEFORE THE SLICE, not only in the sentence. `TablePager` clamps
@@ -2611,6 +2684,12 @@ function Employees({ user }) {
      * left where it was rather than being reset under somebody mid-task.
      */
     if (find && !personMatches(who, find)) setFind('');
+    /* AND THE SAME FOR THE THREE BOXES, which can hide a new row just as
+       completely: HR filters to แผนกผลิต1, finds nobody, adds the person they
+       were looking for — into แผนกไอที, because that is where they belong — and
+       the row lands outside the filter that is still on. `values` carries the
+       department as an id, which is exactly what `filterRoster` compares. */
+    if (filtering && filterRoster([values], filters).length === 0) setFilters(NO_FILTERS);
     load();
   }
 
@@ -3328,7 +3407,14 @@ function Employees({ user }) {
           the label sat above the box the way it did on four other screens that
           have since stopped doing that. Asked for as *"ปรับให้เป็นรูปแบบเดียวกัน
           ทั้ง app"*. */}
-      <div className="queue-tools">
+      {/* `roster-tools` IS THE PHONE LAYOUT AND NOTHING ELSE — see the rule by
+          that name in app/styles.css. Below 860px every field on a `.queue-tools`
+          bar takes the full width, which is right for a bar of one or two; four
+          of them is four slabs and a table that starts a screen and a half down.
+          The search box keeps the full width (it is typed into, and a Thai name
+          at half width is a box you cannot read what you typed in) and the three
+          dropdowns pair off. Agreed at that width before this was written. */}
+      <div className="queue-tools roster-tools">
         {/*
           THE COUNT LEFT THE FIELD'S `note` AND IS A SIBLING ON THE BAR, which
           is where ตรวจสอบประจำเดือน has kept its own since that screen's bar was
@@ -3366,7 +3452,71 @@ function Employees({ user }) {
             {find && <ClearButton onClear={() => setFind('')} />}
           </div>
         </Field>
-        {find && (
+        {/* ── ตำแหน่ง · แผนก · บทบาท ────────────────────────────────────────
+            THREE COLUMNS OF THE TABLE, ASKED AS QUESTIONS. Requested on
+            2026-09-14 with a picture of this bar — *"เพิ่มตัวกรอง ตำแหน่ง แผนก
+            บทบาท"*, then *"เพิ่มไว้แถวเดียวกับ ช่องค้นหา"*, which is why there
+            is no second bar here and no drawer to open.
+
+            THE SEARCH BOX ANSWERS A DIFFERENT QUESTION AND THAT IS WHY BOTH
+            EXIST. It finds ONE person already in mind (รหัสพนักงาน and ชื่อ-สกุล,
+            and nothing else — the empty state below says so in as many words,
+            because people typed department names into it). These answer "who
+            are the people in X", which the register could not be asked at all
+            before: 164 rows ordered by code, nine pages of them.
+
+            `PickOne`, LIKE EVERY OTHER DROPDOWN IN THE APP — one at a time,
+            with ทุก… as the first row and the count against the right edge.
+            `searchable` on ตำแหน่ง alone: it is forty free-text Thai job titles
+            and the 900ms type-ahead is a guess about which ผู้จัดการ was meant;
+            แผนก is eighteen and บทบาท is seven, and a box to type in above seven
+            rows is a control asking to be filled in before the list can be
+            used. */}
+        {FACET_KEYS.map((key) => (
+          <PickOne
+            key={key}
+            label={FACETS[key].label}
+            value={filters[key]}
+            onChange={(v) => setFilter(key, v)}
+            allLabel={FACETS[key].all}
+            options={facets[key]}
+            searchable={key === 'position'}
+            searchPlaceholder="พิมพ์ชื่อตำแหน่ง…"
+            /* PHONE ONLY, AND IT IS A LAYOUT FACT — see `.roster-tools` in
+               app/styles.css. Below 860px the three pair off two to a line, and
+               the third of three would otherwise sit alone in a half-width
+               column beside an empty space, which reads as a layout that broke
+               rather than as a line with one box on it. */
+            className={key === 'role' ? 'roster-wide' : undefined}
+            /* A box with one row on it narrows nothing — but it is drawn all
+               the same, for the reason คิวรออนุมัติ draws แผนก for a หัวหน้างาน
+               who holds one: a toolbar that changes shape with the data is a
+               toolbar a reader has to re-read. `emptyLabel` is what the list
+               says if the search above it has left the register with nothing in
+               that column at all. */
+            emptyLabel="ไม่มีในผลการค้นหานี้"
+          />
+        ))}
+        {/* ล้างตัวกรอง — drawn only while there is something to clear, and it
+            clears ALL FOUR including ค้นหาพนักงาน. Asked for that way on
+            2026-09-14: the reader who presses it is trying to get the whole
+            register back, and a button that leaves the search box narrowing the
+            table has not done what its label says. */}
+        {(find || filtering) && (
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() => { setFind(''); setFilters(NO_FILTERS); }}
+          >
+            ล้างตัวกรอง
+          </button>
+        )}
+        {/* ON A FILTER AS WELL AS ON A SEARCH, since the boxes arrived. A
+            filtered table is a table lying by omission — nine rows where the
+            register holds 164 — and the three boxes are easier to scroll past
+            than the search box ever was, because a chosen ตำแหน่ง looks like a
+            heading. This is the sentence that says the short list is a filter. */}
+        {(find || filtering) && (
           <div className="found">
             แสดง <strong>{shown.length}</strong> จาก <strong>{rows.length}</strong> คน
           </div>
@@ -3381,9 +3531,41 @@ function Employees({ user }) {
         searchable named: somebody who typed a department here should find out
         that is not what this box does.
       */}
-      {find && shown.length === 0 ? (
+      {(find || filtering) && shown.length === 0 ? (
         <Empty>
-          ไม่พบพนักงานที่ตรงกับ “{find}” — ค้นได้จากรหัสพนักงานและชื่อ-สกุลเท่านั้น
+          {/* WHICH OF THE FOUR IS EMPTYING THE TABLE, NAMED — 2026-09-14. With
+              one search box the sentence could only ever be about the query;
+              with three boxes beside it, "ไม่พบพนักงาน" on its own leaves a
+              reader looking at a screen that is behaving correctly and unable to
+              see why. So the heading says which of the two emptied the table and
+              the lines under it say what each was set to.
+
+              THE SEARCH HALF IS THE OLD SENTENCE, WORD FOR WORD — the query
+              quoted back so a typo is visible, and the clause naming what this
+              box can and cannot search. That clause is here because people typed
+              department names into it, which is the report the three boxes
+              themselves came out of: the reader who does that is now one control
+              away from the box that answers them. */}
+          <strong>
+            {find
+              ? <>ไม่พบพนักงานที่ตรงกับ “{find}”{filtering ? ' ในตัวกรองที่ใช้อยู่' : ''}</>
+              : 'ไม่มีพนักงานตามตัวกรองที่ใช้อยู่'}
+          </strong>
+          {find && <div>ค้นได้จากรหัสพนักงานและชื่อ-สกุลเท่านั้น</div>}
+          {filtering && <div>{filterWords}</div>}
+          {/* The same press as the one on the bar, put where the reader is
+              looking when they need it: the bar is above a table that is now
+              nought rows tall, so on a phone it has scrolled off the top by the
+              time this sentence is read. */}
+          <div className="empty-act">
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => { setFind(''); setFilters(NO_FILTERS); }}
+            >
+              ล้างตัวกรอง
+            </button>
+          </div>
         </Empty>
       ) : (
       <>

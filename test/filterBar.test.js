@@ -83,7 +83,7 @@ const BARS = [
   ['components/AccountingView.jsx', ['บริษัท', 'ประจำเดือน']],
   ['components/DepartmentView.jsx', ['แผนก', 'ประจำเดือน']],
   ['components/LogSystem.jsx', ['ค้นหา', 'กรองตามบัญชี', 'ตั้งแต่วันที่']],
-  ['components/AdminView.jsx', ['ค้นหาพนักงาน']],
+  ['components/AdminView.jsx', ['ค้นหาพนักงาน', 'ตำแหน่ง', 'แผนก', 'บทบาท']],
 ];
 
 // ── one container ───────────────────────────────────────────────────────────
@@ -91,7 +91,19 @@ const BARS = [
 test('every filter bar in the app is `.queue-tools`', () => {
   for (const [file, labels] of BARS) {
     const src = noProse(read(file));
-    assert.ok(src.includes('className="queue-tools"') || src.includes('className="queue-tools" style'),
+    /* A SECOND CLASS AFTER IT IS ALLOWED, AND ONLY A SECOND CLASS — 2026-09-14,
+       with ทะเบียนพนักงาน's `roster-tools`. What this file is holding down is
+       that every filter bar in the app IS this container, not that no screen may
+       say anything about its own layout: that bar carries four fields, and the
+       860px rule that gives every field the full width turns four of them into
+       four slabs above the table. The hook is what pairs the three dropdowns
+       off, and `.queue-tools` is still what draws the bar.
+
+       WHAT IS STILL REFUSED is the thing the round of 2026-09-10 was about — a
+       bar that is some other element with some other class. `queue-tools` has
+       to be the FIRST class on it, so a screen cannot quietly make its own
+       container and wear this one as a modifier. */
+    assert.match(src, /className="queue-tools(?: [a-z-]+)?"(?: style)?/,
       `${file} ไม่ได้ใช้ .queue-tools เป็นแถบตัวกรองแล้ว`);
     // The labels are what proves it is THIS screen's filters in there, and not
     // an empty bar that happens to carry the class.
