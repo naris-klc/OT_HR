@@ -2747,6 +2747,29 @@ export function SheetScroll({ className, hint = '← ปัดซ้าย-ข�
  * mattered after the printing was mixed in with the three that stopped
  * mattering the moment it started.
  *
+ * ── การ์ดนั้นพับได้ และเริ่มที่พับไว้ — 2026-09-14 ──────────────────────────
+ *
+ * *“ซ่อนคำอธิบายในกรอบสีดำ กระชับ รวมไว้กับแถวปุ่มพิมพ์”* · กล่องสี่บรรทัดนี้กิน
+ * ที่เหนือกระดาษทุกครั้งที่เปิดใบพิมพ์ ทั้งที่มันตอบคำถามที่ถามครั้งเดียวตอนตั้ง
+ * เครื่องพิมพ์ ตอนนี้มันอยู่หลัง `วิธีพิมพ์ ▼` ที่ต่อท้ายแถวปุ่ม และกระดาษขึ้นมา
+ * แทนที่มันทันที
+ *
+ * **ฝาพับนี้ปิดทับรายการ ไม่ใช่ปิดทับประโยค** ซึ่งเป็นเส้นที่ `ac8fb2b` (วันเดียวกัน)
+ * ใช้ตัดว่าฝาพับไหนอยู่ฝาพับไหนไป — ฝาพับบนประโยคคือการยอมรับว่าประโยคยาวเกินและ
+ * สิ่งที่ต้องซ่อมคือประโยค ส่วนฝาพับบนรายการคือคนอ่านกำลังเลือกว่าจะอ่านสี่บรรทัด
+ * ไหม ซึ่งเป็นคำถามจริง · `footer` จึงไม่ถูกพับไปด้วย มันไม่ใช่วิธีตั้งเครื่องพิมพ์
+ * แต่เป็นความหมายของตัวเลขบนกระดาษ อ่านตอนถือกระดาษอยู่ ไม่ใช่ตอนยืนที่เครื่องพิมพ์
+ *
+ * **`.fold-pill` ไม่ใช่ `.btn`** — แถวนี้มีปุ่มตัดสินใจอยู่แล้วสองสามปุ่ม และ
+ * app/styles.css เขียนพื้นเป้ากดไว้สองชั้น: 44px สำหรับการตัดสินใจ 34px สำหรับ
+ * ตัวควบคุมที่ยืนข้าง ๆ มัน · การกางฝาพับไม่ใช่การตัดสินใจ ปุ่มที่หนักเท่า `พิมพ์`
+ * จะแย่งสายตาจากสิ่งที่หน้าจอนี้มีไว้ทำ
+ *
+ * **กางแล้วเลื่อนให้เห็น** บนมือถือแถบปุ่มหนึบอยู่ใต้ app bar ส่วนการ์ดเป็นพี่น้อง
+ * ที่อยู่ในสายกระดาษ — กดกางตอนอ่านอยู่กลางใบ การ์ดจะกางอยู่เหนือจอ และปุ่มจะดู
+ * เหมือนกดแล้วไม่มีอะไรเกิดขึ้น · ระยะที่ต้องเลื่อนวัดจากขอบล่างของแถบจริง ๆ ไม่ใช่
+ * ค่าคงที่ เพราะแถบนี้ห่อลงสองบรรทัดได้ที่ 360px และบนจอกว้างมันไม่หนึบเลย
+ *
  * `filename` IS THE DOCUMENT'S NAME AND NOT A DECORATION. It names the browser
  * tab while the sheet is up, which is what the print dialog's own
  * “บันทึกเป็น PDF” calls the file it saves, and it names the file the
@@ -2773,6 +2796,13 @@ export function PrintChrome({
 }) {
   const [saving, setSaving] = React.useState(false);
   const [failed, setFailed] = React.useState('');
+  /* พับไว้ทุกครั้งที่เปิดใบ ไม่จำค่าไว้ในเบราว์เซอร์ — ต่างจาก `ot-f027-notice-fold`
+     ใน PrintForm.jsx ซึ่งจำ เพราะสิ่งที่มันพับคือรายการที่ยาวไม่เท่ากันทุกเดือน
+     ส่วนสี่บรรทัดนี้เหมือนกันทุกใบทุกเดือน คนที่เคยอ่านแล้วไม่ต้องอ่านอีก */
+  const [openHints, setOpenHints] = React.useState(false);
+  const barRef = React.useRef(null);
+  const hintsRef = React.useRef(null);
+  const hintsId = React.useId();
 
   /**
    * THE TAB'S NAME IS THE FILE'S NAME, and that is the whole of what makes the
@@ -2819,6 +2849,26 @@ export function PrintChrome({
     }
   }
 
+  /**
+   * กางแล้วต้องเห็น — ระยะเลื่อนวัดจากขอบล่างของแถบ ไม่ใช่ค่าคงที่.
+   *
+   * บนมือถือ `.print-bar` เป็น `position: sticky` ใต้ app bar ส่วนการ์ดเป็นพี่น้อง
+   * ที่อยู่ในสายกระดาษและเลื่อนหายไปข้างบนตั้งแต่ย่อหน้าที่สอง กดกางตอนนั้นการ์ดจะ
+   * กางอยู่นอกจอ — ไม่ใช่ไม่ทำงาน แต่ดูเหมือนไม่ทำงาน ซึ่งแย่กว่า
+   *
+   * `useLayoutEffect` เพราะตำแหน่งต้องอ่านหลังการ์ดมีขนาดแล้วแต่ก่อนเฟรมถูกวาด
+   * ไม่งั้นจอจะกระตุกหนึ่งเฟรม · เลื่อนเฉพาะเมื่อการ์ดอยู่สูงกว่าขอบล่างของแถบจริง ๆ
+   * บนจอกว้างแถบไม่หนึบ เงื่อนไขนี้เป็นเท็จเสมอ และไม่มีอะไรเลื่อน
+   */
+  React.useLayoutEffect(() => {
+    if (!openHints) return;
+    const panel = hintsRef.current;
+    if (!panel) return;
+    const floor = barRef.current ? barRef.current.getBoundingClientRect().bottom : 0;
+    const top = panel.getBoundingClientRect().top;
+    if (top < floor) window.scrollBy({ top: top - floor - 8 });
+  }, [openHints]);
+
   /** No name, no file — see `printName` in lib/printFile.js. */
   const canSave = Boolean(pdf && filename);
 
@@ -2844,7 +2894,7 @@ export function PrintChrome({
 
   return (
     <>
-      <div className="print-bar no-print">
+      <div className="print-bar no-print" ref={barRef}>
         <button className="btn print-go" onClick={() => window.print()} disabled={disabled}>
           พิมพ์
         </button>
@@ -2854,6 +2904,21 @@ export function PrintChrome({
           </button>
         )}
         {onClose && <button className="btn ghost" onClick={onClose}>ปิด</button>}
+        {/* ฝาพับของการ์ดข้างล่าง อยู่ในแถวนี้ตามที่ขอ — และเป็น `.fold-pill` ตัวเดียว
+            กับที่ ตรวจสอบรายเดือน กับ ประกาศวันหยุด ใช้ ไม่ใช่ `.btn` ตัวที่สี่
+            ดูเหตุผลในหัวคอมโพเนนต์ · `hidden` ไม่ใช่การเรนเดอร์ตามเงื่อนไข เพราะ
+            `aria-controls` ต้องชี้ไปที่ของที่มีอยู่จริงทั้งตอนพับและตอนกาง */}
+        {lines.length > 0 && (
+          <button
+            type="button"
+            className="fold-pill"
+            aria-expanded={openHints}
+            aria-controls={hintsId}
+            onClick={() => setOpenHints((v) => !v)}
+          >
+            {openHints ? 'ซ่อน ▲' : 'วิธีพิมพ์ ▼'}
+          </button>
+        )}
       </div>
 
       {failed && (
@@ -2866,8 +2931,11 @@ export function PrintChrome({
 
       {/* The sheet carries nothing the paper form does not, so what the figures
           on it mean is said here instead of on the form. One line each: this is
-          read standing at a printer, not sat down. */}
-      <ul className="print-setup no-print">
+          read standing at a printer, not sat down.
+
+          พับไว้ตั้งแต่ 2026-09-14 — `hidden` ไม่ใช่ `display: none` ในสไตล์ชีต ให้
+          สถานะอยู่ที่ DOM ที่เดียว และให้เบราว์เซอร์ตัดมันออกจากลำดับการอ่านเองด้วย */}
+      <ul className="print-setup no-print" id={hintsId} ref={hintsRef} hidden={!openHints}>
         {lines.map((line) => (
           <li key={line.text}>
             {line.label && <span className="print-setup-label">{line.label}:</span>}

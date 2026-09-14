@@ -2024,9 +2024,14 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2654 tests
+and the engine know nothing about Next.js, so the whole suite — **2656 tests
 across 146 files**, measured 2026-09-14 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2654 tests across 146 files" for most of **2026-09-14**, a figure that was
+already one behind by the time it was read: ฝาพับ ▲/▼ ถูกถอนสองในสามจุด took it
+to 2655 that afternoon and left this paragraph alone, and การ์ดวิธีพิมพ์พับแล้ว
+took it to 2656 that evening — one case in `disclosure`, beside the rule about
+which folds stay that the round before it wrote. It read
 "2653 tests across 146 files … measured 2026-09-12" until the manual was walked
 against the screens again on **2026-09-14** — one case, in `manualScreen`, which
 is the file that already holds this screen. It read
@@ -13443,8 +13448,13 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2654 tests**, about 4 s, measured 2026-09-14 across 146
-  files, all green. It read "2653 tests … measured 2026-09-12" until the manual
+- `npm test` — **2656 tests**, about 4 s, measured 2026-09-14 across 146
+  files, all green. **NO NEW FILE in either of the two rounds that moved it off
+  2654**, both on 2026-09-14 and both about the same rule: ฝาพับ ▲/▼ ถูกถอนสองใน
+  สามจุด put its case in `disclosure`, and การ์ดวิธีพิมพ์พับแล้ว put the next one
+  directly under it — a fold over a *list* stays, a fold over a *sentence* goes,
+  and the second round is what the first round's line decides.
+  It read "2653 tests … measured 2026-09-12" until the manual
   was walked against the screens on 2026-09-14 — one case in `manualScreen`, and
   **no new file**, for the reason the round before it gives.
   **NO NEW FILE in the round that moved it off 2649 either** —
