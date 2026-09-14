@@ -12,7 +12,7 @@ import {
   ENTERED_FIELDS, filingLead, filingOf, idOf, isBirthdayWelfare, isHrVerifiedBirthday,
   isProxyFiled, isSystemFiled, isSystemLog, lastAction, sameSession, sameValue,
 } from '@/lib/entries.js';
-import { highlightParts, searchPeople } from '@/lib/personSearch.js';
+import { highlightParts, searchPeople, textMatches } from '@/lib/personSearch.js';
 import {
   SCAN_MATCH, dayPunchLine, scanCheckInTime, scanBadgeLabel, scanMismatchDetail,
   scanMismatchNote,
@@ -3678,12 +3678,28 @@ export function PickOne({
   disabled = false,
   emptyLabel = 'ไม่มีตัวเลือก',
   className = '',
+  /* ── A BOX TO TYPE IN, AT THE HEAD OF THE PANEL — 2026-09-14 ──────────────
+     Asked for with ตำแหน่ง on ทะเบียนพนักงาน, which is forty Thai job titles:
+     the 900ms type-ahead below is aimed at a list you can see all of, and at
+     forty rows it is a guess about which ผู้จัดการ you meant.
+
+     OFF EVERYWHERE ELSE, and that is the whole of the sizing rule: a box to
+     type in above five แผนก is a second control asking to be filled in before
+     the list can be used. Turn it on where the list is longer than the panel.
+
+     WHAT IT DOES NOT CHANGE: the rows, the keys, the one highlight, the panel
+     itself. It narrows what is drawn and hands ↑/↓ and Enter the shorter list. */
+  searchable = false,
+  searchPlaceholder = 'พิมพ์เพื่อกรองรายการ…',
 }) {
   const id = React.useId();
   const [open, setOpen] = React.useState(false);
   const [active, setActive] = React.useState(0);
+  /** What is typed into the panel's own box — `searchable` only, '' otherwise. */
+  const [query, setQuery] = React.useState('');
   const btnRef = React.useRef(null);
   const listRef = React.useRef(null);
+  const searchRef = React.useRef(null);
   const typed = React.useRef({ buf: '', at: 0 });
   /* Whether the panel is a sheet — `Popover`'s own hook, read here because the
      component has to hand it down. Below 860px this list is a bottom sheet over
@@ -3694,6 +3710,10 @@ export function PickOne({
      other three. Without it Escape leaves focus on a panel that has gone. */
   const close = React.useCallback(() => {
     setOpen(false);
+    /* The typing goes with the panel. A query left behind is a list that opens
+       already narrowed by something nobody can see a reason for — and the next
+       open would find the box holding a word from the last one. */
+    setQuery('');
     btnRef.current?.focus();
   }, []);
 
@@ -3712,7 +3732,21 @@ export function PickOne({
      until 2026-09-11, when สถานะที่นับ went to five. The count was never what
      the rule turned on — see test/monthStatusFilter.test.js for the list.) */
   const hasAll = allLabel != null;
-  const rows = hasAll ? [{ value: '', label: allLabel }, ...(options || [])] : [...(options || [])];
+  const allRows = hasAll ? [{ value: '', label: allLabel }, ...(options || [])] : [...(options || [])];
+  /* ── WHAT THE TYPED TEXT LEAVES ON THE LIST ───────────────────────────────
+     `searchable` only: everywhere else `query` is '' and this IS `allRows`.
+
+     THE ทุกตำแหน่ง ROW IS NEVER FILTERED OUT — the reason `PickPerson` keeps
+     ทุกคน on every query. It is a command, "stop filtering", not an option, so
+     there is no text it should fail to match; filtering it away would let three
+     letters hide the one row that undoes the three letters.
+
+     `textMatches` AND NOT `includes`: it is lib/personSearch.js's rule with
+     the code half off — every term has to match, in any order, and the spaces
+     in Thai are optional. ผู้จัดการ ผลิต finds ผู้จัดการแผนกผลิต1. */
+  const rows = searchable && query.trim() !== ''
+    ? allRows.filter((r) => r.value === '' || textMatches(r.label, query))
+    : allRows;
   const current = String(value ?? '');
   const chosen = rows.findIndex((r) => String(r.value) === current);
   // Clamped rather than trusted: a queue that reloads with fewer departments in
@@ -3761,6 +3795,9 @@ export function PickOne({
     // Where ↓ starts from: the row already chosen, which is where a native
     // select opens too.
     setActive(chosen < 0 ? firstRow() : chosen);
+    // A panel opens on the whole list, whatever was typed into the last one —
+    // see `close`, which clears the box on the way out as well.
+    setQuery('');
     setOpen(true);
   }
 
@@ -3772,6 +3809,7 @@ export function PickOne({
     if (!row || row.disabled) return;
     onChange(row.value);
     setOpen(false);
+    setQuery('');
   }
 
   /* ↑/↓ AND THE GREYED ROWS. A native select steps OVER a disabled option
@@ -3829,7 +3867,13 @@ export function PickOne({
       return;
     }
     if (e.key === 'Tab') { if (open) setOpen(false); return; }
-    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    /* ⚠ NO TYPE-AHEAD WHERE THERE IS A BOX TO TYPE IN. The panel's own search
+       field takes the focus the moment it opens, so this branch is unreachable
+       from the keyboard while the list is up — but the guard is what says the
+       two are one behaviour rather than two, and it is what keeps a letter
+       pressed on the CLOSED button from jumping the selection on a list whose
+       rows the reader is about to filter rather than walk. */
+    if (!searchable && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const now = Date.now();
       const buf = (now - typed.current.at < 900 ? typed.current.buf : '') + e.key.toLowerCase();
       typed.current = { buf, at: now };
@@ -3845,7 +3889,47 @@ export function PickOne({
     }
   }
 
-  const shown = chosen >= 0 ? rows[chosen] : rows[0];
+  /* ── THE KEYS, WITH THE FOCUS IN THE SEARCH BOX ───────────────────────────
+     The same four the button answers, minus the two that belong to a text
+     field: Space types a space, and Home/End move the caret rather than walking
+     the list. Enter takes the highlighted row, which after a keystroke is the
+     first row that still matches — so type, Enter is the whole path.
+
+     Escape closes without choosing, and `stopPropagation` keeps it from
+     reaching a dialog behind this one, exactly as the button's own does. */
+  function onSearchKeyDown(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive((i) => nextRow(i, e.key === 'ArrowDown' ? 1 : -1));
+      return;
+    }
+    if (e.key === 'Enter') {
+      // Prevented whether or not a row is taken: this panel opens inside forms
+      // and dialogs, and Enter must not submit one from behind it.
+      e.preventDefault();
+      pick(at);
+      return;
+    }
+    if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
+    if (e.key === 'Tab') { setOpen(false); setQuery(''); }
+  }
+
+  /* THE CARET LANDS IN THE BOX, ON A DESKTOP ONLY. A sheet is pinned to the
+     bottom edge of a phone, and focusing a text field there raises the
+     on-screen keyboard over the rows the panel was opened to show — so on a
+     phone the box is there to be TAPPED, and the list is whole until it is.
+     (The panel is placed in a layout effect and is `opacity: 0` rather than
+     hidden for exactly this kind of call — see the note in popover.jsx.) */
+  React.useEffect(() => {
+    if (open && searchable && !sheet) searchRef.current?.focus();
+  }, [open, searchable, sheet]);
+
+  /* READ OFF `allRows`, NOT OFF THE FILTERED LIST. With something typed in the
+     box the chosen row can be filtered out from under the button, and a closed
+     box reading ทุกตำแหน่ง while a ตำแหน่ง is still in force is a control lying
+     about what the table under it is showing. */
+  const picked = allRows.find((r) => String(r.value) === current);
+  const shown = picked || allRows[0];
 
   return (
     /* `Field` AND NOT A `.field` OF ITS OWN — see the note at the top. The
@@ -3881,12 +3965,39 @@ export function PickOne({
           aria-labelledby={`${id}-label`}
           aria-activedescendant={open && rows[at] ? `${id}-${at}` : undefined}
           disabled={disabled}
-          onClick={() => (open ? setOpen(false) : openList())}
+          /* ── WITH A SEARCH BOX OPEN, THE CLOSING PRESS HAPPENS HERE ────────
+             A pointer pressing this box while the panel is up fires mousedown →
+             blur → click, and the blur belongs to the SEARCH FIELD, which
+             closes the panel. By the time the click arrives `open` is already
+             false and the toggle below would open it straight back up: the box
+             would be unclosable by the control that opened it.
+
+             So when there is a box to type in, the press is answered on
+             mousedown — before the blur — and `preventDefault` keeps the focus
+             where it is rather than starting that sequence at all. The focus is
+             put back on this button by hand, because the panel it was in is
+             going away. The keyboard path is untouched: Enter and Space are
+             `onKeyDown`'s, not this. */
+          onMouseDown={(e) => {
+            if (!searchable) return;
+            e.preventDefault();
+            if (open) close(); else { openList(); btnRef.current?.focus(); }
+          }}
+          onClick={() => {
+            // Already answered on mousedown where there is a search box.
+            if (searchable) return;
+            if (open) setOpen(false); else openList();
+          }}
           onKeyDown={onKeyDown}
           // The way out for a pointer that goes somewhere else on the page. The
           // list itself cannot trigger this — its `onMouseDown` is prevented
           // below, so focus never leaves this button while a row is clicked.
-          onBlur={() => setOpen(false)}
+          /* WITH A SEARCH BOX IN THE PANEL THIS IS NOT THE WAY OUT. The focus
+             leaves this button the moment the panel opens — it goes into the
+             box — so closing on blur would shut the list on the same frame it
+             was opened. `Popover` already closes on Escape, on a press outside
+             and on a scroll; the box's own `onBlur` below covers Tab. */
+          onBlur={() => { if (!searchable) setOpen(false); }}
         >
           <span className="val">{shown?.label}</span>
           <span className="caret" aria-hidden="true">▾</span>
@@ -3945,6 +4056,75 @@ export function PickOne({
               a few pixels above the list and this would be the same word
               twice. */}
           {sheet && <div className="nav-sheet-head">{label}</div>}
+          {/* ── พิมพ์เพื่อกรองรายการ ─────────────────────────────────────────
+              `.searchbox` AND THE SAME MAGNIFIER as every other search box in
+              the app — this is a search box that happens to be inside a panel,
+              and a second shape for one is what §Inherit before you invent is
+              about. `.one-search` is only the band it sits in: the padding, the
+              rule under it, and the sticky that holds it above the rows while
+              forty of them scroll past.
+
+              NO ✕ ON IT. Every way out of this panel — Escape, a press outside,
+              taking a row — clears the query already, and a second clear inside
+              a floating list is a button that reads as though it clears the
+              FILTER the list is there to set. */}
+          {searchable && (
+            <div className="one-search">
+              {/* `.field` AROUND IT, AND IT IS LOAD-BEARING RATHER THAN TIDY:
+                  `.field input` is where every box in this app gets its width,
+                  its fill, its border, its radius, its padding and its focus
+                  ring. ทะเบียนพนักงาน's own search box shipped once as a bare
+                  `<input>` in a bare `<div>` and drew at the browser's default
+                  width with the browser's own border — nothing was missing from
+                  the stylesheet; the box was simply outside the wrapper that
+                  reaches it. */}
+              <div className="field">
+                <div className="searchbox">
+                  <Icon name="search" className="searchbox-icon" />
+                  <input
+                    ref={searchRef}
+                    type="text"
+                    /* THE SAME FIVE ATTRIBUTES `PickPerson` CARRIES, and they
+                       are not decoration here: while this box holds the focus,
+                       ↑/↓ move a highlight the reader cannot see, and
+                       `aria-activedescendant` is the only thing that says which
+                       row Enter would take. The button above owns the same
+                       pointing while IT has the focus; only one of them ever
+                       does. */
+                    role="combobox"
+                    aria-expanded
+                    aria-controls={`${id}-list`}
+                    aria-autocomplete="list"
+                    aria-activedescendant={rows[at] ? `${id}-${at}` : undefined}
+                    className="has-icon"
+                    value={query}
+                    placeholder={searchPlaceholder}
+                    /* No visible label of its own: the field's name is on the
+                       control that opened this, and on a sheet it is the line
+                       directly above. This is what says which list is narrowed. */
+                    aria-label={`ค้นหาใน${label}`}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      /* The first row that can be taken, not the row that was
+                         active a keystroke ago: the list underneath is a
+                         different list now, and Enter has to mean whatever is
+                         at the top of it. Row 0 is skipped where there is an
+                         `allLabel` — ทุกตำแหน่ง is never what somebody who is
+                         typing meant. */
+                      setActive(hasAll ? 1 : 0);
+                    }}
+                    onKeyDown={onSearchKeyDown}
+                    /* Tab out of the panel, and a press that lands on the page
+                       behind a floating list. Not the rows: the `<ul>` prevents
+                       its own mousedown, so clicking a row never blurs this. */
+                    onBlur={() => { setOpen(false); setQuery(''); }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
           <ul
             id={`${id}-list`}
             role="listbox"

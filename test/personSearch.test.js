@@ -330,7 +330,15 @@ test('the roster table draws the narrowed list, not the register', () => {
    * page is allowed to decide is which of those rows is drawn. The rest of that
    * rule is test/tablePager.test.js §12.
    */
-  assert.match(employees, /const shown = React\.useMemo\(\(\) => searchPeople\(rows, find\), \[rows, find\]\)/);
+  /* THE CHAIN GAINED A SECOND LINK ON 2026-09-14, with ตำแหน่ง · แผนก · บทบาท:
+     `rows` → `searched` → `shown` → `pageRows`. It read
+     `const shown = React.useMemo(() => searchPeople(rows, find), [rows, find])`
+     until then, and that line is `searched` now — the search result under its
+     own name, because the three boxes are counted against it. `shown` is still
+     what the table draws and what the count beside the box is measured against;
+     what decides it is now the box AND the boxes. */
+  assert.match(employees, /const searched = React\.useMemo\(\(\) => searchPeople\(rows, find\), \[rows, find\]\)/);
+  assert.match(employees, /const shown = React\.useMemo\(\(\) => filterRoster\(searched, filters\), \[searched, filters\]\)/);
   assert.match(employees, /const pageRows = shown\.slice\(/, 'หน้าต้องตัดจาก shown');
   assert.match(employees, /\{pageRows\.map\(\(p\) => \(/, 'ตารางต้องวาดจาก pageRows');
   assert.ok(!/\{rows\.map\(\(p\) => \(/.test(employees), 'ตารางต้องไม่วาดจาก rows');
@@ -350,7 +358,12 @@ test('an empty result says so in words rather than drawing an empty table', () =
    * is the entire company, reads as breakage rather than as "no match" — and
    * the query is quoted back so a typo is visible.
    */
-  assert.match(employees, /find && shown\.length === 0 \?/);
+  /* IT READ `find && shown.length === 0 ?` UNTIL 2026-09-14. The three boxes
+     can empty the table just as completely as the query can, and a table of
+     nought rows under nine headings reads as breakage whichever of the four did
+     it — so the state is drawn for both, and the heading says which. The
+     search half keeps the sentence it always had. */
+  assert.match(employees, /\(find \|\| filtering\) && shown\.length === 0 \?/);
   assert.match(employees, /ไม่พบพนักงานที่ตรงกับ [“{]/);
   assert.match(employees, /\{find\}/);
 });

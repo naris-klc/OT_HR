@@ -2043,7 +2043,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     149 files, run by `npm test`. Six named below as a
+test/                     150 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2056,15 +2056,20 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2667 tests
-across 149 files**, measured 2026-09-14 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2689 tests
+across 150 files**, measured 2026-09-14 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2667 tests across 149 files" until **ทะเบียนพนักงานได้ตัวกรอง ตำแหน่ง · แผนก ·
+บทบาท** later the same day — `rosterFilters` is the new file, and `lib/` gained
+one too: the rule about what the three boxes may OFFER is arithmetic over a
+roster, not a fact about a screen, so it is tested without rendering anything.
+It read
 "2663 tests across 148 files" for an hour of the same evening, until
-**คำเตือนสองใบในโมดัลพูดจบในกล่องเดียว** — `modalNoticeFlow` is the new file,
-and it is a new file rather than four more cases in `standingBanners` because
-the two rules are about different things: that one is about notices nobody
-asked for, this one about the two an employee opens on purpose. It read
-"2659 tests across 147 files" until **หกแถบยืนพื้นเหลือสายเดียว** later the same
+**คำเตือนสองใบในโมดัลพูดจบในกล่องเดียว** — `modalNoticeFlow` is the file before
+it, and it is a new file rather than four more cases in `standingBanners`
+because the two rules are about different things: that one is about notices
+nobody asked for, this one about the two an employee opens on purpose. It read
+"2659 tests across 147 files" until **หกแถบยืนพื้นเหลือสายเดียว** the same
 evening — `standingBanners` is the new file, and it is a new file because the
 rule it holds is about six notices in five components, which is not a thing that
 belongs beside any one of them. It read
@@ -13638,12 +13643,18 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2667 tests**, about 4 s, measured 2026-09-14 across 149
-  files, all green. **`modalNoticeFlow` is the new file** — คำเตือนสองใบใน
-  โมดัลพูดจบในกล่องเดียว, the last commit of `docs/plan-notice-compact.md`, and
-  its four cases are as much about what the shorter notices still have to SAY as
-  about the shape: three of the four read back the facts the merge was not
-  allowed to drop. It read "2663 tests … across 148" until that round.
+- `npm test` — **2689 tests**, about 4 s, measured 2026-09-14 across 150
+  files, all green. **`rosterFilters` is the new file** — ทะเบียนพนักงาน's
+  ตำแหน่ง · แผนก · บทบาท, and half its cases never touch a component: what each
+  box may offer is `lib/rosterFilters.js`'s arithmetic over a roster, and the
+  two rules worth pinning — every list narrowed by the other two boxes, and the
+  chosen value never dropped from its own list — are answerable with five
+  fixture rows and no DOM. It read "2667 tests … across 149" until that round.
+  **`modalNoticeFlow` is the file before it** — คำเตือนสองใบในโมดัลพูดจบใน
+  กล่องเดียว, the last commit of `docs/plan-notice-compact.md`, and its four
+  cases are as much about what the shorter notices still have to SAY as about
+  the shape: three of the four read back the facts the merge was not allowed to
+  drop. It read "2663 tests … across 148" until that round.
   **`standingBanners` is the file before it** — หกแถบยืนพื้นเหลือ
   สายเดียว, the rest of กอง ก, and its four cases read five components at once:
   a rule about what a standing notice may look like cannot live in the file of
