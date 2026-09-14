@@ -168,36 +168,64 @@ export default function AccountingView() {
 
                 `ExportMenu` — ตรวจสอบประจำเดือน's control since the declutter of
                 2026-09-10, and every report screen's the same afternoon. It was
-                `.action-row`: ส่งออกไฟล์บัญชี (CSV/Excel) filled, พิมพ์แบบฟอร์ม /
-                บันทึกเป็น PDF ghost, and แสดงพนักงานที่ไม่มี OT beside them —
-                a full row of the card for two things pressed once a month.
+                `.action-row`: the file filled, the form ghost, and
+                แสดงพนักงานที่ไม่มี OT beside them — a full row of the card for two
+                things pressed once a month.
 
-                THE CSV KEEPS THE LEAD, because it kept the filled voice in the
-                row this replaces: this screen closes a month by handing
-                accounting a file. `primary` is that voice, and the form is the
-                second row rather than the missing one.
+                ── THE FORM LEADS, AND THE THREE SCREENS READ ALIKE, 2026-09-14 ─
+
+                It read *"THE CSV KEEPS THE LEAD, because it kept the filled voice
+                in the row this replaces"* until that day. Asked for as *กระชับ
+                ข้อความ · ให้ พิมพ์/pdf ขึ้นก่อน · จัดให้เป็นรูปแบบเสมอกันทั้ง 3 หน้า*:
+                ตรวจสอบประจำเดือน, รายงาน OT การเงิน and รายงาน OT แยกแผนก now put
+                the print row first and give it — and only it — `primary`. A reader
+                who changes tab no longer changes the order of two verbs, which is
+                the same report (*"ui สไตล์ไม่สม่ำเสมอกันเลย"*) that made these
+                three screens share one control in the first place.
+
+                THE COST IS THE ONE THIS SCREEN CARES ABOUT: closing a month here
+                means handing การเงิน a file, and that file is now the second row.
+                It is one row down and still the only CSV on the screen; the order
+                being the same on all three screens is what was bought with it.
+
+                ── THE LABELS NAME THE DOCUMENT, AND ONLY ONCE ──────────────────
+
+                *"ส่งออกไฟล์บัญชี (CSV/Excel)"* / *"พิมพ์แบบฟอร์ม / บันทึกเป็น PDF"*
+                until 2026-09-14. บันทึกเป็น PDF is a button on the print screen this
+                row opens — naming it here spent half a label on something one press
+                away — and ส่งออก was the verb of the menu the row is already inside.
+                What each row costs is in its `note`.
+
+                ── บัญชี → การเงิน, THE SAME DAY ───────────────────────────────
+
+                The tab has been รายงาน OT การเงิน since 2026-09-08 — see the rename
+                table at the head of components/App.jsx — and these rows, plus the
+                warn box below, went on saying บัญชี. One word on the screen now.
+                The KEY, the route, the CSV filename and the print sheet are all
+                still `accounting`, exactly as that table says.
 
                 ⚠ WHERE ไม่มีการคำนวณเป็นเงิน WENT. It was a `.hint` under the
-                buttons; it is the CSV row's `note` now. That is a real move and
-                not a free one — the sentence is behind a press instead of always
-                on screen — and it is the better place for it: a note on the row
-                you are about to press is read at the moment it matters, and
-                under the buttons it was read after. */}
+                buttons; it is the CSV row's `note`, shortened on 2026-09-14 to
+                เป็นชั่วโมง ไม่ใช่เงิน — the words แยกแผนก has always used for the
+                same fact. That is a real move and not a free one — the sentence is
+                behind a press instead of always on screen — and it is the better
+                place for it: a note on the row you are about to press is read at
+                the moment it matters, and under the buttons it was read after. */}
             <ExportMenu
               disabled={!data}
               items={[
                 {
-                  key: 'csv',
-                  label: 'ส่งออกไฟล์บัญชี (CSV/Excel)',
-                  note: 'หนึ่งบรรทัดต่อหนึ่งคน · เป็นชั่วโมง ไม่มีการคำนวณเป็นเงิน',
+                  key: 'print',
+                  label: 'พิมพ์ใบสรุปส่งการเงิน',
+                  note: 'ตามบริษัทที่เลือก',
                   primary: true,
-                  onSelect: exportCsv,
+                  onSelect: () => setPrinting(true),
                 },
                 {
-                  key: 'print',
-                  label: 'พิมพ์แบบฟอร์ม / บันทึกเป็น PDF',
-                  note: 'ใบสรุปส่งบัญชี · ตามบริษัทที่เลือกไว้',
-                  onSelect: () => setPrinting(true),
+                  key: 'csv',
+                  label: 'ไฟล์การเงิน (CSV/Excel)',
+                  note: 'บรรทัดละคน · เป็นชั่วโมง ไม่ใช่เงิน',
+                  onSelect: exportCsv,
                 },
               ]}
             />
@@ -296,7 +324,7 @@ export default function AccountingView() {
           {periods.length > 1 ? 'งวดนี้' : 'เดือนนี้'}ยังมีรายการค้างอนุมัติ {pending.count} รายการ
           {' '}ของพนักงาน {pending.employees} คน
           {' '}({hours(pending.hours)} ชม.) ซึ่ง<strong>ไม่ถูกนับ</strong>ในสรุปนี้ —
-          {' '}ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนส่งบัญชี
+          {' '}ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนส่งการเงิน
           {/* ── แยกเดือนเมื่อเป็นงวดสองเดือน ────────────────────────────────
               ยอดรวมอย่างเดียวส่งคนไปเปิดคิวผิดเดือนได้ครึ่งหนึ่งของเวลา และคิว
               เป็นของ *เดือน* เสมอ ไม่มีหน้าไหนเปิดคิวสองเดือนพร้อมกัน · จำนวนคน
@@ -627,7 +655,7 @@ function CompanySheet({ company, periods }) {
           */}
           <TablePager
             className="flush-pager no-print"
-            label={`สรุป OT ส่งบัญชี · ${company.shortTh}`}
+            label={`รายงาน OT การเงิน · ${company.shortTh}`}
             unit="คน"
             page={at}
             pageSize={pageSize}

@@ -79,7 +79,12 @@ test('สองจอที่ถูกแจ้งใช้แถวเดี�
     // quietly promoted back out onto a button of its own.
     const menu = jsx.slice(at, jsx.indexOf('/>', at));
     assert.ok(/\(CSV\/Excel\)/.test(menu), `${file} เอาแถวส่งออกไฟล์ออกจากเมนู`);
-    assert.ok(/พิมพ์แบบฟอร์ม \/ บันทึกเป็น PDF/.test(menu), `${file} เอาแถวพิมพ์แบบฟอร์มออกจากเมนู`);
+    // ⚠ ชื่อของแถวไม่ได้ตรึงไว้ตรงนี้แล้ว — บรรทัดนี้เคยอ่านว่า
+    // `พิมพ์แบบฟอร์ม / บันทึกเป็น PDF` จนถึง 2026-09-14 ที่ทั้งสามจอถูกจัดให้
+    // เรียกเอกสารของตัวเองด้วยชื่อของมันเอง ที่นี่ถามแค่ว่าแถวพิมพ์ยังอยู่ในเมนู
+    // ส่วนลำดับ เสียงเน้น และคำเตือนที่ห้ามหาย อยู่ที่ test/exportMenuShape.test.js
+    // ซึ่งอ่านสามจอพร้อมกัน เพราะกฎนั้นเป็นกฎระหว่างจอ
+    assert.ok(/label: 'พิมพ์/.test(menu), `${file} เอาแถวพิมพ์ออกจากเมนู`);
     // AND NO ROW OF BUTTONS ANYWHERE ON THE CARD. `.action-row` is deleted from
     // the stylesheet; a screen re-creating the pair by hand would be the first
     // of the two to drift.

@@ -1517,15 +1517,21 @@ export default function HrView({
             items={[
               {
                 key: 'bundle',
-                label: 'พิมพ์ใบขออนุมัติ OT ทุกคน',
-                /* THE NOTE NAMES THE DOCUMENT'S FORM CODE, which the label
+                label: 'พิมพ์ใบขออนุมัติ OT',
+                /* IT READ พิมพ์ใบขออนุมัติ OT ทุกคน UNTIL 2026-09-14, when the
+                   three report menus were made to read alike and every label was
+                   cut to กริยา + ชื่อเอกสาร. ทุกคน did not go: it is the first
+                   thing the `note` says, one line below, where รวมทุกคนในตาราง
+                   หนึ่งคนต่อหนึ่งหน้า is now ทุกคนในตาราง · หน้าละคน.
+
+                   THE NOTE NAMES THE DOCUMENT'S FORM CODE, which the label
                    deliberately does not — asked for on 2026-08-31. "F-HR-027" is
                    what the controlled form is called in the filing cabinet and on
                    the sheet itself; it is not what anybody standing at this
                    screen calls the thing they are about to print. In the old row
                    the code lived in a `title` nobody on a touch screen could
                    reach; a menu row has space to simply say it. */
-                note: 'รวมทุกคนในตาราง หนึ่งคนต่อหนึ่งหน้า · F-HR-027',
+                note: 'ทุกคนในตาราง · หน้าละคน · F-HR-027',
                 primary: true,
                 /* `shown`, not `data.employees`: the bundle's own note says it is
                    "exactly the rows of ตรวจสอบรายเดือน as they stand", and a
@@ -1542,11 +1548,15 @@ export default function HrView({
                    GRAINS of the same thing and read as one word split in half;
                    these two name the documents — one row per OT entry, one sheet
                    summarising the month. Renamed 2026-08-31 with the tab above
-                   them. The endpoints and the downloaded filenames did not move:
+                   them, and shortened again on 2026-09-14 — ส่งออกรายการ OT (CSV)
+                   and ส่งออกรายงานสรุปประจำเดือน (CSV) dropped the verb the menu
+                   they sit in already says, and (CSV) became (CSV/Excel) because
+                   the file is opened in Excel by everyone who asks for it. The
+                   endpoints and the downloaded filenames did not move:
                    `OT-2026-08.csv` and `OT-monthly-2026-08.csv` are what HR has
                    been filing all along. */
-                label: 'ส่งออกรายการ OT (CSV)',
-                note: 'หนึ่งบรรทัดต่อหนึ่งใบ',
+                label: 'รายการ OT (CSV/Excel)',
+                note: 'บรรทัดละใบ',
                 /* `scopeParam` and `deptParam` on both files, so what is exported
                    is what is on screen. Without them a การเงิน on รายงาน OT
                    ประจำทีม would download the whole company from a table showing
@@ -1559,8 +1569,8 @@ export default function HrView({
               },
               {
                 key: 'monthly',
-                label: 'ส่งออกรายงานสรุปประจำเดือน (CSV)',
-                note: 'หนึ่งบรรทัดต่อหนึ่งคน',
+                label: 'สรุปรายเดือน (CSV/Excel)',
+                note: 'บรรทัดละคน',
                 onSelect: () => api.download(
                   `/exports/monthly.csv?period=${period}&status=${statusFilter}${scopeParam}${deptParam}`,
                   `OT-monthly-${period}.csv`,
@@ -2776,10 +2786,12 @@ export default function HrView({
                       a statement about the month".
 
                       AND THE COUNT IS NOT LOST WITH IT, which is what the old
-                      reasoning was protecting. The export button at the top of
-                      this screen says "พิมพ์ใบขออนุมัติ OT ทุกคน (4 คน)" (it
-                      read "พิมพ์ F-HR-027 ทุกคน (4 คน)" until 2026-08-31), and on a
-                      month that fits, every card is on the screen to be counted.
+                      reasoning was protecting. The head of this screen carries the
+                      month's count as a chip beside พิมพ์ / ส่งออก — it was on the
+                      print button itself, reading "พิมพ์ใบขออนุมัติ OT ทุกคน (4 คน)"
+                      until 2026-09-10 and "พิมพ์ F-HR-027 ทุกคน (4 คน)" until
+                      2026-08-31 — and on a month that fits, every card is on the
+                      screen to be counted.
                       The line comes back the moment there is a second page —
                       which is exactly when a reader cannot see the whole list
                       and the sentence is doing work.
