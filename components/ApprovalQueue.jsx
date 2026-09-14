@@ -1159,25 +1159,34 @@ export default function ApprovalQueue({
       */}
       {holding.length > 0 && (
         <div style={{ padding: '0 18px' }}>
+          {/* THE SUBJECT IS THE READER, the middle is the system's, and the
+              tail is what THIS reader needs next — see
+              `DELEGATED_APPROVAL_RECORDED` in lib/delegation.js, which the
+              card in ผู้รับช่วงอนุมัติแทน draws from the same line.
+
+              ⚠ "ทำแทน" LOST ITS `<strong>` ON 2026-09-12, on both screens.
+              The word is already inside “ ” — which is what says it is the
+              label written into the record rather than a description of it —
+              and a bold word in the line that is deliberately the quiet one
+              is the notice arguing with itself about which line matters.
+
+              ⚠ AND THE LINE IT WAS QUIET IN IS GONE — 2026-09-14. The two
+              clauses above were a `.say` deck under the names; they are the
+              end of the same sentence now, which is the shape agreed for กอง ก
+              that day. The card in ผู้รับช่วงอนุมัติแทน lost its own deck in
+              the same week and for the same reason, so the pair the test below
+              guards still reads as one pair. Two clauses were dropped on the
+              way: "และแถวเหล่านั้น" in front of the ป้าย, which only pointed
+              back at the rows the sentence had just named, and nothing else —
+              the four facts are all still here, and this notice is allowed the
+              second line it needs for them. */}
           <Alert kind="info">
             <strong>คุณกำลังรับช่วงอนุมัติแทน</strong>{' '}
             {holding.map((d) => `${d.from?.name} (ถึง ${thaiDate(d.toDate)})`).join(' · ')}
             {' '}— คิวด้านล่างรวมทีมที่รับช่วงมาแล้ว {coveredCount} รายการ
-            {' '}และแถวเหล่านั้นมีป้าย “รับช่วง” กำกับไว้
-            {/* THE SUBJECT IS THE READER, the middle is the system's, and the
-                tail is what THIS reader needs next — see
-                `DELEGATED_APPROVAL_RECORDED` in lib/delegation.js, which the
-                card in ผู้รับช่วงอนุมัติแทน draws from the same line.
-
-                ⚠ "ทำแทน" LOST ITS `<strong>` ON 2026-09-12, on both screens.
-                The word is already inside “ ” — which is what says it is the
-                label written into the record rather than a description of it —
-                and a bold word in the line that is deliberately the quiet one
-                is the notice arguing with itself about which line matters. */}
-            <div className="say">
-              {`การอนุมัติของคุณ${DELEGATED_APPROVAL_RECORDED}`}
-              {' · หัวหน้าเจ้าของคิวยังอนุมัติเองได้ตลอดเวลา'}
-            </div>
+            {' '}มีป้าย “รับช่วง” กำกับไว้ ·{' '}
+            {`การอนุมัติของคุณ${DELEGATED_APPROVAL_RECORDED}`}
+            {' · หัวหน้าเจ้าของคิวยังอนุมัติเองได้ตลอดเวลา'}
           </Alert>
         </div>
       )}
@@ -1213,9 +1222,19 @@ export default function ApprovalQueue({
               cannot bring a hidden row back — telling somebody to "เลือกเดือน
               ให้แคบลง" here would be advice that quietly does nothing. Loading
               the rest, or working the queue down, are the only two answers.
+
+              ⚠ โหลดทั้งหมด SAT ON A `.say` LINE OF ITS OWN until 2026-09-14.
+              It is the end of the sentence now — the holiday banner's shape,
+              where ปฏิทินวันหยุดประจำปี is the next thing on the row rather
+              than a deck under it, and the one banner in กอง ก that the shape
+              fits without an argument: a finding, then the single thing to do
+              about it. The `.link` keeps its own colour inside a red alert
+              (`.alert.error .link` → `--danger-ink`), so the press is still
+              visibly a press with the deck gone.
             */}
-            <div className="say">
-              {cut.shown < MAX_LIST_LIMIT ? (
+            {cut.shown < MAX_LIST_LIMIT ? (
+              <>
+                {' · '}
                 <button
                   type="button"
                   className="link"
@@ -1223,10 +1242,8 @@ export default function ApprovalQueue({
                 >
                   โหลดทั้งหมด
                 </button>
-              ) : (
-                <>คิวยาวเกินกว่าจะโหลดในครั้งเดียว — ทยอยอนุมัติแล้วรายการที่เหลือจะขึ้นมาเอง</>
-              )}
-            </div>
+              </>
+            ) : ' · คิวยาวเกินกว่าจะโหลดในครั้งเดียว — ทยอยอนุมัติแล้วรายการที่เหลือจะขึ้นมาเอง'}
           </Alert>
         </div>
       )}

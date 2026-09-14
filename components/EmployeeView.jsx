@@ -929,24 +929,28 @@ function EntryDetail({
           about the handwriting, this is about the entitlement. On a birthday row
           both are drawn, in that order, because the sentence "you did not type
           this" only makes sense after "this is the day the company gives you". */}
+      {/* ⚠ THE CHIP HAD A ROW OF ITS OWN — until 2026-09-14. Both notices were
+          a `<span class="chip">` and then a `<div>`, and a block after an
+          inline is a line break: two rows minimum, three on the birthday one.
+          The chip is the first word of the sentence now, which is what it
+          reads as anyway — OT สวัสดิการวันเกิด, and then what that means.
+
+          THE CHIP IS NOT REPEATED IN WORDS. It already carries the long form
+          in its `title`, so the sentence starts at what the chip cannot say:
+          whose holiday it is, and who files it. */}
       {isBirthdayWelfare(e) && (
         <Alert kind="info">
           <BirthdayWelfareMark entry={e} />
-          <div>
-            วันเกิดของคุณนับเป็นวันหยุดของคุณคนเดียว — ชั่วโมงที่มาทำงานในวันนั้นจึงเข้าช่อง
-            OT วันหยุดทั้งวัน · ฝ่ายบุคคลเป็นผู้บันทึกให้จากบันทึกเวลาเข้า-ออกงาน
-            รายการแบบนี้ยื่นเองไม่ได้ ถ้าตัวเลขไม่ตรงให้แจ้งฝ่ายบุคคล
-          </div>
+          {' วันเกิดของคุณนับเป็นวันหยุดของคุณคนเดียว ชั่วโมงในวันนั้นจึงเข้าช่อง OT วันหยุดทั้งวัน'}
+          {' · ฝ่ายบุคคลบันทึกให้จากเวลาเข้า-ออกงาน ยื่นเองไม่ได้ ถ้าตัวเลขไม่ตรงให้แจ้งฝ่ายบุคคล'}
         </Alert>
       )}
 
       {isProxyFiled(e) && (
         <Alert kind="info">
           <ProxyMark entry={e} />
-          <div>
-            รายการนี้คุณไม่ได้เป็นผู้กรอกเอง แต่เป็นชั่วโมงของคุณ —
-            นับในเพดานของแผนกและขึ้นบนใบ F-HR-027 ของคุณตามปกติ
-          </div>
+          {' รายการนี้คุณไม่ได้กรอกเอง แต่เป็นชั่วโมงของคุณ'}
+          {' — นับในเพดานของแผนกและขึ้นบนใบ F-HR-027 ของคุณตามปกติ'}
         </Alert>
       )}
 

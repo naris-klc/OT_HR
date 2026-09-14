@@ -239,12 +239,19 @@ function Overview({ onOpenTab, onFilter }) {
           />
         </div>
 
+        {/* ⚠ THE FIGURE WAS NOT BOLD, AND THE SENTENCE RAN FOUR CLAUSES —
+            until 2026-09-14. One deck all along, so nothing moved between
+            decks here: what กอง ก's answer cost this notice is two words of
+            throat-clearing (มีการ, ตรวจสอบ→ดู) and two negations spelt the
+            long way (ไม่ได้ล็อก→ไม่ล็อก, จะหน่วง→หน่วง). The count is the
+            headline now, which is what the other seven banners in that group
+            do and what this one was doing in prose. */}
         {noisyLogins && (
           <Alert kind="warn">
-            มีการเข้าสู่ระบบไม่สำเร็จ {data.failedLogins} ครั้งใน {data.windowDays} วันที่ผ่านมา
-            {' '}— ตรวจสอบรายการ “รหัสที่ถูกลองแล้วไม่ผ่าน” ด้านล่างว่าเป็นคนในบริษัทลืมรหัสผ่าน
+            <strong>เข้าสู่ระบบไม่สำเร็จ {data.failedLogins} ครั้งใน {data.windowDays} วันที่ผ่านมา</strong>
+            {' '}— ดูรายการ “รหัสที่ถูกลองแล้วไม่ผ่าน” ด้านล่างว่าเป็นคนในบริษัทลืมรหัสผ่าน
             {' '}หรือเป็นการไล่เดารหัสจากเครื่องที่ไม่รู้จัก
-            {' '}· ระบบไม่ได้ล็อกบัญชี แต่จะหน่วงเวลาให้ช้าลงเรื่อย ๆ เมื่อกรอกผิดซ้ำ
+            {' '}· ระบบไม่ล็อกบัญชี แต่หน่วงเวลาให้ช้าลงเรื่อย ๆ เมื่อกรอกผิดซ้ำ
           </Alert>
         )}
       </div>

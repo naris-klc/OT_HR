@@ -2011,7 +2011,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     147 files, run by `npm test`. Six named below as a
+test/                     148 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2024,9 +2024,13 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2659 tests
-across 147 files**, measured 2026-09-14 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2663 tests
+across 148 files**, measured 2026-09-14 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2659 tests across 147 files" until **หกแถบยืนพื้นเหลือสายเดียว** later the same
+evening — `standingBanners` is the new file, and it is a new file because the
+rule it holds is about six notices in five components, which is not a thing that
+belongs beside any one of them. It read
 "2658 tests across 147 files" for an hour of the same evening, until
 **การ์ดวิธีพิมพ์พับแล้ว** put one case in `disclosure` — beside the rule about
 which folds stay that ฝาพับ ▲/▼ ถูกถอนสองในสามจุด had written that afternoon. It read
@@ -9228,6 +9232,66 @@ usefully, where they did NOT. Most of what is left is the controls card — its 
 alert panel directly above them, and dropping that pair below 860px is worth
 about 60px more. Not done: it is a title, not spacing.
 
+### หกแถบยืนพื้นเหลือสายเดียว — 2026-09-14
+
+กอง ก ของ `docs/plan-notice-compact.md` คือ *แถบยืนพื้น* — แถบที่วาดทุกครั้งที่
+เปิดหน้านั้น โดยไม่มีใครกดอะไรมาก่อน นับไว้แปดใบ สองใบแรกลงไปแล้วเช้าวันเดียวกัน
+พร้อมการถอนฝาพับที่ทับกันอยู่ (§ข้างล่าง) นี่คืออีกหกใบ **คอมมิตเดียวทั้งกอง
+ตามคำตอบข้อ 5 ของแผน**
+
+**ทรงที่ตกลงกันคือทรงแถบประกาศวันหยุด** — หัวข้อกับเนื้ออยู่ใน*สายข้อความสายเดียว*
+บรรทัดจึงตัดตรงที่ประโยคตัด ไม่ใช่ตัดหนึ่งครั้งต่อหนึ่งก้อน · และ **ใบที่ยกเว้นได้
+คือใบที่มีเหตุผลของตัวเอง โดยเหตุผลนั้นต้องเขียนไว้ ไม่ใช่ตัดสินเงียบ ๆ**
+
+| แถบ | เคยเป็น | วันนี้ |
+| --- | --- | --- |
+| สถานะการสำรองข้อมูล | หัวข้อ + ชั้น `.say` + บางสถานะมีบรรทัดที่สาม | สายเดียว · จำนวนชุดที่สำรองไม่จบย้ายขึ้นไปอยู่ในหัวข้อ |
+| คุณกำลังรับช่วงอนุมัติแทน | หัวข้อ + รายชื่อ + ชั้น `.say` สองวรรค | สายเดียว · ยังเป็นสองแถวเพราะมันแบกสี่เรื่อง |
+| แสดง N จาก M รายการ | หัวข้อ + ชั้น `.say` ที่มีปุ่ม โหลดทั้งหมด อยู่ข้างใน | **แถวเดียวจริง** ปุ่มเป็นคำสุดท้ายของประโยค |
+| เข้าสู่ระบบไม่สำเร็จ N ครั้ง | สายเดียวอยู่แล้ว แต่สี่วรรคยาว | สายเดียว หัวข้อเป็นตัวหนา สั้นลงสองวรรค |
+| วันเกิดของคุณนับเป็นวันหยุด · บันทึกแทน | ชิป แล้วขึ้นบรรทัดใหม่เป็นย่อหน้า | ชิปเป็นคำแรกของประโยค |
+| กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน | ห้าก้อน | **ยกเว้น — ยังห้าก้อน ย่อแต่ร้อยแก้ว** |
+
+**ใบที่หกไม่ถูกย่อ และนั่นคือการตัดสินใจที่ถามแล้วตอบ** ด้วยเหตุผลสองข้อที่เป็น
+เรื่องของ*จออื่น*ทั้งคู่:
+
+- `PolicyDriftBanner` บนคิวรออนุมัติ **คือฉบับแถวเดียวของกล่องนี้อยู่แล้ว** และ
+  คอมเมนต์เหนือมันเขียนไว้เองตั้งแต่ต้นว่ามันสั้นกว่าโดยตั้งใจ — ไม่มีรายการ
+  ไม่มีปุ่ม — เพราะมัน**จบด้วยลิงก์มาที่หน้านโยบายการคำนวณ** ปลายทางที่พูดเท่ากับ
+  ป้ายบอกทาง คือคนกดลิงก์มาแล้วมาถึงที่เดิม
+- **รายการ drift เป็นรายการ** ซึ่งเป็นเส้นเดียวกับที่ใช้ตัดว่าฝาพับ ▲/▼ อันไหน
+  อยู่อันไหนไปเมื่อเช้าวันเดียวกัน: ประโยคย่อได้ รายการไม่ถูกยุบ
+
+ที่ย่อในกล่องนั้นจึงเป็นร้อยแก้วล้วน — ชั้น `.say` เสียวรรคที่อธิบายว่า*ทำไม*ระบบ
+ถึงไม่ยอมกำกับเวอร์ชันที่ให้ตัวเลขไม่ตรง (เป็นกลไก และถูกอธิบายไว้เหนือฟังก์ชัน
+แล้ว) และ **โน้ตใต้ปุ่มเสียบรรทัด `npm run migrate:policy-version` ไป** เพราะ
+หน้าเดียวกันมีแถบอำพันเต็มใบเรื่องนั้นอยู่ใต้ลงไป — ฉบับที่อยู่ต่อคือฉบับที่**รู้ว่า
+ค้างอยู่กี่ใบ** และบอกด้วยว่าสคริปต์เขียนเฉพาะเลขเวอร์ชัน ส่วนฉบับที่ไปคือบรรทัด
+ใต้ปุ่มที่ทำอย่างอื่น ปุ่มนั้นไม่ได้แก้ใบเก่า
+
+> **ชั้น `.say` ที่หายไป เอาความอ่านง่ายไปด้วยส่วนหนึ่ง และควรพูดออกมา**
+> `.alert .say` เป็นสีเทา `--muted` ซึ่งวัดได้ 4.84 บน `--danger-bg` และ 5.04 บน
+> `--amber-bg` — ผ่าน AA ทั้งคู่ ส่วนหมึกของกล่องเองคือ `--danger-ink` (ผ่าน AA
+> เช่นกัน) กับ `--amber` ซึ่ง **3.46 ในธีมสว่าง ต่ำกว่า AA** และเป็นหนี้ที่
+> `app/styles.css` บันทึกไว้แล้วพร้อมเพดานใน `test/theme.test.js` · ในหกใบนี้มีใบ
+> เดียวที่ข้อความย้ายลงไปนั่งบนคู่นั้น คือสถานะสำรองข้อมูลในสถานะอำพัน (โฟลเดอร์
+> ที่สำรองไม่จบ) ซึ่งเครื่องนี้ยังไม่เคยแสดง — แถบ `LogSystem` เป็นอำพันเหมือนกัน
+> แต่ไม่เคยมีชั้น `.say` จึงไม่มีอะไรย้าย · **ทางแก้คือ `--amber-ink` ที่ 5.46**
+> ซึ่งเป็นการเปลี่ยนทั้งแอปและเป็นเรื่องของคนที่เป็นเจ้าของแบรนด์ ตามที่ไฟล์นั้น
+> เขียนไว้เอง ไม่ใช่สิ่งที่แอบใส่มากับการย่อแถบ
+
+**และคอมเมนต์หนึ่งจุดผิดมาตั้งแต่ 2026-08-13** `PolicyVersion.jsx` เขียนไว้ว่า
+กล่องนั้นต้องมีลูกคนเดียวเพราะ *"`.alert` is a flex row whose first item is the
+icon, so every element passed in becomes another column beside it"* — `4d50891`
+ใส่ `.alert-body` ห่อลูกทั้งหมดไว้หกวันหลังจากนั้น ลูกทุกตัวจึงเรียงเป็นบล็อก
+ตามปกติมาตลอดเดือน เจอเพราะไปอ่าน `Alert` ใน `components/common.jsx` แทนที่จะ
+เชื่อประโยคนั้น — และมันสำคัญกับงานรอบนี้ เพราะถ้าเชื่อ ทุกใบในหกใบจะถูกเขียน
+ห่อ `<div>` ไว้ด้วยเหตุผลที่ไม่มีอยู่จริง
+
+`test/standingBanners.test.js` ปักไว้สี่เคส และหนึ่งในสี่ **เฝ้าใบที่ตั้งใจไม่แก้** —
+ชั้นเงียบ รายการ drift และปุ่มบันทึกเวอร์ชันต้องยัง*อยู่* เพราะข้อยกเว้นที่ไม่มี
+อะไรเฝ้าคือข้อยกเว้นที่คนมาทำให้ "ครบ" ทีหลัง
+
 ### ฝาพับสองในสามถูกถอน — 2026-09-14
 
 **Asked as *"ตัดสอง เก็บหนึ่ง"*, and the line it was cut along is not height.**
@@ -13477,8 +13541,14 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2659 tests**, about 4 s, measured 2026-09-14 across 147
-  files, all green. **NO NEW FILE in the round that moved it off 2658** —
+- `npm test` — **2663 tests**, about 4 s, measured 2026-09-14 across 148
+  files, all green. **`standingBanners` is the new file** — หกแถบยืนพื้นเหลือ
+  สายเดียว, the rest of กอง ก, and its four cases read five components at once:
+  a rule about what a standing notice may look like cannot live in the file of
+  whichever notice happened to be first. One of the four guards the notice that
+  was deliberately NOT changed, which is the half a test like this usually
+  forgets. It read "2659 tests … across 147" until that round.
+  **NO NEW FILE in the round that moved it off 2658** —
   การ์ดวิธีพิมพ์พับแล้ว put its case in `disclosure`, directly under the one
   ฝาพับ ▲/▼ ถูกถอนสองในสามจุด had put there the same afternoon: a fold over a
   *list* stays, a fold over a *sentence* goes, and the second round is what the
