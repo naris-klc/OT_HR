@@ -3960,13 +3960,26 @@ export function PickOne({
  *
  * ── WHAT IT COSTS, SAID PLAINLY ─────────────────────────────────────────────
  *
- * พิมพ์ใบขออนุมัติ OT ทุกคน is what ตรวจสอบประจำเดือน is FOR — it was the one
- * filled button among three ghosts precisely to say so — and it is now two presses
+ * พิมพ์ใบขออนุมัติ OT is what ตรวจสอบประจำเดือน is FOR — it was the one filled
+ * button among three ghosts precisely to say so — and it is now two presses
  * rather than one. That is a real loss and it was chosen with the trade in
  * view. Two things soften it: it is the FIRST row of the menu and the only one
  * that keeps the filled voice, and the count that made the old label long
  * (`(24 คน)`) is on the BUTTON, so the number a reader came for is on screen
  * without opening anything.
+ *
+ * ── AND THAT SHAPE IS NOW THE RULE ON ALL THREE, 2026-09-14 ────────────────
+ *
+ * Asked for as *จัดให้เป็นรูปแบบเสมอกันทั้ง 3 หน้า*: on every screen that opens
+ * this menu the PRINT row is first and is the only one carrying `primary`, and
+ * every label is กริยา + ชื่อเอกสาร with the หมายเหตุ under it saying what comes
+ * out. รายงาน OT การเงิน and รายงาน OT แยกแผนก led with their CSV until that
+ * day, each for a reason that was true of that screen alone — which is exactly
+ * how two screens built from one component start reading as two. What each of
+ * them puts in the menu is still their own; the ORDER is not.
+ *
+ * `test/exportMenuShape.test.js` reads the three screens together and fails on
+ * the next row that leads with something else.
  *
  * ── NOT A `PickOne` ─────────────────────────────────────────────────────────
  *

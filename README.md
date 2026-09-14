@@ -2011,7 +2011,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     146 files, run by `npm test`. Six named below as a
+test/                     147 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2024,9 +2024,14 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2654 tests
-across 146 files**, measured 2026-09-14 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2658 tests
+across 147 files**, measured 2026-09-14 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2654 tests across 146 files … measured 2026-09-14" until the three report menus
+were made to read alike later the same day — `exportMenuShape` is the file and
+three of the four cases are its own; **the fourth was already on disk
+unmeasured**, from a round that landed on `dev` without moving this figure, and
+the tree measured 2655 when this branch was taken. It read
 "2653 tests across 146 files … measured 2026-09-12" until the manual was walked
 against the screens again on **2026-09-14** — one case, in `manualScreen`, which
 is the file that already holds this screen. It read
@@ -6958,10 +6963,14 @@ existing two days later. See §หนึ่งวัน หนึ่งใบ an
 
 ### The two CSVs beside it, and the bug their new labels exposed
 
-Renamed 2026-08-31 with the button above them: **ส่งออกรายการ OT (CSV)** (it
-read "ส่งออกรายรายการ (CSV)") and **ส่งออกรายงานสรุปประจำเดือน (CSV)** (it read
-"ส่งออกสรุปรายเดือน (CSV)"). The old pair distinguished two *grains* of one
-thing and read as a single word split in half; these name the two documents.
+Renamed 2026-08-31 with the button above them, and shortened again on
+2026-09-14: **รายการ OT (CSV/Excel)** and **สรุปรายเดือน (CSV/Excel)**. They read
+"ส่งออกรายการ OT (CSV)" and "ส่งออกรายงานสรุปประจำเดือน (CSV)" until that day —
+ส่งออก is the verb the menu these rows sit inside already says, and the file is
+opened in Excel by everybody who asks for it — and "ส่งออกรายรายการ (CSV)" /
+"ส่งออกสรุปรายเดือน (CSV)" before 2026-08-31. That first pair distinguished two
+*grains* of one thing and read as a single word split in half; these name the two
+documents.
 **The endpoints and the downloaded filenames did not move** — `OT-2026-08.csv`
 and `OT-monthly-2026-08.csv` are what HR has been filing all along.
 
@@ -6995,8 +7004,11 @@ sideways at 320 / 360 / 390 / 430 / 860 / 1280 / 1440. Desktop puts all three on
 deliberately left alone — both its labels take two lines, so nothing shows
 there yet. It is the next place this bites.
 
-**พิมพ์ใบขออนุมัติ OT ทุกคน** — the same sheet for a whole month in one
-document, one person to a side of paper. The button read "พิมพ์ F-HR-027 ทุกคน"
+**พิมพ์ใบขออนุมัติ OT** — the same sheet for a whole month in one
+document, one person to a side of paper. It read "พิมพ์ใบขออนุมัติ OT ทุกคน"
+until 2026-09-14, when every row in the three report menus was cut to
+กริยา + ชื่อเอกสาร — ทุกคน did not go, it moved one line down into the row's
+หมายเหตุ, *ทุกคนในตาราง · หน้าละคน · F-HR-027*. The button read "พิมพ์ F-HR-027 ทุกคน"
 until 2026-08-31, when the label was asked to name the document instead of the
 controlled-form code: the code is what the sheet is called in the filing
 cabinet, not what the person pressing the button calls what they are printing.
@@ -7049,8 +7061,8 @@ therefore **every figure on the screen is that department's**:
 | **รวมทั้งหมด** | ✓ | ✗ — it is the month's, and says so while the box is narrowing |
 | the **เพดาน** column and its colour | ✓ | ✗ |
 | วันเกิด ที่ยังไม่มีในระบบ, the policy banner, ยืนยันโดย HR n ใบ | ✓ | ✗ |
-| **ส่งออกรายการ OT (CSV)** and **ส่งออกรายงานสรุปประจำเดือน (CSV)** | ✓ | ✗ |
-| **พิมพ์ใบขออนุมัติ OT ทุกคน** | ✓ | ✓ — it prints the rows on screen |
+| **รายการ OT (CSV/Excel)** and **สรุปรายเดือน (CSV/Excel)** | ✓ | ✗ |
+| **พิมพ์ใบขออนุมัติ OT** | ✓ | ✓ — it prints the rows on screen |
 
 A screen filter could not have done any of that. The เพดาน column in particular
 is the reason: it was repaired once already for being coloured from a half of
@@ -8052,8 +8064,21 @@ is the fifth filter.
 **3 — `ExportMenu` moved to `components/common.jsx` and all three press it.**
 It was ตรวจสอบประจำเดือน's own module-level component for the few hours between
 the two reports. What each screen puts *in* the menu is still its own — three
-rows there, two on the report screens, with the CSV leading on both because it
-kept the filled voice in the row it replaces.
+rows there, two on the report screens.
+
+> ⚠ **The ORDER stopped being their own on 2026-09-14.** This paragraph read
+> "with the CSV leading on both because it kept the filled voice in the row it
+> replaces" until then — the two report screens led with their CSV and
+> ตรวจสอบประจำเดือน led with its print row, each for a reason that was true of
+> that screen alone, which is how three screens built from one component start
+> reading as three. Asked for as *ให้เรียงลำดับด้วย พิมพ์/pdf ขึ้นก่อน จัดให้เป็น
+> รูปแบบเสมอกันทั้ง 3 หน้า*: the print row is first on all three and is the only
+> row carrying `primary`, and every label is กริยา + ชื่อเอกสาร with the หมายเหตุ
+> under it carrying what the old label spelled out. The cost is on ส่งบัญชี,
+> where closing a month means handing การเงิน a file and that file is now the
+> second row. `test/exportMenuShape.test.js` reads the three screens together —
+> the rule is a rule BETWEEN screens, and written into any one of their files
+> nobody would see it.
 
 > ⚠ **Two sentences moved from under the buttons into the menu**, and the second
 > one matters: ส่งบัญชี's *ไม่มีการคำนวณเป็นเงิน*, and แยกแผนก's
@@ -8063,7 +8088,9 @@ kept the filled voice in the row it replaces.
 > That is a real move and it was chosen: a note on the row you are about to
 > press is read at the moment it matters, and under the buttons it was read
 > afterwards. On แยกแผนก it is on **both** rows, because both exports ignore the
-> dropdown. It read "a `.hint` under the buttons" until this round.
+> dropdown. It read "a `.hint` under the buttons" until this round. Both were
+> shortened on 2026-09-14 — *เป็นชั่วโมง ไม่ใช่เงิน* and *ครบทุกแผนก ไม่ตามตัวกรอง*,
+> the same two facts in fewer words; that test fails if either is trimmed away.
 
 **4 — the bar reads in the queue's order: ค้นหา · สถานะ · แผนก · เดือน.** This
 screen argued the reverse — name the month, then narrow it — and the argument
@@ -8959,8 +8986,9 @@ it saves; they are drawn **shut only**, because open the list's own headings are
 those same words.
 
 **FIRST OF EVERYTHING ON THE PAGE** — above สถานะที่นับ, above ประจำเดือน and
-the search box, above พิมพ์ใบขออนุมัติ OT ทุกคน and the two CSVs, above the
-list. (That button was called พิมพ์ F-HR-027 ทุกคน until 2026-08-31, which is
+the search box, above พิมพ์ใบขออนุมัติ OT and the two CSVs, above the
+list. (That button was called พิมพ์ใบขออนุมัติ OT ทุกคน until 2026-09-14 and
+พิมพ์ F-HR-027 ทุกคน until 2026-08-31, which is
 the name it goes by in the three quoted orderings below; the position is what
 they are about and none of it moved. It
 read "above the ประจำเดือน box, above พิมพ์ F-HR-027 ทุกคน and the two CSVs,
@@ -9839,7 +9867,7 @@ The card reads top to bottom as a sentence now:
 |---|---|
 | ตรวจสอบรายเดือน + สถานะที่นับ | which statuses count |
 | ประจำเดือน + แผนก + ค้นหา + *แสดง n จาก m คน* | which month, whose month, and which of it is drawn |
-| พิมพ์ใบขออนุมัติ OT ทุกคน + the two CSVs | what to do with what the first two settled |
+| พิมพ์ใบขออนุมัติ OT + the two CSVs | what to do with what the first two settled |
 
 > The middle row read "**ประจำเดือน + ค้นหา + *แสดง n จาก m คน* · which month,
 > and which of it is drawn**" until 2026-09-10, when แผนก went in between them —
@@ -10823,7 +10851,7 @@ whichever it is, it clears.
 **It is not a filter,** and nothing that is counted, exported or printed reads
 it — which was true of every version this screen has had, and is why each could
 be swapped for the next without a single figure moving. **รวมทั้งหมด** is the
-server's `grandTotal` for the whole month. **พิมพ์ใบขออนุมัติ OT ทุกคน** bundles
+server's `grandTotal` for the whole month. **พิมพ์ใบขออนุมัติ OT** bundles
 every person the search matched, on this page or not. Both CSVs are built
 server-side and have never known what is on screen. A new month, a new
 สถานะที่นับ or a new search puts the page back to 1 — `query` and not `find`
@@ -11218,8 +11246,8 @@ and the `company` handling in `app/api/employees/**` and the บริษัท 
 เสมอ `.sort()` จะสลับที่กันเองระหว่างการส่งออกสองครั้งของเดือนที่ไม่มีอะไรเปลี่ยน
 จึงตัดสินด้วยสตริงที่ normalize แล้วเป็นด่านสุดท้าย
 
-**ที่เดียว หกเอกสาร** — ตาราง `ตรวจสอบประจำเดือน` · `ส่งออกรายการ OT (CSV)` ·
-`ส่งออกรายงานสรุปประจำเดือน (CSV)` · `รายงาน OT การเงิน` (จอ ใบพิมพ์ และ CSV
+**ที่เดียว หกเอกสาร** — ตาราง `ตรวจสอบประจำเดือน` · `รายการ OT (CSV/Excel)` ·
+`สรุปรายเดือน (CSV/Excel)` · `รายงาน OT การเงิน` (จอ ใบพิมพ์ และ CSV
 อ่านจาก `lib/accounting.js` ตัวเดียวกัน) · `รายงาน OT แยกแผนก` ซึ่งถาม
 `compareCodes` มาตั้งแต่เขียน · และตั้งแต่ **2026-09-07** คือ**รายการใบทุกใบที่
 `GET /api/entries` ตอบ** ดูหัวข้อถัดไป · คนที่กระทบยอดใบที่เซ็นแล้วกับไฟล์ไล่นิ้ว
@@ -11252,14 +11280,14 @@ and the `company` handling in `app/api/employees/**` and the บริษัท 
 **แต่ `.sort({ workDate: -1, createdAt: -1 })` บน query ยังอยู่ และต้องอยู่** — มัน
 ตัดสินว่า*แถวไหนได้กลับมา*เมื่อรายการชนเพดาน 500 (`capFor`) ไม่ใช่ว่าวางเรียงยังไง
 มองโกเรียงตาม `employee.code` ไม่ได้เลย (เป็น ObjectId จนกว่า `populate` จะเติม —
-กับดักเดียวกับที่ `ส่งออกรายการ OT (CSV)` ติดมาหลายเดือน) แถวที่หลุดเพดานจึงยังเป็น
+กับดักเดียวกับที่ `รายการ OT (CSV/Excel)` ติดมาหลายเดือน) แถวที่หลุดเพดานจึงยังเป็น
 **ใบที่เก่าที่สุด** ตามที่แบนเนอร์เหนือตารางบอก ถ้าไปตัดตามรหัสแทน คนครึ่งหลังของ
 ทะเบียนจะหายทั้งคนโดยไม่มีอะไรบอก
 
 **`legacy/routes/entries.js` ไม่ได้แก้** — เป็น Express ที่ปลดระวางแล้วและตามหลัง
 อยู่ก่อนแล้วในเรื่อง proxy filing กับ delegation (ดู §โครงสร้าง)
 
-**และ `ส่งออกรายการ OT (CSV)` ไม่เคยเรียงตามรหัสเลย** — เจอวันเดียวกัน · เดิมเขียน
+**และ `รายการ OT (CSV/Excel)` ไม่เคยเรียงตามรหัสเลย** — เจอวันเดียวกัน · เดิมเขียน
 `.sort({ 'employee.code': 1, workDate: 1 })` ไว้บน query แต่ `employee` บนใบเป็น
 ObjectId ที่ `populate` มาเติมทีหลัง มองโกจึงเรียงตาม path ที่ไม่มีในเอกสาร (ไม่
 ปฏิเสธ แต่ไม่เรียงอะไรเลย) เหลือ `workDate` เป็นเงื่อนไขเดียวที่ทำงานจริง ไฟล์จึง
@@ -11934,8 +11962,10 @@ the closed select. Both pickers format their options through `withHours()` in
 companies. If the department selected is not in the month being shown — nobody
 in it worked OT, or it has since closed — the picker falls back to ทุกแผนก
 rather than sitting blank over an empty page. **The dropdown filters the screen
-only.** พิมพ์แบบฟอร์ม always prints every department: the bundle is the
-month's, and a page missing from it is not a filter preference.
+only.** พิมพ์ใบสรุปแยกแผนก always prints every department: the bundle is the
+month's, and a page missing from it is not a filter preference. (That row read
+"พิมพ์แบบฟอร์ม / บันทึกเป็น PDF" until 2026-09-14, and the sentence you are
+reading is its `note` in six words: *ครบทุกแผนก ไม่ตามตัวกรอง · แผนกละชุด*.)
 
 What differs from the accounting screen is the columns: **1.50 | 3.00 | รวม ชม.**, the printed form's, not ตรวจสอบรายเดือน's
 three rate buckets. This screen exists to be checked against the paper it
@@ -11990,7 +12020,8 @@ a birthday.
 
 ### The file
 
-**ส่งออกไฟล์แยกแผนก (CSV/Excel)** → `/api/exports/departments.csv`. The same
+**ไฟล์แยกแผนก (CSV/Excel)** → `/api/exports/departments.csv` — it read
+"ส่งออกไฟล์แยกแผนก (CSV/Excel)" until 2026-09-14. The same
 month as `accounting.csv`, added up the other way, and laid out like the screen
 it comes from: each department's people in ลำดับที่ order, that department's
 **รวมชั่วโมงทำOT** line, then **รวมทุกแผนก** at the end. Those รวม lines are in
@@ -13380,8 +13411,13 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2654 tests**, about 4 s, measured 2026-09-14 across 146
-  files, all green. It read "2653 tests … measured 2026-09-12" until the manual
+- `npm test` — **2658 tests**, about 4 s, measured 2026-09-14 across 147
+  files, all green. **`exportMenuShape` is the new file** — เมนู พิมพ์ / ส่งออก
+  ของสามจอถูกจัดให้เป็นรูปแบบเดียวกัน, and a rule about three screens is written
+  where all three can be read at once. It read "2654 tests … across 146" until
+  that round, and the tree was already at 2655 when the branch was taken: one
+  case had landed without this figure moving.
+  It read "2653 tests … measured 2026-09-12" until the manual
   was walked against the screens on 2026-09-14 — one case in `manualScreen`, and
   **no new file**, for the reason the round before it gives.
   **NO NEW FILE in the round that moved it off 2649 either** —

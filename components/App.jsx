@@ -1411,7 +1411,8 @@ function Shell({ session, onRefresh, onLogout }) {
    * button took the same day: the controlled-form code is what the sheet is
    * called in the filing cabinet, not what the person pressing the button
    * calls what they are about to print. The two now match word for word —
-   * HR's says พิมพ์ใบขออนุมัติ OT ทุกคน, an employee's is their own copy of it.
+   * HR's says พิมพ์ใบขออนุมัติ OT — it read พิมพ์ใบขออนุมัติ OT ทุกคน until
+   * 2026-09-14 — and an employee's is their own copy of it.
    *
    * THE ICONS ARE THE ONES THEY ALREADY WORE. `clock` is the whole set's only
    * time glyph and there is no `history`; `document` is a sheet of paper with

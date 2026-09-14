@@ -860,7 +860,11 @@ test('the sheet draws the shared band, once, per company', () => {
   assert.match(acctCode, /const \[pageSize, setPageSize\] = useState\(50\);/);
   assert.match(acctCode, /unit="คน"/);
   // The label names the company, because บริษัท · ทั้งหมด draws two of these.
-  assert.match(acctCode, /label=\{`สรุป OT ส่งบัญชี · \$\{company\.shortTh\}`\}/);
+  // It read `สรุป OT ส่งบัญชี · ${company.shortTh}` until 2026-09-14, when the word
+  // บัญชี left this screen: the tab has been รายงาน OT การเงิน since 2026-09-08 and
+  // this label — read aloud by a screen reader and by nothing else — was one of the
+  // three places still saying the older name.
+  assert.match(acctCode, /label=\{`รายงาน OT การเงิน · \$\{company\.shortTh\}`\}/);
 });
 
 test('⚠ the page is a class on a row, never a slice — the sheet prints whole', () => {

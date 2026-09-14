@@ -124,33 +124,42 @@ export default function DepartmentView() {
             {data && <span className="chip muted">รวม {hours(total.otHours)} ชม.</span>}
             {/* ── TWO BUTTONS BECAME ONE MENU ─────────────────────────────
 
-                The same control and the same two rows as สรุป OT ส่งบัญชี, in
-                the same order — the file leads, the form follows.
+                The same control and the same two rows as รายงาน OT การเงิน, in the
+                same order — and since 2026-09-14 that order is the form first and
+                the file second, on this screen, on การเงิน and on
+                ตรวจสอบประจำเดือน alike. The reasoning is written out once, over the
+                menu on components/AccountingView.jsx; what matters here is that a
+                reader who changes tab finds the rows where they left them.
 
-                ⚠ WHERE ไฟล์และแบบฟอร์มออกครบทุกแผนก WENT, AND WHY IT MATTERS
-                MORE HERE. On ส่งบัญชี the hint under the buttons said only that
-                the file carries hours and not money; on this screen it said
-                something a reader can get WRONG — that both exports ignore the
-                แผนก dropdown two inches to the left of them and always cover
-                every department. That sentence is now the `note` on BOTH rows,
-                which is the one place it is certain to be read: beside the row
-                being pressed, at the moment of pressing. Under the buttons it
-                was read afterwards, if at all. */}
+                ⚠ WHERE ไฟล์และแบบฟอร์มออกครบทุกแผนก WENT, AND WHY IT MATTERS MORE
+                HERE. On การเงิน the hint under the buttons said only that the file
+                carries hours and not money; on this screen it said something a
+                reader can get WRONG — that both exports ignore the แผนก dropdown
+                two inches to the left of them and always cover every department.
+                That sentence is the `note` on BOTH rows, which is the one place it
+                is certain to be read: beside the row being pressed, at the moment
+                of pressing. Under the buttons it was read afterwards, if at all.
+
+                It read ครบทุกแผนก ไม่ขึ้นกับแผนกที่เลือก until 2026-09-14 and is
+                ครบทุกแผนก ไม่ตามตัวกรอง now — eleven characters shorter and the
+                same two facts, which is what กระชับข้อความ was asked for. Shortening
+                it to ครบทุกแผนก alone was the tempting version and would have
+                dropped the half a reader gets wrong. */}
             <ExportMenu
               disabled={!data}
               items={[
                 {
-                  key: 'csv',
-                  label: 'ส่งออกไฟล์แยกแผนก (CSV/Excel)',
-                  note: 'ครบทุกแผนก ไม่ขึ้นกับแผนกที่เลือก · เป็นชั่วโมง ไม่ใช่เงิน',
+                  key: 'print',
+                  label: 'พิมพ์ใบสรุปแยกแผนก',
+                  note: 'ครบทุกแผนก ไม่ตามตัวกรอง · แผนกละชุด',
                   primary: true,
-                  onSelect: exportCsv,
+                  onSelect: () => setPrinting(true),
                 },
                 {
-                  key: 'print',
-                  label: 'พิมพ์แบบฟอร์ม / บันทึกเป็น PDF',
-                  note: 'ครบทุกแผนก ไม่ขึ้นกับแผนกที่เลือก · หนึ่งแผนกต่อหนึ่งชุด',
-                  onSelect: () => setPrinting(true),
+                  key: 'csv',
+                  label: 'ไฟล์แยกแผนก (CSV/Excel)',
+                  note: 'ครบทุกแผนก ไม่ตามตัวกรอง · เป็นชั่วโมง ไม่ใช่เงิน',
+                  onSelect: exportCsv,
                 },
               ]}
             />
