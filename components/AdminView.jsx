@@ -7329,6 +7329,36 @@ function ConfirmPolicyChange({
  * in force, so the pointer can resume. It is put next to the diff because
  * "record these rules" is only an obvious thing to press once you can see which
  * rules drifted.
+ *
+ * ── THE ONE BANNER IN กอง ก THAT DID NOT BECOME ONE ROW — 2026-09-14 ────────
+ *
+ * The answer given that day made the holiday banner's shape the default for
+ * every standing notice, and said an exception has to carry its reason in the
+ * commit rather than be taken quietly. This is the exception, for two reasons
+ * that are both about somebody else's screen:
+ *
+ *   `PolicyDriftBanner` in components/PolicyVersion.jsx ALREADY IS the one-row
+ *   version of this notice, on the two queues, and the comment above it says
+ *   it is less than this one on purpose — no diff, no button — because it ENDS
+ *   IN A LINK TO THIS PAGE. A destination that says exactly what the signpost
+ *   said is a reader who pressed the link and arrived nowhere.
+ *
+ *   The drift list is a LIST. The rule that took the ▲/▼ folds off two notices
+ *   on 2026-09-14 is that a fold over a sentence is an admission the sentence
+ *   is too long, while a fold over a list is a reader choosing whether to read
+ *   it — and the same line cuts here: a sentence may be shortened, rows saying
+ *   which rule moved from what to what may not be merged into one.
+ *
+ * So what was shortened is prose and only prose. The `.say` line lost the
+ * clause explaining WHY the system refuses to stamp a mismatched version —
+ * mechanism, and it is argued at the top of this comment where the reader who
+ * wants it will be. The note under the button lost its second half, which sent
+ * the reader to `npm run migrate:policy-version` for entries already filed:
+ * this page carries a whole amber banner about exactly that further down (see
+ * `unversioned` in PolicyHistory), one that knows HOW MANY entries are
+ * waiting and says the script touches nothing but the version number. Two
+ * mentions on one screen, and the one that went is the one with no count in it
+ * and no reassurance, sitting under a button that does something else.
  */
 function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
   if (!live || live.recorded) return null;
@@ -7343,7 +7373,7 @@ function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
           : `กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน ${live.latestSeq} ซึ่งเป็นเวอร์ชันล่าสุดที่บันทึกไว้`}
       </strong>
       <div className="say">
-        ระหว่างนี้ <strong>ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน</strong> — ระบบไม่ยอมกำกับด้วยเวอร์ชันที่ให้ตัวเลขไม่ตรงกับที่คำนวณจริง
+        ระหว่างนี้ <strong>ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน</strong>
         {' '}และจะไม่มีอะไรฟ้องจนกว่าจะปิดเดือน
         {!first && ' · มักเกิดจากการ deploy ที่แก้ค่าตั้งต้นในไฟล์ โดยไม่ได้บันทึกผ่านหน้านี้'}
       </div>
@@ -7369,8 +7399,7 @@ function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
             บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่
           </button>
           <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 4 }}>
-            บันทึกกฎที่ใช้อยู่ตามเดิมทุกข้อ ไม่เปลี่ยนค่าใด และไม่คำนวณใบใดใหม่ ·
-            {' '}ใบที่ยื่นไปแล้วแบบไม่มีเวอร์ชัน ใช้ <code>npm run migrate:policy-version</code> กำกับย้อนหลัง
+            บันทึกกฎที่ใช้อยู่ตามเดิมทุกข้อ ไม่เปลี่ยนค่าใด และไม่คำนวณใบใดใหม่
           </div>
         </div>
       )}

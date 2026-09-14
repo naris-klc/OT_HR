@@ -80,51 +80,68 @@ export function BackupBanner({ user }) {
   // is the only thing on screen that makes that visible.
   const where = destination ? <code style={{ fontSize: 12 }}>{destination}</code> : null;
 
+  // THE COUNT IS IN THE HEADLINE IN THE ONLY STATE THAT HAS ONE — 2026-09-14.
+  // It read 'พบชุดสำรองที่สำรองไม่จบ' with the number on a line of its own
+  // underneath; one flow cannot say the same noun twice, and of the two places
+  // it could stand the headline is the one somebody reads without deciding to.
   const headline = (broken && {
     unreadable: 'ไม่พบโฟลเดอร์สำรองข้อมูล',
     none: 'ยังไม่มีข้อมูลสำรองในโฟลเดอร์นี้เลย',
     stale: 'ข้อมูลสำรองล่าสุดเก่ากว่า 24 ชั่วโมง',
-  }[state]) || (broken ? 'สถานะการสำรองข้อมูลไม่ปกติ' : 'พบชุดสำรองที่สำรองไม่จบ');
+  }[state]) || (broken ? 'สถานะการสำรองข้อมูลไม่ปกติ' : `พบชุดสำรองที่สำรองไม่จบ ${incomplete} ชุด`);
 
   // Amber when the only thing wrong is leftover half-written folders — the job
   // itself is still running. Red when last night's backup did not happen.
   const kind = broken ? 'error' : 'warn';
 
+  /*
+   * ⚠ IT WAS A HEADLINE WITH A `.say` DECK UNDER IT — until 2026-09-14.
+   *
+   * Three rows in the worst state: the headline, the state's sentence, and the
+   * leftover-folders line under that. One flow now, the shape ประกาศวันหยุด
+   * landed in on 2026-09-11 and the answer given on 2026-09-14 to the question
+   * of what กอง ก should look like: the row breaks where a SENTENCE breaks.
+   *
+   * WHAT WENT IS WHAT THE HEADLINE HAD ALREADY SAID. 'ปลายทางที่ตั้งไว้อ่าน
+   * ไม่ได้' under 'ไม่พบโฟลเดอร์สำรองข้อมูล' is the same fact twice, and so is
+   * 'โฟลเดอร์มีอยู่แต่ไม่มีชุดสำรองที่สมบูรณ์' under 'ยังไม่มีข้อมูลสำรองใน
+   * โฟลเดอร์นี้เลย' — except for the word โฟลเดอร์มีอยู่, which is the ONE
+   * thing separating this state from `unreadable` and is kept as อ่านได้.
+   * 'สำรองสำเร็จ' went the same way: the state it appears in is the one whose
+   * headline is about a set that did NOT finish.
+   *
+   * THE PATH IS PRINTED ONCE, at the end, instead of once per branch. It was
+   * in all four strings because each one ended the notice; now only one thing
+   * ends the notice.
+   *
+   * THE SECOND DECK'S GREY GOES WITH IT, and that is a readability cost worth
+   * naming: `.alert .say` is `--muted`, which measures 4.84 on `--danger-bg`
+   * and 5.04 on `--amber-bg`, while the alert's own ink here is `--danger-ink`
+   * (AA, measured by test/theme.test.js) in the red state and `--amber` (3.46,
+   * the light theme's recorded shortfall) in the amber one. The amber state is
+   * the leftover-folders notice, which this machine has never shown — and the
+   * fix for that pair is `--amber-ink` at 5.46, an app-wide change that
+   * app/styles.css says out loud belongs to whoever owns the brand.
+   */
   return (
     <Alert kind={kind}>
-      <div>
-        <strong>{headline}</strong>
-        <div className="say">
-          {state === 'unreadable' && (
-            <>
-              ปลายทางที่ตั้งไว้อ่านไม่ได้ — ไดรฟ์อาจไม่ได้เสียบ share หลุด
-              {' '}หรือ <code style={{ fontSize: 12 }}>BACKUP_DIR</code> ไม่ตรงกับที่ตั้งไว้ใน Task Scheduler · {where}
-            </>
-          )}
-          {state === 'none' && (
-            <>
-              โฟลเดอร์มีอยู่แต่ไม่มีชุดสำรองที่สมบูรณ์อยู่ในนั้น · {where}
-            </>
-          )}
-          {state === 'stale' && newest && (
-            <>
-              ชุดล่าสุดเมื่อ {thaiStamp(newest.takenAt)}
-              {' '}({Math.floor(ageHours)} ชม.ที่แล้ว) — งานสำรองอัตโนมัติน่าจะล้มเหลว · {where}
-            </>
-          )}
-          {!broken && newest && (
-            <>
-              ชุดล่าสุดเมื่อ {thaiStamp(newest.takenAt)}
-              {' '}({newest.totalDocuments} รายการ) สำรองสำเร็จ · {where}
-            </>
-          )}
-          {incomplete > 0 && (
-            <div style={{ marginTop: 4 }}>
-              พบโฟลเดอร์ที่สำรองไม่จบ {incomplete} ชุด (ไม่มี manifest.json) — ไม่ถูกนับเป็นชุดสำรอง
-            </div>
-          )}
-        </div>
-      </div>
+      <strong>{headline}</strong>
+      {state === 'unreadable' && (
+        <>
+          {' — ไดรฟ์อาจไม่ได้เสียบ share หลุด หรือ '}
+          <code style={{ fontSize: 12 }}>BACKUP_DIR</code>
+          {' ไม่ตรงกับที่ตั้งไว้ใน Task Scheduler'}
+        </>
+      )}
+      {state === 'none' && ' — โฟลเดอร์อ่านได้ แต่ไม่มีชุดสำรองที่สมบูรณ์อยู่ในนั้น'}
+      {state === 'stale' && newest
+        && ` — ชุดล่าสุดเมื่อ ${thaiStamp(newest.takenAt)} (${Math.floor(ageHours)} ชม.ที่แล้ว)`
+        + ' งานสำรองอัตโนมัติน่าจะล้มเหลว'}
+      {!broken && ' — ไม่มี manifest.json จึงไม่ถูกนับเป็นชุดสำรอง'}
+      {!broken && newest
+        && ` · ชุดที่สมบูรณ์ล่าสุดเมื่อ ${thaiStamp(newest.takenAt)} (${newest.totalDocuments} รายการ)`}
+      {broken && incomplete > 0 && ` · และมีโฟลเดอร์ที่สำรองไม่จบอีก ${incomplete} ชุด`}
+      {where && <> · {where}</>}
     </Alert>
   );
 }

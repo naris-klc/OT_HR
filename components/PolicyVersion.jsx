@@ -162,8 +162,16 @@ export function PolicyDriftBanner({ user, onOpenPolicy }) {
 
   if (!live || live.recorded) return null;
 
-  // One child, not three: .alert is a flex row whose first item is the icon,
-  // so every element passed in becomes another column beside it.
+  // ⚠ THE REASON WRITTEN HERE STOPPED BEING TRUE ON 2026-08-13, six days after
+  // it was written. It read: "One child, not three: .alert is a flex row whose
+  // first item is the icon, so every element passed in becomes another column
+  // beside it." `4d50891` gave the Alert an `.alert-body` wrapper that day, so
+  // children have stacked as ordinary blocks ever since and the single child
+  // below is no longer holding anything together. It stays because ONE FLOW is
+  // what this notice wants for its own sake — the row breaks where the sentence
+  // breaks — which is the shape กอง ก took on 2026-09-14 and the shape this
+  // strip had first. Found while reshaping the six banners of that group, by
+  // reading `Alert` in components/common.jsx rather than this sentence.
   return (
     <Alert kind="warn">
       <div>
