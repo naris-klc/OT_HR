@@ -2043,7 +2043,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     148 files, run by `npm test`. Six named below as a
+test/                     149 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2056,9 +2056,14 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2663 tests
-across 148 files**, measured 2026-09-14 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2667 tests
+across 149 files**, measured 2026-09-14 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2663 tests across 148 files" for an hour of the same evening, until
+**คำเตือนสองใบในโมดัลพูดจบในกล่องเดียว** — `modalNoticeFlow` is the new file,
+and it is a new file rather than four more cases in `standingBanners` because
+the two rules are about different things: that one is about notices nobody
+asked for, this one about the two an employee opens on purpose. It read
 "2659 tests across 147 files" until **หกแถบยืนพื้นเหลือสายเดียว** later the same
 evening — `standingBanners` is the new file, and it is a new file because the
 rule it holds is about six notices in five components, which is not a thing that
@@ -9264,6 +9269,63 @@ usefully, where they did NOT. Most of what is left is the controls card — its 
 alert panel directly above them, and dropping that pair below 860px is worth
 about 60px more. Not done: it is a title, not spacing.
 
+### คำเตือนสองใบในโมดัลพูดจบในกล่องเดียว — 2026-09-14
+
+**คอมมิตสุดท้ายของ `docs/plan-notice-compact.md`** — กอง ฉ, คู่ `<Alert>` +
+`.hint` ในโมดัลยกเลิกใบและโมดัลขอถอนใบของพนักงาน กล่องละประมาณหกบรรทัดในโมดัล
+เล็ก ๆ ที่ `<Alert>` เตือนเรื่องหนึ่ง แล้วย่อหน้าเทาใต้มันเล่าเรื่องเดิมต่ออีก
+สามวรรค
+
+**ปัญหาไม่ใช่ความยาว มันคือการมีสองย่อหน้า** และในใบยกเลิก สองย่อหน้านั้น
+*ขัดกันเอง*: `<Alert>` บอกว่ารายการนี้จะ **ปิดถาวร** · `.hint` บรรทัดถัดไปบอกว่า
+รายการจะ **ยังอยู่ในตาราง ไม่ได้ถูกลบทิ้ง** ทั้งคู่จริง — ประโยคแรกพูดถึง*คำขอ*
+ประโยคหลังพูดถึง*แถว* — แต่คนอ่านไม่ได้ประธานมาด้วย นี่คือเหตุผลที่กติกาของแผน
+เขียนว่า *"สายเดียว"* ไม่ใช่ *"สั้นกว่า"*: สายเดียวใส่คำว่า **แต่** ลงไประหว่าง
+สองข้อนั้นได้ สองย่อหน้าใส่ไม่ได้
+
+| โมดัล | ที่ตัดออก | เหตุผล |
+| --- | --- | --- |
+| ยกเลิกคำขอนี้ | *รายการนี้จะปิดถาวร* | พูดซ้ำ *แก้กลับไม่ได้* ห่างกันสี่คำ |
+| ยกเลิกคำขอนี้ | *ทั้งตัวพนักงานเอง* | คนอ่านคือพนักงานคนนั้น · ครึ่งที่น่าประหลาดใจคือ **ฝ่ายบุคคลก็ทำไม่ได้** และเป็นครึ่งที่ `test/cancelPermission.test.js` พิสูจน์ไว้ |
+| ขอถอนใบที่อนุมัติแล้ว | *หัวหน้างานของแผนกหรือฝ่ายบุคคลเป็นผู้พิจารณา* | `<Alert>` เพิ่งจบด้วย *จนกว่าหัวหน้างานหรือฝ่ายบุคคลจะอนุมัติให้ถอน* — คนเดียวกัน สองครั้ง ห่างกันเจ็ดคำ |
+| ขอถอนใบที่อนุมัติแล้ว | *หากไม่อนุมัติ รายการยังมีผลตามเดิม* | การไม่อนุมัติไม่เปลี่ยนอะไร และวรรคแรกบอกไปแล้วว่า "ไม่เปลี่ยนอะไร" หน้าตาเป็นยังไง |
+
+**ฉบับที่รอดในใบขอถอนคือฉบับที่มีคำว่า แผนก อยู่ในนั้น** — สองประโยคที่พูดเรื่อง
+เดียวกันยาวไม่เท่ากัน และฉบับยาวกว่าเป็นฉบับที่ถูก เพราะบริษัทนี้มีหัวหน้างาน
+หลายคน คนที่ตัดสินใบนี้คือคนของแผนกตัวเอง
+
+**ไม่มีอะไรย้ายลงไปนั่งบนหมึกที่คอนทราสต์ต่ำกว่า** ต่างจากกอง ก ที่การถอนชั้น
+`.say` ย้ายข้อความจาก `--muted` ไปอยู่บนหมึกของกล่อง — สองใบนี้เป็น `warn`
+ทั้งคู่ก็จริง แต่ `.hint` เดิมอยู่*นอก* `<Alert>` บนพื้นของโมดัล ไม่ใช่ `.say`
+ข้างใน สิ่งที่เปลี่ยนคือข้อความเข้าไปอยู่ในกรอบอำพัน ซึ่งวัดได้ 3.46 ในธีมสว่าง
+— **หนี้ก้อนเดิมก้อนเดียวกัน** ที่ `app/styles.css` บันทึกไว้แล้วและ
+`test/theme.test.js` ตรึงเพดานไว้ ทางแก้ยังเป็น `--amber-ink` ที่ 5.46 และยัง
+เป็นเรื่องของเจ้าของแบรนด์เหมือนเดิม
+
+**สี่จุดที่แผนเขียนว่า "ยาวเดี่ยว ๆ ควรไล่ดูทีละจุด" ถูกไล่ดูแล้ว และไม่มีจุดไหน
+เป็นกองนี้** เลขบรรทัดเป็นของ 2026-09-11 และเลื่อนไปหมด · ไล่ใหม่ด้วยเกณฑ์เดิม
+(≥140 อักษรไทย) ได้ว่า `ScanImport` หดไปเองจนเหลือ `<span>` อินไลน์ ·
+`LogSystem` นับเกินเพราะก้อนนั้นถือประโยคของสามแท็บไว้ด้วยกันแต่**วาดทีละ
+ประโยค** · `ProfileView` อยู่หลัง `Disclosure` อยู่แล้ว กองเดียวกับ `ManualView`
+· และ `AdminView` (ประวัติการแก้ทะเบียน) เป็นคำเกริ่นของ*หน้า*ใต้ `<h2>` ไม่มี
+`<Alert>` อยู่เหนือมัน **ไม่มีจุดไหนเป็นคู่ `<Alert>` + `.hint`** ซึ่งเป็นรูปแบบ
+ที่กองนี้ไล่ · ที่เหลือจึงเป็นคำถามเรื่อง*เนื้อ* ไม่ใช่เรื่องทรง และการย่อคือการ
+ลบข้อเท็จจริง ซึ่งเป็นการตัดสินใจของผู้ใช้
+
+> **เจอของใหม่หนึ่งจุดระหว่างไล่ และไม่ได้แตะ** — `AdminView.jsx` โมดัลบันทึก
+> เวอร์ชันนโยบายมี `.hint` **สองก้อนติดกัน** ก้อนบนสะท้อนเหตุผลที่เพิ่งพิมพ์
+> ก้อนล่างอธิบายว่าบันทึกแล้วเกิดอะไร — คนละอายุ คนละหน้าที่ แต่ก็ยังเป็นบล็อก
+> เทาสองก้อนซ้อนกัน · ไม่ได้แก้เพราะมันอยู่ติดกับใบที่คำตอบข้อ 3 ของแผนสั่งให้
+> ยกเว้น และการแตะต้องถามก่อน
+
+`test/modalNoticeFlow.test.js` — ไฟล์ใหม่ สี่เคส และ **สามในสี่เฝ้าเนื้อ ไม่ใช่
+ทรง**: ข้อเท็จจริงห้าข้อในใบยกเลิก (แก้กลับไม่ได้ · ฝ่ายบุคคลก็ไม่ได้ ·
+ไม่ได้ถูกลบทิ้ง · เพดานของแผนก · ยื่นใหม่ได้ไม่จำกัด) และสี่ข้อในใบขอถอน ต้อง
+อ่านกลับได้ทั้งหมด เพราะการย่อที่เอาข้อเท็จจริงข้อใดข้อหนึ่งออกไม่ใช่การย่อ ·
+อีกเคสเฝ้า `.field-note` ใต้ช่องกรอก ซึ่ง**ไม่ใช่**เป้าของกองนี้และไม่ควรถูก
+กวาดไปด้วย — มันเป็นของ*ช่องนั้น* ตอบว่ากรอกแล้วเกิดอะไรกับสิ่งที่พิมพ์ ไม่ใช่ว่า
+กดปุ่มแล้วเกิดอะไรกับใบ
+
 ### หกแถบยืนพื้นเหลือสายเดียว — 2026-09-14
 
 กอง ก ของ `docs/plan-notice-compact.md` คือ *แถบยืนพื้น* — แถบที่วาดทุกครั้งที่
@@ -13576,8 +13638,13 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2663 tests**, about 4 s, measured 2026-09-14 across 148
-  files, all green. **`standingBanners` is the new file** — หกแถบยืนพื้นเหลือ
+- `npm test` — **2667 tests**, about 4 s, measured 2026-09-14 across 149
+  files, all green. **`modalNoticeFlow` is the new file** — คำเตือนสองใบใน
+  โมดัลพูดจบในกล่องเดียว, the last commit of `docs/plan-notice-compact.md`, and
+  its four cases are as much about what the shorter notices still have to SAY as
+  about the shape: three of the four read back the facts the merge was not
+  allowed to drop. It read "2663 tests … across 148" until that round.
+  **`standingBanners` is the file before it** — หกแถบยืนพื้นเหลือ
   สายเดียว, the rest of กอง ก, and its four cases read five components at once:
   a rule about what a standing notice may look like cannot live in the file of
   whichever notice happened to be first. One of the four guards the notice that

@@ -717,16 +717,27 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
               this cannot be undone. A cancelled entry is closed to the
               employee AND to HR (see editPermission) — there is no path that
               turns it back into a live request, so "แก้กลับไม่ได้" is the
-              literal truth and not a caution. */}
+              literal truth and not a caution.
+
+              ⚠ THE REASONING WAS A SECOND GREY BLOCK UNDER IT UNTIL 2026-09-14,
+              and the two blocks disagreed about the same entry in consecutive
+              sentences: the Alert said รายการนี้จะปิดถาวร, the `.hint` said
+              รายการจะยังอยู่ในตาราง ไม่ได้ถูกลบทิ้ง. Both true — one is about
+              the request, the other about the row — and read as two paragraphs
+              they contradict. One flow puts แต่ between them, which is what the
+              reader needed in the first place.
+
+              TWO CLAUSES WENT WITH THE MERGE, both duplicates of the headline:
+              รายการนี้จะปิดถาวร restated แก้กลับไม่ได้ four words after it, and
+              ทั้งตัวพนักงานเอง told the employee reading their own dialog what
+              they cannot do — the surprising half of that sentence is ฝ่ายบุคคล,
+              and it is the half that `test/cancelPermission.test.js` proves. */}
           <Alert kind="warn">
-            ยกเลิกแล้ว<strong>แก้กลับไม่ได้</strong> — รายการนี้จะปิดถาวร
-            ทั้งตัวพนักงานเองและฝ่ายบุคคลไม่สามารถเปิดหรือแก้ไขได้อีก
+            <strong>ยกเลิกแล้วแก้กลับไม่ได้</strong> — ฝ่ายบุคคลก็เปิดรายการนี้ขึ้นมาแก้ให้อีกไม่ได้
+            {' · '}รายการยังอยู่ในตารางเป็นสถานะ “ยกเลิก” ไม่ได้ถูกลบทิ้ง
+            {' '}แต่ชั่วโมงจะไม่ถูกนับในเพดานของแผนกและไม่ขึ้นในรายงานใด ๆ
+            {' · '}ขอ OT ช่วงเวลานี้ใหม่ได้ ไม่จำกัดจำนวนครั้ง
           </Alert>
-          <div className="hint">
-            รายการจะยังอยู่ในตารางโดยขึ้นสถานะ “ยกเลิก” ไม่ได้ถูกลบทิ้ง ·
-            ชั่วโมงจะไม่ถูกนับในเพดานของแผนกและไม่ขึ้นในรายงานใด ๆ ·
-            {' '}หากต้องการขอ OT ช่วงเวลานี้อีกครั้ง ให้บันทึกคำขอใหม่ได้ไม่จำกัดจำนวนครั้ง
-          </div>
         </Modal>
       )}
 
@@ -767,17 +778,28 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
           {/* The one thing this dialog exists to make unambiguous. The button
               sits in the same column as ยกเลิก, which closes an entry on the
               spot; this one does not close anything, and an employee who
-              assumed it did would stop counting hours that are still counted. */}
+              assumed it did would stop counting hours that are still counted.
+
+              ⚠ THE TWO OUTCOMES WERE A SECOND GREY BLOCK UNDER IT UNTIL
+              2026-09-14, and it opened by naming the deciders —
+              หัวหน้างานของแผนกหรือฝ่ายบุคคลเป็นผู้พิจารณา — one line under an
+              Alert that had just ended จนกว่าหัวหน้างานหรือฝ่ายบุคคลจะอนุมัติ
+              ให้ถอน. The same two people, twice, seven words apart. Merged, the
+              Alert names them once and keeps แผนก, which the shorter of the two
+              was missing.
+
+              ALSO GONE: หากไม่อนุมัติ รายการยังมีผลตามเดิม. A refusal changes
+              nothing, and the opening clause has already said what nothing
+              looks like — so that half-sentence only asked the reader to hold
+              the state twice. What survives is the part a refusal actually
+              gives them, which is permission to ask again. */}
           <Alert kind="warn">
-            นี่คือ<strong>คำขอ</strong> ไม่ใช่การยกเลิก — รายการยังมีสถานะเดิม
-            ชั่วโมงยังถูกนับในเพดานของแผนกและยังขึ้นในรายงาน
-            จนกว่าหัวหน้างานหรือฝ่ายบุคคลจะอนุมัติให้ถอน
+            <strong>นี่คือคำขอ ไม่ใช่การยกเลิก</strong> — รายการยังมีสถานะเดิม
+            {' '}ชั่วโมงยังถูกนับในเพดานของแผนกและยังขึ้นในรายงาน
+            {' '}จนกว่าหัวหน้างานของแผนกหรือฝ่ายบุคคลจะอนุมัติให้ถอน
+            {' · '}ถ้าอนุมัติ รายการจะเปลี่ยนเป็น “ยกเลิก” และชั่วโมงถูกตัดออกจากเดือนนี้
+            {' · '}ถ้าไม่อนุมัติ ขอใหม่ได้เมื่อมีเหตุผลเพิ่มเติม
           </Alert>
-          <div className="hint">
-            หัวหน้างานของแผนกหรือฝ่ายบุคคลเป็นผู้พิจารณา ·
-            หากอนุมัติ รายการจะเปลี่ยนเป็น “ยกเลิก” และชั่วโมงจะถูกตัดออกจากเดือนนี้ ·
-            หากไม่อนุมัติ รายการยังมีผลตามเดิม และขอใหม่ได้หากมีเหตุผลเพิ่มเติม
-          </div>
         </Modal>
       )}
     </div>
