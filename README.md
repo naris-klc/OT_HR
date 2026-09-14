@@ -3666,17 +3666,22 @@ because the same one comes back on every notice in this app:
   saw it again reads that as a bug rather than as a fold.
 - **The frame is the press target, not only the arrow**, asked for on 2026-09-10
   as *"แค่กดที่พื้นในกรอบการแจ้งเตือน ข้อมูลก็ขยายให้อ่านได้"*. That is still how
-  `foldClick` (`components/common.jsx`) behaves, and it still drives the three
-  ▲/▼ **alerts** — the notices above an F-HR-027, ผู้รับช่วงอนุมัติแทน's
-  explanation, and the password warning on ข้อมูลส่วนตัว. The banner was its
-  fourth caller and is not one now; `test/disclosure.test.js` lost that row from
-  its loop and gained an assertion that the banner has no `foldClick` at all.
+  `foldClick` (`components/common.jsx`) behaves. It read *"it still drives the
+  three ▲/▼ alerts — the notices above an F-HR-027, ผู้รับช่วงอนุมัติแทน's
+  explanation, and the password warning on ข้อมูลส่วนตัว"* until 2026-09-14:
+  the last two of those went that day, leaving the notices above an F-HR-027
+  and `OverCeilingNote`, which passes a heading of its own. The banner was the
+  fourth caller and stopped being one on 2026-09-11.
+  `test/disclosure.test.js` has lost a row from that loop on each of those two
+  days, and now names all three withdrawals in an assertion of their own — so a
+  fold returning to any of them fails there rather than passing quietly.
 - **The state was a browser preference, not an account setting** —
   `ot-holiday-fold` in localStorage, `ot-` prefixed like `ot-theme`, stored as
   *"folded, or nothing at all"* so an absent key IS the default, and read in a
   mount effect rather than during render because this component renders on the
-  server too. `components/Delegation.jsx` cites that arrangement for its own note
-  fold and still does; the citation is to the design, not to a live key.
+  server too. It read *"`components/Delegation.jsx` cites that arrangement for
+  its own note fold and still does"* until 2026-09-14 — that note has no fold
+  either now, and the citation went out with the key it cited.
 
 > **Measured while it existed**, on the built app, because a persistence feature
 > checked without a reload is a state variable: open **253px** → press ▲ →
@@ -9192,6 +9197,58 @@ usefully, where they did NOT. Most of what is left is the controls card — its 
 alert panel directly above them, and dropping that pair below 860px is worth
 about 60px more. Not done: it is a title, not spacing.
 
+### ฝาพับสองในสามถูกถอน — 2026-09-14
+
+**Asked as *"ตัดสอง เก็บหนึ่ง"*, and the line it was cut along is not height.**
+Three ▲/▼ folds were left after the holiday banner gave its up on 2026-09-11,
+and the question put on 2026-09-14 was whether they follow. They do not all
+follow, because they are not all doing the same thing:
+
+| fold | hides | verdict |
+| --- | --- | --- |
+| `ot-deleg-note-fold` · ผู้รับช่วงอนุมัติแทน | a **sentence** | gone |
+| `ot-pw-warn-fold` · the amber warning on ข้อมูลส่วนตัว | a **sentence** | gone |
+| `ot-f027-notice-fold` · the notices above an F-HR-027 | **rows**, one per item | kept |
+
+A fold over a sentence is an admission that the sentence is too long, and the
+repair for that is the sentence. A fold over a list is a reader deciding whether
+to read twelve rows, which is a different question and a real one — it is what
+`Disclosure`, `ShowMore` and `fold-pill` do, all of which stay.
+
+**ข้อมูลส่วนตัว lost words, and the words it lost were pointing at itself.**
+The box now reads *"คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้ ซึ่งคือรหัสพนักงานของคุณ
+และมีคนอื่นทราบด้วย"* — one line at laptop width, three on a 360px phone. What
+went with the arrow was *"จึงควรเปลี่ยนเป็นรหัสผ่านของคุณเองที่ฟอร์มนี้"*, and the
+form it names is directly underneath the Alert. **The clause that stayed is the
+one the fold was built around**: the `Disclosure` above this box is foldable at
+all only because the amber Alert repeats that the password in use is the
+รหัสพนักงาน, which is written into the comment there and pinned in
+`test/tempPassword.test.js`.
+
+**ผู้รับช่วงอนุมัติแทน is two lines and that was the decision, not a failure to
+finish.** It carries four separate facts — the delegation expires by itself ·
+it ADDS a right rather than moving one · the stand-in's approvals are recorded
+as ทำแทน · the stand-in cannot appoint another — and one row cannot hold four
+without dropping one. Asked, and answered: keep all four, take the second line,
+lose the button. Two lines with nothing hidden beat three-when-opened behind a
+press. Its `.say` second deck went too; it is one text stream now, the shape
+ประกาศวันหยุดบริษัท took, so it breaks by *sentence* rather than by block.
+
+**What was cut there was repetition, not a fact.** *"เป็นการเพิ่มสิทธิ์ ไม่ใช่
+ย้าย"*, *"หัวหน้างานเจ้าของคิวยังอนุมัติเองได้ตลอด"* and *"ถ้ากลับมาก่อนกำหนดก็ไม่
+ต้องทำอะไร"* were three wordings of one thing. Two remain, with the abstract one
+now explaining the concrete one instead of standing beside it. The middle clause
+is still `DELEGATED_APPROVAL_RECORDED` from 2026-09-12, shared with คิวรออนุมัติ.
+
+**Two comments stopped citing a precedent that had been withdrawn.**
+`components/Delegation.jsx` named `ot-holiday-fold` in the present tense twice —
+*"the arrangement … already has"* and *"the absent key is the default, as
+`ot-holiday-fold`"* — and both went out with the code they annotated. The third
+citation, in `components/PrintForm.jsx`, was never wrong: it points at the reason
+README gives for ▲/▼ over ✕, and README still gives it. `test/docsMatchCode.test.js`
+cannot catch this class of error at all, because the identifier still exists in
+`components/HolidayBanner.jsx` as the marker saying it was removed.
+
 ### การแจ้งเตือนพูดด้วยเสียงเดียวกัน — 2026-09-12
 
 Asked after the holiday banner came down to one row: *"ยังมีการแจ้งเตือนตรงไหน
@@ -9258,11 +9315,17 @@ de-duplications are pinned by name — one test each in `test/overCeiling.test.j
 *number of sources* rather than the words, because a test that matches the
 sentence is a test that will be edited alongside the copy somebody is fixing.
 
-**Not done, and deliberately:** the eight standing banners that are still two
-decks or more, the three remaining ▲/▼ folds (and the four comments that still
-name `ot-holiday-fold` as their precedent, withdrawn on 2026-09-11), and the
-long `.hint` under `<Alert>` in two of `EmployeeView`'s dialogs. Those need
-decisions, and they are listed with their open questions in the plan.
+**Not done, and deliberately:** the six standing banners that are still two
+decks or more, and the long `.hint` under `<Alert>` in two of `EmployeeView`'s
+dialogs. Those need decisions, and they are listed with their open questions in
+the plan.
+
+> It read *"the eight standing banners … the three remaining ▲/▼ folds (and the
+> four comments that still name `ot-holiday-fold` as their precedent, withdrawn
+> on 2026-09-11)"* until 2026-09-14. Two of the three folds went that day and
+> took two of the eight banners with them — see the section above this one —
+> and there were never four such comments. There were three, and one of the
+> three was not wrong.
 
 ### ประจำเดือน ย้ายลงมาอยู่กับช่องค้นหา — 2026-08-27
 
