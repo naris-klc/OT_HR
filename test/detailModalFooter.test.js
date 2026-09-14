@@ -62,7 +62,13 @@ const code = modal.replace(/\/\*[\s\S]*?\*\//g, '');
 const has = (src_, text, why) => assert.ok(src_.includes(text), why || `หาไม่เจอ: ${text}`);
 
 test('the approval names the slip for ฝ่ายบุคคล and stays อนุมัติ for a หัวหน้า', () => {
-  has(code, "{isHr ? 'อนุมัติใบ OT' : 'อนุมัติ'}");
+  /* ⚠ IT WAS WRITTEN INLINE ON THE BUTTON UNTIL 2026-09-14, when the foot grew
+     a second อนุมัติ — the greyed one a blocked ใบ gets. Two copies of
+     `isHr ? … : …` agree until one of them is edited, and the greyed pair is
+     supposed to be a picture of the live one. */
+  has(code, "const approveLabel = isHr ? 'อนุมัติใบ OT' : 'อนุมัติ';");
+  assert.equal((code.match(/\{approveLabel\}/g) || []).length, 2,
+    'ปุ่มอนุมัติที่กดได้กับที่ปิดไว้ ต้องอ่านคำเดียวกันจากที่เดียวกัน');
   // And the word it replaced is gone from the button rather than moved: ยืนยัน
   // is still on this footer, but only as the confirm step of a refusal.
   assert.ok(!code.includes("'ยืนยันใบ OT'"), 'ปุ่มอนุมัติของฝ่ายบุคคลยังอ่านว่า ยืนยัน อยู่');
@@ -72,7 +78,7 @@ test('the approval names the slip for ฝ่ายบุคคล and stays อ�
   // The signature wrapped onto its own line when `watching` joined it on
   // 2026-09-03; what is pinned is the flag being a PROP, not where the brace is.
   // `user` joined it on 2026-09-10, for the เหมารายวัน tick inside แก้ไขชั่วโมง.
-  has(src, 'entry: e, user, isHr, busy, mine = false, watching = false,');
+  has(src, 'entry: e, user, isHr, busy, blocked = null,');
   has(src, '          isHr={isHr}');
   assert.ok(!code.includes('{verb}'), 'ปุ่มยังประกอบจาก verb — สองบทบาทใช้รูปประโยคต่างกัน');
 });
@@ -106,20 +112,41 @@ test('nothing in the foot merely closes the pop-up', () => {
  * refusal is typed over the top of this pop-up instead of in a dialog of its
  * own — so it stays, quiet, beside the decision being asked for.
  *
- * `mine` (the reviewer's own filing) has no answers to offer, so it has no foot
- * at all rather than a bar holding one button that means "go away".
+ * AND A ใบ WITH NOTHING TO ANSWER GETS THE SAME TWO ANSWERS, GREY — 2026-09-14.
  *
- * `watching` is the second of those, from 2026-09-03: ฝ่ายบุคคล's queue lists
- * the รอหัวหน้า rows now, and a request that has not reached this reader's step
- * has nothing here for them to answer either. One expression covers both, so a
- * third case cannot be added to one and forgotten in the other.
+ * ⚠ IT READ `(mine || watching) ? null` UNTIL THEN, on the reasoning that a
+ * dialog with no decision on it *"has no foot at all rather than a bar holding
+ * one button that means go away"*. A bar holding TWO dead decisions is not that
+ * bar: it is the shape of the thing that is missing, which is what a reader
+ * hunting for a button is looking for. Asked for of the row first —
+ * *ตามเงื่อนไขเดิมไงครับ ปุ่มขึ้นแต่ disable ไว้* — and then of here, so that
+ * pressing a row cannot change the answer to "may I sign this", only its size.
+ *
+ * THE THIRD CASE IS WHY THIS MATTERED. `mine` and `watching` were two thirds of
+ * the reasons a ใบ can arrive here undecidable; a reader who signed its หัวหน้า
+ * step was the third and had no prop at all, so the pop-up drew a LIVE อนุมัติ
+ * on a row whose own cell had just refused to. See `blocked` and `blockedNote`.
  */
-test('the foot is two answers, or it is not drawn', () => {
+test('the foot is two answers, live or greyed', () => {
   has(code, '<button className="btn quiet" onClick={() => setMode(\'view\')}>ย้อนกลับ</button>');
-  has(code, ') : (mine || watching) ? null : (');
-  // Both branches lay their pair out the same way.
-  assert.equal((code.match(/<div className="foot-split">/g) || []).length, 2,
-    'สองสถานะของท้ายกล่องต้องจัดวางแบบเดียวกัน');
+  has(code, ') : blocked ? (');
+  assert.ok(!code.includes('? null : ('), 'ท้ายกล่องยังหายไปทั้งแถบบนใบที่ตัดสินไม่ได้');
+  // Three feet now, all three laid out the same way.
+  assert.equal((code.match(/<div className="foot-split"/g) || []).length, 3,
+    'สามสถานะของท้ายกล่องต้องจัดวางแบบเดียวกัน');
+  /* Dead on the element, with nothing behind either — `approvalPermission` is
+     what refuses these, not a class that looks grey. */
+  const dead = code.slice(code.indexOf(') : blocked ? ('));
+  const bar = dead.slice(0, dead.indexOf('</div>'));
+  assert.equal((bar.match(/ disabled /g) || []).length, 2, 'ปุ่มใดปุ่มหนึ่งในแถบที่ตายแล้วยังกดได้');
+  assert.ok(!/onClick/.test(bar), 'ปุ่มที่ปิดไว้ยังมี handler ผูกอยู่');
+  /* THE SENTENCE HANGS ON THE BAR. A disabled button dispatches no pointer
+     events and never opens its own `title`; the same reason `.act-watch` on the
+     row is a wrapper. Here it is a second reading — `blocked.head` / `.body`
+     are printed in full at the top of the body. */
+  has(bar, '<div className="foot-split" title={blocked.short} aria-label={blocked.short} role="note">');
+  assert.equal((bar.match(/aria-hidden="true"/g) || []).length, 2,
+    'ปุ่มที่ตายแล้วยังถูกอ่านออกเสียงทีละใบ');
 });
 
 /**

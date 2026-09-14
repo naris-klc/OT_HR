@@ -174,24 +174,66 @@ function watchingNote(entry, stage, user) {
 }
 
 /**
- * WHICH OF THE WATCHED ROWS IS STILL ON ITS WAY HERE — the รอหัวหน้า row on
- * ฝ่ายบุคคล's queue, and it is the third branch of `watchingNote` said as a
- * predicate rather than as a sentence.
+ * ── AND THE TWO SENTENCES FOR A ROW THAT DID REACH THIS STEP AND STILL IS NOT
+ *    THIS READER'S TO SIGN ───────────────────────────────────────────────────
  *
- * The other two watched rows sit at THIS queue's own step and are refused to
- * this reader by the routing matrix; no signature anywhere turns them into
- * their decision. This one is refused only by the clock: it is one หัวหน้า's
- * press away from being a row with buttons on it, on this very screen.
+ * `watchingNote` above answers *this ใบ has not got to you yet*. These two
+ * answer the other thing that empties an action cell: it got here, and your
+ * name is already on it. Both are §6 — one ใบ, two signatures, two PEOPLE —
+ * and both are refused by `approvalPermission`, not by anything on this screen.
  *
- * Written from beside `watchingNote`, off the same `status === stage`
- * comparison, so the cell that draws the difference and the sentence that
- * explains it cannot come to disagree about which row is which. And written as
- * a comparison rather than as `pending_mgr`: this component runs at both steps,
- * and a rule naming a status would be right on one screen and quietly wrong on
- * the other.
+ * WRITTEN ONCE BECAUSE EACH IS READ IN FOUR PLACES: the row's sentence, the
+ * row's tooltip, the pop-up's notice and the pop-up's dead footer. They stood
+ * as hand-typed strings until 2026-09-14 and had already drifted — the tooltip
+ * said *"ต้องให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ"* three lines under a
+ * sentence that said *"ให้ฝ่ายบุคคล…"*, and the pop-up said
+ * *"คุณเป็นผู้บันทึกรายการนี้เอง"* where the row said *"คุณเป็นผู้บันทึกรายการนี้"*.
+ * Four copies of one rule is four chances for the screen to explain itself
+ * differently depending on where the reader happens to be looking.
+ *
+ * SAME SHAPE AS `watchingNote` — `short` for the row and the tooltip, `head` +
+ * `body` for the pop-up — so `blockedNote` can hand any of them to either
+ * surface without either surface knowing which case it got.
  */
-function awaitingEarlierStep(entry, stage) {
-  return entry?.status !== stage;
+const SIGNED_MGR_NOTE = {
+  short: 'คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว — ใบหนึ่งต้องผ่านผู้เซ็นสองคน '
+    + 'ให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ',
+  head: 'คุณเซ็นขั้นหัวหน้าของใบนี้ไปแล้ว',
+  body: 'ใบหนึ่งต้องผ่านผู้เซ็นสองคน จึงอนุมัติในขั้นฝ่ายบุคคลของใบเดียวกันไม่ได้ '
+    + '— ให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ ไม่เกี่ยวกับบทบาท '
+    + 'ผู้ดูแลระบบเองก็เซ็นทั้งสองขั้นของใบเดียวกันไม่ได้',
+};
+
+/**
+ * The filer's own ใบ at a step that is not the one their filing waits at.
+ *
+ * A FUNCTION AND NOT A CONSTANT, because the way out depends on the row: a ใบ
+ * the system generated for a วันเกิด and nobody has touched can be withdrawn
+ * from the queue by the very person who may not sign it, and that is the only
+ * branch on this screen where a blocked row still has a real button on it.
+ */
+function ownFilingNote(entry) {
+  const canVoid = isUntouchedSystemFiling(entry);
+  const head = 'ใบนี้คุณเป็นผู้บันทึกแทนเอง';
+  const rule = 'ผู้บันทึกไม่ได้เป็นผู้เซ็นขั้นนี้ของใบที่ตัวเองกรอก';
+  if (!canVoid) {
+    return {
+      short: 'คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ '
+        + '— ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ',
+      head,
+      body: `${rule} — ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ`,
+    };
+  }
+  /* `short` IS READ BESIDE THE BUTTON AND `body` IS READ AWAY FROM IT, which
+     is the whole of why these two are not one string: on the row ถอนใบวันเกิด
+     is the thing sitting next to the sentence, and in the pop-up it is back on
+     a row the reader has covered with a dialog. */
+  return {
+    short: 'คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ '
+      + '— ถอนใบได้ หรือให้ผู้ดูแลระบบอนุมัติแทน',
+    head,
+    body: `${rule} — กด “ถอนใบวันเกิด” ที่แถวในคิว หรือให้ผู้ดูแลระบบอนุมัติแทน`,
+  };
 }
 
 /**
@@ -294,6 +336,32 @@ export default function ApprovalQueue({
    */
   const signableHere = (e) => e?.status === stage
     && (isHr || maySignFirstStep(user, e));
+  /**
+   * WHY THIS ROW CARRIES NO DECISION — one sentence, or `null` when it carries
+   * two buttons. Added 2026-09-14 for the POP-UP, which had been answering the
+   * question differently from the row it opens out of.
+   *
+   * The row cell below still asks the three predicates one at a time, because
+   * each branch draws something different around the sentence. The pop-up has
+   * no branches: it wants the answer, and it had been given two thirds of it —
+   * `watching` and `mine` were props and `signedManagerStep` was not, so a ใบ
+   * whose หัวหน้า step this reader signed lost its buttons on the row and got
+   * them back, live, the moment the row was pressed. Pressing either one
+   * travelled to the 409 in `approvalPermission`.
+   *
+   * ⚠ THE ORDER IS NOT THE CELL'S ORDER AND THE ANSWER IS THE SAME. The cell
+   * asks `!barredAsOwnFiling && signedManagerStep` before `barredAsOwnFiling`,
+   * which is the same thing as asking the filing first — somebody who both
+   * filed a ใบ and signed its หัวหน้า step is told about the filing, because
+   * that is the half that no second signature anywhere can undo.
+   */
+  const blockedNote = (e) => {
+    if (!e) return null;
+    if (!signableHere(e)) return watchingNote(e, stage, user);
+    if (barredAsOwnFiling(e, user)) return ownFilingNote(e);
+    if (signedManagerStep(e, user)) return SIGNED_MGR_NOTE;
+    return null;
+  };
   /**
    * ใบที่ไม่มีหัวหน้าเซ็นได้ — every row here is one an administrator is signing
    * IN PLACE OF a หัวหน้า who does not exist, so every decision on this screen
@@ -2017,36 +2085,42 @@ export default function ApprovalQueue({
                             instruction to another.
 
                             ON A PHONE IT IS THE SENTENCE; ON A DESKTOP IT IS
-                            THE TOOLTIP ON `WatchMark`. Both are rendered, and
-                            the 861px block hides whichever does not belong —
-                            see `.queue-table td.act-col .own-note`. The column
-                            is 96px now, which is a place for a mark and not for
-                            a sentence, and the card below 860px is where a
-                            sentence has always had the width to be read. */}
+                            THE TOOLTIP ON `WatchActions`. Both are rendered,
+                            and the 861px block hides whichever does not belong
+                            — see `.queue-table td.act-col .own-note`. The
+                            column is 96px, which is a place for two buttons and
+                            not for a sentence, and the card below 860px is
+                            where a sentence has always had the width to be
+                            read.
+
+                            ⚠ IT NAMED `WatchMark` UNTIL 2026-09-14, when the
+                            dash it drew went from this screen and the greyed
+                            pair took every row it had. */}
                         <span className="cell-sub own-note">
                           {watchingNote(e, stage, user).short}
                         </span>
-                        {/* ── A DASH, OR THE TWO DECISIONS DRAWN AND REFUSED ──
-                            `awaitingEarlierStep` picks between them and the
-                            reasoning is written over `WatchActions`: a row
-                            still at the หัวหน้า step is on its way to these
-                            exact two buttons on this exact screen, so it wears
-                            them greyed; a row at this step that is not this
-                            reader's to sign never will, so it keeps the dash
-                            rather than a promise the screen cannot keep. */}
-                        {awaitingEarlierStep(e, stage) ? (
-                          <WatchActions note={watchingNote(e, stage, user).short} verb={verb} />
-                        ) : (
-                          <WatchMark note={watchingNote(e, stage, user).short} />
-                        )}
+                        {/* ── THE TWO DECISIONS, DRAWN AND REFUSED ──────────
+                            ⚠ THIS WAS A CHOICE BETWEEN TWO THINGS UNTIL
+                            2026-09-14: `awaitingEarlierStep` handed the greyed
+                            pair to a row still at the หัวหน้า step and a dash
+                            to the two kinds that are at THIS step and still not
+                            this reader's, on the reasoning that a button drawn
+                            on those *"would be a promise the screen can never
+                            keep"*. The report that ended it was one word long —
+                            *รายการนี้ปุ่มหายไปไหน* — asked of a row whose dash
+                            was the only thing on the screen answering, and
+                            answering only to a mouse that rested on it. See
+                            `WatchActions`. */}
+                        <WatchActions note={watchingNote(e, stage, user).short} verb={verb} />
                       </div>
                     ) : !barredAsOwnFiling(e, user) && signedManagerStep(e, user) ? (
                       <div className="row-actions">
-                        <span className="cell-sub own-note">
-                          คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว
-                          {' — '}ใบหนึ่งต้องผ่านผู้เซ็นสองคน ให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ
-                        </span>
-                        <WatchMark note="คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว — ต้องให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ" />
+                        {/* ONE STRING IN BOTH PLACES — the sentence the card
+                            reads and the tooltip the desktop rests on are the
+                            same `short`, which is what `SIGNED_MGR_NOTE` is
+                            for. They were typed separately and had drifted. */}
+                        <span className="cell-sub own-note">{SIGNED_MGR_NOTE.short}</span>
+                        <WatchActions note={SIGNED_MGR_NOTE.short} verb={verb} />
                       </div>
                     ) : barredAsOwnFiling(e, user) ? (
                       <div className="row-actions">
@@ -2054,12 +2128,7 @@ export default function ApprovalQueue({
                             used to carry: the card layout needs this sentence
                             to run the full width of the card, and an inline
                             style is the one thing a media query cannot answer. */}
-                        <span className="cell-sub own-note">
-                          คุณเป็นผู้บันทึกรายการนี้ จึงตรวจในขั้นนี้เองไม่ได้
-                          {isUntouchedSystemFiling(e)
-                            ? ' — ถอนใบได้ หรือให้ผู้ดูแลระบบอนุมัติแทน'
-                            : ' — ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้คนอื่นเป็นผู้ตรวจ'}
-                        </span>
+                        <span className="cell-sub own-note">{ownFilingNote(e).short}</span>
                         {/* THE ONE ACTION IN THIS BRANCH THAT WORKS, so it keeps
                             a real button — as an icon on the desktop and with
                             its word back on the card, the same `.btn-word`
@@ -2076,7 +2145,7 @@ export default function ApprovalQueue({
                             <span className="btn-word">ถอนใบวันเกิด</span>
                           </button>
                         ) : (
-                          <WatchMark note="คุณเป็นผู้บันทึกรายการนี้ — ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้คนอื่นเป็นผู้ตรวจ" />
+                          <WatchActions note={ownFilingNote(e).short} verb={verb} />
                         )}
                       </div>
                     ) : (
@@ -2304,13 +2373,19 @@ export default function ApprovalQueue({
           // ตำแหน่ง of the person the row is FOR.
           user={user}
           busy={busy}
-          mine={barredAsOwnFiling(detail, user)}
-          // The row's own rule, handed down rather than asked again inside.
-          watching={!signableHere(detail)}
-          // And the reason with it, from the same function the row's own cell
-          // reads — a pop-up that explained the silence differently from the
-          // row it was opened off would be two answers to one question.
-          watchNote={watchingNote(detail, stage, user)}
+          // WHY THIS ใบ HAS NO DECISION ON IT, OR NULL — the row's own rules,
+          // handed down rather than asked again inside, and since 2026-09-14
+          // ALL of them.
+          //
+          // ⚠ IT WAS THREE PROPS AND THEY COVERED TWO CASES OUT OF THREE:
+          // `mine={barredAsOwnFiling(detail, user)}`,
+          // `watching={!signableHere(detail)}` and `watchNote`. A ใบ whose
+          // หัวหน้า step this reader had signed matched neither, so the pop-up
+          // drew a live อนุมัติ on a row that had just refused to draw one —
+          // and the press travelled to the 409. `blockedNote` asks
+          // `signableHere` FIRST, so the four gates still answer to one
+          // predicate; see the note over it.
+          blocked={blockedNote(detail)}
           // `mayCorrect` WAS PASSED HERE UNTIL 2026-09-08 — the บทบาท rule,
           // not the stage, from `mayCorrectEntries`. It decided one control:
           // the วันเกิด tick inside แก้ไขชั่วโมง, which HR removed. Whether
@@ -2725,14 +2800,18 @@ function RejectFields({ value, onChange, many }) {
  * in writing. The refusal happens here, over the top of the same header.
  */
 /**
- * `watching` — this row is on the queue to be READ, not decided.
+ * `blocked` — why this ใบ has no decision on it, or null when it has two.
  *
- * True only of the รอหัวหน้า rows ฝ่ายบุคคล's queue started listing on
- * 2026-09-03. It is the same fact `signableHere` decides in the table, passed
- * down rather than worked out again here: the pop-up is reached from a row, and
- * a pop-up that offered อนุมัติ on a row whose own action cell refuses it would
- * be the second reading of one rule — which is exactly how a screen comes to
- * offer a button the server answers 403 to.
+ * The same object the row's action cell reads, from `blockedNote`, passed down
+ * rather than worked out again here: the pop-up is reached from a row, and a
+ * pop-up that offered อนุมัติ on a row whose own cell refuses it is the second
+ * reading of one rule — which is exactly how a screen comes to offer a button
+ * the server answers 403 to.
+ *
+ * ⚠ IT WAS `watching` + `watchNote` + `mine` UNTIL 2026-09-14, and that is not
+ * a rename: three props covering two of the three cases IS how the bug above
+ * happened. The third — a reader who signed the หัวหน้า step of this very ใบ —
+ * had no prop at all, so it fell through to the live pair.
  */
 /**
  * `mayCorrect` LEFT THIS COMPONENT ON 2026-09-08. It said whether the reader
@@ -2744,7 +2823,7 @@ function RejectFields({ value, onChange, many }) {
  * rule with nowhere left to be read.
  */
 function DetailModal({
-  entry: e, user, isHr, busy, mine = false, watching = false, watchNote = null,
+  entry: e, user, isHr, busy, blocked = null,
   onClose, onApprove, onReject, onEntryChanged,
 }) {
   const [mode, setMode] = useState('view'); // 'view' | 'rejecting'
@@ -2783,14 +2862,25 @@ function DetailModal({
    * What is left is the question and its two answers, in equal halves — see
    * `.foot-split` in app/styles.css.
    *
-   * `mine` — the reviewer's own filing — has no answers to offer, so it gets no
-   * foot at all rather than a bar holding one button that means "go away". The
-   * body says why the decisions are not there, and the ✕ closes it.
+   * AND WHEN THERE IS NOTHING TO ANSWER, THE TWO ANSWERS ARE DRAWN GREY —
+   * 2026-09-14, matching the row this pop-up opens out of.
    *
-   * `watching` is the second of those, added with the รอหัวหน้า rows: the
-   * request has not reached this reader's step, so there is nothing here to
-   * answer yet. Same treatment, and the body says why for the same reason.
+   * ⚠ IT READ `(mine || watching) ? null` UNTIL THEN, and the reasoning was
+   * *"has no answers to offer, so it gets no foot at all rather than a bar
+   * holding one button that means go away"*. That is still true of a bar with
+   * ONE button on it; it was never an argument for a dialog that simply stops.
+   * A reader who scrolls to the bottom of a ใบ and finds nothing there cannot
+   * tell a rule from a rendering fault, which is the whole of what was asked:
+   * *ตามเงื่อนไขเดิมไงครับ ปุ่มขึ้นแต่ disable ไว้*.
    */
+  /**
+   * ONE LABEL, TWO FEET. The live อนุมัติ and the dead one must read the same
+   * or the greyed bar is not a picture of the decision it is standing in for —
+   * and `isHr ? … : …` typed out twice is two strings that agree until one of
+   * them is edited. See the note over the live button for why ฝ่ายบุคคล's
+   * names its object and a หัวหน้า's does not.
+   */
+  const approveLabel = isHr ? 'อนุมัติใบ OT' : 'อนุมัติ';
   const footer = mode === 'rejecting' ? (
     <div className="foot-split">
       {/* NOT a way out: it goes back to the reading, which is the whole reason
@@ -2806,7 +2896,26 @@ function DetailModal({
         ยืนยันไม่อนุมัติ
       </button>
     </div>
-  ) : (mine || watching) ? null : (
+  ) : blocked ? (
+    /**
+     * THE SAME PAIR THE ROW WEARS, AT THE SIZE THIS DIALOG HAS ROOM FOR — see
+     * `WatchActions`, which is this arrangement as two 32px squares.
+     *
+     * DISABLED ON THE ELEMENT, WITH NO HANDLER BEHIND EITHER. What refuses
+     * these is `approvalPermission`, not a class that looks grey; a button that
+     * can be pressed is a trip to a 403 or a 409.
+     *
+     * THE SENTENCE HANGS ON THE BAR, because a disabled button dispatches no
+     * pointer events and never opens its own `title`. Here that tooltip is a
+     * second reading rather than the only one — `blocked.head` and `.body` are
+     * printed in full at the top of the body, which is the room the row's 96px
+     * action column never had.
+     */
+    <div className="foot-split" title={blocked.short} aria-label={blocked.short} role="note">
+      <button className="btn ghost danger" disabled aria-hidden="true">ไม่อนุมัติ</button>
+      <button className="btn" disabled aria-hidden="true">{approveLabel}</button>
+    </div>
+  ) : (
     <div className="foot-split">
       {/* Both decisions are shut while the hours are open for editing: a
           correction half-typed is not a basis for either one. */}
@@ -2835,7 +2944,7 @@ function DetailModal({
         name and the date is the app repeating what the reader is looking at.
       */}
       <button className="btn" disabled={busy || editing} onClick={onApprove}>
-        {isHr ? 'อนุมัติใบ OT' : 'อนุมัติ'}
+        {approveLabel}
       </button>
     </div>
   );
@@ -2896,10 +3005,10 @@ function DetailModal({
               answer it. `kind="info"` and not the amber the notices below use:
               a request waiting on its own หัวหน้า is the ordinary state of a
               new request, not a fault. */}
-          {watching && watchNote && (
+          {blocked && (
             <Alert kind="info">
-              <strong>{watchNote.head}</strong>
-              {' — '}{watchNote.body}
+              <strong>{blocked.head}</strong>
+              {' — '}{blocked.body}
             </Alert>
           )}
 
@@ -2937,21 +3046,18 @@ function DetailModal({
                   {' '}เพราะผู้บันทึกคือผู้ที่จะอนุมัติเอง ระบบจึงข้ามขั้นนั้นมา
                 </>
               )}
-              {/* The sentence that was missing when this row could not be moved:
-                  it names the rule and the two ways forward. */}
-              {/* `mine` IS NARROWER THAN "you filed this" SINCE 2026-09-09 — it
-                  is `barredAsOwnFiling`, so a row waiting at รอหัวหน้า for the
-                  person reading it does not draw this sentence at all: they have
-                  the two buttons. What is left is the ฝ่ายบุคคล step of a row
-                  they filed, which is the §6 rule. */}
-              {mine && (
-                <div style={{ marginTop: 4 }}>
-                  คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ —
-                  {isUntouchedSystemFiling(e)
-                    ? ' กด “ถอนใบวันเกิด” ที่แถวในคิว หรือให้ผู้ดูแลระบบอนุมัติแทน'
-                    : ' ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ'}
-                </div>
-              )}
+              {/* ⚠ A `{mine && …}` SENTENCE STOOD HERE UNTIL 2026-09-14 —
+                  *"คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้"* — and
+                  it has not been deleted, it has MOVED: `ownFilingNote` says it
+                  now, in the notice at the top of this body, beside the other
+                  two reasons a ใบ can arrive here with no decision on it.
+                  Keeping it in this amber box meant one of the three answers to
+                  one question was printed somewhere else, in another colour,
+                  three sections further down — and the reader who needed it was
+                  the reader who had already reached the bottom and found no
+                  buttons. The one thing it said that this Alert does not is
+                  WHERE the ถอนใบวันเกิด button is, and it did not need a place
+                  of its own to say it. */}
             </Alert>
           )}
 
@@ -3699,26 +3805,29 @@ function WhoName({ name }) {
   ]);
 }
 
-function WatchMark({ note }) {
-  return (
-    <span className="act-none" title={note} aria-label={note} role="note">—</span>
-  );
-}
-
 /**
  * ── THE TWO DECISIONS, DRAWN AND REFUSED — 2026-09-11 ──────────────────────
  *
  * Asked for of รออนุมัติ OT in these words: *ถ้ารายการไหน รอหัวหน้าให้แสดง icon
  * ปุ่ม อนุมัติ/ไม่อนุมัติ แต่ให้ disable ไว้*.
  *
- * IT REPLACES `WatchMark`'S DASH ON ONE ROW ONLY — see `awaitingEarlierStep`.
- * A row waiting on its own หัวหน้า is COMING to this queue and will wear these
- * very two buttons, live, the moment somebody signs the first step. A greyed
- * pair says both halves of that at once, where the dash could only say the
- * first: there is nothing to press yet, AND this is what will be there. The
- * other two watched rows sit at this queue's own step and are refused by the
- * routing matrix rather than by the clock; they keep the dash, because a button
- * drawn on them would be a promise the screen can never keep.
+ * IT IS WHAT EVERY BLOCKED ROW ON THIS QUEUE WEARS, SINCE 2026-09-14, and the
+ * `WatchMark` dash it replaced is gone from the component.
+ *
+ * ⚠ IT REPLACED THAT DASH ON ONE ROW ONLY FOR THREE DAYS. The rule was
+ * `awaitingEarlierStep`: a row waiting on its own หัวหน้า is COMING to this
+ * queue and will wear these very two buttons live, so it got them greyed, while
+ * the rows refused by the routing matrix or by §6 *"keep the dash, because a
+ * button drawn on them would be a promise the screen can never keep"*.
+ *
+ * THAT ARGUMENT WAS ABOUT THE SCREEN'S HONESTY AND IT COST THE READER THE
+ * ANSWER. What ended it was a report of four words — *รายการนี้ปุ่มหายไปไหน* —
+ * against a ใบ at รอ HR whose reader had signed its หัวหน้า step: above 861px
+ * `.own-note` is hidden, so a 32px dash was the entire reply, and it only
+ * spoke to a mouse that came to rest on it. A greyed pair is not a promise; it
+ * is the shape of the decision that is missing, which is what somebody hunting
+ * for a button is looking for. The sentence says whose press it is waiting for,
+ * and on rows where that is nobody, so does the tooltip.
  *
  * DISABLED FOR REAL, AND WITH NO HANDLER BEHIND EITHER. `approvalPermission`
  * answers 403 at that step, so what matters is that the refusal belongs to the
@@ -3729,7 +3838,7 @@ function WatchMark({ note }) {
  * THE SENTENCE HANGS ON THE WRAPPER, NOT ON THE BUTTONS. A disabled button
  * dispatches no pointer events, so its own `title` never opens — the hover
  * lands on the ancestor instead. That is why the span carries the tooltip, and
- * why it also carries the `role="note"` + `aria-label` pair `WatchMark` had:
+ * why it also carries the `role="note"` + `aria-label` pair the dash used to:
  * above 861px `.own-note` is hidden and this is the only reading of the reason
  * a mouse or a screen reader gets. The buttons are `aria-hidden` — two dimmed
  * controls announced one after the other say less than the sentence does, and a

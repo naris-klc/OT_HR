@@ -9294,9 +9294,14 @@ th.act-col { width: 258px; }
    a tick and a cross (`.act-icon` below, `.btn-word` for where the words went).
 
    IT IS THE WIDTH OF THE WIDEST STATE, not of the commonest one. A row with a
-   decision holds two squares; a row without one holds a single `.act-none`
-   dash, and the ถอนใบวันเกิด branch holds one square. Sizing to the two is
-   what keeps the buttons on the same left edge down the column. */
+   decision holds two squares, a row WITHOUT one holds the same two greyed
+   (`.act-watch`), and the ถอนใบวันเกิด branch holds one. Sizing to the two is
+   what keeps the buttons on the same left edge down the column.
+
+   ⚠ THE SECOND OF THOSE READ "a single `.act-none` dash" UNTIL 2026-09-14.
+   The dash is gone from this screen — every blocked row wears the pair now —
+   and the width did not move, because 70px was always measured against the
+   pair. */
 .queue-table th.act-col { width: 96px; }
 
 /* ── 64px ON ตรวจสอบประจำเดือน, AND IT WAS INHERITING THE 258 ABOVE ────────
@@ -9602,8 +9607,16 @@ th.act-col { width: 258px; }
      the desktop gets the column back; one branch in the JSX, two rules here.
 
      The desktop is not left with a picture and nothing else: every one of these
-     buttons carries `title` and an `aria-label` naming the employee, and
-     `.act-none` below carries the whole sentence as its tooltip. */
+     buttons carries `title` and an `aria-label` naming the employee, and on a
+     row that has no decision `.act-watch` below carries the whole sentence as
+     its tooltip.
+
+     ⚠ THAT LAST CLAUSE NAMED `.act-none` UNTIL 2026-09-14, and hiding the
+     sentence is the half of this trade that went wrong: a 32px dash whose only
+     reading was a tooltip is not "the desktop getting its column back", it is
+     a row that refuses to act and will not say why until a pointer rests on
+     it. The pair that replaced it at least draws the shape of the decision
+     that is missing. */
   .queue-table td.act-col .btn-word,
   .queue-table td.act-col .own-note { display: none; }
 }
@@ -9625,24 +9638,18 @@ th.act-col { width: 258px; }
 .queue-table .act-icon { width: 32px; height: 32px; padding: 0; flex: none; }
 .queue-table .act-icon .btn-icon { width: 16px; height: 16px; }
 
-/* The dash where a decision cannot be offered — see `WatchMark`. Sized and
-   centred like the buttons it stands in for, so the column does not go ragged
-   down a queue where five rows in nine carry one.
+/* ── EVERY ROW THAT CANNOT BE DECIDED, WEARING THE TWO DECISIONS GREY ───────
+   `WatchActions`. Two `.act-icon` squares and the 6px `.row-actions` gap —
+   70px, the same 70 the column's 96 was measured against — so a blocked row
+   and a decidable one put their controls on the same left edge.
 
-   `help` rather than `default`: the whole of this element is its tooltip, and
-   the cursor is the only thing that says so before the pointer has rested. */
-.act-none {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; flex: none;
-  color: var(--muted-2); cursor: help;
-}
-
-/* ── AND WHERE THAT DASH IS TWO GREYED DECISIONS INSTEAD — 2026-09-11 ───────
-   `WatchActions`, on the รอหัวหน้า rows of ฝ่ายบุคคล's queue: the buttons that
-   row is going to get, drawn now and refused. Two `.act-icon` squares and the
-   6px `.row-actions` gap — 70px, the same 70 the column's 96 was measured
-   against — so a watched row and a decidable one put their controls on the same
-   left edge.
+   ⚠ A `.act-none` RULE STOOD ABOVE THIS ONE UNTIL 2026-09-14: a 32px box
+   holding an em dash, with `cursor: help`, for the rows this pair was NOT
+   given — *"the dash where a decision cannot be offered"*. It was every
+   blocked row until 2026-09-11 and the two §6 rows after it, and it is gone.
+   A dash is the shape of nothing; on a desktop, where `.own-note` is hidden,
+   it was the only answer the screen gave to *รายการนี้ปุ่มหายไปไหน* and it
+   gave it to a resting mouse pointer alone.
 
    IT IS A WRAPPER BECAUSE THE TOOLTIP NEEDS SOMETHING THAT IS NOT DISABLED to
    hang on; a disabled button never opens its own `title`. See the component.
@@ -12860,16 +12867,19 @@ table.mini tbody tr:hover { background: none; }
   .queue-table td.act-col .act-icon {
     width: auto; height: auto; padding: 9px 13px;
   }
-  /* And the dash goes: the sentence it stood in for is on the card in full. */
-  .queue-table td.act-col .act-none { display: none; }
-  /* THE GREYED PAIR DOES NOT GO, and it is not the same case as the dash: a
-     dash is a stand-in for a sentence the card already prints, whereas these
-     are the two decisions themselves. They get their words back like every
-     other button on a card (`.btn-word` is only folded above 861px) and the
-     wrapper stops being a fixed 70px pair, so a watched card and a decidable
-     one are the same shape — two half-width targets under a thumb, one of them
-     simply refusing. The buttons inside take the `flex: 1 1 40%` and the 44px
-     from the `.row-actions .btn` rule above, which reaches them as descendants. */
+  /* THE GREYED PAIR DOES NOT GO — these are the two decisions themselves, not
+     a stand-in for the sentence beside them. They get their words back like
+     every other button on a card (`.btn-word` is only folded above 861px) and
+     the wrapper stops being a fixed 70px pair, so a blocked card and a
+     decidable one are the same shape — two half-width targets under a thumb,
+     one of them simply refusing. The buttons inside take the `flex: 1 1 40%`
+     and the 44px from the `.row-actions .btn` rule above, which reaches them as
+     descendants.
+
+     ⚠ A `.queue-table td.act-col .act-none { display: none; }` SAT HERE UNTIL
+     2026-09-14 — *"And the dash goes: the sentence it stood in for is on the
+     card in full"* — which was right about the card and was the reason nobody
+     noticed what the DESKTOP was left holding. */
   .queue-table td.act-col .act-watch { display: flex; flex: 1 1 100%; gap: 8px; }
   /* The two are already the same box — 44px, and `box-sizing: border-box` at
      the top of this file means the outlined one's border is inside that height
