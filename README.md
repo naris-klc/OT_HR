@@ -3819,7 +3819,7 @@ the วันหยุด columns, because those come from `entry.segments`.
 hand on the paper this sheet replaces, and for the reason they did: ×1.5 วันหยุด
 hours against somebody who worked an ordinary Tuesday read as an error, and
 accounting sends a sheet that does not explain it back. The grid stops after
-**3.00** and the 82mm of white to its right is a borderless fifth column carrying
+**3.00** and the 74mm of white to its right is a borderless fifth column carrying
 the remark — no heading, no rules, no tint, empty on every row with nothing to
 explain, and **no change to `ROWS_PER_PAGE`**: it is a cell in an existing row,
 which is the same trick the ไม่ถูกนับ flag uses in the thead margin band.
@@ -11376,7 +11376,7 @@ no arithmetic of their own.
 
 What each document shows: the **paper** gets a 1.50/3.00 pair per month and a
 `รวม` pair after them, still A4 portrait, still 194mm, still 37 rows to a page —
-the columns are squeezed (22 + 50 + six at 12mm + a 50mm remark strip), never
+the columns are squeezed (22 + 57 + six at 14mm + a 31mm remark strip), never
 the page. The **file** splits its three rate columns per month —
 `พ.ย. 69 OT x1.5 วันปกติ …` — and still ends `รวม 1.5 · รวม 3 · หมายเหตุ`, those
 two now meaning the whole cycle. **A single month's file and sheet are unchanged
@@ -11671,12 +11671,25 @@ have one, and nothing below it: no subtotal rows, no total, no signature block.
 Same print setup as F-HR-027, **A4 portrait, “ค่าเริ่มต้น” margins, no
 scaling**, sharing its `@page` rule.
 
-The ruled grid is 112mm of the 194mm, and everything on the sheet lines up with
+The ruled grid is 120mm of the 194mm, and everything on the sheet lines up with
 it. That is not a layout accident: on the paper, remarks — “วันเกิด” beside a
 name — were written by hand in the white strip *beside* the table. That strip is
 now the sheet's fifth column, and it is drawn as paper rather than as part of the
-form: 82mm, no heading, no rules, no tint, and empty except where a row has a
-remark. The one remark it prints is “วันเกิด” — see
+form: 74mm, no heading, no rules, no tint, and empty except where a row has a
+remark.
+
+**It read “112mm … 82mm” until 2026-09-14**, when the type on this sheet went up
+from 9pt to 10.5pt — 2px, asked for by the people who key its figures. Nothing
+else about the sheet moved: the row is still 7mm, `ROWS_PER_PAGE` is still 37,
+the page is still 295mm of content in a 297mm box, and the total is still 194mm.
+What moved is which column owns the millimetres. Three cells became too narrow
+for their own contents at the larger size and the white strip paid for all
+three — the name column (a name measures 52.4mm at 10.5pt where the cell offered
+51mm), the ประจำเดือน banner (`เดือนพฤศจิกายน 69` is 33.78mm against a 34mm
+banner), and, on a two-month sheet, a three-figure cycle total (`120.00` is
+12.12mm in a 12mm cell). Figures measured in Chrome in the sheet's own font on
+2026-09-14; text width scales exactly with type size, so the arithmetic is a
+multiplication rather than a guess. The one remark it prints is “วันเกิด” — see
 [Where “วันเกิด” is printed](#where-วนเกด-is-printed). Everything else the system
 wants to say about a row still goes on the screen and in the CSV.
 
