@@ -651,6 +651,55 @@ test('a ▲/▼ notice opens from anywhere in its frame, and folds from its head
   assert.ok(!common.includes('foldRowClick'), 'the row-only helper outlived the box one');
 });
 
+test('วิธีพิมพ์ พับไว้ในแถวปุ่ม และบรรทัดความหมายของตัวเลขไม่ได้ถูกพับไปด้วย', () => {
+  // 2026-09-14, *"ซ่อนคำอธิบายในกรอบสีดำ กระชับ รวมไว้กับแถวปุ่มพิมพ์"* — one
+  // fold, in `PrintChrome`, so all six print views get it at once.
+  //
+  // IT IS THE KIND OF FOLD THAT STAYS by the line the test above draws: it
+  // covers a LIST of settings somebody chooses whether to read, not a sentence
+  // that is too long. The half that is NOT settings — `footer`, what the
+  // figures on the paper mean — is outside it, and that is the assertion here
+  // worth keeping if the rest is ever rewritten.
+  // Comments in this file quote the markup they explain — including the words
+  // asserted below — so this reads the code with the prose taken out.
+  const bare = sourceOf('components/common.jsx');
+  const chrome = bare
+    .slice(bare.indexOf('export function PrintChrome('))
+    .split('\nexport function ')[0];
+  const barAt = chrome.indexOf('<div className="print-bar');
+  const bar = chrome.slice(barAt, chrome.indexOf('</div>', barAt));
+
+  // In the button row, and not as a fourth `.btn`: 44px is this app's touch
+  // floor for decisions, 34px for the controls standing beside them.
+  assert.match(bar, /className="fold-pill"/, 'ฝาพับไม่ได้อยู่ในแถวปุ่ม');
+  assert.match(bar, /aria-expanded=\{openHints\}/);
+  assert.match(bar, /aria-controls=\{hintsId\}/);
+  assert.match(bar, /openHints \? 'ซ่อน ▲' : 'วิธีพิมพ์ ▼'/, 'ถ้อยคำบนฝาพับไม่ใช่ของเดิม');
+  assert.ok(!/className="btn[^"]*"[^>]*>\s*วิธีพิมพ์/.test(bar), 'ฝาพับกลายเป็นปุ่มตัวที่สี่');
+
+  // Folded on every open, and deliberately not remembered — see the component.
+  assert.match(chrome, /const \[openHints, setOpenHints\] = React\.useState\(false\);/);
+  assert.ok(!chrome.includes('localStorage'), 'PrintChrome เริ่มจำสถานะฝาพับไว้ในเบราว์เซอร์');
+
+  // `hidden` on the `<ul>` itself: one home for the state, and the stylesheet
+  // has no rule that hides it — a second one would be able to disagree.
+  assert.match(chrome, /<ul className="print-setup no-print" id=\{hintsId\} ref=\{hintsRef\} hidden=\{!openHints\}>/);
+  assert.ok(!read('app/print.css').includes('.print-setup[hidden]'), 'สไตล์ชีตซ่อนการ์ดเองอีกทาง');
+
+  // ⚠ THE FOOTER IS NOT INSIDE THE FOLD. It is read holding the paper, not
+  // standing at the printer, so it cannot go behind a control pressed before
+  // printing. `</ul>` closes the card; `footer` comes after it.
+  const shut = chrome.indexOf('</ul>');
+  assert.ok(shut > 0);
+  assert.ok(chrome.indexOf('{footer && <div className="print-foot') > shut, 'บรรทัดท้ายถูกพับไปกับการ์ด');
+
+  // Opened while the sticky bar is holding the top of a phone screen, the card
+  // unfolds above the viewport unless something scrolls it back — measured off
+  // the bar, because the bar wraps to two rows at 360px.
+  assert.match(chrome, /React\.useLayoutEffect\(\(\) => \{\s+if \(!openHints\) return;/);
+  assert.match(chrome, /if \(top < floor\) window\.scrollBy\(\{ top: top - floor - 8 \}\);/);
+});
+
 test('the new-password table is deliberately NOT shortened', () => {
   // Every row there is a password to hand over; a row behind a press is one
   // somebody does not get.

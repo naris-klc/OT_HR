@@ -2024,9 +2024,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2658 tests
+and the engine know nothing about Next.js, so the whole suite — **2659 tests
 across 147 files**, measured 2026-09-14 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2658 tests across 147 files" for an hour of the same evening, until
+**การ์ดวิธีพิมพ์พับแล้ว** put one case in `disclosure` — beside the rule about
+which folds stay that ฝาพับ ▲/▼ ถูกถอนสองในสามจุด had written that afternoon. It read
 "2654 tests across 146 files … measured 2026-09-14" until the three report menus
 were made to read alike later the same day — `exportMenuShape` is the file and
 three of the four cases are its own; **the fourth was already on disk
@@ -13474,8 +13477,13 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2658 tests**, about 4 s, measured 2026-09-14 across 147
-  files, all green. **`exportMenuShape` is the new file** — เมนู พิมพ์ / ส่งออก
+- `npm test` — **2659 tests**, about 4 s, measured 2026-09-14 across 147
+  files, all green. **NO NEW FILE in the round that moved it off 2658** —
+  การ์ดวิธีพิมพ์พับแล้ว put its case in `disclosure`, directly under the one
+  ฝาพับ ▲/▼ ถูกถอนสองในสามจุด had put there the same afternoon: a fold over a
+  *list* stays, a fold over a *sentence* goes, and the second round is what the
+  first round's line decides.
+  **`exportMenuShape` is the new file** — เมนู พิมพ์ / ส่งออก
   ของสามจอถูกจัดให้เป็นรูปแบบเดียวกัน, and a rule about three screens is written
   where all three can be read at once. It read "2654 tests … across 146" until
   that round, and the tree was already at 2655 when the branch was taken: one

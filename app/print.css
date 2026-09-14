@@ -1195,12 +1195,20 @@
  * Both carry `no-print` and neither has a print rule, which is the point: this
  * is the screen telling you how to set the printer, and it would be absurd on
  * the paper that came out of it.
+ *
+ * ตั้งแต่ 2026-09-14 กล่องนั้นเริ่มที่พับไว้ และฝาพับของมันคือ `วิธีพิมพ์ ▼` ที่ต่อ
+ * ท้ายแถวปุ่ม — ขอมาว่า *“ซ่อนคำอธิบายในกรอบสีดำ กระชับ รวมไว้กับแถวปุ่มพิมพ์”*
+ * ทั้งคู่ยังเป็นพี่น้องกันเหมือนเดิม และยังเป็นด้วยเหตุผลเดิมทุกตัวอักษร
  */
 
 .print-bar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   margin-bottom: 10px;
 }
+/* `.fold-pill` ประกาศไว้ที่ app/styles.css พร้อม `margin-top: 8px` ซึ่งเป็นระยะของ
+   ตัวที่ห้อยอยู่ใต้ย่อหน้าในกล่องแจ้งเตือน · ในแถวนี้มันยืนเรียงกับปุ่มบนเส้นกลาง
+   เดียวกัน ระยะนั้นจะดันมันต่ำกว่าปุ่มข้าง ๆ 8px ซึ่งอ่านเป็นความผิดพลาด ไม่ใช่ลำดับ */
+.print-bar .fold-pill { margin-top: 0; }
 
 /* A card rather than a right-aligned paragraph, and one line per instruction.
    The four sentences used to run together into one grey block at the end of a
@@ -1210,7 +1218,13 @@
 
    12px, a size down from the app's body text and two down from the button
    beside it. It is a reference card, not an instruction: the thing this screen
-   is for is พิมพ์, and the list must not compete with it for the first look. */
+   is for is พิมพ์, and the list must not compete with it for the first look.
+
+   **มันเคยอยู่บนจอตลอดเวลาจนถึง 2026-09-14** ตอนนี้เริ่มที่พับไว้ ต้องกด
+   `วิธีพิมพ์ ▼` ในแถวปุ่มถึงจะกางออกมา — ย่อหน้าข้างบนยังจริงทุกคำ มันยังเป็น
+   การ์ดอ้างอิงที่อ่านตอนยืนอยู่ที่เครื่องพิมพ์ สิ่งที่เปลี่ยนคือมันไม่ดันกระดาษลงไป
+   ทั้งสี่บรรทัดในวันที่ไม่มีใครถามคำถามที่มันตอบ · การซ่อนทำด้วย `hidden` บนตัว
+   `<ul>` เอง ไม่มีกฎในไฟล์นี้ที่ซ่อนมัน สถานะอยู่ที่ DOM ที่เดียว */
 .print-setup {
   margin: 8px 0;
   /* 12px round, plus the 16 the discs hang in. */
