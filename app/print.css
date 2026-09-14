@@ -466,7 +466,20 @@
   background: #fff;
   color: #000;
   font-family: 'IBM Plex Sans Thai Looped', 'TH Sarabun New', sans-serif;
-  font-size: 9pt;
+  /* 10.5pt, ขอมาเมื่อ 2026-09-14 — ใบนี้อ่านบนกระดาษ ไม่ได้อ่านบนจอ และ 9pt
+     ที่เคยอยู่ตรงนี้เล็กเกินไปสำหรับคนที่คีย์ตัวเลขจากมันเข้าระบบเงินเดือน
+
+     ⚠ 10.5 ไม่ใช่ตัวเลขที่เลือกให้สวย มันคือ 9pt + 2px (1px = 0.75pt) และ
+     ทุกความกว้างใน `colgroup` ของ components/AccountingPrint.jsx ถูกคำนวณใหม่
+     ที่ขนาดนี้ — ความกว้างข้อความเป็นเชิงเส้นตามขนาดฟอนต์พอดี (วัดด้วย Chrome
+     2026-09-14: อัตราส่วน 1.1666 = 10.5/9 เป๊ะ) แก้ขนาดนี้เมื่อไรต้องคำนวณ
+     colgroup ใหม่ทั้งชุด ไม่ใช่แก้บรรทัดเดียว
+
+     สูงแถวไม่ขยับ และนั่นคือเงื่อนไขที่ตัดสินว่าขยายได้แค่ไหน: 10.5pt ที่
+     line-height 1.25 คือ 4.63mm บวก padding 1.6mm = 6.23mm ยังอยู่ในแถว 7mm
+     ที่ `ROWS_PER_PAGE = 37` ถูกนับมาจากมัน — ใบยังเป็น 295mm ในกล่อง 297mm
+     และจำนวนหน้าเท่าเดิมทุกใบ */
+  font-size: 10.5pt;
   line-height: 1.3;
   /* A PAGE, NOT A STRIP — the same fix .otdept was given, and for the same
      report: the preview did not look like paper.
@@ -517,7 +530,7 @@
 .acct th, .acct td {
   border: 0.25mm solid #000;
   padding: 0.8mm 1.5mm;
-  font: 400 9pt/1.25 'IBM Plex Sans Thai Looped', 'TH Sarabun New', sans-serif;
+  font: 400 10.5pt/1.25 'IBM Plex Sans Thai Looped', 'TH Sarabun New', sans-serif;
   letter-spacing: 0;
   text-transform: none;
   white-space: normal;
@@ -568,6 +581,18 @@
 .acct td.code { text-align: left; font-variant-numeric: tabular-nums; }
 .acct td.n { text-align: center; font-variant-numeric: tabular-nums; }
 
+/* ช่องตัวเลขได้ padding ข้าง 0.8mm แทน 1.5mm ของทั้งใบ — ขอบซ้ายขวาของช่อง
+   ตัวเลขไม่ได้ทำงานอะไรเลย ตัวเลขจัดกึ่งกลางอยู่แล้ว มันเป็นแค่ที่ว่างที่หายไป
+   จากช่อง และในใบสองเดือนที่ช่องกว้าง 14mm มันคือความต่างระหว่าง `120.00`
+   ที่พิมพ์ครบ กับ `120.0…` ที่ถูก `text-overflow: ellipsis` ตัด
+
+   ตัวเลขที่วัดมาจริงเมื่อ 2026-09-14 (Chrome, ฟอนต์เดียวกับที่ใบนี้ใช้): ยอดสาม
+   หลัก `120.00` ที่ 10.5pt กว้าง 12.12mm — ในช่อง 14mm ที่ padding 1.5mm เหลือ
+   เนื้อที่ 11mm มันไม่พอ ที่ 0.8mm เหลือ 12.4mm มันพอ · ใบเดือนเดียวช่อง 19mm
+   ไม่เคยคับอยู่แล้ว บรรทัดนี้ไม่ได้เขียนเพื่อมัน แต่ใช้กับมันด้วยเพราะสองใบ
+   ต้องเป็นใบเดียวกัน ต่างกันแค่จำนวนเดือน */
+.acct td.n { padding-left: 0.8mm; padding-right: 0.8mm; }
+
 /* ชั่วโมงที่เซ็นเกินเพดาน — the same mark `.fig-over` puts on รวม ชม. on the
    screen, on the figure accounting actually signs. See `figureClass` in
    AccountingPrint.jsx for which cells get it and why it is both of them.
@@ -608,10 +633,13 @@
    them and the blank rows that fill the last page land where they should. A
    name allowed to wrap would take two lines, that page would hold one row
    fewer, and the count the filler is computed from would be wrong from there
-   on. The column has room: 54mm less padding is 51mm of text, and the longest
-   name on the roster measures 44.9mm at 9pt. `ellipsis` is the backstop for a
-   name longer than any of them — visibly cut rather than silently overlapping
-   the 1.50 column, which is what fixed table layout would otherwise do. */
+   on. The column has room: 58mm less padding is 55mm of text, and the longest
+   name on the roster measures 52.4mm at 10.5pt — it read "54mm … 51mm … 44.9mm
+   at 9pt" until 2026-09-14, when the type went up by 2px and the column went
+   with it (54mm would have cut that name by 1.4mm). `ellipsis` is the backstop
+   for a name longer than any of them — visibly cut rather than silently
+   overlapping the 1.50 column, which is what fixed table layout would otherwise
+   do. */
 .acct tbody td {
   white-space: nowrap;
   overflow: hidden;
@@ -642,13 +670,19 @@
    Aligned bottom-left: it reads down the same edge as the รหัส column under it,
    and sits just above the grid rather than floating in the middle of the white,
    so it reads as belonging to this table. With nothing to show the cell is
-   empty and the band is plain white — which is the ordinary month. */
+   empty and the band is plain white — which is the ordinary month.
+
+   12pt = 10.5 + 2px เหมือนทั้งใบ (2026-09-14) และยังอยู่ในแถบ 10mm สบาย ๆ:
+   12pt ที่ line-height 1.2 คือ 5.08mm บวก padding ล่าง 1.6mm = 6.68mm — แถบนี้
+   คือความสูงที่ ROWS_PER_PAGE ถูกนับมาจากมัน มันจึงโตไม่ได้ · คำอธิบายอยู่นอก
+   วงเล็บปีกกาเพราะ test/printFlagLayout.test.js อ่าน 400 ตัวอักษรแรกของบล็อกนี้
+   เพื่อยืนยันว่า `white-space: nowrap` ยังอยู่ */
 .acct thead tr.pad td.co {
   line-height: 1.2;
   vertical-align: bottom;
   text-align: left;
   padding: 0 0 1.6mm;
-  font-size: 10.5pt;
+  font-size: 12pt;
   font-weight: 600;
   white-space: nowrap;
 }
