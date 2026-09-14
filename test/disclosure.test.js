@@ -609,18 +609,22 @@ test('a ▲/▼ notice opens from anywhere in its frame, and folds from its head
   assert.match(fn, /if \(!folded && !e\.target\.closest\?\.\(head\)\) return;/, 'a tap on an open body folds it');
   assert.match(common, /onClose = null, onClick, children,/);
 
-  // ⚠ THIS LOOP HAD A FOURTH ROW UNTIL 2026-09-11, and it is worth a line
-  // because the row did not fail — it was withdrawn. ประกาศวันหยุดบริษัท was
-  // the one box here that is not an `.alert`, so it carried its own
-  // `.announce-fold` and its own `.announce-top` as the heading selector, and
-  // the assertion below it existed to say so. The banner is ONE ROW now
-  // (*"กระชับให้เป็นแถวเดียว"*) with no fold at all, so there is no press to
-  // pin: `test/holidayNotice.test.js` pins the opposite — that no state of that
-  // component draws less than the whole row. The three that remain are alerts.
+  // ⚠ THIS LOOP HAD FOUR ROWS UNTIL 2026-09-11 AND THREE UNTIL 2026-09-14, and
+  // the shrinking is worth the lines because not one of them ever failed —
+  // each was withdrawn. ประกาศวันหยุดบริษัท was the one box here that is not an
+  // `.alert`, so it carried its own `.announce-fold` and its own `.announce-top`
+  // as the heading selector; it is ONE ROW now (*"กระชับให้เป็นแถวเดียว"*) and
+  // `test/holidayNotice.test.js` pins the opposite — that no state of that
+  // component draws less than the whole row.
+  //
+  // ผู้รับช่วงอนุมัติแทน and the amber รหัสผ่าน warning went on 2026-09-14, asked
+  // as *"ตัดสอง เก็บหนึ่ง"* and decided on WHAT a fold hides rather than on how
+  // tall it is: a fold over a SENTENCE goes, a fold over a LIST stays. The one
+  // row left is F-HR-027's, which folds rows somebody may or may not want to
+  // read line by line. `Disclosure`, `ShowMore` and `fold-pill` stay for the
+  // same reason and are pinned elsewhere in this file.
   for (const [file, box, button, state, fn2] of [
     ['components/PrintForm.jsx', '<Alert kind={kind} onClick=', 'className="alert-fold"', 'folded', 'toggle'],
-    ['components/Delegation.jsx', '<Alert kind="info" onClick=', 'className="alert-fold"', 'noteFolded', 'toggleNote'],
-    ['components/ProfileView.jsx', '<Alert kind="warn" onClick=', 'className="alert-fold"', 'warnFolded', 'toggleWarn'],
   ]) {
     const src = sourceOf(file);
     assert.ok(src.includes(`${box}{foldClick(${state}, ${fn2}`), `${file}: กดในกรอบแล้วไม่กาง`);
@@ -629,8 +633,21 @@ test('a ▲/▼ notice opens from anywhere in its frame, and folds from its head
     const at = src.indexOf(button);
     assert.ok(!src.slice(at, src.indexOf('</button>', at)).includes('onClick'), `${file}: ปุ่ม ▲/▼ มี onClick ของตัวเอง`);
   }
-  assert.ok(!sourceOf('components/HolidayBanner.jsx').includes('foldClick'),
-    'แถบประกาศวันหยุดรับฝาพับกลับมา ทั้งที่มันเหลือแถวเดียวแล้ว');
+
+  // The withdrawn three are NAMED, not merely missing from the loop above: a
+  // fold coming back to any of them should fail here rather than pass quietly,
+  // and the day one is meant to return this assertion is what has to be argued
+  // with first.
+  for (const [file, key] of [
+    ['components/HolidayBanner.jsx', 'ot-holiday-fold'],
+    ['components/Delegation.jsx', 'ot-deleg-note-fold'],
+    ['components/ProfileView.jsx', 'ot-pw-warn-fold'],
+  ]) {
+    const src = sourceOf(file);
+    assert.ok(!src.includes('foldClick'), `${file}: ฝาพับกลับมาแล้ว ทั้งที่ถูกถอนไปแล้ว`);
+    assert.ok(!src.includes(`'${key}'`), `${file}: ${key} กลับมาอยู่ใน localStorage อีกแล้ว`);
+    assert.ok(!src.includes('className="alert-fold"'), `${file}: ปุ่ม ▲/▼ กลับมาแล้ว`);
+  }
   assert.ok(!common.includes('foldRowClick'), 'the row-only helper outlived the box one');
 });
 

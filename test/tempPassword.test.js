@@ -574,13 +574,17 @@ test('signing in reaches the app, and the flag is said in ink instead', () => {
   assert.match(profile, /<ChangePassword\s+pending=\{user\.mustChangePassword\}/);
   assert.match(profile, /\{pending && <>[^]*ซึ่งคือรหัสพนักงานของคุณ/);
   assert.match(profile, /\{pending && !ok && \(/);
-  // The amber Alert folds (▲/▼, 2026-09-10), but never the fact: the password
-  // in use is the รหัสพนักงาน stays OUTSIDE the hidden half.
+  // ⚠ IT READ "the amber Alert folds (▲/▼, 2026-09-10), but never the fact"
+  // until 2026-09-14. The fold is gone and the whole sentence is on screen, so
+  // the fact can no longer be hidden by anything — which is what this assertion
+  // now says, and it says it without naming the half that used to be behind the
+  // press, because there is no half.
   assert.match(
     profile,
-    /<div className="alert-fold-text">\s*คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ ซึ่งคือรหัสพนักงานของคุณ\s*<span id=\{warnId\} hidden=\{warnFolded\}>/,
-    'the warning folds away the one fact it exists to say',
+    /<Alert kind="warn">\s*คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้ ซึ่งคือรหัสพนักงานของคุณ และมีคนอื่นทราบด้วย\s*<\/Alert>/,
+    'the one fact this box exists to say is not whole on screen',
   );
+  assert.ok(!profile.includes('alert-fold'), 'ฝาพับกลับมาบนกล่องที่ถูกถอนไปแล้ว');
 });
 
 // ── the screen may say the value; it may never send one ─────────────────────

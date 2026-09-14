@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
 import { DELEGATED_APPROVAL_RECORDED } from '@/lib/delegation.js';
-import { Alert, Empty, Field, Modal, PickOne, foldClick } from './common.jsx';
+import { Alert, Empty, Field, Modal, PickOne } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
 import { PickDate } from './PickDate.jsx';
@@ -19,20 +19,6 @@ import { PickDate } from './PickDate.jsx';
  * versions of the same form, and the one used less often is the one that would
  * end up missing the rule that matters.
  */
-/**
- * ย่อ/กาง for the notice under the heading, remembered in this browser only —
- * the arrangement `ot-holiday-fold` in components/HolidayBanner.jsx already
- * has, and for the same reason: it is read once and then only takes height
- * above the table somebody came to look at. ONE key for both placements, since
- * a person who has folded it on ข้อมูลส่วนตัว has read the same sentences that
- * ตั้งค่าระบบ would show them.
- *
- * FOLDED IS NOT GONE. The first clause stays on screen — the window closing on
- * its own is the one thing a reader must not forget — and ▲/▼ rather than ✕,
- * because the press folds and a ✕ would promise a notice that does not return.
- */
-const NOTE_FOLD_KEY = 'ot-deleg-note-fold';
-
 export default function Delegation({ user, scope = 'mine' }) {
   const all = scope === 'all';
   const toast = useToast();
@@ -43,29 +29,6 @@ export default function Delegation({ user, scope = 'mine' }) {
   const [busy, setBusy] = useState(false);
   /** Whether มอบหมายผู้รับช่วง is open — the only way this screen creates one. */
   const [adding, setAdding] = useState(false);
-  const [noteFolded, setNoteFolded] = useState(false);
-  const noteId = useId();
-
-  // Read on mount, never during render: the server has no localStorage, and a
-  // first render that read it would hydrate against markup that disagrees.
-  useEffect(() => {
-    try {
-      setNoteFolded(localStorage.getItem(NOTE_FOLD_KEY) === '1');
-    } catch { /* storage blocked: the notice opens, which is the safe way to be wrong */ }
-  }, []);
-
-  // "Folded or nothing" — the absent key is the default, as `ot-holiday-fold`.
-  function toggleNote() {
-    setNoteFolded((was) => {
-      const next = !was;
-      try {
-        if (next) localStorage.setItem(NOTE_FOLD_KEY, '1');
-        else localStorage.removeItem(NOTE_FOLD_KEY);
-      } catch { /* the fold still applies to this tab */ }
-      return next;
-    });
-  }
-
   async function load() {
     try {
       const res = await api.get(`/delegations${all ? '?all=1' : ''}`);
@@ -133,38 +96,38 @@ export default function Delegation({ user, scope = 'mine' }) {
         still approve things myself" (yes, always). Both are asked by somebody
         looking at the table, with no form open.
       */}
-      <Alert kind="info" onClick={foldClick(noteFolded, toggleNote)}>
-        <div className="alert-fold-row">
-          <div className="alert-fold-text">
-            การมอบหมาย<strong>หมดอายุเองตามวันที่กำหนด</strong>
-            <span id={`${noteId}-a`} hidden={noteFolded}>
-              {' '}ไม่มีสวิตช์เปิด/ปิดที่ต้องกลับมาปิด ·
-              {' '}และเป็นการ<strong>เพิ่ม</strong>สิทธิ์ ไม่ใช่ย้าย —
-              {' '}หัวหน้างานเจ้าของคิวยังอนุมัติเองได้ตลอด ถ้ากลับมาก่อนกำหนดก็ไม่ต้องทำอะไร
-            </span>
-          </div>
-          <button
-            type="button"
-            className="alert-fold"
-            aria-expanded={!noteFolded}
-            aria-controls={`${noteId}-a ${noteId}-b`}
-            aria-label={noteFolded ? 'กางคำอธิบายการมอบหมาย' : 'ย่อคำอธิบายการมอบหมาย'}
-            title={noteFolded ? 'กางคำอธิบาย' : 'ย่อคำอธิบาย'}
-          >
-            {noteFolded ? '▼' : '▲'}
-          </button>
-        </div>
-        {/* THE MIDDLE IS SHARED WITH คิวรออนุมัติ SINCE 2026-09-12 — see
-            `DELEGATED_APPROVAL_RECORDED` in lib/delegation.js. What stays here
-            is the subject (this reader is the one who APPOINTS a stand-in, not
-            the one standing in) and the tail, which is the fact only this
-            screen's reader is about to need. "ทำแทน" gave up its `<strong>`
-            with the queue's copy; the quotes already mark it, and the tail's
-            bold is the one thing on this line worth a weight. */}
-        <div id={`${noteId}-b`} hidden={noteFolded} className="say">
-          {`ทุกการอนุมัติของผู้รับช่วง${DELEGATED_APPROVAL_RECORDED} · ผู้รับช่วง`}
-          <strong>มอบหมายต่อเป็นทอดไม่ได้</strong>
-        </div>
+      {/*
+        ⚠ THIS NOTICE HAD A ▲/▼ AND A SECOND DECK UNTIL 2026-09-14 —
+        `ot-deleg-note-fold` in localStorage, and a `.say` line under the fold
+        row. Both are gone: one text stream, always whole, the shape
+        ประกาศวันหยุดบริษัท took on 2026-09-11.
+
+        IT IS TWO LINES, NOT ONE, AND THAT WAS THE DECISION. This box carries
+        four separate facts — it expires by itself · it ADDS a right rather
+        than moving one · the stand-in's approvals are recorded as ทำแทน ·
+        the stand-in cannot appoint another — and one row cannot hold four
+        without dropping one. Asked on 2026-09-14 and answered: keep all four,
+        take the second line, lose the button. Two lines with nothing hidden
+        beat three-when-opened behind a press.
+
+        WHAT WAS CUT was repetition, not a fact: "เพิ่มสิทธิ์ ไม่ใช่ย้าย",
+        "ยังอนุมัติเองได้ตลอด" and "ถ้ากลับมาก่อนกำหนดก็ไม่ต้องทำอะไร" were three
+        wordings of one thing. Two remain, and the abstract one now explains
+        the concrete one instead of standing beside it.
+
+        THE MIDDLE IS SHARED WITH คิวรออนุมัติ SINCE 2026-09-12 — see
+        `DELEGATED_APPROVAL_RECORDED` in lib/delegation.js. What stays here is
+        the subject (this reader is the one who APPOINTS a stand-in, not the
+        one standing in) and the tail, which is the fact only this screen's
+        reader is about to need. "ทำแทน" gave up its `<strong>` with the
+        queue's copy; the quotes already mark it, and the tail's bold is the
+        one thing on this line worth a weight.
+      */}
+      <Alert kind="info">
+        การมอบหมาย<strong>หมดอายุเองตามวันที่กำหนด</strong> ไม่มีอะไรต้องกลับมาปิด ·{' '}
+        เป็นการ<strong>เพิ่ม</strong>สิทธิ์ ไม่ใช่ย้าย หัวหน้างานเจ้าของคิวยังอนุมัติเองได้ตลอด ·{' '}
+        {`ทุกการอนุมัติของผู้รับช่วง${DELEGATED_APPROVAL_RECORDED} · ผู้รับช่วง`}
+        <strong>มอบหมายต่อเป็นทอดไม่ได้</strong>
       </Alert>
 
       {error && <Alert kind="error">{error}</Alert>}
