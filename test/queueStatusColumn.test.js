@@ -151,9 +151,24 @@ test('signableHere ถูกถามที่ประตูทั้งสี�
   assert.match(code, /shown\.filter\(\s*\(e\) => signableHere\(e\) &&/);
   // the row's action cell — the FIRST branch, before the two about who signs
   assert.match(code, /\{!signableHere\(e\) \? \(/);
-  // the pop-up
-  assert.match(code, /watching=\{!signableHere\(detail\)\}/);
-  assert.match(code, /\) : \(mine \|\| watching\) \? null : \(/);
+  /* the pop-up — through `blockedNote`, which asks `signableHere` on its first
+     line and is the ONE answer both surfaces read.
+
+     ⚠ THIS GATE READ `watching={!signableHere(detail)}` UNTIL 2026-09-14 and
+     the gate was not the problem: it was one of THREE props covering TWO of the
+     three reasons a ใบ can have no decision on it. A reader who had signed the
+     หัวหน้า step of the very ใบ they were reading matched none of them, so the
+     row hid its buttons and the pop-up it opens drew them live. */
+  assert.match(code, /blocked=\{blockedNote\(detail\)\}/);
+  assert.match(
+    code,
+    /const blockedNote = \(e\) => \{\s*\r?\n\s*if \(!e\) return null;\s*\r?\n\s*if \(!signableHere\(e\)\) return watchingNote\(e, stage, user\);/,
+    'blockedNote ไม่ได้ถาม signableHere เป็นข้อแรก',
+  );
+  assert.match(code, /\) : blocked \? \(/);
+  // และเหตุผลมีสามข้อ ไม่ใช่สอง — ข้อที่หายไปคือตัวที่ทำให้ป๊อปอัพขัดกับแถว
+  assert.match(code, /if \(barredAsOwnFiling\(e, user\)\) return ownFilingNote\(e\);/);
+  assert.match(code, /if \(signedManagerStep\(e, user\)\) return SIGNED_MGR_NOTE;/);
 });
 
 /**
@@ -386,18 +401,18 @@ test('แถวที่ยังไม่ถึงคิว มีประโ�
   assert.ok(branch.includes('className="cell-sub own-note"'), 'ประโยคต้องอยู่ในกล่องที่มีความกว้างจำกัด');
   /*
    * และประโยคเดียวกันนั้นเป็นทูลทิปของสิ่งที่ยืนแทนปุ่ม — เพราะบนจอตั้งแต่ 861px
-   * ขึ้นไป `.own-note` ถูกซ่อน (คอลัมน์เหลือ 96px) เหลือมาร์กให้อ่านด้วยเมาส์และ
+   * ขึ้นไป `.own-note` ถูกซ่อน (คอลัมน์เหลือ 96px) เหลือให้อ่านด้วยเมาส์และ
    * ด้วยโปรแกรมช่วยอ่าน ส่วนการ์ดบนมือถือได้ประโยคเต็มเหมือนเดิม
    *
-   * ⚠ มาร์กนั้นเป็น `WatchMark` ตัวเดียวจนถึง 2026-09-11 — ตอนนี้มีสองแบบ และ
-   * `awaitingEarlierStep` เป็นตัวเลือก ดูเคสถัดไป
+   * ⚠ สิ่งที่ยืนแทนปุ่มเคยเป็น `WatchMark` (ขีด) ตัวเดียวจนถึง 2026-09-11 แล้วแยก
+   * เป็นสองแบบด้วย `awaitingEarlierStep` อีกสามวัน · ตั้งแต่ 2026-09-14 มีแบบเดียว
+   * คือปุ่มคู่ที่ปิดไว้ ทุกแถวที่ตัดสินไม่ได้ ดูเคสถัดไป
    */
   assert.ok(
-    branch.includes('<WatchMark note={watchingNote(e, stage, user).short} />'),
+    branch.includes('<WatchActions note={watchingNote(e, stage, user).short} verb={verb} />'),
     'จอตั้งโต๊ะไม่เหลืออะไรเลยในเซลล์ที่ไม่มีปุ่ม',
   );
   assert.match(css, /\.queue-table td\.act-col \.btn-word,\s*\r?\n\s*\.queue-table td\.act-col \.own-note \{ display: none; \}/);
-  assert.match(css, /\.queue-table td\.act-col \.act-none \{ display: none; \}/, 'ขีดกับประโยคขึ้นพร้อมกันบนการ์ด');
   // เปิดรายละเอียดได้ — จากตัวแถว ไม่ใช่จากปุ่มในเซลล์นี้อีกต่อไป
   assert.ok(!branch.includes('setDetail(e)'), 'ปุ่มรายละเอียดกลับมาอยู่ในเซลล์ ทั้งที่แถวเปิดเองได้แล้ว');
   assert.match(code, /onClick=\{\(ev\) => \{[\s\S]{0,200}?setDetail\(e\);/, 'แถวไม่เปิดรายละเอียดแล้ว');
@@ -406,29 +421,42 @@ test('แถวที่ยังไม่ถึงคิว มีประโ�
 });
 
 /**
- * ── แถวที่ "รอหัวหน้า" ได้ปุ่มสองปุ่มแบบปิดไว้ แทนขีด — 2026-09-11 ────────────
+ * ── ทุกแถวที่ตัดสินไม่ได้ ใส่ปุ่มสองปุ่มที่ปิดไว้ — 2026-09-14 ────────
  *
- * ขอมาว่า *ถ้ารายการไหน รอหัวหน้าให้แสดง icon ปุ่ม อนุมัติ/ไม่อนุมัติ แต่ให้
- * disable ไว้* บนหน้า รออนุมัติ OT.
+ * ขอมารอบแรกเมื่อ 2026-09-11 ว่า *ถ้ารายการไหน รอหัวหน้าให้แสดง icon ปุ่ม
+ * อนุมัติ/ไม่อนุมัติ แต่ให้ disable ไว้* และรอบนั้นให้เฉพาะแถวที่ยังอยู่ขั้น
+ * หัวหน้า ด้วยเหตุผลว่าใบนั้น *กำลังจะ* ได้ปุ่มคู่นี้จริง ส่วนแถวที่จะไม่มีวันได้
+ * ปุ่มต้องคงขีดไว้ เพราะ *"a button drawn on them would be a promise the screen
+ * can never keep"*.
  *
- * เฉพาะแถวเดียวเท่านั้น และนั่นคือทั้งหมดของเคสนี้ แถวที่ดูอย่างเดียวมีสามแบบ
- * (`watchingNote`) แต่มีแบบเดียวที่ *กำลังจะ* ได้ปุ่มคู่นี้จริง ๆ คือใบที่ยังอยู่
- * ขั้นหัวหน้าบนคิวของ ฝ่ายบุคคล — อีกสองแบบอยู่ขั้นเดียวกับคนอ่านแล้วและถูก
- * ปฏิเสธด้วยสายอนุมัติ ไม่ใช่ด้วยเวลา ลายเซ็นของใครก็ไม่ทำให้มันกลายเป็นใบของ
- * คนนี้ ปุ่มบนแถวพวกนั้นจึงเป็นคำสัญญาที่จอทำตามไม่ได้ และยังเป็นขีดเหมือนเดิม
+ * ⚠ เหตุผลนั้นเป็นเรื่องความซื่อตรงของจอ และมันแลกมาด้วยคำตอบของคนอ่าน.
+ * สิ่งที่ปิดเรื่องนี้คือรายงานสี่คำ — *รายการนี้ปุ่มหายไปไหน* — ถามถึงใบที่ รอ HR
+ * ซึ่งคนอ่านเป็นผู้เซ็นขั้นหัวหน้าของมันเอง · บนจอตั้งแต่ 861px ขึ้นไป `.own-note` ถูกซ่อน
+ * ขีด 32px จึงเป็นคำตอบทั้งหมดที่จอมี และมันพูดกับเมาส์ที่มาหยุดนิ่งเท่านั้น
+ *
+ * ปุ่มคู่ที่เทาไม่ใช่คำสัญญา มันคือรูปร่างของการตัดสินที่หายไป ซึ่งคือสิ่งที่คนกำลังหาปุ่ม
+ * มองหา · `awaitingEarlierStep` ถูกถอนทิ้งทั้งตัวพร้อม `WatchMark`
  *
  * และปุ่มต้องปิดจริง ๆ ที่ตัว element ไม่ใช่แค่คลาสที่ดูเหมือนปิด — `approvalPermission`
- * ตอบ 403 ที่ขั้นนั้น ปุ่มที่กดได้จึงเป็นการเดินทางไปหาคำปฏิเสธ
+ * ตอบ 403 ที่ขั้นนั้น และ 409 ที่ขั้นนี้ ปุ่มที่กดได้จึงเป็นการเดินทางไปหาคำปฏิเสธ
  */
-test('แถวที่ยังรอหัวหน้า โชว์ปุ่ม อนุมัติ/ไม่อนุมัติ แบบกดไม่ได้ ส่วนแถวอื่นยังเป็นขีด', () => {
-  const at = code.indexOf('{!signableHere(e) ? (');
-  const branch = code.slice(at, code.indexOf('signedManagerStep(e, user) ? (', at));
-  // ตัวเลือกมาจากที่เดียวกับที่ `watchingNote` แยกประโยค — เทียบขั้น ไม่ใช่ชื่อสถานะ
-  assert.ok(branch.includes('{awaitingEarlierStep(e, stage) ? ('), 'แถวไม่ได้แยกว่าใบไหนกำลังจะมาถึงคิวนี้');
-  assert.ok(branch.includes('<WatchActions note={watchingNote(e, stage, user).short} verb={verb} />'),
-    'แถวที่รอหัวหน้าไม่ได้ปุ่มคู่ที่ปิดไว้');
-  assert.match(code, /function awaitingEarlierStep\(entry, stage\) \{\s*\r?\n\s*return entry\?\.status !== stage;/,
-    'กฎนี้ต้องเทียบขั้น ไม่ใช่เขียนชื่อสถานะไว้ตรง ๆ — คอมโพเนนต์นี้ทำงานสองขั้น');
+test('ทุกแถวที่ตัดสินไม่ได้ โชว์ปุ่ม อนุมัติ/ไม่อนุมัติ แบบกดไม่ได้ ไม่มีขีดเหลืออีกแล้ว', () => {
+  // สามสาขาที่ไม่มีปุ่ม ใช้คอมโพเนนต์เดียวกัน และประโยคของแต่ละสาขามาจากแหล่งเดียว
+  for (const call of [
+    '<WatchActions note={watchingNote(e, stage, user).short} verb={verb} />',
+    '<WatchActions note={SIGNED_MGR_NOTE.short} verb={verb} />',
+    '<WatchActions note={ownFilingNote(e).short} verb={verb} />',
+  ]) assert.ok(code.includes(call), `แถวที่ตัดสินไม่ได้สาขานี้ไม่ได้ปุ่มคู่ที่ปิดไว้: ${call}`);
+  assert.equal((code.match(/<WatchActions\b/g) || []).length, 3,
+    'จำนวนสาขาที่ไม่มีปุ่มเปลี่ยนไป และอาจมีสาขาที่ไม่ได้รับปุ่มคู่นี้');
+
+  /* ขีดหายไปทั้งคอมโพเนนต์และทั้งกฎ CSS — ของสองอย่างนี้ต้องหายพร้อมกัน
+     ไม่งั้นคือคลาสที่ไม่มีอะไรวาด หรือการวาดที่ไม่มีอะไรจัดรูปให้ */
+  assert.ok(!/function WatchMark/.test(code), 'คอมโพเนนต์ขีดกลับมาแล้ว');
+  assert.ok(!/<WatchMark\b/.test(code), 'ยังมีแถวที่วาดขีด');
+  assert.ok(!/^\.act-none\s*\{/m.test(css), 'กฎของขีดยังอยู่ในสไตล์ชีต');
+  assert.ok(!/awaitingEarlierStep/.test(code),
+    'ตัวเลือกระหว่างขีดกับปุ่มกลับมา — ตอนนี้ทุกแถวได้อย่างเดียวกัน');
 
   // ปุ่มทั้งสองปิดที่ตัว element และไม่มี handler อยู่ข้างหลังเลย
   const acts = code.slice(code.indexOf('function WatchActions'));
@@ -493,16 +521,22 @@ test('ปุ่ม ไม่อนุมัติ ที่ปิดไว้เ
   );
 });
 
-/** And the pop-up says it at the TOP, before the request has been read. */
-test('รายละเอียด บอกตั้งแต่บรรทัดแรกว่าใบนี้ยังไม่ถึงขั้นยืนยัน', () => {
+/**
+ * And the pop-up says it at the TOP, before the request has been read.
+ *
+ * ⚠ IT SAID IT FOR ONE CASE OUT OF THREE UNTIL 2026-09-14 — `watching &&
+ * watchNote`, the รอหัวหน้า rows. The ใบ whose หัวหน้า step this reader
+ * signed said nothing at all here and drew two live buttons at the foot.
+ */
+test('รายละเอียด บอกตั้งแต่บรรทัดแรกว่าทำไมใบนี้ตัดสินตรงนี้ไม่ได้', () => {
   const modal = code.slice(code.indexOf('function DetailModal('));
-  const at = modal.indexOf('{watching && watchNote && (');
+  const at = modal.indexOf('{blocked && (');
   assert.ok(at > 0, 'กล่องรายละเอียดไม่ได้บอกอะไรเลย');
-  // The same three sentences the row reads, handed down rather than written a
-  // second time here — see `watchNote` at the call site.
-  assert.ok(modal.slice(at, at + 400).includes('{watchNote.head}'));
-  assert.ok(modal.slice(at, at + 400).includes('{watchNote.body}'));
-  assert.match(code, /watchNote=\{watchingNote\(detail, stage, user\)\}/);
+  // The same sentences the row reads, handed down rather than written a second
+  // time here — see `blocked` at the call site.
+  assert.ok(modal.slice(at, at + 400).includes('{blocked.head}'));
+  assert.ok(modal.slice(at, at + 400).includes('{blocked.body}'));
+  assert.match(code, /blocked=\{blockedNote\(detail\)\}/);
   // Above the request, not under it: a reader who finds out at the foot has
   // already read the whole thing as though about to answer it.
   assert.ok(at < modal.indexOf('<RefiledNote'), 'ประโยคนี้ต้องอยู่เหนือคำขอ');
