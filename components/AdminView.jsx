@@ -2736,131 +2736,171 @@ function Employees({ user }) {
 
   return (
     <div className="card">
-      <h2>พนักงาน</h2>
       {/*
-        Two sentences, where there were twelve.
+        หัวข้อ ลิงก์เปิดคำอธิบาย และปุ่มทั้งสาม อยู่แถวเดียวกัน — *"ปรับให้เป็น
+        แถวเดียว"* (2026-09-11). Three stacked lines opened this card: two
+        words, one link, then a row of buttons, with the table pushed a third
+        of a phone screen down for nothing.
 
-        The wall this replaces was written when the form stood above the table
-        and there was nowhere else to say any of it. Now there is, and every
-        clause that has a field of its own has gone to sit under that field:
-        บริษัท เว้นว่างได้ and วันเกิด ไม่บังคับ are tips in เพิ่มพนักงาน, what
-        ฝ่ายบุคคล may not set is on the greyed control itself (LOCK_SHORT /
-        LOCK_NOTE), the temporary password is on the dialog before the save and
-        on the notice after it, and “เพิ่มทีละคนได้ที่ปุ่มด้านล่าง” was a
-        sentence describing a button two inches below it.
+        `Disclosure` hands back ONE wrapper holding both the bullet list and
+        the control that opens it, and this head needs them in two places —
+        so `display: contents` in styles.css dissolves that wrapper into this
+        row and `order` seats the three: ดูรายละเอียด beside the heading, the
+        buttons at the far end, the list on a full-width line under all of it.
+        Same mechanism, line for line, as `.scan-drawer-head` and
+        `.manual-intro-head`; nothing new was invented here.
 
-        Length was the whole problem: on a phone this card opened with a
-        screen-and-a-half of grey before the first control, so the reader
-        scrolled past all of it — including the one paragraph that could not be
-        recovered from anywhere else. What is left is the pair with nowhere to
-        go. The CSV format is needed in Excel, before this screen is even open,
-        and getting it wrong silently moves somebody's birthday into the wrong
-        month; the audit line is a fact about the screen, not about any one
-        control on it.
+        ⚠ THE NOTICES MOVED DOWN WITH IT. Every Alert on this card used to sit
+        between the fold and the buttons, which is where the buttons now are.
+        They are under the head instead — the notice a button raises now
+        appears below the button that raised it, which is the order the eye
+        already reads them in.
       */}
-      {/*
-        BEHIND ดูรายละเอียด, ALL SIX OF THEM — 2026-09-07, and the second shape
-        this block took that day. It spent the morning split: five bullets
-        behind a `.btn ghost` reading วิธีเตรียมไฟล์นำเข้า in the row of
-        controls, and the audit line left standing under the heading. What was
-        asked for instead is the app's own fold, everywhere, hiding the whole of
-        it — so the split has no work left to do and the list is one list again.
+      <div className="roster-head">
+        <h2>พนักงาน</h2>
+        {/*
+          Two sentences, where there were twelve.
 
-        THE WORD READ อ่านต่อ UNTIL 2026-09-08, which is `Disclosure`'s default
-        and is the right word for what that default is FOR: a paragraph clamped
-        at two lines, where the reader has the first half in front of them and
-        the control offers the rest. `…อ่านต่อ` even rides the end of the second
-        line, over the ellipsis, so it reads as the sentence continuing.
+          The wall this replaces was written when the form stood above the table
+          and there was nowhere else to say any of it. Now there is, and every
+          clause that has a field of its own has gone to sit under that field:
+          บริษัท เว้นว่างได้ and วันเกิด ไม่บังคับ are tips in เพิ่มพนักงาน, what
+          ฝ่ายบุคคล may not set is on the greyed control itself (LOCK_SHORT /
+          LOCK_NOTE), the temporary password is on the dialog before the save and
+          on the notice after it, and “เพิ่มทีละคนได้ที่ปุ่มด้านล่าง” was a
+          sentence describing a button two inches below it.
 
-        NOTHING IS CONTINUING HERE. This is `lines={0}` — the whole list is
-        hidden, there is no first line to have been reading, and the button
-        stands under a heading with nothing above it but the card's title. Asked
-        to be ดูรายละเอียด, and the pair it takes is the one `LivePolicy` two
-        thousand lines down already uses for a whole-body fold of its own:
-        ดูรายละเอียด / ซ่อนรายละเอียด. `ย่อข้อความ` is left with the clamp,
-        where there is text to shorten rather than a detail to put away.
+          Length was the whole problem: on a phone this card opened with a
+          screen-and-a-half of grey before the first control, so the reader
+          scrolled past all of it — including the one paragraph that could not be
+          recovered from anywhere else. What is left is the pair with nowhere to
+          go. The CSV format is needed in Excel, before this screen is even open,
+          and getting it wrong silently moves somebody's birthday into the wrong
+          month; the audit line is a fact about the screen, not about any one
+          control on it.
+        */}
+        {/*
+          BEHIND ดูรายละเอียด, ALL SIX OF THEM — 2026-09-07, and the second shape
+          this block took that day. It spent the morning split: five bullets
+          behind a `.btn ghost` reading วิธีเตรียมไฟล์นำเข้า in the row of
+          controls, and the audit line left standing under the heading. What was
+          asked for instead is the app's own fold, everywhere, hiding the whole of
+          it — so the split has no work left to do and the list is one list again.
 
-        THE OTHER `lines={0}` FOLDS STILL SAY อ่านต่อ, and that is now an
-        inconsistency this file cannot settle on its own — ไฟล์สแกนนิ้วมือ folds
-        an identical bullet list on ตั้งค่าระบบ's neighbouring card, and
-        `ScanImport` says in as many words that a card keeping its own word for
-        the gesture is a card somebody has to learn twice. Raised rather than
-        changed: only this card was asked for.
-      */}
-      {/*
-        WHY THE PAIR AND NOT JUST THE OPENING WORD. ดูรายละเอียด paired with
-        ย่อข้อความ is two different metaphors on one control — a detail put away
-        against text made shorter — read one after the other by the same person
-        within a second of each other.
+          THE WORD READ อ่านต่อ UNTIL 2026-09-08, which is `Disclosure`'s default
+          and is the right word for what that default is FOR: a paragraph clamped
+          at two lines, where the reader has the first half in front of them and
+          the control offers the rest. `…อ่านต่อ` even rides the end of the second
+          line, over the ellipsis, so it reads as the sentence continuing.
 
-        A LIST, NOT A PARAGRAPH, which is why this is `as="ul"`. These facts
-        ran together with · into five lines of unbroken grey once, and Thai sets
-        no spaces between words, so there was no ragged edge for an eye to catch
-        on — the block read as one texture and got skipped even by somebody who
-        had opened it on purpose. `.hint-list` in styles.css carries the darker
-        grey.
+          NOTHING IS CONTINUING HERE. This is `lines={0}` — the whole list is
+          hidden, there is no first line to have been reading, and the button
+          stands under a heading with nothing above it but the card's title. Asked
+          to be ดูรายละเอียด, and the pair it takes is the one `LivePolicy` two
+          thousand lines down already uses for a whole-body fold of its own:
+          ดูรายละเอียด / ซ่อนรายละเอียด. `ย่อข้อความ` is left with the clamp,
+          where there is text to shorten rather than a detail to put away.
 
-        Folded, not deleted: the วัน/เดือน warning has to be reachable from
-        here, because the file it is about is built in Excel before this screen
-        is ever opened.
-      */}
-      <Disclosure
-        as="ul"
-        lines={0}
-        className="hint hint-list"
-        of="ทะเบียนพนักงาน"
-        more="ดูรายละเอียด"
-        less="ซ่อนรายละเอียด"
-      >
-        <li>
-          วันเกิดในไฟล์ CSV ใช้ YYYY-MM-DD หรือ DD/MM/YYYY ก็ได้ (คั่นด้วย / หรือ - ก็ได้)
-          {' '}และกรอกเป็น <strong>พ.ศ. หรือ ค.ศ. ก็ได้</strong> — ปีที่เกิน 2400 ระบบถือว่าเป็น พ.ศ.
-          {' '}และลบ 543 ให้เอง (2515 → 1972) แล้วบอกจำนวนที่แปลงให้ดูก่อนนำเข้า
-        </li>
-        <li>
-          {/* The one that has to land before Excel is ever opened — see
-              the note over this list. The era is settled per
-              cell and needs no help; วัน/เดือน order is settled by the file
-              and cannot be guessed, which is why only this half is still a
-              warning. */}
-          ที่ต้องระวังคือ <strong>ลำดับวัน/เดือน</strong> ไม่ใช่ปี — ถ้าเปิดแล้วบันทึกทับด้วย Excel
-          คอลัมน์นี้จะถูกเขียนใหม่ตามการตั้งค่าของเครื่อง และ “05/03/1998” เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
-        </li>
-        <li>
-          {/* This said "ถ้าตีความไม่ได้แน่ชัดจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา" until
-              2026-09-04 and then, for part of the same day, that an unsettled
-              file was read under a company-wide setting. Neither is true: the
-              reading is strict and there is nothing left to settle. What has
-              been true throughout is the half that matters on this card —
-              the rows are on the screen before anything is written. */}
-          ระบบอ่านคอลัมน์วันเกิดเป็น <strong>วัน/เดือน/ปี</strong> เสมอทุกแถว
-          {' '}(รับทั้ง <strong>/</strong> และ <strong>-</strong> · ปีเกิน 2400 อ่านเป็น พ.ศ. แล้วลบ 543 ให้)
-          {' '}และจะแสดงผลการอ่านให้ตรวจก่อนนำเข้าเสมอ — <strong>บรรทัดที่แสดงชื่อเดือนเป็นตัวหนังสือ
-          คือจุดเดียวที่จับได้</strong>ว่าไฟล์เขียนสลับเป็น เดือน/วัน/ปี มาหรือเปล่า
-        </li>
-        <li>
-          {/* The same class of fact as the วันเกิด lines above it, and there
-              for the same reason: it is needed in Excel, before this screen is
-              open. It is here because HR's own roster is typed in Thai and the
-              importer read neither column that way until 2026-09-07 — the file
-              was right and every row of it was refused. */}
-          อัปโหลดได้ทั้ง <strong>.xlsx</strong> และ <strong>.csv</strong> — ถ้าเป็นไฟล์ Excel
-          {' '}ให้ส่งไฟล์ .xlsx มาตรง ๆ <strong>ไม่ต้อง Save As เป็น CSV</strong> เพราะขั้นตอนนั้น
-          {' '}คือจุดที่ลำดับวัน/เดือนของวันเกิดสลับได้ · ระบบอ่านแผ่นงานแรกของไฟล์
-        </li>
-        <li>
-          คอลัมน์ <strong>แผนก</strong> กรอกเป็น <strong>รหัสแผนก ชื่อไทย หรือชื่ออังกฤษ</strong> ก็ได้
-          {' '}(คำว่า แผนก/ฝ่าย/สาขา นำหน้าจะมีหรือไม่มีก็ได้) และคอลัมน์ <strong>บทบาท</strong>
-          {' '}กรอกเป็นภาษาไทยได้ตามที่เห็นบนจอ — พนักงาน · หัวหน้างาน · ผู้จัดการแผนก ·
-          {' '}ผู้จัดการฝ่าย · การเงิน · ฝ่ายบุคคล · ผู้ดูแลระบบ ·
-          {' '}<strong>หนึ่งคนมีสังกัดหลักได้แผนกเดียว</strong> ถ้าเป็นหัวหน้าที่ต้องเซ็นให้แผนกอื่นด้วย
-          {' '}ให้กด “แก้ไข” แล้วติ๊กแผนกเพิ่มในช่อง “แผนก” หลังนำเข้า
-        </li>
-        <li>
-          ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
-          {' '}(ดูรายคนได้ที่ปุ่ม “ดูประวัติ” · ดูรวมทุกคนได้ที่แท็บ “ประวัติการแก้ทะเบียน”)
-        </li>
-      </Disclosure>
+          THE OTHER `lines={0}` FOLDS STILL SAY อ่านต่อ, and that is now an
+          inconsistency this file cannot settle on its own — ไฟล์สแกนนิ้วมือ folds
+          an identical bullet list on ตั้งค่าระบบ's neighbouring card, and
+          `ScanImport` says in as many words that a card keeping its own word for
+          the gesture is a card somebody has to learn twice. Raised rather than
+          changed: only this card was asked for.
+        */}
+        {/*
+          WHY THE PAIR AND NOT JUST THE OPENING WORD. ดูรายละเอียด paired with
+          ย่อข้อความ is two different metaphors on one control — a detail put away
+          against text made shorter — read one after the other by the same person
+          within a second of each other.
+
+          A LIST, NOT A PARAGRAPH, which is why this is `as="ul"`. These facts
+          ran together with · into five lines of unbroken grey once, and Thai sets
+          no spaces between words, so there was no ragged edge for an eye to catch
+          on — the block read as one texture and got skipped even by somebody who
+          had opened it on purpose. `.hint-list` in styles.css carries the darker
+          grey.
+
+          Folded, not deleted: the วัน/เดือน warning has to be reachable from
+          here, because the file it is about is built in Excel before this screen
+          is ever opened.
+        */}
+        <Disclosure
+          as="ul"
+          lines={0}
+          className="hint hint-list"
+          of="ทะเบียนพนักงาน"
+          more="ดูรายละเอียด"
+          less="ซ่อนรายละเอียด"
+        >
+          <li>
+            วันเกิดในไฟล์ CSV ใช้ YYYY-MM-DD หรือ DD/MM/YYYY ก็ได้ (คั่นด้วย / หรือ - ก็ได้)
+            {' '}และกรอกเป็น <strong>พ.ศ. หรือ ค.ศ. ก็ได้</strong> — ปีที่เกิน 2400 ระบบถือว่าเป็น พ.ศ.
+            {' '}และลบ 543 ให้เอง (2515 → 1972) แล้วบอกจำนวนที่แปลงให้ดูก่อนนำเข้า
+          </li>
+          <li>
+            {/* The one that has to land before Excel is ever opened — see
+                the note over this list. The era is settled per
+                cell and needs no help; วัน/เดือน order is settled by the file
+                and cannot be guessed, which is why only this half is still a
+                warning. */}
+            ที่ต้องระวังคือ <strong>ลำดับวัน/เดือน</strong> ไม่ใช่ปี — ถ้าเปิดแล้วบันทึกทับด้วย Excel
+            คอลัมน์นี้จะถูกเขียนใหม่ตามการตั้งค่าของเครื่อง และ “05/03/1998” เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
+          </li>
+          <li>
+            {/* This said "ถ้าตีความไม่ได้แน่ชัดจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา" until
+                2026-09-04 and then, for part of the same day, that an unsettled
+                file was read under a company-wide setting. Neither is true: the
+                reading is strict and there is nothing left to settle. What has
+                been true throughout is the half that matters on this card —
+                the rows are on the screen before anything is written. */}
+            ระบบอ่านคอลัมน์วันเกิดเป็น <strong>วัน/เดือน/ปี</strong> เสมอทุกแถว
+            {' '}(รับทั้ง <strong>/</strong> และ <strong>-</strong> · ปีเกิน 2400 อ่านเป็น พ.ศ. แล้วลบ 543 ให้)
+            {' '}และจะแสดงผลการอ่านให้ตรวจก่อนนำเข้าเสมอ — <strong>บรรทัดที่แสดงชื่อเดือนเป็นตัวหนังสือ
+            คือจุดเดียวที่จับได้</strong>ว่าไฟล์เขียนสลับเป็น เดือน/วัน/ปี มาหรือเปล่า
+          </li>
+          <li>
+            {/* The same class of fact as the วันเกิด lines above it, and there
+                for the same reason: it is needed in Excel, before this screen is
+                open. It is here because HR's own roster is typed in Thai and the
+                importer read neither column that way until 2026-09-07 — the file
+                was right and every row of it was refused. */}
+            อัปโหลดได้ทั้ง <strong>.xlsx</strong> และ <strong>.csv</strong> — ถ้าเป็นไฟล์ Excel
+            {' '}ให้ส่งไฟล์ .xlsx มาตรง ๆ <strong>ไม่ต้อง Save As เป็น CSV</strong> เพราะขั้นตอนนั้น
+            {' '}คือจุดที่ลำดับวัน/เดือนของวันเกิดสลับได้ · ระบบอ่านแผ่นงานแรกของไฟล์
+          </li>
+          <li>
+            คอลัมน์ <strong>แผนก</strong> กรอกเป็น <strong>รหัสแผนก ชื่อไทย หรือชื่ออังกฤษ</strong> ก็ได้
+            {' '}(คำว่า แผนก/ฝ่าย/สาขา นำหน้าจะมีหรือไม่มีก็ได้) และคอลัมน์ <strong>บทบาท</strong>
+            {' '}กรอกเป็นภาษาไทยได้ตามที่เห็นบนจอ — พนักงาน · หัวหน้างาน · ผู้จัดการแผนก ·
+            {' '}ผู้จัดการฝ่าย · การเงิน · ฝ่ายบุคคล · ผู้ดูแลระบบ ·
+            {' '}<strong>หนึ่งคนมีสังกัดหลักได้แผนกเดียว</strong> ถ้าเป็นหัวหน้าที่ต้องเซ็นให้แผนกอื่นด้วย
+            {' '}ให้กด “แก้ไข” แล้วติ๊กแผนกเพิ่มในช่อง “แผนก” หลังนำเข้า
+          </li>
+          <li>
+            ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
+            {' '}(ดูรายคนได้ที่ปุ่ม “ดูประวัติ” · ดูรวมทุกคนได้ที่แท็บ “ประวัติการแก้ทะเบียน”)
+          </li>
+        </Disclosure>
+
+        <div className="row">
+          <button
+            className="btn ghost"
+            onClick={() => api.download('/employees/import/template', 'employee-import-template.csv')}
+          >
+            ดาวน์โหลดแม่แบบ CSV
+          </button>
+          <label className="btn ghost" style={{ cursor: 'pointer' }}>
+            นำเข้ารายชื่อจาก CSV
+            <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} onChange={choose} style={{ display: 'none' }} />
+          </label>
+          {/* Beside the import, because they are the same decision asked twice —
+              one person or a file of them — and the dialog behind it is the same
+              form the row's แก้ไข opens. */}
+          <button className="btn" onClick={() => setAdding(true)}>เพิ่มพนักงาน</button>
+        </div>
+      </div>
+
       {/* Dismissible, like every other notice on this card. It is the one that
           had no way off the screen: a failed load or a refused save stayed
           above the table for the rest of the session, and the only way out was
@@ -3019,23 +3059,6 @@ function Employees({ user }) {
         row by hand. Shown once, on the screen that did the upload.
       */}
       {result?.issued?.length > 0 && <IssuedPasswords rows={result.issued} />}
-
-      <div className="row" style={{ marginBottom: 14 }}>
-        <button
-          className="btn ghost"
-          onClick={() => api.download('/employees/import/template', 'employee-import-template.csv')}
-        >
-          ดาวน์โหลดแม่แบบ CSV
-        </button>
-        <label className="btn ghost" style={{ cursor: 'pointer' }}>
-          นำเข้ารายชื่อจาก CSV
-          <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} onChange={choose} style={{ display: 'none' }} />
-        </label>
-        {/* Beside the import, because they are the same decision asked twice —
-            one person or a file of them — and the dialog behind it is the same
-            form the row's แก้ไข opens. */}
-        <button className="btn" onClick={() => setAdding(true)}>เพิ่มพนักงาน</button>
-      </div>
 
 
       {/* The interpretation, before it is applied rather than after. */}

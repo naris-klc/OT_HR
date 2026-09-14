@@ -7915,6 +7915,18 @@ figures, `นำเข้าไฟล์สแกน (.txt)` at the far end, and
 bullets on a full-width line under all of it. It is the mechanism
 `.manual-intro-head` uses for the same shape on คู่มือ.
 
+> **`.roster-head` is the third, and it took the pattern unchanged.**
+> *"ปรับให้เป็นแถวเดียว"* (2026-09-11), against a ทะเบียนพนักงาน card that
+> opened on three stacked lines: พนักงาน, then ดูรายละเอียด alone, then the row
+> of ดาวน์โหลดแม่แบบ CSV / นำเข้ารายชื่อจาก CSV / เพิ่มพนักงาน. Same four
+> rules — `display: contents` on the `Disclosure`, the toggle beside the
+> heading, the `.row` at the far end on `margin-left: auto`, the six bullets
+> full width under everything — and the same answer at 390px: the row wraps
+> wherever it has to. **What moved with the buttons is every notice on that
+> card.** The `Alert`s stood between the fold and the buttons, which is where
+> the buttons now are; they are under the head row instead, so the notice a
+> button raises appears below the button that raised it.
+
 > **`.scan-head-text` is `display: contents` now and was `flex: 1`.** It held
 > the heading and the figures as a row *inside* the head's row, which is one
 > nested flex too many the moment a third item has to sit beside them: a
