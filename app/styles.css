@@ -17041,6 +17041,12 @@ table.mini tbody tr:hover { background: none; }
 }
 .mk-ibtn.ok { background: var(--green); color: var(--on-fill); }
 .mk-ibtn.no { background: transparent; color: var(--danger-ink); border: 1px solid var(--danger-line); }
+/* A button the screen DRAWS AND REFUSES — a queue row still at the หัวหน้า step,
+   a ยืนยัน on somebody this month cannot sign for. `.btn:disabled`'s three
+   values verbatim, because that is what the reader is looking at: the app stopped
+   hiding these controls on 2026-09-11 and a drawing that still omits them teaches
+   the reader to expect an empty cell. */
+.mk-ibtn.off { background: var(--neutral-wash); color: var(--muted); border: 1px solid var(--line); }
 .mk-ibtn-i { width: 10px; height: 10px; }
 .mk-ibtn-t { font: 500 8.5px/1.4 var(--sans); }
 .mk-tick { display: flex; align-items: center; gap: 5px; font: 400 8.5px/1.5 var(--sans); color: var(--ink-2); }
