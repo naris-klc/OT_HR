@@ -4047,6 +4047,44 @@ td > .approver-line { margin-top: 5px; }
 .password-field .reveal:focus-visible { outline-offset: -2px; }
 .password-field .reveal svg { width: 18px; height: 18px; }
 
+/* ── ทะเบียนพนักงาน — หัวข้อ ลิงก์ และปุ่มทั้งสาม อยู่แถวเดียว ──────────────
+
+   *"ปรับให้เป็นแถวเดียว"* (2026-09-11). The card opened on three stacked
+   lines — พนักงาน, then ดูรายละเอียด on its own, then the row of three
+   buttons — and on a phone that is a third of the screen spent before the
+   first name on the register.
+
+   Baseline and not centre: ดูรายละเอียด is a link standing beside a heading,
+   and the two only read as one line when they sit on one baseline. `wrap`
+   because at 390px the buttons come down under the heading, which is the
+   right answer there — asked for as ให้ตัดบรรทัดตามธรรมชาติ, and the answer
+   `.scan-drawer-head` and `.manual-intro-head` already take. */
+.roster-head {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 6px 12px; margin-bottom: 14px;
+}
+/* The heading's own 4px is the gap to a line UNDER it, and there is no line
+   under it any more — the row's gap is the spacing now. */
+.roster-head h2 { margin-bottom: 0; }
+
+/* ── ดูรายละเอียด IS IN THE ROW; WHAT IT OPENS IS NOT ─────────────────────
+
+   `Disclosure` renders ONE wrapper holding both its body and its toggle, and
+   this head needs them in two different places. `display: contents` hands
+   both to this flex row, and `order` seats them: the link beside the
+   heading, the `.row` of buttons pushed to the far end, and the six bullets
+   on a full-width line under all of it. Same mechanism as
+   `.scan-drawer-head`, down to the line — see the note there.
+
+   ⚠ THE BODY'S TOP GAP IS PADDING AND NOT MARGIN. It sits in the `0fr → 1fr`
+   grid that animates the fold open; a margin there is height the grid does
+   not count, so the card would jump by it at the end of the slide. */
+.roster-head > .disclosure { display: contents; }
+.roster-head .disclosure-more { order: 1; }
+.roster-head > .row { order: 2; margin-left: auto; }
+.roster-head .disclosure-slide { order: 3; flex-basis: 100%; }
+.roster-head .disclosure-body { margin: 0; padding-top: 8px; }
+
 /* ค้นหาในทะเบียนพนักงาน — the box over the roster table.
 
    ALMOST NOTHING IS HERE, and that is the fix rather than an omission. This
