@@ -2024,9 +2024,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2653 tests
-across 146 files**, measured 2026-09-12 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2654 tests
+across 146 files**, measured 2026-09-14 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2653 tests across 146 files … measured 2026-09-12" until the manual was walked
+against the screens again on **2026-09-14** — one case, in `manualScreen`, which
+is the file that already holds this screen. It read
 "2649 tests across 146 files … measured 2026-09-11" until **การแจ้งเตือนพูดด้วย
 เสียงเดียวกัน** the next day — four cases spread over four existing files, one
 sweeping `components/` for hand-written type sizes and three pinning a sentence
@@ -2836,6 +2839,32 @@ alone. **The ขั้นตอน is the unit, not the section**: a section ill
 its first step and nowhere else looks illustrated in a table of contents and is
 not illustrated where it is read. `test/manualScreen.test.js` now fails a step
 with no `Shot` or `Diagram` in it, so the claim cannot go back to being a habit.
+
+**The second walk, on 2026-09-14, found a KIND of wrong sentence rather than a
+list of them.** Asked for in three words — *เช็คคู่มือการใช้งาน ปรับให้ตรงกับโค้ด
+และ ui ล่าสุด* — and what the four days since the first walk had done was rename
+or remove a control on nearly every screen the manual draws. Six of them:
+**ปุ่มเอกสารสามปุ่มเรียงเป็นแถว** on three report screens became one `ExportMenu`
+(พิมพ์ / ส่งออก); **ดู / แก้ไขรายการ ท้ายแถว** went when the row itself became the
+control, and was still drawn as a button in six places; `verb` on คิวรออนุมัติ
+stopped being `isHr ? 'ยืนยัน' : 'อนุมัติ'` and a whole หัวข้อ was built on that
+difference, its **title included**; the phone rail became a list that opens
+downwards while เมนูของคุณ went on drawing the chips it replaced; the sidebar's
+collapse control became a **panel glyph** and the manual still called it a
+ลูกศร; and rows that cannot be signed stopped going blank — they wear a dash, or
+the two buttons greyed. **Nothing failed for any of it**, which is the point:
+`test/manualScreen.test.js` held the SHAPE of the file — every step has a
+drawing, every drawing has both devices — and shape is exactly what a rename
+does not change. The case added that day reads the screens and the drawings
+TOGETHER: the labels inside each `<ExportMenu>`, `openRowLabel`'s two names, the
+`verb`, the rail button's own text. Each one fails on the next round of the same
+kind, and none of them is a copy of the manual that rots beside it.
+
+**What the same walk ADDED rather than corrected**: the queue's filter bar and
+its pager were never written down at all (ค้นหา · แผนก · เดือน, and a tick that
+crosses a page turn), and neither was **ลายเซ็นขั้นที่สองจาก ตรวจสอบประจำเดือน** —
+ฝ่ายบุคคล have been able to sign a whole month by ticking since 2026-09-10, from
+a screen the manual described as a place to read figures.
 
 **Walking every step also found a crash, not a wrong sentence.** บันทึก OT
 แทนคนอื่น carried a `p.correct` ternary for ฝ่ายบุคคล; when its gate narrowed to
@@ -13338,8 +13367,11 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2653 tests**, about 4 s, measured 2026-09-12 across 146
-  files, all green. **NO NEW FILE in the round that moved it off 2649 either** —
+- `npm test` — **2654 tests**, about 4 s, measured 2026-09-14 across 146
+  files, all green. It read "2653 tests … measured 2026-09-12" until the manual
+  was walked against the screens on 2026-09-14 — one case in `manualScreen`, and
+  **no new file**, for the reason the round before it gives.
+  **NO NEW FILE in the round that moved it off 2649 either** —
   การแจ้งเตือนพูดด้วยเสียงเดียวกัน put its four cases into `theme`,
   `overCeiling`, `delegation` and `tempPassword`, each beside the rule it
   extends. It read "2649 tests … measured 2026-09-11" until that round.

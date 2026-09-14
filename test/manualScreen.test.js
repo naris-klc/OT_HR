@@ -852,3 +852,97 @@ test('the manual is printed on A4 and not over the edge of it', () => {
   assert.match(print, /@page \{\n {2}size: A4 portrait;\n {2}margin: 0;\n\}/,
     'the shared @page grew a margin — F-HR-027 now spills onto a second side');
 });
+/**
+ * ── ⚠ THE DRAWINGS ARE OF SCREENS THAT KEEP MOVING ─────────────────────────
+ *
+ * Asked for on 2026-09-14 in three words — *เช็คคู่มือการใช้งาน ปรับให้ตรงกับโค้ด
+ * และ ui ล่าสุด* — and what the walk found was not one wrong sentence. It was
+ * a kind: FOUR DAYS of UI rounds had each renamed or removed a control, and
+ * the manual went on drawing the old one, correct-looking, with nothing
+ * failing. The file's own header says a drawing "cannot stay true on its own";
+ * this is the part of that a machine can hold.
+ *
+ *   · ปุ่มเอกสารสามปุ่มเรียงเป็นแถว became one `ExportMenu` (พิมพ์ / ส่งออก)
+ *     on three report screens. The manual drew the row for four more days.
+ *   · `verb` on คิวรออนุมัติ was `isHr ? 'ยืนยัน' : 'อนุมัติ'` and became one
+ *     word on 2026-09-11. A whole หัวข้อ was built on the difference.
+ *   · ดู / แก้ไขรายการ at the end of a row went on 2026-09-10 — the row opens
+ *     the person now. It was still drawn as a button in six places.
+ *
+ * SO THE ASSERTIONS BELOW READ BOTH FILES. Not "the manual says X" — that is a
+ * copy of the manual and it rots with it — but "the manual says what
+ * components/<screen>.jsx says", which is the only statement that stays true
+ * through a rename. Each one fails on the NEXT round of the same kind.
+ *
+ * What it cannot check is whether a drawing is a good picture of the screen.
+ * That is the walk, and the walk is what asked for this file.
+ */
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+const bodyOf = (key) => {
+  const at = manual.indexOf(`    key: '${key}',`);
+  assert.notEqual(at, -1, `หัวข้อ ${key} is gone from the manual`);
+  const next = manual.indexOf("\n  {\n    key: '", at);
+  return manual.slice(at, next === -1 ? manual.length : next);
+};
+
+test('the manual draws the controls the screens draw today, not the ones they replaced', () => {
+  // ── every document on a report screen is behind ONE menu ─────────────────
+  const reports = ['components/HrView.jsx', 'components/AccountingView.jsx',
+    'components/DepartmentView.jsx'].map((f) => [f, read(f)]);
+  const menuLabel = read('components/common.jsx')
+    .match(/export function ExportMenu\(\{[^}]*label = '([^']+)'/)[1];
+  assert.ok(manual.includes(menuLabel),
+    `no drawing names ${menuLabel} — the reader is sent looking for buttons that are inside it`);
+
+  for (const [file, src] of reports) {
+    const at = src.indexOf('<ExportMenu');
+    assert.notEqual(at, -1, `${file} stopped using ExportMenu — check the drawings of it`);
+    const items = src.slice(at, src.indexOf(']}', at));
+    const labels = [...items.matchAll(/label: '([^']+)'/g)].map((m) => m[1]);
+    assert.ok(labels.length >= 2, `${file}'s ${menuLabel} lost its rows`);
+    for (const label of labels) {
+      assert.ok(manual.includes(label), `the manual never names ${label}, which ${file} offers`);
+      assert.ok(!new RegExp(`<MkBtn[^>]*>${esc(label)}</MkBtn>`).test(manual),
+        `${label} is drawn as a button standing on its own — it is a row inside ${menuLabel}`);
+    }
+  }
+
+  // ── ONE verb, on both queues, since 2026-09-11 ───────────────────────────
+  const verb = read('components/ApprovalQueue.jsx').match(/\n {2}const verb = '([^']+)';\n/)[1];
+  const piles = [...manual.matchAll(/<MkBtn>✓ ([^<(]+?)ทั้งหมดที่เลือก/g)].map((m) => m[1]);
+  assert.ok(piles.length >= 2, 'the two queue drawings lost the button that decides a pile');
+  for (const word of piles) {
+    assert.equal(word, verb,
+      'a drawing still uses the other queue’s word — one activity, one verb, on both screens');
+  }
+  const worded = [...manual.matchAll(/<MkIconBtn icon="tick" tone="ok">([^<]+)<\/MkIconBtn>/g)]
+    .map((m) => m[1]);
+  assert.ok(worded.length >= 2, 'the phone drawings lost the worded tick on a queue row');
+  for (const word of worded) assert.equal(word, verb, 'a queue row on a phone says the old word');
+
+  // ── the ROW is the way into a person's month ─────────────────────────────
+  const hr = read('components/HrView.jsx');
+  assert.ok(hr.includes('row-open'), 'the row stopped being the control — the drawings may want a button back');
+  // Both names read out of the screen rather than typed here: `openRowLabel` is
+  // the row's `title` now, and the day it becomes a button again is the day
+  // these drawings are right and this assertion should be deleted.
+  const rowNames = hr.match(/openRowLabel = \(mayCorrect\) => \(mayCorrect \? '([^']+)' : '([^']+)'\)/);
+  assert.ok(rowNames, 'openRowLabel changed shape — the two names cannot be read off the screen any more');
+  for (const gone of rowNames.slice(1)) {
+    assert.ok(!new RegExp(`<MkBtn[^>]*>${esc(gone)}</MkBtn>`).test(manual),
+      `${gone} is drawn as a button at the end of a row, and that button went on 2026-09-10`);
+  }
+  // …and the หัวข้อ about correcting an entry has to say what to press instead.
+  // `alt` and `caption` stripped first: a drawing's description saying it is not
+  // the same as the step saying it, and the step is what a reader follows.
+  const prose = (s) => s.replace(/\b(?:alt|caption|aria-label|title)="[^"]*"/g, '');
+  assert.ok(prose(bodyOf('correct')).includes('กดที่แถวของคนนั้น'),
+    'แก้ใบย้อนหลัง does not say how the person is opened');
+
+  // ── the rail on a phone opens downwards, and the drawing of it agrees ────
+  const railWord = manual.match(/<span className="manual-rail-btn-t">([^<]+)</)[1];
+  assert.ok(bodyOf('menu').includes(railWord),
+    `the drawing of this very screen does not show ${railWord} — the phone rail is drawn as something it is not`);
+  assert.ok(!/<MkTabs[^>]*\['เริ่มต้นใช้งาน'/.test(manual),
+    'the phone rail is drawn as a strip of chips again — it opens downwards');
+});
