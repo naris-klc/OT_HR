@@ -132,6 +132,23 @@ export default function HolidayBanner({ period = currentPeriod() }) {
    * `actions: true` เพราะปุ่มปฏิทินมีทุกสถานะ กล่องนี้จึงพับได้เสมอ ต่อให้
    * ประโยคจะสั้นจนไม่ถูกตัดบนจอกว้าง
    */
+  /*
+   * ⚠ หัวของกล่องนี้คือ *สองอย่าง* ไม่ใช่อย่างเดียว — 2026-09-15, แจ้งมาว่า
+   * "แสดงแล้วกดซ่อนไม่ได้".
+   *
+   * ตอนกาง `foldClick` ยอมให้พับเฉพาะคลิกที่ตรงกับ head ที่ส่งให้ และ head
+   * เคยเป็น `.announce-line` เฉย ๆ — แต่ลูกศรของกล่องนี้เป็น *พี่น้อง* ของ
+   * แถวข้อความ ไม่ได้อยู่ข้างใน (ต่างจาก `.alert-fold-row` ที่อุ้มลูกศรไว้)
+   * กดลูกศรตอนกางจึงไม่ตรงกับอะไรเลยและไม่เกิดอะไรขึ้น ปุ่มที่กดแล้วเงียบคือ
+   * ปุ่มที่ดูเหมือนพัง
+   *
+   * ทางแก้คือบอก head ให้ครบทั้งสองชิ้น ไม่ใช่ห่อ `<div>` เพิ่ม: แถวนี้เป็น
+   * flex row ที่ `.announce-line` ต้องเป็นลูกโดยตรงถึงจะยืดเต็มและดันปุ่มไป
+   * ชิดขอบขวา กล่องห่อจะพาเลย์เอาต์ที่ตกลงกันไว้ทั้งสองความกว้างพังไปด้วย
+   *
+   * ปุ่ม ดูปฏิทินวันหยุดประจำปี ยัง *ไม่* อยู่ใน head โดยตั้งใจ: กดปุ่มนั้นคือ
+   * ขอดูปฏิทิน ไม่ใช่ขอพับกล่องที่กำลังอ่านอยู่
+   */
   const { id, ref, arrow, folded, toggle } = useOneLine({
     actions: true,
     of: 'ประกาศวันหยุดบริษัท',
@@ -157,7 +174,7 @@ export default function HolidayBanner({ period = currentPeriod() }) {
       <section
         className="announce no-print"
         aria-label="ประกาศวันหยุดบริษัท"
-        onClick={foldClick(folded, toggle, '.announce-line')}
+        onClick={foldClick(folded, toggle, '.announce-line, .alert-fold')}
       >
         {/* The emoji is the alert family's mark column, and it says nothing a
             screen reader needs: the heading beside it names the panel. */}
