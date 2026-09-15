@@ -713,6 +713,26 @@ test('a ▲/▼ notice opens from anywhere in its frame, and folds from its head
   assert.match(fold, /\{actions && !folded && <div className="alert-actions">\{actions\}<\/div>\}/);
   assert.ok(!/hidden=\{folded\}/.test(fold), 'ปุ่มถูกซ่อนด้วย hidden แทนที่จะไม่ถูกวาด');
 
+  // ⚠ THE HEAD HAS TO CONTAIN THE ARROW, reported 2026-09-15 as *"แสดงแล้วกด
+  // ซ่อนไม่ได้"*. Open, `foldClick` folds only on a press that matches `head`;
+  // ประกาศวันหยุด's arrow is a SIBLING of the sentence row, not a child of it,
+  // so a head of `.announce-line` alone left the ▲ doing nothing at all.
+  //
+  // `AlertFold` has the same trap and avoids it by construction — its arrow is
+  // inside `.alert-fold-row`, which is the default head — so the assertion pair
+  // below is what says these two shapes are answering the same question.
+  const banner = sourceOf('components/HolidayBanner.jsx');
+  assert.match(banner, /foldClick\(folded, toggle, '\.announce-line, \.alert-fold'\)/, 'กดลูกศรตอนกางแล้วไม่พับ');
+  assert.ok(!banner.includes("foldClick(folded, toggle, '.announce-line')"), 'head แคบกว่าลูกศรอีกแล้ว');
+  // The calendar pill is deliberately NOT in that head: pressing it asks for
+  // the calendar, not for the box being read to shut.
+  assert.ok(!/foldClick\([^)]*fold-pill/.test(banner), 'ปุ่มปฏิทินกลายเป็นที่กดพับ');
+  assert.match(
+    fold,
+    /<div className="alert-fold-row">[\s\S]*?\{arrow\}\s*<\/div>/,
+    'ลูกศรของ AlertFold หลุดออกนอกแถวหัว',
+  );
+
   // ON A PHONE THE ARROW KEEPS THE SENTENCE'S LINE — 2026-09-15, reported with
   // a picture: *"ลูกศรตกลงมาอยู่ข้างล่าง"*. ประกาศวันหยุด's calendar pill takes
   // the full width below 860px, so the arrow after it in the markup wrapped to a
