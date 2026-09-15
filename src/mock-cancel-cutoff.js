@@ -85,8 +85,15 @@ function periodBack(from, n) {
  * สี่ใบต่อหนึ่งงวด ใบละหนึ่งปุ่มที่กฎนี้ปิด บวกใบไม่อนุมัติที่ต้องไม่ขึ้นประโยค.
  * งวดที่ปิดแล้วได้คำขอถอนสองใบ เพื่อให้ปุ่ม ทั้งหมด ในคิวมีของให้นับ — ปุ่มที่
  * ชื่อ ทั้งหมด แล้วเคลียร์ได้ใบเดียวดูไม่ออกว่าถูกหรือผิด
+ *
+ * **รายละเอียดงานบอกด้วยว่าแถวนี้อยู่ฝั่งไหน** ฉบับแรกติดป้ายเดียวกันทั้งสองฝั่ง
+ * สองชุดจึงหน้าตาเหมือนกันบนจอ และ 2026-09-15 คนเดินดูกด ขอถอนใบ บนแถวของงวดที่
+ * ยังเปิด (`2026-09-28` เหตุผล `ทดสอบ`) แล้วมันผ่าน — ซึ่งถูกต้อง แต่อ่านออกมา
+ * เหมือนฟีเจอร์ไม่ทำงาน ชุดของงวดที่ยังเปิดคือ **ของเทียบ** และของเทียบที่ไม่ได้
+ * บอกว่าตัวเองเป็นของเทียบ คือกับดัก
  */
 function planFor(period, closed, freeDays) {
+  const side = closed ? 'งวดปิดแล้ว' : 'ของเทียบ งวดยังเปิด';
   const rows = [
     { status: 'pending_mgr', what: 'แก้ไข · ยกเลิก', description: 'ประกอบชุดสายไฟไลน์ 2' },
     { status: 'approved', what: 'ขอถอนใบ', description: 'ตรวจงานก่อนส่งมอบ' },
@@ -104,26 +111,39 @@ function planFor(period, closed, freeDays) {
     throw new Error(`งวด ${periodLabel(period)} เหลือวันว่างไม่พอ (${freeDays.length}/${rows.length})`);
   }
   return rows.map((r, i) => ({
-    ...r, period, closed, workDate: `${period}-${String(freeDays[i]).padStart(2, '0')}`,
+    ...r,
+    period,
+    closed,
+    description: `${side} · ${r.description}`,
+    workDate: `${period}-${String(freeDays[i]).padStart(2, '0')}`,
   }));
 }
 
 /**
- * วันในงวดที่เจ้าของใบยังไม่มีใบอยู่ ไล่จากปลายเดือนขึ้นมา.
+ * วันในงวดที่เจ้าของใบยังไม่มีใบอยู่ ไล่จากวันหลังสุดที่ใช้ได้ขึ้นมา.
  *
  * เดิมสคริปต์ตรึงวันที่ 24–28 ไว้ แล้วปฏิเสธถ้าชนใบจริง ซึ่งเป็นการโยนงานกลับไป
  * ให้คนสั่ง — ฐานนี้มีใบงวดสิงหาคมเกือบสามร้อยใบ คนที่มีใบเยอะที่สุดคือคนที่
  * เหมาะจะเป็นตัวอย่างที่สุด และก็เป็นคนที่ชนแน่นอนที่สุดด้วย
+ *
+ * **ไม่เลยวันนี้** `notAfter` มีไว้เพื่อข้อนี้ข้อเดียว ฉบับก่อนไล่จากปลายเดือน
+ * ทุกงวด งวดที่กำลังเดินอยู่จึงได้ใบลงวันที่ 27–30 ทั้งที่วันนี้เพิ่งวันที่ 15
+ * — ใบที่ **แอปเองสร้างไม่ได้** เพราะ `maxAdvanceSubmissionDays` บนฐานนี้คือ 7
+ * วัน (`advanceSubmissionRefusal`) ตัวอย่างที่เส้นทางปกติไม่มีวันผลิตออกมาได้
+ * ไม่ใช่ตัวอย่างของอะไร และคนเดินดูจะเสียเวลาไปกับการสงสัยว่าวันที่นั้นมาจากไหน
  */
-async function freeDaysIn(period, employeeId, want) {
+async function freeDaysIn(period, employeeId, want, notAfter) {
   const [y, m] = period.split('-').map(Number);
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const capped = notAfter && notAfter.slice(0, 7) === period
+    ? Math.min(lastDay, Number(notAfter.slice(8, 10)))
+    : lastDay;
   const taken = new Set(
     (await OtEntry.find({ employee: employeeId, period }).select('workDate').lean())
       .map((e) => Number(e.workDate.slice(8, 10))),
   );
   const free = [];
-  for (let d = lastDay; d >= 1 && free.length < want; d -= 1) if (!taken.has(d)) free.push(d);
+  for (let d = capped; d >= 1 && free.length < want; d -= 1) if (!taken.has(d)) free.push(d);
   return free.reverse();
 }
 
@@ -224,8 +244,8 @@ async function run() {
   // แล้วชุดใหม่จะเลื่อนถอยไปเรื่อย ๆ ทุกครั้งที่รัน
   const cleared = await OtEntry.deleteMany({ description: TAGGED });
   const plan = [
-    ...planFor(CLOSED, true, await freeDaysIn(CLOSED, subject._id, 5)),
-    ...planFor(OPEN, false, await freeDaysIn(OPEN, subject._id, 4)),
+    ...planFor(CLOSED, true, await freeDaysIn(CLOSED, subject._id, 5, now)),
+    ...planFor(OPEN, false, await freeDaysIn(OPEN, subject._id, 4, now)),
   ];
   if (cleared.deletedCount) console.log(`ลบใบตัวอย่างของรันก่อนหน้า ${cleared.deletedCount} ใบ\n`);
 
