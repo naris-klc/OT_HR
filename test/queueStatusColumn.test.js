@@ -167,7 +167,7 @@ test('signableHere ถูกถามที่ประตูทั้งสี�
   );
   assert.match(code, /\) : blocked \? \(/);
   // และเหตุผลมีสามข้อ ไม่ใช่สอง — ข้อที่หายไปคือตัวที่ทำให้ป๊อปอัพขัดกับแถว
-  assert.match(code, /if \(barredAsOwnFiling\(e, user\)\) return ownFilingNote\(e\);/);
+  assert.match(code, /if \(barredAsOwnFiling\(e, user\)\) return OWN_FILING_NOTE;/);
   assert.match(code, /if \(signedManagerStep\(e, user\)\) return SIGNED_MGR_NOTE;/);
 });
 
@@ -445,7 +445,7 @@ test('ทุกแถวที่ตัดสินไม่ได้ โชว�
   for (const call of [
     '<WatchActions note={watchingNote(e, stage, user).short} verb={verb} />',
     '<WatchActions note={SIGNED_MGR_NOTE.short} verb={verb} />',
-    '<WatchActions note={ownFilingNote(e).short} verb={verb} />',
+    '<WatchActions note={OWN_FILING_NOTE.short} verb={verb} />',
   ]) assert.ok(code.includes(call), `แถวที่ตัดสินไม่ได้สาขานี้ไม่ได้ปุ่มคู่ที่ปิดไว้: ${call}`);
   assert.equal((code.match(/<WatchActions\b/g) || []).length, 3,
     'จำนวนสาขาที่ไม่มีปุ่มเปลี่ยนไป และอาจมีสาขาที่ไม่ได้รับปุ่มคู่นี้');

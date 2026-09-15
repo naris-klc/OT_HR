@@ -13,7 +13,7 @@ import {
   OVER_CEILING_REASON_REQUIRED, OVER_CEILING_REASON_SAY,
 } from '@/lib/caps.js';
 import {
-  MAX_LIST_LIMIT, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
+  MAX_LIST_LIMIT, isProxyFiled, isSystemFiled,
   maySignFirstStep, isOwnRequest, FLAT_DAY_TIMES, isBirthdayWelfare,
   humanHistory, isFlatDailyPosition, isCompanyOffDay, mayCorrectEntries,
 } from '@/lib/entries.js';
@@ -207,34 +207,21 @@ const SIGNED_MGR_NOTE = {
 /**
  * The filer's own ใบ at a step that is not the one their filing waits at.
  *
- * A FUNCTION AND NOT A CONSTANT, because the way out depends on the row: a ใบ
- * the system generated for a วันเกิด and nobody has touched can be withdrawn
- * from the queue by the very person who may not sign it, and that is the only
- * branch on this screen where a blocked row still has a real button on it.
+ * A CONSTANT AGAIN SINCE 2026-09-15. It was a function with two branches: a ใบ
+ * the system generated for a วันเกิด and nobody had touched could be withdrawn
+ * from the queue with a ถอนใบวันเกิด button, so a blocked row sometimes still
+ * had a real press on it and the sentence had to offer it. That generator and
+ * that button are gone (see the note where `isUntouchedSystemFiling` used to be
+ * in lib/entries.js), so every blocked row on this screen now says the same
+ * thing, which is the thing that was always true of all but one of them.
  */
-function ownFilingNote(entry) {
-  const canVoid = isUntouchedSystemFiling(entry);
-  const head = 'ใบนี้คุณเป็นผู้บันทึกแทนเอง';
-  const rule = 'ผู้บันทึกไม่ได้เป็นผู้เซ็นขั้นนี้ของใบที่ตัวเองกรอก';
-  if (!canVoid) {
-    return {
-      short: 'คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ '
-        + '— ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ',
-      head,
-      body: `${rule} — ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ`,
-    };
-  }
-  /* `short` IS READ BESIDE THE BUTTON AND `body` IS READ AWAY FROM IT, which
-     is the whole of why these two are not one string: on the row ถอนใบวันเกิด
-     is the thing sitting next to the sentence, and in the pop-up it is back on
-     a row the reader has covered with a dialog. */
-  return {
-    short: 'คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ '
-      + '— ถอนใบได้ หรือให้ผู้ดูแลระบบอนุมัติแทน',
-    head,
-    body: `${rule} — กด “ถอนใบวันเกิด” ที่แถวในคิว หรือให้ผู้ดูแลระบบอนุมัติแทน`,
-  };
-}
+const OWN_FILING_NOTE = {
+  short: 'คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ '
+    + '— ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ',
+  head: 'ใบนี้คุณเป็นผู้บันทึกแทนเอง',
+  body: 'ผู้บันทึกไม่ได้เป็นผู้เซ็นขั้นนี้ของใบที่ตัวเองกรอก '
+    + '— ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ',
+};
 
 /**
  * Manager review (daily) and HR confirmation (monthly) are the same table with
@@ -358,7 +345,7 @@ export default function ApprovalQueue({
   const blockedNote = (e) => {
     if (!e) return null;
     if (!signableHere(e)) return watchingNote(e, stage, user);
-    if (barredAsOwnFiling(e, user)) return ownFilingNote(e);
+    if (barredAsOwnFiling(e, user)) return OWN_FILING_NOTE;
     if (signedManagerStep(e, user)) return SIGNED_MGR_NOTE;
     return null;
   };
@@ -1117,22 +1104,11 @@ export default function ApprovalQueue({
       : `ไม่อนุมัติ ${n} รายการ · บันทึกเหตุผลไว้ในทุกรายการแล้ว`),
   );
 
-  /**
-   * ถอนใบวันเกิด — the only action available on a row the reviewer filed
-   * themselves, and it is here because this is where they are stuck.
-   *
-   * It goes through `/cancel`, the same endpoint an employee withdraws their own
-   * request with; `cancelPermission` decides which of the two acts it is and the
-   * history records `void` rather than `cancel`. The row leaves this queue, its
-   * hours are counted nowhere, and the birthday goes back onto
-   * วันเกิดที่ยังไม่มีใบ on ตรวจสอบรายเดือน — where the หัวหน้า's name is, which
-   * is the path that was meant to file it.
-   */
-  const voidEntry = (entry) => run(
-    [entry],
-    (e) => api.post(`/entries/${e._id}/cancel`, { note: 'ถอนใบวันเกิดที่ระบบสร้าง' }),
-    (n, all) => `ถอนใบวันเกิดของ ${all[0].employee?.name} แล้ว — ชั่วโมงนี้ไม่ถูกนับที่ใด`,
-  );
+  /* ถอนใบวันเกิด STOOD HERE UNTIL 2026-09-15 — a `/cancel` on a row the system
+     had generated, which `cancelPermission` answered with `action: 'void'`. It
+     was the one press left on a row this reviewer was barred from signing. Both
+     it and the generator that made those rows are withdrawn; a barred row now
+     carries what every other one carries. */
 
   /** A row rewritten from inside the pop-up: refresh the table under it, and
       keep the pop-up itself showing the version that was just saved. */
@@ -2313,25 +2289,14 @@ export default function ApprovalQueue({
                             used to carry: the card layout needs this sentence
                             to run the full width of the card, and an inline
                             style is the one thing a media query cannot answer. */}
-                        <span className="cell-sub own-note">{ownFilingNote(e).short}</span>
-                        {/* THE ONE ACTION IN THIS BRANCH THAT WORKS, so it keeps
-                            a real button — as an icon on the desktop and with
-                            its word back on the card, the same `.btn-word`
-                            trade อนุมัติ and ไม่อนุมัติ make below. */}
-                        {isUntouchedSystemFiling(e) ? (
-                          <button
-                            className="btn ghost sm with-icon act-icon"
-                            disabled={busy}
-                            onClick={() => voidEntry(e)}
-                            aria-label={`ถอนใบวันเกิดของ ${e.employee?.name}`}
-                            title="ถอนใบที่ระบบสร้าง — ชั่วโมงนี้จะไม่ถูกนับที่ใด และหัวหน้าแผนกยังบันทึกแทนใหม่ได้"
-                          >
-                            <Icon name="trash" className="btn-icon" />
-                            <span className="btn-word">ถอนใบวันเกิด</span>
-                          </button>
-                        ) : (
-                          <WatchActions note={ownFilingNote(e).short} verb={verb} />
-                        )}
+                        <span className="cell-sub own-note">{OWN_FILING_NOTE.short}</span>
+                        {/* ONE SHAPE SINCE 2026-09-15. A ถอนใบวันเกิด button
+                            stood beside this sentence on rows the system had
+                            generated — the one branch on this screen where a
+                            blocked row still had a real press. That press and
+                            those rows are both withdrawn, so this branch is what
+                            it says it is: a row nobody here may act on. */}
+                        <WatchActions note={OWN_FILING_NOTE.short} verb={verb} />
                       </div>
                     ) : (
                       <div className="row-actions">
@@ -3211,7 +3176,12 @@ function DetailModal({
                   for their team, ฝ่ายบุคคล filing for somebody, or nobody at all
                   on a row the system generated. */}
               <strong>
-                {isUntouchedSystemFiling(e) || isSystemFiled(e)
+                {/* `isSystemFiled` alone since 2026-09-15. It read
+                    `isUntouchedSystemFiling(e) || isSystemFiled(e)`, and the
+                    first was always a subset of the second — an untouched
+                    generated row is a generated row — so the pair only ever
+                    answered what the second answers. */}
+                {isSystemFiled(e)
                   ? 'รายการนี้ระบบสร้างจากกฎสวัสดิการวันเกิด ไม่มีใครกรอกแบบฟอร์ม'
                   : 'รายการนี้มีผู้อื่นเป็นผู้บันทึกแทนพนักงาน'}
               </strong>
@@ -3235,16 +3205,17 @@ function DetailModal({
               )}
               {/* ⚠ A `{mine && …}` SENTENCE STOOD HERE UNTIL 2026-09-14 —
                   *"คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้"* — and
-                  it has not been deleted, it has MOVED: `ownFilingNote` says it
-                  now, in the notice at the top of this body, beside the other
+                  it has not been deleted, it has MOVED: `OWN_FILING_NOTE` says
+                  it now, in the notice at the top of this body, beside the other
                   two reasons a ใบ can arrive here with no decision on it.
                   Keeping it in this amber box meant one of the three answers to
                   one question was printed somewhere else, in another colour,
                   three sections further down — and the reader who needed it was
                   the reader who had already reached the bottom and found no
-                  buttons. The one thing it said that this Alert does not is
-                  WHERE the ถอนใบวันเกิด button is, and it did not need a place
-                  of its own to say it. */}
+                  buttons. The one thing it said that this Alert did not was
+                  WHERE the ถอนใบวันเกิด button was, and it did not need a place
+                  of its own to say it — nor does it now that there is no such
+                  button anywhere. */}
             </Alert>
           )}
 

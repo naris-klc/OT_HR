@@ -138,12 +138,24 @@ const historySchema = new mongoose.Schema(
       // the next time anything touched them.
       // 'submit_birthday' is the request the system wrote because HR pressed
       // สร้างใบวันเกิดของเดือนนี้ — nobody filled a form in, which is a fact
-      // about the row that only its history can carry. See
-      // lib/birthdayEntries.js.
-      // 'void' is ฝ่ายบุคคล retracting a generated row that nobody has touched —
-      // the way back out of an entry that was confirmed on creation. Its own
-      // action, not a 'cancel', because 'cancel' means the employee withdrew
-      // their own request and that is a different event with a different actor.
+      // about the row that only its history can carry.
+      // 'void' is ฝ่ายบุคคล retracting one of those generated rows while nobody
+      // had touched it. Its own action, not a 'cancel', because 'cancel' means
+      // the employee withdrew their own request and that is a different event
+      // with a different actor.
+      //
+      // BOTH RETIRED 2026-09-15, AND BOTH STAY IN THIS ENUM. The generator was
+      // withdrawn (lib/birthdayEntries.js is gone — OT วันเกิด is filed like any
+      // other OT and merely wears a mark), and `void` went with the rule that
+      // produced it: ฝ่ายบุคคล may now cancel ANY live entry with a reason, so
+      // the narrow exit for generated rows has nothing left to be the exception
+      // to. No new row can carry either value. Rows that already do are in other
+      // installations' databases and still have to load, which is the same
+      // reason 'resubmit' and 'submit_hr_verified' are still here.
+      // 'hr_cancel' is that new press — ฝ่ายบุคคล ending a live entry outright,
+      // at any status, with a reason recorded. Its own action for the reason
+      // 'void' had one: the trail must not say พนักงานยกเลิก about something a
+      // person in ฝ่ายบุคคล did. See `cancelPermission` in lib/entries.js.
       // 'submit_hr_verified' is ฝ่ายบุคคล filing a birthday-holiday request from
       // วันเกิดที่ยังไม่มีใบ with the in/out times read off the fingerprint
       // scanner, and approving it in the same act. ONE row for one event, and
@@ -168,7 +180,7 @@ const historySchema = new mongoose.Schema(
       enum: [
         'submit', 'submit_proxy', 'submit_birthday', 'submit_hr_verified', 'resubmit',
         'approve_mgr', 'reject_mgr', 'approve_hr', 'reject_hr',
-        'cancel', 'void', 'edit', 'hr_edit', 'recompute',
+        'cancel', 'void', 'hr_cancel', 'edit', 'hr_edit', 'recompute',
         'withdraw_request', 'withdraw_grant', 'withdraw_refuse',
       ],
       required: true,

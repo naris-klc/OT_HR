@@ -135,18 +135,30 @@ test('HR may still correct an entry in a period that closed months ago', () => {
   assert.deepEqual(r, { ok: true, action: 'hr_edit' });
 });
 
-/** And `void` — the only way out for a row the system wrote (§7). */
-test('HR may still void an untouched system filing after the cutoff', () => {
-  // `isUntouchedSystemFiling` reads the HISTORY, not a flag — `submit_birthday`
-  // is what the withdrawn birthday flow wrote, and `approve_hr` is allowed to
-  // follow it without making the row anybody's request.
-  const sys = entry({
-    status: 'approved',
-    history: [{ action: 'submit_birthday' }, { action: 'approve_hr' }],
-  });
-  const r = cancelPermission(HR, sys, { policy: D3, on: '2027-06-01' });
-  assert.equal(r.ok, true);
-  assert.equal(r.action, 'void');
+/**
+ * AND SO IS HR's OWN ยกเลิก — NEW ON 2026-09-15, AND THE REASON THE CUTOFF NO
+ * LONGER STRANDS ANYBODY.
+ *
+ * This test read 'HR may still void an untouched system filing after the
+ * cutoff' until then: the only row ฝ่ายบุคคล could remove was one the withdrawn
+ * birthday generator had written, and an ordinary `approved` entry in a closed
+ * period could be removed by NOBODY. `void` went with that generator; this is
+ * the rule that replaced it, and it reaches every live row.
+ */
+test('HR may still cancel a live entry in a period that closed months ago', () => {
+  const r = cancelPermission(HR, signed(), 'ลงวันที่ผิด', { policy: D3, on: '2027-06-01' });
+  assert.deepEqual(r, { ok: true, action: 'hr_cancel' });
+});
+
+/* The reason is the RULE's and not the dialog's — a gate that lives on a screen
+   is a gate `curl` walks past. Same shape as `editPermission`'s own 400. */
+test('HR cancelling without a reason is refused, cutoff or no cutoff', () => {
+  for (const on of ['2026-09-03', '2027-06-01']) {
+    const r = cancelPermission(HR, signed(), '   ', { policy: D3, on });
+    assert.equal(r.ok, false);
+    assert.equal(r.status, 400);
+    assert.match(r.error, /เหตุผล/);
+  }
 });
 
 /**
@@ -165,8 +177,8 @@ test('the fact and the refusal disagree about HR, and that is the point', () => 
 // ── the four presses ────────────────────────────────────────────────────────
 
 test('ยกเลิก by the employee is refused after the cutoff and allowed before it', () => {
-  assert.equal(cancelPermission(EMP, entry(), { policy: D3, on: '2026-09-03' }).ok, true);
-  const no = cancelPermission(EMP, entry(), { policy: D3, on: '2026-09-04' });
+  assert.equal(cancelPermission(EMP, entry(), '', { policy: D3, on: '2026-09-03' }).ok, true);
+  const no = cancelPermission(EMP, entry(), '', { policy: D3, on: '2026-09-04' });
   assert.equal(no.ok, false);
   assert.equal(no.status, 409);
   assert.match(no.error, /ฝ่ายบุคคล/);
@@ -266,7 +278,7 @@ test('a rejected entry past the cutoff still gets ส่งใหม่, not the
 
 /** The same shape on the other side of the line — `cancelPermission` goes FIRST. */
 test('an approved entry past the cutoff is not sent to the ขอถอนใบ button', () => {
-  const no = cancelPermission(EMP, signed(), { policy: D3, on: '2026-09-20' });
+  const no = cancelPermission(EMP, signed(), '', { policy: D3, on: '2026-09-20' });
   assert.equal(no.ok, false);
   // The old refusal names the button in quotes — กด “ขอถอนใบ” — as something to
   // go and press. The wall's own sentence names it only in a list of what can

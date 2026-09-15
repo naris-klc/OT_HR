@@ -722,10 +722,15 @@ test('the screens ask the same rule the route refuses by, so no button is offere
   const view = src('components/HrView.jsx');
   assert.match(view, /const mayCorrect = mayCorrectEntries\(user\);/);
   assert.match(view, /mayEdit=\{mayCorrect\}/);
-  // …and the two controls that write are the two that disappear.
+  // …and the controls that write are the ones that disappear. Both of them sit
+  // in the SAME `mayEdit` branch since 2026-09-15 — แก้ไข and ยกเลิก are gated
+  // alike and refused alike, so a reader who may not correct gets neither.
+  // The second assertion named `isUntouchedSystemFiling` until then, when the
+  // other write on this row was ถอนใบวันเกิด and had a gate of its own.
   const entries = src('components/HrEntries.jsx');
   assert.match(entries, /\{!mayEdit \? null : closed \? \(/);
-  assert.match(entries, /\{mayEdit && isUntouchedSystemFiling\(e\) && \(/);
+  assert.match(entries, /className="btn ghost danger sm with-icon"/);
+  assert.ok(!/isUntouchedSystemFiling/.test(entries), 'ถอนใบวันเกิด กลับมาแล้ว');
 });
 
 test('the same two rules the approve route decides by, not a second reading', () => {

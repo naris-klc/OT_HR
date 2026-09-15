@@ -1322,7 +1322,7 @@ lookup ที่ไม่เจออะไรกับบทบาทที่�
 **"ไม่สามารถแก้ไขข้อมูลได้" บังคับที่ route มาตลอด** `editPermission` ปฏิเสธทุกคน
 ที่ไม่ใช่ฝ่ายบุคคล/ผู้ดูแลระบบ หรือเจ้าของใบที่ยังไม่มีใครเซ็น · สิ่งที่เพิ่มคือ
 **หน้าจอเลิกยื่นปุ่มที่จะโดนปฏิเสธ** — ปุ่มแรกของแต่ละแถวอ่านว่า "ดูรายการ" แทน
-"ดู / แก้ไขรายการ" และในจอรายแถวไม่มีปุ่ม *แก้ไข* กับ *ถอนใบวันเกิด* เลย · ข้อนี้
+"ดู / แก้ไขรายการ" และในจอรายแถวไม่มีปุ่ม *แก้ไข* กับ *ยกเลิก* เลย · ข้อนี้
 เป็นจริงกับ**หัวหน้างาน ผู้จัดการแผนก ผู้จัดการฝ่าย ด้วย** ซึ่งเปิดจอเดียวกันได้
 ตั้งแต่ 2026-09-03 และถูกยื่นปุ่มที่กดไม่ได้มาตลอดโดยไม่มีใครทัก
 
@@ -2084,7 +2084,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     153 files, run by `npm test`. Six named below as a
+test/                     154 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2097,10 +2097,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2753 tests
-across 153 files**, measured 2026-09-15 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2779 tests
+across 154 files**, measured 2026-09-15 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"2739 tests across 152 files … measured 2026-09-15" until **คำขอถอนใบ ย้ายเข้า
+"2753 tests across 153 files … measured 2026-09-15" until
+**ฝ่ายบุคคลยกเลิกใบได้ พร้อมเหตุผล** later the same day — `hrCancelEntry` is
+file 154. Before that it read "2739 tests across 152 files" until **คำขอถอนใบ ย้ายเข้า
 ไปอยู่การ์ดเดียวกับ รออนุมัติ** later the same day — `queueWithdrawChips` is
 file 153 and holds the switch itself; `withdrawalRowLayout` was rewritten rather
 than added to, because the row it pinned was a grid in a panel of its own and is
@@ -8905,10 +8907,13 @@ desktop, the card on a phone — and `margin-left: auto` on the **last** child
 puts the right-hand slot on its right edge.
 
 **The last child, and not `justify-content: space-between`.** Three things land
-here on an untouched วันเกิด filing the system wrote — แก้ไข, ถอนใบวันเกิด and
-ดูข้อมูลเดิม — and space-between would push ถอนใบวันเกิด out to the middle, away
-from the แก้ไข it belongs with. Pushing only the last one keeps *what can be
-done* as one group at the left however many things are in it.
+here on a live row — แก้ไข, ยกเลิก and ดูข้อมูลเดิม — and space-between would
+push ยกเลิก out to the middle, away from the แก้ไข it belongs with. Pushing only
+the last one keeps *what can be done* as one group at the left however many
+things are in it. (The third thing was “ถอนใบวันเกิด” on an untouched วันเกิด
+filing until 2026-09-15, when `void` was withdrawn and ฝ่ายบุคคล gained a ยกเลิก
+that reaches every live row instead of that one kind. The geometry is the same
+argument; it now applies to every row rather than to a handful.)
 
 **Then, on 2026-08-26, the two of them were told apart by weight.** On a ยกเลิก
 row the cell holds แก้ไขไม่ได้ and ดูข้อมูลเดิม side by side — a thing that
@@ -13834,8 +13839,20 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2753 tests**, about 4 s, measured 2026-09-15 across 153
-  files, all green. **`queueWithdrawChips` is the new file of the last round** —
+- `npm test` — **2779 tests**, about 4 s, measured 2026-09-15 across 154
+  files, all green. **`hrCancelEntry` is the new file of the last round** —
+  ฝ่ายบุคคล may now cancel any LIVE entry outright, with a reason recorded as
+  `hr_cancel`. It closes a hole nobody had named: an `approved` entry whose งวด
+  had passed its วันตัด could be removed by **nobody at all**, because ขอถอนใบ is
+  the owner's press and the cutoff had taken it, ยกเลิก was the owner's too,
+  `approvalPermission` answers 409 to anything already decided, and แก้ไข cannot
+  reach nought. 419 of the 431 entries on this database were live and in that
+  state. In the same round **`void` was withdrawn for good** — the generator
+  whose rows it existed for is gone, this database holds none of them, and the
+  new rule reaches every live row instead of that one kind; only the two history
+  action VALUES stay, for rows another installation may still hold.
+  It read "**2753 tests** … across 153 files" until then, when
+  **`queueWithdrawChips` was the new file** —
   คำขอถอนใบที่อนุมัติแล้ว moved into the same card as รออนุมัติ, switched by a
   chip, and that file holds the switch: that the chip bar is drawn only while
   there is a second pile, that the screen opens on the queue whatever the data
