@@ -161,21 +161,43 @@ were walked on 2026-09-11:
 
 **Take the junction out before you remove the worktree**, and take it out with
 a tool that unlinks rather than recurses — `Remove-Item -Recurse` on a junction
-can walk into the real `node_modules` and empty it:
+walks into the real `node_modules` and empties it, and so does `git worktree
+remove` if the junction is still there.
 
 ```powershell
-cmd /c rmdir "C:\Users\bcozf\Downloads\primus-ot\OT_HR-<task>\node_modules"
+$j = "C:\Users\bcozf\Downloads\primus-ot\OT_HR-<task>\node_modules"
+$t = "C:\Users\bcozf\Downloads\primus-ot\OT_HR\node_modules"
+[System.IO.Directory]::Delete($j, $false)         # unlinks; throws on a real dir
+(Test-Path $j)                                    # must print False
+(Get-ChildItem $t -Force | Measure-Object).Count  # must still be ~53, not 0
 ```
+
+**Read those last two lines before running the next command.** They are the
+whole point of this step: unlinked, and the real directory still full.
 
 ```bash
 git worktree remove ../OT_HR-<task> && git branch -d dev-<task>
 ```
 
-Skip the unlink and `git worktree remove` fails on the junction with `Invalid
-argument`, having already deleted half the directory and its own bookkeeping —
-after which the path is neither a worktree nor gone, and `git worktree prune`
-plus a manual delete is what clears it.
+> **IT READ `cmd /c rmdir "<path>"` UNTIL 2026-09-15, AND ON THAT DAY IT
+> SILENTLY DID NOTHING.** Run from a Bash tool call inside a `&&` chain, `cmd`
+> opened an interactive shell, printed its banner and exited; the junction was
+> untouched, `git worktree remove` then recursed through it, and the main tree's
+> `node_modules` went from 53 entries to **0**. Nothing failed loudly — the
+> worktree was removed, the branch deleted, `git status` clean — and the next
+> `npm test` in a NEW worktree failed in twelve places for reasons that looked
+> like the code change. `npm ci` put it back in a couple of minutes and nothing
+> was lost, by luck: the app was not running and the database was never touched.
+>
+> The lesson is not "cmd is unreliable", it is that **this step has no failure
+> mode you can see** — which is why the recipe above VERIFIES rather than
+> assumes. `.Delete($path, $false)` also throws if the path is a real directory
+> rather than a reparse point, so it cannot empty anything by mistake.
 
+Skip the unlink and `git worktree remove` may instead fail on the junction with
+`Invalid argument`, having already deleted half the directory and its own
+bookkeeping — after which the path is neither a worktree nor gone, and `git
+worktree prune` plus a manual delete is what clears it.
 If your harness has a worktree command of its own (Claude Code has one), it
 still leaves you both steps above to do by hand, and it branches from
 `origin/main` unless it is told otherwise — which is the wrong base here. Its
