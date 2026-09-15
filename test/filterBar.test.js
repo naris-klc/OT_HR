@@ -88,6 +88,10 @@ const BARS = [
      here, which became the app's last `.form-grid` filter bar on 2026-09-15. */
   ['components/AdminView.jsx', ['กรองตามพนักงาน', 'กรองตามสิ่งที่ถูกแก้',
     'กรองตามประเภท', 'กรองตามบัญชีผู้แก้ไข']],
+  /* The two one-control bars, 2026-09-15 — a bar with one field on it is still
+     the bar. Both were a `.field` with its label stacked over the box. */
+  ['components/App.jsx', ['ประจำเดือน']],
+  ['components/EmployeeView.jsx', ['ประจำเดือน']],
 ];
 
 // ── one container ───────────────────────────────────────────────────────────
@@ -329,4 +333,79 @@ test('ช่องค้นหาบนแถบทุกช่องมีแ�
   assert.match(person, /className=\{`has-icon\$\{clearable \? ' has-clear' : ''\}`\}/);
   // …and the padding that keeps the text off the glyph is the shared rule.
   assert.match(rules, /\.searchbox input\.has-icon \{ padding-left: 40px; \}/);
+});
+
+
+// ── the last labels standing over a box ────────────────────────────────────
+
+/**
+ * ทุกช่องเลือกเดือนอยู่บนแถบ — 2026-09-15.
+ *
+ * Reported with a picture of the one on พิมพ์ใบขออนุมัติ OT: *"เหลือช่อง input
+ * ตามรูปที่ยังไม่ใช้ label แบบเดียวกัน"*. Two screens still stacked a
+ * `<label>` over a `PickMonth` — พิมพ์ใบขออนุมัติ OT, whose label read
+ * ประจำเดือน · PERIOD and was the only bilingual one in the app, and
+ * ประวัติการขอ OT's full-history card, where ล่าสุด beside it carried
+ * `minHeight: var(--field-h)` purely to make up the height of that label row.
+ *
+ * ── WHY THE RULE IS ABOUT `PickMonth` AND NOT ABOUT `<label>` ───────────────
+ * A label over a box is RIGHT in a form — that is what `.form-grid` is, and the
+ * test above holds it. What makes a month picker different is that there is no
+ * form in this app that asks for a เดือน: every one of them narrows what is
+ * already on screen, so every one of them belongs on a bar (label inside the
+ * box) or in a card head (`.period-input`, no label at all — the value reads as
+ * a month by itself). Neither shape stacks a label.
+ */
+test('ทุก PickMonth ในแอปอยู่บนแถบหรือในหัวการ์ด — ไม่มีอันไหนมี label ลอยเหนือกล่อง', () => {
+  const files = readdirSync(join(ROOT, 'components'))
+    .filter((f) => f.endsWith('.jsx'))
+    .filter((f) => f !== 'ManualView.jsx');
+  let seen = 0;
+  for (const f of files) {
+    const src = noProse(read(`components/${f}`));
+    for (const m of src.matchAll(/<PickMonth\b/g)) {
+      seen += 1;
+      // The 200 characters in front of it: enough for the wrapper that decides
+      // which of the two shapes this is.
+      const before = src.slice(Math.max(0, m.index - 200), m.index);
+      const inHead = /<div className="field-head"><label>[^<]*<\/label><\/div>\s*$/.test(before);
+      const bare = /className="period-input"/.test(src.slice(m.index, m.index + 200));
+      assert.ok(inHead || bare,
+        `components/${f}: PickMonth ตัวหนึ่งไม่ได้อยู่ในรูปแบบใดเลย — ...${before.slice(-120)}`);
+      // And what is refused: a `<label>` of its own, stacked above the box.
+      assert.ok(!/<label>[^<]*<\/label>\s*$/.test(before.replace(/<div className="field-head">/g, '')),
+        `components/${f}: ยังมี <label> ลอยอยู่เหนือ PickMonth`);
+    }
+  }
+  assert.ok(seen >= 6, `เจอ PickMonth แค่ ${seen} ตัว — regex คงพัง`);
+});
+
+test('คู่มือเลิกเรียกช่องนั้นว่า ประจำเดือน · PERIOD', () => {
+  /* The manual draws mock screens and names the controls on them, so a label
+     that changed on the screen and not in the manual is the manual telling a
+     reader to look for something that is not there. `ประจำเดือน · PERIOD` was
+     in three places: one sentence and two mock fields. */
+  const manual = read('components/ManualView.jsx');
+  assert.ok(!manual.includes('ประจำเดือน · PERIOD'), 'คู่มือยังเรียกชื่อเดิมอยู่');
+  assert.ok(manual.includes('<MkField label="ประจำเดือน">'), 'ภาพจำลองไม่มีช่องประจำเดือนแล้ว');
+});
+
+test('สองจอนั้นเป็น card flush + card-head + queue-tools เหมือนจอรายงาน', () => {
+  // The shape every report screen has: the heading and its sentence on the
+  // white band, the control that decides what is on screen on the wash below.
+  const print = noProse(read('components/App.jsx'));
+  const at = print.indexOf('function MyForm()');
+  const form = print.slice(at, print.indexOf('\nfunction ', at + 10));
+  assert.match(form, /<div className="card flush no-print">\s*\n\s*<div className="card-head">/);
+  assert.match(form, /<div className="t">ใบขออนุมัติทำงานล่วงเวลา/);
+  assert.match(form, /<div className="queue-tools">/);
+  assert.ok(!form.includes('<h2>'), 'หัวการ์ดยังเป็น <h2> ไม่ใช่ .card-head .t');
+
+  const emp = noProse(read('components/EmployeeView.jsx'));
+  assert.match(emp, /<div className="card flush">\s*\n\s*<div className="card-head">\s*\n\s*<div style=\{\{ minWidth: 0 \}\}>/);
+  assert.match(emp, /<div className="t">ประวัติการขอ OT/);
+  // ล่าสุด is on the bar now, and the two inline styles that held it level with
+  // a taller field are gone — the bar ends its items on one line by itself.
+  assert.match(emp, /<div className="queue-tools">[\s\S]{0,400}?ล่าสุด/);
+  assert.ok(!emp.includes("minHeight: 'var(--field-h)'"), 'ปุ่มยังชดเชยความสูงของแถว label อยู่');
 });

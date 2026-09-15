@@ -1395,7 +1395,7 @@ const SECTIONS = [
       <ol className="manual-steps">
         <li className="manual-step">
           <p>
-            เปิดเมนู <b>พิมพ์ใบขออนุมัติ OT</b> แล้วเลือกเดือนที่ช่อง <b>ประจำเดือน · PERIOD</b>
+            เปิดเมนู <b>พิมพ์ใบขออนุมัติ OT</b> แล้วเลือกเดือนที่ช่อง <b>ประจำเดือน</b>
             {' '}— ใบจะรวมรายการที่อนุมัติแล้วและที่ยังรออนุมัติของเดือนนั้นให้เอง
             หน้านี้<b>ไม่ได้ใช้ยื่นใบ</b> เป็นที่พิมพ์ใบที่ยื่นไปแล้วเท่านั้น การยื่นอยู่ที่ บันทึกและประวัติ OT
           </p>
@@ -1406,7 +1406,7 @@ const SECTIONS = [
               <Desk title="พิมพ์ใบขออนุมัติ OT" nav={<MkRow on>พิมพ์ใบขออนุมัติ OT</MkRow>}>
                 <span className="mk-headrow">
                   <MkRow>ใบขออนุมัติทำงานล่วงเวลา · กันยายน 2569</MkRow>
-                  <MkField label="ประจำเดือน · PERIOD">กันยายน 2569</MkField>
+                  <MkField label="ประจำเดือน">กันยายน 2569</MkField>
                 </span>
                 <span className="mk-acts">
                   <MkBtn>พิมพ์</MkBtn>
@@ -1424,7 +1424,7 @@ const SECTIONS = [
             )}
             phone={(
               <Phone title="พิมพ์ใบขออนุมัติ OT" bar={<MkSlot icon="document" label="พิมพ์ใบ OT" on />}>
-                <MkField label="ประจำเดือน · PERIOD">กันยายน 2569</MkField>
+                <MkField label="ประจำเดือน">กันยายน 2569</MkField>
                 <span className="mk-acts">
                   <MkBtn>พิมพ์</MkBtn>
                   <MkBtn>บันทึกเป็น PDF</MkBtn>

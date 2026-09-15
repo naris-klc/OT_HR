@@ -51,7 +51,7 @@ test('ไม่มี <input type="date"> หรือ type="month" เหลื
   assert.deepEqual(left, [], `ยังมีตัวเลือกวันที่ของเบราว์เซอร์เหลืออยู่: ${left.join(', ')}`);
 });
 
-test('ทั้งสิบเก้ากล่องใช้คอมโพเนนต์เดียวกัน', () => {
+test('ทั้งสิบแปดกล่องใช้คอมโพเนนต์เดียวกัน', () => {
   /**
    * ELEVEN DAYS AND EIGHT MONTHS, and the count is here so that a twentieth
    * box added with an `<input>` is a failing test rather than the one control
@@ -60,11 +60,18 @@ test('ทั้งสิบเก้ากล่องใช้คอมโพ�
    * It read "ELEVEN DAYS AND SEVEN MONTHS" until 2026-09-10, when รายงาน OT
    * การเงิน gained ถึงเดือน (ไม่บังคับ) — the second month of a งวดจ่าย, which
    * is what lets พ.ย. + ธ.ค. print as the one sheet they are paid on.
+   *
+   * AND IT READ "ELEVEN DAYS AND EIGHT MONTHS … 19" UNTIL 2026-09-15, when
+   * `PeriodPicker` was deleted from components/common.jsx — a month box in the
+   * shared kit that NOTHING imported, wearing the stacked-label shape the app
+   * stopped using on 2026-09-10. The count went down because a control left the
+   * tree, not because a screen stopped using this component: every box a reader
+   * can actually press is still one of these. See the note where it stood.
    */
   const uses = components.reduce((n, [, body]) => (
     n + (body.match(/<Pick(Date|Month)\b/g) || []).length
   ), 0);
-  assert.equal(uses, 19, `มี ${uses} กล่อง — คาดว่า 19`);
+  assert.equal(uses, 18, `มี ${uses} กล่อง — คาดว่า 18`);
   // Every file that draws one imports it from the one place.
   for (const [f, body] of components) {
     if (!/<Pick(Date|Month)\b/.test(body) || f === 'PickDate.jsx') continue;

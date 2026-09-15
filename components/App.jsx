@@ -2272,16 +2272,43 @@ function MyForm() {
   const [period, setPeriod] = useState(currentPeriod());
   return (
     <div className="stack">
-      <div className="card no-print">
-        <div className="row" style={{ alignItems: 'flex-end' }}>
-          <div style={{ flex: 1 }}>
-            <h2>ใบขออนุมัติทำงานล่วงเวลา · {periodLabel(period)}</h2>
+      {/* ── หัวการ์ด แล้วแถบตัวกรอง — 2026-09-15 ─────────────────────────────
+          Reported with a picture of the box: *"เหลือช่อง input ตามรูปที่ยังไม่ใช้
+          label แบบเดียวกัน"*, after the same round put ประวัติการแก้ทะเบียน on a
+          bar. This was the last label in the app standing ABOVE its box while
+          the thing under it was a filter.
+
+          WHAT IT WAS: one `.row` with the heading on the left and a 190px
+          `.field` on the right, whose `<label>` read ประจำเดือน · PERIOD — a
+          bilingual label no other control in the app has, hung over the box
+          rather than inside it.
+
+          IT IS THE SHAPE EVERY REPORT SCREEN HAS: `.card.flush` + `.card-head`
+          + `.queue-tools`, which is what รายงาน OT การเงิน and รายงาน OT แยกแผนก
+          are made of — the heading and its sentence on the white band, the
+          control that decides what is on screen on the wash below it, label
+          inside the box.
+
+          THE HEADING IS `.card-head .t` AND NOT AN `<h2>` for the same reason:
+          that is what the band is, on all four screens that draw one. */}
+      <div className="card flush no-print">
+        <div className="card-head">
+          <div style={{ minWidth: 0 }}>
+            <div className="t">ใบขออนุมัติทำงานล่วงเวลา · {periodLabel(period)}</div>
             <div className="hint" style={{ margin: 0 }}>
               รวมรายการที่อนุมัติแล้วและที่ยังรออนุมัติ · ลงนามแล้วส่งฝ่ายบุคคล
             </div>
           </div>
-          <div className="field" style={{ maxWidth: 190, flex: 'none' }}>
-            <label>ประจำเดือน · PERIOD</label>
+        </div>
+        {/* ONE CONTROL ON THE BAR, AND THAT IS NOT AN ARGUMENT AGAINST THE BAR
+            — ทะเบียนพนักงาน's was one field too until this week, and the round
+            of 2026-09-10 settled that a bar with one control on it is still the
+            bar rather than a rule of its own. The ` · PERIOD` half of the label
+            went with the move: the inset label is 10px mono uppercase and every
+            other one in the app is Thai alone. */}
+        <div className="queue-tools">
+          <div className="field">
+            <div className="field-head"><label>ประจำเดือน</label></div>
             <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
         </div>
