@@ -6,6 +6,7 @@ import { DESCRIPTION_MAX_CHARS, normaliseDescription } from '@/src/config/policy
 import {
   submissionWindow, zeroOtHoursAllowed,
   isFlatDailyPosition, isCompanyOffDay,
+  cancelCutoffHrNote, isPastCancelCutoff,
   FLAT_DAY_TIMES,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
@@ -13,7 +14,13 @@ import {
   // `Modal` left with the birthday pop-up on 2026-09-03 — see the note where
   // that shape used to be chosen, near the foot of this file. A dead import is
   // not a broken build here, which is exactly why it goes out by hand.
-  Alert, BucketSplit, SegmentList, StatusChip, TipButton, FLAT_DAILY_SAY, shownWarnings,
+  //
+  // `ConfirmDialog` arrived 2026-09-14 for the งวดปิดแล้ว question — the one
+  // press on this form that stands in for somebody who can no longer make it.
+  // From the shared kit and not assembled here out of `Modal`: a screen that
+  // hand-rolls its own dialog is the moment the app has two of them.
+  Alert, BucketSplit, ConfirmDialog, SegmentList, StatusChip, TipButton,
+  FLAT_DAILY_SAY, shownWarnings,
 } from './common.jsx';
 import { PickDate } from './PickDate.jsx';
 import { PickTime } from './PickTime.jsx';
@@ -376,6 +383,27 @@ export default function OtForm({
   const [conflict, setConflict] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * ── งวดปิดแล้ว — ฝ่ายบุคคล IS ABOUT TO ACT FOR SOMEBODY WHO CANNOT ───────
+   *
+   * True only when the entry being corrected belongs to a งวด past its cutoff.
+   * HR is not refused — they never are, it is the whole difference between this
+   * rule and ปิดงวด — but this is the one press on this form where the employee
+   * could not have made the same change themselves, and the user asked on
+   * 2026-09-14 to be told so before it happens rather than after.
+   *
+   * MEASURED ON THE STORED `entry`, not on `form.workDate`. The server reads
+   * the stored row too (`editPermission`); a date the form has moved but not
+   * saved is not yet this entry's งวด, and warning off it would make the strip
+   * appear and vanish while somebody is typing a date.
+   *
+   * `isPastCancelCutoff` and NOT `cancelCutoffRefusal`: the refusal returns null
+   * for ฝ่ายบุคคล on its first line, which is the right answer to "may they"
+   * and the wrong answer to "should they be told". The two differ for exactly
+   * this reader, on purpose.
+   */
+  const pastCutoff = hrEdit && !!entry && isPastCancelCutoff(entry, policy);
+  const [confirming, setConfirming] = useState(false);
 
   /**
    * ส่งขออนุมัติ WAS PRESSED WITH รายละเอียดงานที่ทำ STILL EMPTY.
@@ -610,8 +638,8 @@ export default function OtForm({
     forWhom,
   ]);
 
-  async function submit(e) {
-    e.preventDefault();
+  async function submit(e, confirmed = false) {
+    e?.preventDefault();
 
     /**
      * The same call the write path makes, on the way in rather than on the way
@@ -629,6 +657,26 @@ export default function OtForm({
       descriptionRef.current?.focus();
       return;
     }
+
+    /**
+     * THE งวดปิดแล้ว QUESTION, AFTER EVERY OTHER CHECK AND BEFORE THE WRITE.
+     *
+     * After, because a box that is still empty is a thing to fix rather than a
+     * thing to confirm — asking "are you sure" about a save that is going to be
+     * refused anyway is one dialog too many. Before the write, because the
+     * whole point is that it can still be answered no.
+     *
+     * The strip above the form said the same thing on the way in. Both, because
+     * the user asked for both, knowing this box will appear often: correcting
+     * last month's entries is what lib/periodStatus.js records as the thing HR
+     * does most. If it wears out, the thing to take away is this dialog — not
+     * the strip, and never the rule.
+     */
+    if (pastCutoff && !confirmed) {
+      setConfirming(true);
+      return;
+    }
+    setConfirming(false);
 
     setBusy(true);
     setError('');
@@ -873,6 +921,21 @@ export default function OtForm({
           เมื่อหัวหน้าหรือฝ่ายบุคคลอนุมัติแล้ว ต้องให้ฝ่ายบุคคลเป็นผู้แก้ไข
         </div>
       )}
+      {/* ── งวดของใบนี้ปิดไปแล้ว ────────────────────────────────────────────
+          ABOVE the hint rather than under it, and one line long. The hint below
+          already says the system records who edited and why, so this does not
+          repeat it; what it adds is the one fact the hint cannot know, which is
+          that the employee could not have made this change themselves.
+
+          NO ⚠️ IN THE TEXT — `Alert` draws its own mark from the `mark` prop,
+          which defaults to true, so a symbol typed here would be the second one.
+          (The `warn` strings on the นโยบาย rows DO carry their own ⚠️; that is a
+          different mechanism and not a precedent for this.)
+
+          docs/design.md §2 refuses a warning with no remedy in the reader's
+          hands. This one passes: the remedy is to carry on, and they are the
+          only person who can. */}
+      {pastCutoff && <Alert kind="warn">{cancelCutoffHrNote(entry, policy)}</Alert>}
       {hrEdit && (
         <div className="hint">
           {entry?.employee?.name && <>พนักงาน: <strong>{entry.employee.name}</strong> · </>}
@@ -1629,6 +1692,37 @@ export default function OtForm({
       <div className="row form-actions" style={{ marginTop: 18, justifyContent: 'flex-end' }}>
         {actions(onCancel)}
       </div>
+      {/* ── ยืนยันก่อนแก้ใบของงวดที่ปิดแล้ว ─────────────────────────────────
+          `ConfirmDialog` portals out of the form through `Modal`, so where it
+          sits in this tree costs nothing and it is last for the reason the
+          press it guards is: everything above it is the form.
+
+          `ย้อนกลับ` AND NOT `ยกเลิก`, which is the dialog's own default. In this
+          app ยกเลิก means cancelling an OT entry, and the form standing behind
+          this box has a button of its own carrying that word. The same reason
+          `EntryDetail`'s foot says ปิดหน้าต่าง rather than ปิด.
+
+          `บันทึกการแก้ไข` AND NOT `ตกลง` — the confirm repeats the words of the
+          button that was just pressed, so the box answers the question the
+          button asked instead of opening a new one.
+
+          NOT `danger`: red is this app's mark for a press that destroys. This
+          one saves a correction, and the thing worth pausing over is whose
+          decision it stands in for, not what it wrecks. */}
+      {confirming && (
+        <ConfirmDialog
+          title="แก้ใบของงวดที่ปิดแล้ว"
+          cancelLabel="ย้อนกลับ"
+          confirmLabel="บันทึกการแก้ไข"
+          busy={busy}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => submit(null, true)}
+        >
+          <div className="hint">
+            {cancelCutoffHrNote(entry, policy)} — การแก้ไขนี้จึงเป็นการทำแทน
+          </div>
+        </ConfirmDialog>
+      )}
     </form>
   );
 }

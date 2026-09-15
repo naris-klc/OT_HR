@@ -9,15 +9,28 @@ import {
 } from './common.jsx';
 import { approvalSteps } from '@/lib/approverLine.js';
 import {
-  awaitingFirstSignature, filingOf, isBirthdayWelfare, isProxyFiled, refileState,
+  awaitingFirstSignature, cancelCutoffRefusal, filingOf, isBirthdayWelfare,
+  isProxyFiled, refileState,
 } from '@/lib/entries.js';
 import { hasOpenWithdrawal, withdrawEligibility } from '@/lib/withdrawal.js';
 import OtForm from './OtForm.jsx';
 import HolidayBanner from './HolidayBanner.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { useBackHandler } from './nav.jsx';
+import { usePolicy } from './policyContext.jsx';
 
 export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
+  /**
+   * วันตัดของงวด — the copy /auth/me sent at sign-in, same as the date picker's.
+   *
+   * THE SCREEN NEEDS THE ANSWER BEFORE IT RENDERS, which is not true of the two
+   * submission windows the form reads. Past the cutoff this table does not
+   * disable แก้ไข · ยกเลิก · ขอถอนใบ, it does not draw them at all and puts a
+   * sentence where they were — so there is no press left in which to ask, and
+   * nothing to catch a 409 into. The server is still the authority; this is what
+   * stops anybody meeting it.
+   */
+  const policy = usePolicy();
   const [entries, setEntries] = useState([]);
   /**
    * Who would sign a request from this person — for the waiting line under the
@@ -182,6 +195,32 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
    * moment somebody has just changed them from inside it.
    */
   const detail = detailId ? entries.find((e) => e._id === detailId) : null;
+
+  /**
+   * ── งวดปิดเอง — THE TWO QUESTIONS, AND WHY IT TAKES TWO ──────────────────
+   *
+   * `past` is "the wall refuses this person on this row". `wouldOffer` is the
+   * COUNTERFACTUAL: would there have been a button here at all, if no cutoff
+   * existed? Both are needed, and the second is the one that is easy to skip.
+   *
+   * Drawing หมดเวลาแก้ไข on every row of a closed งวด would put it on rows
+   * whose buttons are missing for some entirely different reason — a ไม่อนุมัติ
+   * request has no แก้ไข either — and a sentence sitting where a button is
+   * absent is read as the explanation for THAT absence. It would be lying.
+   * components/HrEntries.jsx:642 is the same warning, written after the same
+   * mistake.
+   *
+   * `withdrawEligibility(user, e)` WITHOUT the policy is exactly that
+   * counterfactual, for free: the trailing options object added on 2026-09-14
+   * defaults to no cutoff, so the un-passed call is the pre-cutoff answer by
+   * construction rather than by a second copy of the rule.
+   *
+   * NEITHER OF THEM DOES DATE ARITHMETIC HERE. `cancelCutoffRefusal` is the one
+   * in lib/entries.js that the four routes enforce with; the day a component
+   * works out a deadline for itself is the day there are two date rules.
+   */
+  const past = (e) => !!cancelCutoffRefusal(user, e, policy);
+  const wouldOffer = (e) => awaitingFirstSignature(e) || withdrawEligibility(user, e).ok;
 
   return (
     <div className="stack">
@@ -574,7 +613,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               HR's to correct. That is not the same as "while it
                               is pending_mgr" for a request somebody filed on
                               this person's behalf — see awaitingFirstSignature. */}
-                          {awaitingFirstSignature(e) && (
+                          {!past(e) && awaitingFirstSignature(e) && (
                             <>
                               <button className="btn ghost sm" onClick={() => setEditing(e)}>แก้ไข</button>
                               <button
@@ -589,13 +628,43 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               rather than an act. Offered by the same rule the
                               server enforces — a button the server would refuse
                               teaches the employee to distrust the screen. */}
-                          {withdrawEligibility(user, e).ok && (
+                          {!past(e) && withdrawEligibility(user, e).ok && (
                             <button
                               className="btn ghost sm"
                               onClick={() => { setAsking(e); setAskReason(''); }}
                             >
                               ขอถอนใบ
                             </button>
+                          )}
+                          {/* THE SENTENCE THAT STANDS WHERE THE THREE WERE.
+                              A SENTENCE AND NOT A GREY BUTTON, and the app
+                              already draws that line: a disabled button is the
+                              shape of a decision that still exists but is not
+                              this reader's, and คิวคำขอถอน gets exactly that,
+                              because ฝ่ายบุคคล will still press it. Nobody
+                              presses ยกเลิก on an employee's behalf — HR's way
+                              in is `hr_edit`, a different act on a different
+                              screen — so here there is no decision left to draw
+                              the shape of.
+
+                              `.cell-sub own-note` and not a new class: 190px in
+                              the action cell, which `.row-actions:has(>
+                              .own-note)` already knows to wrap for. The rule
+                              hiding it above 861px is scoped to `.queue-table`
+                              and this is `.stack-table`, so it reads at every
+                              width — which is what the complaint "รายการนี้ปุ่ม
+                              หายไปไหน" asked for.
+
+                              The whole sentence rides on `title`: four words fit
+                              the cell, and งวดไหน · ถึงเมื่อไหร่ · ใครทำแทนได้
+                              do not. One source for both — lib/entries.js. */}
+                          {past(e) && wouldOffer(e) && (
+                            <span
+                              className="cell-sub own-note"
+                              title={cancelCutoffRefusal(user, e, policy).error}
+                            >
+                              {cancelCutoffRefusal(user, e, policy).short}
+                            </span>
                           )}
                           {hasOpenWithdrawal(e) && (
                             <span className="chip" title={`เหตุผล: ${e.withdrawal.reason}`}>
@@ -834,8 +903,26 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
 function EntryDetail({
   entry: e, user, signers = null, usage = null, onClose, onEdit, onRefile, onCancel, onAskWithdraw,
 }) {
-  const mayEdit = awaitingFirstSignature(e);
-  const mayAsk = withdrawEligibility(user, e).ok;
+  /**
+   * งวดปิดเอง — THE FOOT ANSWERS WHAT THE ROW ANSWERED, and half of that was
+   * already free.
+   *
+   * `5c2a0e2` is on the record for the failure this avoids: the pop-up went on
+   * offering a button the row had just stopped offering, and pressing it found
+   * a 409 behind the modal. `mayEdit` and `mayAsk` read the same rules the row
+   * does, so the buttons go quiet on their own — what does NOT come free is the
+   * sentence, and a foot that simply loses two buttons is the very complaint
+   * this change exists to answer.
+   *
+   * Read from the context rather than passed down, because it is one fact about
+   * the whole session and threading it through a prop would be a second place
+   * for it to be missing from.
+   */
+  const policy = usePolicy();
+  const past = !!cancelCutoffRefusal(user, e, policy);
+  const mayEdit = !past && awaitingFirstSignature(e);
+  const mayAsk = !past && withdrawEligibility(user, e).ok;
+  const wouldOffer = awaitingFirstSignature(e) || withdrawEligibility(user, e).ok;
   const trail = trailOf(e);
   const hasPast = editsOf(e).length > 0 || Boolean(e.refiledFrom) || isProxyFiled(e);
   /**
@@ -937,6 +1024,19 @@ function EntryDetail({
           {mayAsk && <button className="btn ghost" onClick={onAskWithdraw}>ยื่นขอถอนใบ OT</button>}
           {refileState(e) === 'open' && <button className="btn" onClick={onRefile}>ส่งใหม่</button>}
           {mayEdit && <button className="btn" onClick={onEdit}>แก้ไข</button>}
+          {/* The row's sentence, in the row's own words, gated by the row's own
+              counterfactual — so a request whose buttons are missing because it
+              was refused is not told the งวด closed. `.own-note` here too: the
+              foot is a flex row and the class is what lets a sentence take a
+              line of its own in one. */}
+          {past && wouldOffer && (
+            <span
+              className="cell-sub own-note"
+              title={cancelCutoffRefusal(user, e, policy).error}
+            >
+              {cancelCutoffRefusal(user, e, policy).short}
+            </span>
+          )}
         </>
       )}
     >

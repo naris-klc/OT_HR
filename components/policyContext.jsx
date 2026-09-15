@@ -20,6 +20,18 @@ import React, { createContext, useContext } from 'react';
  * whose real enforcement is on the server. It would NOT be survivable for
  * anything that decided a number, and nothing here does.
  *
+ * ⚠ SINCE 2026-09-14 ONE READER DECIDES WHETHER A BUTTON EXISTS AT ALL,
+ * which is the first use here that is not a hint. รายการของฉัน reads
+ * `cancelCutoffDay` to take แก้ไข · ยกเลิก · ขอถอนใบ off a row whose งวด has
+ * closed and put a sentence there instead. The staleness bites the same way
+ * round and no harder: HR turning the cutoff ON mid-session leaves an employee
+ * already signed in holding buttons the server now refuses — which is the state
+ * every one of those buttons was in before this key existed, since a status can
+ * change under any open screen. It does NOT let anybody past a rule; the four
+ * routes read the live policy. Signing in again is the whole of the fix, and
+ * re-reading the session on a timer would be a fix for something nobody has
+ * reported.
+ *
  * `{}` when nothing has provided one, so a component can read a key off it
  * without guarding first. Missing keys then behave as the readers' own
  * fallbacks say they should — `submissionWindow` treats an absent forward
