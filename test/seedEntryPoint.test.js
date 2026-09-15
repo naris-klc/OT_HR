@@ -62,6 +62,7 @@ import mongoose from 'mongoose';
  */
 const ENTRY_POINTS = [
   'src/seed.js',
+  'src/mock-cancel-cutoff.js',
   'src/backup.js',
   'src/restore.js',
   'src/reset-admin-password.js',
