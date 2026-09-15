@@ -6900,6 +6900,24 @@ td > .approver-line { margin-top: 5px; }
     display: flex; width: 100%; justify-content: center;
     min-height: 44px; margin: 0;
     border-color: color-mix(in srgb, currentColor 55%, transparent);
+
+    /* ⚠ ORDER, BECAUSE THE ARROW LANDED UNDER THIS BUTTON — 2026-09-15, แจ้งมา
+       พร้อมภาพว่า "ลูกศรตกลงมาอยู่ข้างล่าง".
+
+       The pill is the row's last item on a desktop, so the ▲/▼ that follows it
+       in the markup sits in the corner. At this width the pill asks for the
+       full width and wraps to a line of its own — and an item after it wraps
+       again, to a third line holding one 11px glyph against the left edge,
+       which is neither a corner nor a target.
+
+       `order: 1` puts it after the arrow without moving either in the markup:
+       the arrow keeps the end of the sentence's line — the same corner it holds
+       in the two alerts above this banner — and the button keeps its own row
+       under them both. Reordering here rather than in the JSX because it is
+       true only at this width, and because the reading order that a keyboard
+       and a screen reader follow should stay the one the markup states:
+       sentence, then its control, then the row's action. */
+    order: 1;
   }
 
   /* THE BANNER'S OWN ▲/▼ WAS HERE, with a 44px hit area held out of the layout
