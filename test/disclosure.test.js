@@ -713,6 +713,17 @@ test('a ▲/▼ notice opens from anywhere in its frame, and folds from its head
   assert.match(fold, /\{actions && !folded && <div className="alert-actions">\{actions\}<\/div>\}/);
   assert.ok(!/hidden=\{folded\}/.test(fold), 'ปุ่มถูกซ่อนด้วย hidden แทนที่จะไม่ถูกวาด');
 
+  // ON A PHONE THE ARROW KEEPS THE SENTENCE'S LINE — 2026-09-15, reported with
+  // a picture: *"ลูกศรตกลงมาอยู่ข้างล่าง"*. ประกาศวันหยุด's calendar pill takes
+  // the full width below 860px, so the arrow after it in the markup wrapped to a
+  // third line of its own. The pill is ordered last instead, which leaves the
+  // arrow in the same corner it holds in the two alerts above that banner.
+  // `flex: 1 0 100%` is the phone rule and nothing else in the file says it —
+  // the desktop one two screens up is `flex: none` on the same selector.
+  const pill = css.slice(css.search(/\.announce > \.fold-pill \{\s+flex: 1 0 100%;/));
+  assert.ok(pill.startsWith('.announce > .fold-pill {'), 'กฎปุ่มปฏิทินบนมือถือย้ายที่');
+  assert.match(pill.slice(0, pill.indexOf('\n  }')), /order: 1;/, 'ปุ่มปฏิทินบนมือถือไม่ได้ถูกจัดให้อยู่หลังลูกศร');
+
   // The cut is CSS, so the first paint is already one row — text drawn in full
   // and collapsed a frame later is a page that jumps under the thumb.
   assert.match(css, /\.one-line \{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; \}/);
