@@ -7412,11 +7412,16 @@ td > .approver-line { margin-top: 5px; }
    (sized by its widest row) and on a phone is the card. `margin-left: auto` on the
    LAST child puts the right-hand slot on the right edge of it.
 
-   THE LAST CHILD, NOT `justify-content: space-between`. Three things land here on
-   an untouched วันเกิด filing the system wrote — แก้ไข, ถอนใบวันเกิด and
-   ดูข้อมูลเดิม — and space-between would push ถอนใบวันเกิด out to the middle,
-   away from the แก้ไข it belongs with. Pushing only the last one keeps "what can
-   be done" as one group at the left however many things are in it. */
+   THE LAST CHILD, NOT `justify-content: space-between`. Four things land here on
+   a live row — อนุมัติ, แก้ไข, ยกเลิก and ดูข้อมูลเดิม — and space-between would
+   spread them evenly, putting ดูข้อมูลเดิม, which only READS, the same distance
+   from แก้ไข as แก้ไข is from ยกเลิก. Pushing only the last one keeps "what can
+   be done" as one group at the left however many things are in it.
+
+   IT READ "Three things … แก้ไข, ถอนใบวันเกิด and ดูข้อมูลเดิม" UNTIL 2026-09-15,
+   when `void` was withdrawn and ฝ่ายบุคคล gained a ยกเลิก that reaches every live
+   row instead of the one kind the system had generated. The geometry never
+   depended on WHICH the third control was, only on there being more than two. */
 .entry-actions {
   display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap;
   width: 100%;

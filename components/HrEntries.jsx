@@ -3,11 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  Alert, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, ProxyMark, RateHead,
+  Alert, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, Modal, ProxyMark, RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
   StatusChip, editsOf, trailOf,
 } from './common.jsx';
-import { hasAuditTrail, isProxyFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
+import { hasAuditTrail, isProxyFiled } from '@/lib/entries.js';
 import { describeBreaches, OVER_CEILING_REASON_APPROVE } from '@/lib/caps.js';
 import { SCAN_MATCH_TOLERANCE_MINUTES, summariseScanChecks } from '@/lib/scanMatch.js';
 import { versionSpread } from '@/lib/policyVersion.js';
@@ -104,6 +104,21 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
   /**
+   * The row ฝ่ายบุคคล is about to end, and the reason they are typing for it.
+   *
+   * ONE PIECE OF STATE FOR TWO SCREENS. This component renders two different
+   * things — the table, and the editor behind `แก้ไข` — and the press exists on
+   * both, so the dialog is declared once and drawn in both returns. Two copies
+   * of a box that takes a mandatory reason is two places for the requirement to
+   * drift out of step with `cancelPermission`.
+   */
+  const [cancelling, setCancelling] = useState(null);
+  const [cancelNote, setCancelNote] = useState('');
+  /* One request in flight, and it is the only write on this screen that cannot
+     be repeated harmlessly — a second press would answer 409 and show the
+     reader an error about a row they have already dealt with. */
+  const [busy, setBusy] = useState(false);
+  /**
    * Which rows have their history drawer open — a Set rather than a single id,
    * because closing a month means comparing rows against each other, and a
    * toggle that shuts the last row every time you open the next one makes that
@@ -154,6 +169,13 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
 
   // The header mark unwinds this before the tab underneath it.
   useBackHandler(Boolean(editing), () => setEditing(null));
+  /* AND THE DIALOG BEFORE THE EDITOR. Registered second on purpose: the back
+     stack in components/App.jsx is unwound innermost first, and the box can be
+     opened from inside the form. Without it the phone's back gesture would
+     leave the page with a confirmation of a destructive press still on screen —
+     which is the failure useBackHandler exists for, and it matters more here
+     than on a dialog that only reads. */
+  useBackHandler(Boolean(cancelling), () => { setCancelling(null); setCancelNote(''); });
 
   // A drawer left open over a row that no longer exists — a different month,
   // a reloaded list — would never be closed by anything.
@@ -253,13 +275,104 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
     } catch (err) { setError(err.message); }
   }
 
-  async function voidEntry(entry) {
+  /**
+   * ยกเลิก — ฝ่ายบุคคล ending a live entry, from either of this screen's two
+   * views.
+   *
+   * `/cancel` is the same endpoint an employee withdraws their own request
+   * with; `cancelPermission` decides which of the two acts it is, refuses an
+   * empty reason, and the history records `hr_cancel` rather than `cancel`. It
+   * is also what closes an open คำขอถอน on the way past — see the route.
+   *
+   * THE EDITOR IS SHUT ON THE WAY OUT. The press can come from inside `แก้ไข`,
+   * and coming back to a form over a row that no longer exists is a form whose
+   * บันทึกการแก้ไข would answer 409. `load()` first so the table it lands on is
+   * the one without the row in it.
+   */
+  async function cancelEntry() {
+    const entry = cancelling;
+    const note = cancelNote.trim();
+    if (!entry || !note) return;
+    setBusy(true);
     try {
-      await api.post(`/entries/${entry._id}/cancel`, { note: 'ถอนใบวันเกิดที่ระบบสร้าง' });
+      await api.post(`/entries/${entry._id}/cancel`, { note });
+      setCancelling(null);
+      setCancelNote('');
+      setEditing(null);
       await load();
       onChanged?.();
-    } catch (err) { setError(err.message); }
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
+
+  /**
+   * DECLARED ONCE, DRAWN IN BOTH RETURNS. `Modal` portals out of wherever it is
+   * written, so this costs nothing where it sits and can hang over the editor
+   * as readily as over the table.
+   *
+   * `Modal` AND NOT `ConfirmDialog`: the confirm button has to stay dead until a
+   * reason is typed, and `ConfirmDialog` has no `confirmDisabled` — a prop with
+   * no caller would be dead code, and this box is the same shape
+   * ไม่อนุมัติคำขอถอนใบ in components/WithdrawalRequests.jsx already has for the
+   * same job. Inherited, not designed.
+   *
+   * ไม่ยกเลิกแล้ว / ยืนยันการยกเลิก, and not ตกลง / ยกเลิก: in a box about
+   * cancelling, a button reading ยกเลิก is the question again rather than an
+   * answer to it. The pair EmployeeView uses on its own ยกเลิกคำขอนี้.
+   */
+  const cancelDialog = cancelling && (
+    <Modal
+      title="ยกเลิกใบนี้"
+      subtitle={`${employee.name} · ${thaiDate(cancelling.workDate)} · ${hours(cancelling.totals?.otHours)} ชม.`}
+      onClose={() => { if (!busy) { setCancelling(null); setCancelNote(''); } }}
+      dirty={cancelNote.trim().length > 0}
+      footer={(
+        <>
+          <button
+            className="btn ghost"
+            disabled={busy}
+            onClick={() => { setCancelling(null); setCancelNote(''); }}
+          >
+            ไม่ยกเลิกแล้ว
+          </button>
+          <button className="btn danger" disabled={busy || !cancelNote.trim()} onClick={cancelEntry}>
+            ยืนยันการยกเลิก
+          </button>
+        </>
+      )}
+    >
+      {/* WHAT IT DOES, BEFORE WHY IT IS BEING DONE. The hours are the thing
+          coming off the books, and they come off two places a reader of this
+          screen is answerable for: the แผนก's ceiling and the sheet that goes to
+          accounts. `แก้กลับไม่ได้` in as many words — the row stays visible as
+          ยกเลิก but nothing puts it back, and the employee's own way to a fresh
+          request is a new filing. */}
+      <Alert kind="warn">
+        รายการนี้จะเปลี่ยนเป็น “ยกเลิก” ทันทีและ<strong>แก้กลับไม่ได้</strong> —
+        {' '}{hours(cancelling.totals?.otHours)} ชม. จะถูกตัดออกจากเพดานของแผนกและจากรายงานส่งบัญชี
+      </Alert>
+      {/* An open คำขอถอน is answered by this same press (see the route), and a
+          reader who does not know that would leave the dialog expecting to go
+          and grant it afterwards. */}
+      {cancelling.withdrawal?.state === 'requested' && (
+        <Alert kind="warn">
+          ใบนี้มีคำขอถอนของพนักงานรออยู่ — การยกเลิกนี้จะถือว่าอนุมัติคำขอนั้นไปด้วย
+        </Alert>
+      )}
+      <div className="field">
+        <label>เหตุผลการยกเลิก</label>
+        <input
+          value={cancelNote}
+          onChange={(ev) => setCancelNote(ev.target.value)}
+          maxLength={200}
+          placeholder="เช่น ลงวันที่ผิด ตรวจกับบันทึกเวลาสแกนนิ้วแล้วไม่มีการเข้าทำงาน"
+          autoFocus
+        />
+        {/* The server requires it too (`cancelPermission` → 400). Said here so
+            the reader is not taught about a rule by watching a request fail. */}
+        <span className="field-note">จำเป็นต้องกรอก — พนักงานจะเห็นข้อความนี้ในประวัติของรายการ</span>
+      </div>
+    </Modal>
+  );
 
   if (editing) {
     /* `position` decides one control — the เหมารายวัน tick, which is drawn
@@ -268,14 +381,22 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
        kind of day was sold to THEM. An already-ticked box is drawn whatever
        it says, so a correction can always take the flag back off. */
     return (
-      <OtForm
-        entry={editing}
-        mode="hr"
-        employeeId={employee._id}
-        position={employee.position}
-        onSaved={() => { setEditing(null); load(); onChanged?.(); }}
-        onCancel={() => setEditing(null)}
-      />
+      <>
+        <OtForm
+          entry={editing}
+          mode="hr"
+          employeeId={employee._id}
+          position={employee.position}
+          onSaved={() => { setEditing(null); load(); onChanged?.(); }}
+          onCancel={() => setEditing(null)}
+          /* The form draws its own ยกเลิก only when it is given somewhere to
+             send the press. It owns none of what follows — the dialog, the
+             reason, the request and the reload are all this component's, the
+             same arrangement the queue uses for อนุมัติให้ถอนทั้งหมด. */
+          onCancelEntry={() => setCancelling(editing)}
+        />
+        {cancelDialog}
+      </>
     );
   }
 
@@ -741,31 +862,44 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                       {!mayEdit ? null : closed ? (
                         <span className="cell-sub th">แก้ไขไม่ได้</span>
                       ) : (
-                        /* THE ONE ACTION ON THE ROW, and the only thing in this
-                           cell drawn as a control. The pencil is what makes it
-                           findable at a glance in a card of eight grey lines —
-                           see `.btn.with-icon`, and `pencil` in
-                           components/icons.jsx for why it is drawn rather than
-                           typed as ✏️. */
-                        <button className="btn ghost sm with-icon" onClick={() => setEditing(e)}>
-                          <Icon name="pencil" className="btn-icon" />
-                          แก้ไข
-                        </button>
-                      )}
-                      {/* A row the system wrote and nobody has touched: the one
-                          approved entry HR may take off the books, because it is
-                          a proposal they accepted rather than an account anybody
-                          gave of hours worked. The button disappears the moment
-                          the row is edited or signed — see
-                          `isUntouchedSystemFiling`. */}
-                      {mayEdit && isUntouchedSystemFiling(e) && (
-                        <button
-                          className="btn ghost sm"
-                          onClick={() => voidEntry(e)}
-                          title="ถอนใบวันเกิดที่ระบบสร้าง — ชั่วโมงนี้จะไม่ถูกนับในใบส่งบัญชี"
-                        >
-                          ถอนใบวันเกิด
-                        </button>
+                        /* TWO ACTIONS ON THE ROW SINCE 2026-09-15, and they are
+                           the pair `editPermission` and `cancelPermission` draw
+                           for this reader: rewrite what the row says, or end it.
+                           Both are gated on the same `mayEdit` and both are
+                           refused on the same `closed`, which is why they share
+                           this branch rather than each testing for themselves.
+
+                           The pencil is what makes แก้ไข findable at a glance in
+                           a card of eight grey lines — see `.btn.with-icon`, and
+                           `pencil` in components/icons.jsx for why it is drawn
+                           rather than typed as ✏️. `trash` beside it for the
+                           same reason, and because the two words alone are five
+                           Thai characters apart. */
+                        <>
+                          <button className="btn ghost sm with-icon" onClick={() => setEditing(e)}>
+                            <Icon name="pencil" className="btn-icon" />
+                            แก้ไข
+                          </button>
+                          {/* `ยกเลิก` AND NOT `ยกเลิกใบ` — asked for in those
+                              words. It is the word the employee's own press
+                              carries on their screen, and this is the same act
+                              done by somebody else; two names for one outcome is
+                              how a trail ends up needing a glossary.
+
+                              GHOST AND NOT FILLED. `.btn danger` is the filled
+                              red the app keeps for the press that actually
+                              destroys, and that press is in the dialog this one
+                              opens. A filled red button in a table cell would
+                              read as the row's main action, which it is not. */}
+                          <button
+                            className="btn ghost danger sm with-icon"
+                            onClick={() => { setCancelling(e); setCancelNote(''); }}
+                            title="ยกเลิกใบนี้ — ต้องระบุเหตุผล และชั่วโมงจะถูกตัดออกจากรายงาน"
+                          >
+                            <Icon name="trash" className="btn-icon" />
+                            ยกเลิก
+                          </button>
+                        </>
                       )}
                       {/* Reconciling a month against the signed paper means
                           reading what the row used to say, not only what it
@@ -884,6 +1018,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
           <li>หากรายการถูกยกเลิกหรือไม่อนุมัติ พนักงานต้องยื่นส่งรายการเข้ามาใหม่</li>
         </ul>
       </div>
+      {cancelDialog}
     </div>
   );
 }

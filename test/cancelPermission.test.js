@@ -9,6 +9,12 @@ import { countsTowardCap } from '../lib/caps.js';
  * The line is the first signature. Until a manager has approved, the request is
  * the employee's own business; after that it carries somebody's decision and
  * only HR moves it.
+ *
+ * ฝ่ายบุคคล's OWN HALF OF THIS RULE IS IN test/hrCancelEntry.test.js, which is
+ * where the branch added on 2026-09-15 is pinned. What is here is the employee's
+ * side and it did not change — except that a permitted answer now names its
+ * history action (`{ ok: true, action: 'cancel' }`) instead of leaving the route
+ * to work the word out from the other branch's verdict.
  */
 
 const employee = { _id: 'emp-1', role: 'employee' };
@@ -30,7 +36,7 @@ const entry = (over = {}) => {
 };
 
 test('the employee may withdraw their own request while it waits for the manager', () => {
-  assert.deepEqual(cancelPermission(employee, entry()), { ok: true });
+  assert.deepEqual(cancelPermission(employee, entry()), { ok: true, action: 'cancel' });
 });
 
 test('the first approval ends it — pending_hr is out of the employee’s hands', () => {
@@ -48,7 +54,7 @@ test('the first approval ends it — pending_hr is out of the employee’s hands
 test('a request that skipped the manager may still be withdrawn by its owner', () => {
   assert.deepEqual(
     cancelPermission(employee, { employee: 'emp-1', status: 'pending_hr', filedBy: 'mgr-1' }),
-    { ok: true },
+    { ok: true, action: 'cancel' },
   );
 });
 
@@ -71,7 +77,7 @@ test('somebody else’s pending request is not withdrawable', () => {
 });
 
 test('an unpopulated employee id resolves the same as a populated document', () => {
-  assert.deepEqual(cancelPermission(employee, entry({ employee: { _id: 'emp-1' } })), { ok: true });
+  assert.deepEqual(cancelPermission(employee, entry({ employee: { _id: 'emp-1' } })), { ok: true, action: 'cancel' });
 });
 
 /**
@@ -143,5 +149,5 @@ test('cancelling repeatedly is unlimited — no state accumulates to run out of'
   // requests leave the eleventh exactly as free as the first.
   const history = Array.from({ length: 10 }, () => entry({ status: 'cancelled' }));
   for (const h of history) assert.equal(refileState(h), null);
-  assert.deepEqual(cancelPermission(employee, entry()), { ok: true });
+  assert.deepEqual(cancelPermission(employee, entry()), { ok: true, action: 'cancel' });
 });

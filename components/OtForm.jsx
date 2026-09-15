@@ -141,7 +141,8 @@ const blank = () => ({
  * `mayTickFlatDaily` below.
  */
 export default function OtForm({
-  entry, template, onSaved, onCancel, mode = 'employee', employeeId, position = '',
+  entry, template, onSaved, onCancel, onCancelEntry,
+  mode = 'employee', employeeId, position = '',
 }) {
   const hrEdit = mode === 'hr';
   const proxy = mode === 'proxy';
@@ -1598,19 +1599,50 @@ export default function OtForm({
   );
 
   /**
-   * ยกเลิก and the one that saves — written once, hung where the shape puts them.
+   * ย้อนกลับ, ยกเลิก and the one that saves — written once, hung where the shape
+   * puts them.
    *
    * On a card they are the last row of the form. In the pop-up they are its
    * foot, which is pinned and does not scroll with the fields.
    *
    * `cancel` is handed in rather than closed over, and that is the whole point
-   * of the argument: the pop-up passes its own `requestClose`, so ยกเลิก asks
+   * of the argument: the pop-up passes its own `requestClose`, so ย้อนกลับ asks
    * about half-typed times exactly as ✕, Escape and the backdrop do, while the
    * card passes `onCancel`, which has nothing to ask.
+   *
+   * ── THE BUTTON THAT LEAVES THE FORM READ `ยกเลิก` UNTIL 2026-09-15 ────────
+   *
+   * It had to give the word up, and the word is not a preference: ยกเลิก names
+   * a real act in this system — the employee ending their own request, and now
+   * ฝ่ายบุคคล ending anybody's — and on the HR editor both presses are on screen
+   * at once. One of them shuts a form and the other takes hours off the books.
+   *
+   * RENAMED ON EVERY SCREEN THIS FORM SERVES, not only the one with the
+   * collision. Filing a new request and บันทึกแทน have no entry to cancel, so
+   * nothing would have been ambiguous there — but leaving the word behind would
+   * mean ยกเลิก shuts a form on two screens and destroys a row on a third, which
+   * is the "two rules that disagree" failure at one remove. Asked and answered
+   * in those terms.
+   *
+   * ── ยกเลิก IS DRAWN ONLY WHERE THERE IS A ROW TO END ─────────────────────
+   *
+   * `onCancelEntry`, which only components/HrEntries.jsx passes. The form owns
+   * none of what follows the press — no dialog, no reason, no request — for the
+   * reason the parent already owns the row and the reload: a child that writes
+   * its own parent's list would leave the table behind it stale.
+   *
+   * AND IT DOES NOT TOUCH THE SAVE BUTTON. `ย้อนกลับ` sits between them so the
+   * press that destroys is not a thumb's width from the press that is made
+   * dozens of times a month. All three are flush right, as asked.
    */
   const actions = (cancel) => (
     <>
-      {onCancel && <button type="button" className="btn ghost" onClick={cancel}>ยกเลิก</button>}
+      {onCancelEntry && (
+        <button type="button" className="btn ghost danger" onClick={onCancelEntry}>
+          ยกเลิก
+        </button>
+      )}
+      {onCancel && <button type="button" className="btn ghost" onClick={cancel}>ย้อนกลับ</button>}
       <button
         className="btn"
         form={formId}
@@ -1698,9 +1730,12 @@ export default function OtForm({
           press it guards is: everything above it is the form.
 
           `ย้อนกลับ` AND NOT `ยกเลิก`, which is the dialog's own default. In this
-          app ยกเลิก means cancelling an OT entry, and the form standing behind
-          this box has a button of its own carrying that word. The same reason
-          `EntryDetail`'s foot says ปิดหน้าต่าง rather than ปิด.
+          app ยกเลิก means cancelling an OT entry — and since 2026-09-15 the form
+          standing behind this box carries a button that does exactly that, for
+          this very row. The word was the right one to avoid when the form's own
+          exit was still called ยกเลิก and this argument read the other way
+          round; it is more obviously right now that there is a real one. The
+          same reason `EntryDetail`'s foot says ปิดหน้าต่าง rather than ปิด.
 
           `บันทึกการแก้ไข` AND NOT `ตกลง` — the confirm repeats the words of the
           button that was just pressed, so the box answers the question the

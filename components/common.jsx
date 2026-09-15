@@ -695,6 +695,16 @@ const ACTION_META = {
   approve_hr: { label: 'ฝ่ายบุคคลยืนยัน', tone: 'ok' },
   reject_hr: { label: 'ฝ่ายบุคคลไม่อนุมัติ', tone: 'no' },
   cancel: { label: 'พนักงานยกเลิกคำขอ', tone: 'off' },
+  // ฝ่ายบุคคล ending a live entry, at any status, with a reason — the press that
+  // closed the hole where an `approved` row in a งวด past its วันตัด could be
+  // removed by nobody at all. Its own label for the reason `cancel` has one:
+  // saying พนักงานยกเลิก about this would name the wrong actor on the one row a
+  // reader opens the trail to understand. See `cancelPermission` in
+  // lib/entries.js.
+  hr_cancel: { label: 'ฝ่ายบุคคลยกเลิกใบ', tone: 'off' },
+  // RETIRED 2026-09-15 with the generator and the rule behind it. No new row can
+  // carry this, and the label stays so that one written before then still reads
+  // as what it was rather than as a bare action name.
   void: { label: 'ฝ่ายบุคคลถอนใบที่ระบบสร้าง', tone: 'off' },
   /**
    * The three rows of ขอถอนใบ. `withdraw_request` is the only action in the
