@@ -3017,7 +3017,18 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    two renderings of one number ten pixels apart is worse than either. The rule
    stays because `ExportMenu` still takes a `count` and a fourth caller may want
    it on a screen with no chip. */
-.export-btn { display: inline-flex; align-items: center; gap: 8px; }
+/* `justify-content: center` — THE LABEL IS CENTRED BECAUSE THE BUTTON IS NOT
+   ALWAYS ITS OWN WIDTH. Reported 2026-09-15 on รายงาน OT แยกแผนก at phone
+   width: *ตัวหนังสือไม่จัดกลาง ดูไม่ค่อยสวย*. Above 860px this is an inline-flex
+   sitting in `.card-head` at its content's width, so alignment is invisible —
+   below it `.card-head:has(> .row .btn) > .row > *` gives the button the whole
+   line, and a flex container's default `flex-start` pinned the label to the
+   left edge with a hand's width of green after it. Every other full-width
+   button in this app centres its text, because a `<button>`'s own
+   `text-align: center` does it for them; `display: inline-flex` is what took
+   that away from this one, so it says it out loud — the same declaration
+   `.btn.with-icon` already carries, for the same reason. */
+.export-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .export-btn .export-count {
   font: 500 12px/1 var(--mono); font-variant-numeric: tabular-nums;
   opacity: .8;
