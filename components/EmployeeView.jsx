@@ -387,10 +387,16 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
       )}
 
       {/* ── full history ─────────────────────────────────────────────────── */}
+      {/* THE SAME BAND-THEN-BAR AS พิมพ์ใบขออนุมัติ OT — 2026-09-15, one report,
+          both screens: *"เหลือช่อง input ตามรูปที่ยังไม่ใช้ label แบบเดียวกัน"*.
+          This card drew the same 180px `.field` with its label stacked over the
+          box, with ล่าสุด beside it held at `--field-h` so the two lined up —
+          arithmetic that is not needed once both sit on a bar whose items are
+          one height by construction. */}
       {showAll && (
-        <div className="card">
-          <div className="row" style={{ alignItems: 'center', marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
+        <div className="card flush">
+          <div className="card-head">
+            <div style={{ minWidth: 0 }}>
               {/* THE WAY BACK, WHERE THE WAY IN WAS.
 
                   ทั้งหมด is pressed in a card head — รายการล่าสุด's, a few
@@ -419,7 +425,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                   was asked for AFTER the picker instead — the place ทั้งหมด
                   holds in รายการล่าสุด, so the way in and the way back sit in
                   the same spot on both cards. It is below, beside the picker. */}
-              <h2 style={{ margin: '0 0 4px' }}>ประวัติการขอ OT · {periodLabel(period)}</h2>
+              <div className="t">ประวัติการขอ OT · {periodLabel(period)}</div>
               {/* Five clauses down to two — this is every employee's own
                   screen, read on a phone, and it was five lines of rules above
                   the first row.
@@ -437,24 +443,26 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                 {' '}รายการที่ไม่อนุมัติ กด “ส่งใหม่” ยื่นจากข้อมูลเดิมได้ <strong>1 ครั้ง</strong>
               </div>
             </div>
-            {/* Picker, then ล่าสุด — the order รายการล่าสุด draws its picker
-                and ทั้งหมด in. `flex-end` puts the button on the picker's line
-                rather than its label's, and `--field-h` gives it the full-size
-                picker's height: `.btn.sm` alone is about 37px beside a box
-                that is taller. */}
-            <div className="row" style={{ gap: 8, alignItems: 'flex-end', flex: 'none' }}>
-              <div className="field" style={{ maxWidth: 180, flex: 'none' }}>
-                <label>ประจำเดือน</label>
-                <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
-              </div>
-              <button
-                className="btn ghost sm"
-                style={{ flex: 'none', minHeight: 'var(--field-h)' }}
-                onClick={() => setShowAll(false)}
-              >
-                ล่าสุด
-              </button>
+          </div>
+
+          {/* Picker, then ล่าสุด — the order รายการล่าสุด draws its picker and
+              ทั้งหมด in, so the way in and the way back sit in the same spot on
+              both cards.
+
+              THE TWO INLINE STYLES THAT HELD THEM LEVEL ARE GONE: `flex-end` on
+              a row and `minHeight: var(--field-h)` on the button existed only
+              because the field was taller than the button by the height of its
+              own label. On a `.queue-tools` bar there is no label row — it is
+              inside the box — and `align-items: flex-end` is the bar's, so the
+              two end on one line without either of them saying so. */}
+          <div className="queue-tools">
+            <div className="field">
+              <div className="field-head"><label>ประจำเดือน</label></div>
+              <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
             </div>
+            <button className="btn ghost sm" onClick={() => setShowAll(false)}>
+              ล่าสุด
+            </button>
           </div>
 
           {monthEntries.length === 0 ? (

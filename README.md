@@ -2056,9 +2056,13 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2692 tests
+and the engine know nothing about Next.js, so the whole suite — **2695 tests
 across 150 files**, measured 2026-09-15 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2692 tests across 150 files" until the last two stacked labels went onto bars
+later the same day — three cases in `filterBar`, one figure changed in
+`pickDate` (nineteen month and date boxes to eighteen, because `PeriodPicker`
+left the tree), and NO new file. It read
 "2689 tests across 150 files … measured 2026-09-14" until the filters on
 ประวัติการแก้ทะเบียน were folded onto one bar the next day — three cases in
 `filterBar`, and NO new file, because that file is where "every filter bar in
@@ -8225,6 +8229,8 @@ filter bar in the app:
 | บันทึกประวัติระบบ (3 tabs) | `.form-grid` + `.log-actions` | `.queue-tools`, buttons on the bar |
 | ทะเบียนพนักงาน | `.roster-find` | `.queue-tools` |
 | ประวัติการแก้ทะเบียน | `.form-grid` + a row of its own for the button | `.queue-tools`, button on the bar — **2026-09-15** |
+| พิมพ์ใบขออนุมัติ OT | a 190px `.field` beside the heading, label `ประจำเดือน · PERIOD` above the box | `.card.flush` + `.card-head` + `.queue-tools` — **2026-09-15** |
+| ประวัติการขอ OT (ทั้งหมด) | a 180px `.field` + ล่าสุด held level with `minHeight` | the same three, both controls on the bar — **2026-09-15** |
 
 > **The last row landed five days after the rest, and the reason it was missed
 > is worth the line.** ประวัติการแก้ทะเบียน is the SECOND filter bar in
@@ -8242,6 +8248,21 @@ filter bar in the app:
 > บันทึกประวัติระบบ made with the same sentence on 2026-09-10. **`PickPerson`
 > got the magnifier** in the same commit: that round put one in all four search
 > boxes in the app and this one was not on a bar then.
+
+> **The last two labels standing over a box went the same day**, reported with a
+> picture of the one on พิมพ์ใบขออนุมัติ OT: *"เหลือช่อง input ตามรูปที่ยังไม่ใช้
+> label แบบเดียวกัน"*. Both were a month picker with its `<label>` stacked above
+> it — one of them reading `ประจำเดือน · PERIOD`, the only bilingual label in the
+> app — and both cards became the shape every report screen has: `.card.flush` +
+> `.card-head` + `.queue-tools`. On ประวัติการขอ OT that also took away two
+> inline styles whose only job was to hold ล่าสุด level with a field that was
+> taller by the height of its own label row; a bar ends its items on one line by
+> itself. **`PeriodPicker` was deleted from `components/common.jsx`** in the
+> same commit — a month box in the shared kit that nothing imported, wearing the
+> stacked-label shape, and therefore an invitation to the next screen to build
+> the thing this table records taking out eight times.
+> `test/filterBar.test.js` now fails any `PickMonth` that is neither on a bar
+> nor a bare `.period-input` in a card head.
 
 > **One deleted rule is worth a line, because it was arithmetic rather than a
 > number.** `.compliance-actions` carried `padding-top: 25px` so its two buttons
@@ -13665,8 +13686,14 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2692 tests**, about 4 s, measured 2026-09-15 across 150
-  files, all green. **NO NEW FILE in the round that moved it off 2689** — the
+- `npm test` — **2695 tests**, about 4 s, measured 2026-09-15 across 150
+  files, all green. **NO NEW FILE in the round that moved it off 2692 either** —
+  พิมพ์ใบขออนุมัติ OT and ประวัติการขอ OT put their month pickers on bars, and
+  the three cases went into `filterBar` beside the rule they are an instance of.
+  `pickDate`'s count of month and date boxes went 19 → 18 in the same commit:
+  `PeriodPicker` was deleted from the shared kit, so a control left the tree —
+  no screen stopped drawing one.
+  **NO NEW FILE in the round that moved it off 2689** — the
   four filters on ประวัติการแก้ทะเบียน became a `.queue-tools` bar, and the
   three cases went into `filterBar`, which is the file that holds the rule they
   are an instance of. It read "2689 tests … measured 2026-09-14" until then.

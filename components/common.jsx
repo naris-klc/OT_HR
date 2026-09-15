@@ -19,7 +19,6 @@ import {
 } from '@/lib/scanMatch.js';
 import { approvalSteps, approverLine, skippedOwnApproval } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
-import { PickMonth } from './PickDate.jsx';
 /* `PickOne` opens the panel the three pickers already share — see the note at
    its `<Popover>`. Nothing else in this file uses it. */
 import { Popover, PopFoot, useSheet } from './popover.jsx';
@@ -3015,14 +3014,20 @@ export function AddBirthDateHint({ onOpen }) {
   );
 }
 
-export function PeriodPicker({ value, onChange }) {
-  return (
-    <div className="field" style={{ maxWidth: 180 }}>
-      <label>ประจำเดือน</label>
-      <PickMonth label="ประจำเดือน" value={value} onChange={onChange} />
-    </div>
-  );
-}
+/* `PeriodPicker` STOOD HERE AND IS DELETED — 2026-09-15.
+   It was a `.field` 180px wide with a `<label>ประจำเดือน</label>` stacked over
+   a `PickMonth`, and NOTHING IMPORTED IT: every screen that picks a month
+   writes its own box, and the two that still wore this shape moved onto
+   `.queue-tools` in the commit that deleted this.
+
+   Deleted rather than converted, for the reason §Inherit before you invent
+   gives from the other side: a component in the shared kit is an invitation,
+   and this one invited the next screen to stack a label over a filter — the
+   exact shape the round of 2026-09-10 spent six screens taking out. A month
+   picker is a `.field` inside a `.queue-tools` bar (label inside the box) or a
+   bare `.period-input` in a card head (no label at all, because the value reads
+   as a month by itself). Both are two lines of JSX where they are used, and
+   `test/filterBar.test.js` now fails a third shape. */
 
 /**
  * How many rows a page holds, offered in one place for every table that pages.
