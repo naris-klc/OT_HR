@@ -84,6 +84,10 @@ const BARS = [
   ['components/DepartmentView.jsx', ['แผนก', 'ประจำเดือน']],
   ['components/LogSystem.jsx', ['ค้นหา', 'กรองตามบัญชี', 'ตั้งแต่วันที่']],
   ['components/AdminView.jsx', ['ค้นหาพนักงาน', 'ตำแหน่ง', 'แผนก', 'บทบาท']],
+  /* TWO SCREENS IN ONE FILE — ทะเบียนพนักงาน above and ประวัติการแก้ทะเบียน
+     here, which became the app's last `.form-grid` filter bar on 2026-09-15. */
+  ['components/AdminView.jsx', ['กรองตามพนักงาน', 'กรองตามสิ่งที่ถูกแก้',
+    'กรองตามประเภท', 'กรองตามบัญชีผู้แก้ไข']],
 ];
 
 // ── one container ───────────────────────────────────────────────────────────
@@ -254,4 +258,75 @@ test('a form is not a filter bar', () => {
     assert.match(noProse(read(f)), /className="form-grid"/,
       `${f} เลิกใช้ .form-grid — ฟอร์มถูกลากไปเป็นแถบตัวกรองด้วย`);
   }
+});
+
+
+// ── the last form grid that was a filter bar ────────────────────────────────
+
+/**
+ * ประวัติการแก้ทะเบียน — 2026-09-15, asked for as *"ยุบตัวกรองให้อยู่ในแถวเดียวกัน
+ * · ใช้ label ของช่อง input รูปแบบเดียวกับตัวกรองหน้าเพิ่มพนักงาน ทำให้เป็น
+ * รูปแบบเดียวกันทั้ง app"*.
+ *
+ * WHAT IT WAS: four filters in a `.form-grid` — two columns of boxes, a label
+ * row over each, two notes under, and ล้างตัวกรองทั้งหมด on a fifth row below
+ * the lot. The round of 2026-09-10 converted six screens and left this one,
+ * because it is the second bar in a file whose first bar was already converted.
+ *
+ * THE TWO NOTES ARE THE PART WORTH PINNING. A bar has no room under a box, so
+ * each one had to go somewhere that is not "deleted quietly": the roster one
+ * was the placeholder read out loud and went, and the one about where the
+ * account list comes from is a fact about the SCREEN and went into the card's
+ * hint — the same move บันทึกประวัติระบบ made with the same sentence.
+ */
+const audit = (() => {
+  const src = read('components/AdminView.jsx');
+  const at = src.indexOf('function RosterAudit()');
+  assert.ok(at > 0, 'RosterAudit หายไปจาก AdminView.jsx');
+  return src.slice(at, src.indexOf('\nfunction ', at + 10));
+})();
+
+test('ตัวกรองสี่ช่องของ ประวัติการแก้ทะเบียน อยู่บนแถบเดียว', () => {
+  const code = noProse(audit);
+  assert.match(code, /<div className="queue-tools" style=\{\{ marginBottom: 12 \}\}>/);
+  assert.ok(!code.includes('className="form-grid"'), 'ยังเป็น .form-grid อยู่');
+  // The one box that is typed into takes the bar's double width.
+  assert.match(code, /<Field label="กรองตามพนักงาน" className="search">/);
+  // All four are inside the one bar, and so is ล้างตัวกรองทั้งหมด.
+  const bar = code.slice(code.indexOf('<div className="queue-tools"'), code.indexOf('{error &&'));
+  for (const label of ['กรองตามพนักงาน', 'กรองตามสิ่งที่ถูกแก้', 'กรองตามประเภท', 'กรองตามบัญชีผู้แก้ไข']) {
+    assert.ok(bar.includes(`label="${label}"`), `${label} ไม่ได้อยู่บนแถบ`);
+  }
+  assert.match(bar, /\{narrowed && \(\s*\n\s*<button/, 'ปุ่มล้างตัวกรองไม่ได้อยู่บนแถบ');
+  assert.ok(!code.includes('<div className="row" style={{ marginBottom: 12 }}>'),
+    'แถวของปุ่มล้างตัวกรองยังอยู่ใต้แถบ');
+});
+
+test('คำอธิบายใต้กล่องสองอันไปอยู่ที่ที่มันควรอยู่ ไม่ได้หายเฉย ๆ', () => {
+  const code = noProse(audit);
+  // A bar of equal-height boxes has no room for either.
+  assert.ok(!code.includes('note="รายชื่อมาจากประวัติเอง'), 'note ยังอยู่ใต้กล่อง');
+  assert.ok(!code.includes('note="พิมพ์เพื่อค้นหา'), 'note ยังอยู่ใต้กล่อง');
+  // The one about the screen moved into the card's hint, naming the box it is
+  // about — a sentence that survives only if a reader can tell what it answers.
+  const hint = code.slice(code.indexOf('<div className="hint">'), code.indexOf('</div>', code.indexOf('<div className="hint">')));
+  assert.match(hint, /กรองตามบัญชีผู้แก้ไข/);
+  assert.match(hint, /มาจากประวัติเอง/);
+  // The one about the search box is the placeholder, which is where an example
+  // of what to type belongs.
+  assert.match(read('components/common.jsx'), /placeholder = 'พิมพ์ชื่อ หรือ รหัสพนักงาน…'/);
+});
+
+test('ช่องค้นหาบนแถบทุกช่องมีแว่นขยาย รวมช่องที่เพิ่งขึ้นมาบนแถบ', () => {
+  /* The round of 2026-09-10 put one in all four search boxes in the app and
+     missed `PickPerson` — it was not on a filter bar then. It is now. */
+  const person = (() => {
+    const src = read('components/common.jsx');
+    const at = src.indexOf('export function PickPerson(');
+    return src.slice(at, src.indexOf('\n/**', at));
+  })();
+  assert.match(person, /<Icon name="search" className="searchbox-icon" \/>/);
+  assert.match(person, /className=\{`has-icon\$\{clearable \? ' has-clear' : ''\}`\}/);
+  // …and the padding that keeps the text off the glyph is the shared rule.
+  assert.match(rules, /\.searchbox input\.has-icon \{ padding-left: 40px; \}/);
 });

@@ -3516,10 +3516,18 @@ export function PickPerson({
 
   return (
     <div className="searchbox">
+      {/* THE MAGNIFIER, 2026-09-15. The round of 2026-09-10 put one in all four
+          search boxes in the app and missed this one, because it was not on a
+          filter bar then — it was a field in a `.form-grid`. It is on the bar
+          now (ประวัติการแก้ทะเบียน), beside three dropdowns, and a box you type
+          into that does not say so is the difference nobody reports and
+          everybody feels. `has-icon` is the 40px of left padding it needs; the
+          glyph is `pointer-events: none`, so the whole box is still one click. */}
+      <Icon name="search" className="searchbox-icon" />
       <input
         type="text"
         role="combobox"
-        className={clearable ? 'has-clear' : undefined}
+        className={`has-icon${clearable ? ' has-clear' : ''}`}
         value={shown}
         placeholder={placeholder}
         disabled={disabled}
