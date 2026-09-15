@@ -2056,9 +2056,13 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2689 tests
-across 150 files**, measured 2026-09-14 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2692 tests
+across 150 files**, measured 2026-09-15 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2689 tests across 150 files … measured 2026-09-14" until the filters on
+ประวัติการแก้ทะเบียน were folded onto one bar the next day — three cases in
+`filterBar`, and NO new file, because that file is where "every filter bar in
+the app is the same bar" already lives. It read
 "2667 tests across 149 files" until **ทะเบียนพนักงานได้ตัวกรอง ตำแหน่ง · แผนก ·
 บทบาท** later the same day — `rosterFilters` is the new file, and `lib/` gained
 one too: the rule about what the three boxes may OFFER is arithmetic over a
@@ -8220,6 +8224,24 @@ filter bar in the app:
 | การใช้สิทธิ์พิเศษ | `.compliance-filters` | `.queue-tools` |
 | บันทึกประวัติระบบ (3 tabs) | `.form-grid` + `.log-actions` | `.queue-tools`, buttons on the bar |
 | ทะเบียนพนักงาน | `.roster-find` | `.queue-tools` |
+| ประวัติการแก้ทะเบียน | `.form-grid` + a row of its own for the button | `.queue-tools`, button on the bar — **2026-09-15** |
+
+> **The last row landed five days after the rest, and the reason it was missed
+> is worth the line.** ประวัติการแก้ทะเบียน is the SECOND filter bar in
+> `components/AdminView.jsx`, and the sweep of 2026-09-10 converted the first
+> one (ทะเบียนพนักงาน) and moved on — the file was on the list and came off it.
+> Its four filters stayed in a `.form-grid`: two columns of boxes, a label row
+> over each, two notes under, and ล้างตัวกรองทั้งหมด on a fifth row below the
+> lot. Reported as *"ยุบตัวกรองให้อยู่ในแถวเดียวกัน · ใช้ label ของช่อง input
+> รูปแบบเดียวกับตัวกรองหน้าเพิ่มพนักงาน"*. **Both notes had to go somewhere**,
+> because a bar has no room under a box: the one under กรองตามพนักงาน was the
+> placeholder read out loud (พิมพ์เพื่อค้นหา · ค้นได้ทั้งรหัสและชื่อ) and was
+> deleted, and the one under กรองตามบัญชีผู้แก้ไข is a fact about the screen —
+> the account list is built from the trail, not from today's roster — so it went
+> into the card's hint, naming the box it is about. The same move
+> บันทึกประวัติระบบ made with the same sentence on 2026-09-10. **`PickPerson`
+> got the magnifier** in the same commit: that round put one in all four search
+> boxes in the app and this one was not on a bar then.
 
 > **One deleted rule is worth a line, because it was arithmetic rather than a
 > number.** `.compliance-actions` carried `padding-top: 25px` so its two buttons
@@ -13643,8 +13665,12 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2689 tests**, about 4 s, measured 2026-09-14 across 150
-  files, all green. **`rosterFilters` is the new file** — ทะเบียนพนักงาน's
+- `npm test` — **2692 tests**, about 4 s, measured 2026-09-15 across 150
+  files, all green. **NO NEW FILE in the round that moved it off 2689** — the
+  four filters on ประวัติการแก้ทะเบียน became a `.queue-tools` bar, and the
+  three cases went into `filterBar`, which is the file that holds the rule they
+  are an instance of. It read "2689 tests … measured 2026-09-14" until then.
+  **`rosterFilters` is the new file of the round before it** — ทะเบียนพนักงาน's
   ตำแหน่ง · แผนก · บทบาท, and half its cases never touch a component: what each
   box may offer is `lib/rosterFilters.js`'s arithmetic over a roster, and the
   two rules worth pinning — every list narrowed by the other two boxes, and the

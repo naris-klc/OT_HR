@@ -5618,6 +5618,14 @@ function RosterAudit() {
         {' '}· การตั้งรหัสผ่านใหม่บันทึกไว้เฉพาะว่าเกิดขึ้น
         {' '}<strong>ไม่มีการเก็บตัวรหัสผ่านไม่ว่ารูปแบบใด</strong>
         {' '}· การแก้ไขใบ OT เป็นคนละเรื่องและอยู่ที่ประวัติของใบนั้นเอง
+        {/* THE NOTE THAT WAS UNDER กรองตามบัญชีผู้แก้ไข, 2026-09-15. It is a true
+            and non-obvious fact — the list is built from what the trail
+            recorded, so somebody deleted from the roster is still in it — and it
+            is about the SCREEN rather than about one control, which is where a
+            sentence that long belongs on a bar of equal-height boxes. The same
+            move บันทึกประวัติระบบ made with the same sentence on 2026-09-10. */}
+        {' '}· รายชื่อในช่อง <strong>กรองตามบัญชีผู้แก้ไข</strong> มาจากประวัติเอง
+        {' '}ไม่ใช่ทะเบียนวันนี้
       </div>
 
       {/*
@@ -5626,11 +5634,22 @@ function RosterAudit() {
         open — which is the whole reason this section exists apart from the
         per-row pop-up — and กรองตามพนักงาน could not answer either.
 
-        `.form-grid` rather than `.row`: four labelled controls on a phone wrap
-        into a column and `.row`'s flex-end alignment would hang each one off
-        the bottom of a different-height label.
+        ── `.queue-tools` SINCE 2026-09-15, AND IT WAS A `.form-grid` ─────────
+        Asked for as *"ยุบตัวกรองให้อยู่ในแถวเดียวกัน · ใช้ label ของช่อง input
+        รูปแบบเดียวกับตัวกรองหน้าเพิ่มพนักงาน ทำให้เป็นรูปแบบเดียวกันทั้ง app"*.
+
+        A form grid is for a form: two columns, a label over every box, room for
+        a note under each one — which on four filters is two rows of boxes, four
+        label rows above them, two notes below, and a fifth row underneath
+        holding ล้างตัวกรองทั้งหมด. That is most of a screen of chrome over the
+        list it filters, and it is the last filter bar in the app that was not
+        the shape every other one has had since 2026-09-10.
+
+        The two notes went where the round of 2026-09-10 put notes on every
+        other bar — see the card's hint above, and the placeholder inside
+        กรองตามพนักงาน, which says what its note said.
       */}
-      <div className="form-grid" style={{ marginBottom: 12 }}>
+      <div className="queue-tools" style={{ marginBottom: 12 }}>
         {/* The one filter here that is not a short fixed list, and the only one
             of the four with a SEARCH box in it. This one holds the roster, so it
             gets a box you can type a name or a code into; see PickPerson in
@@ -5646,10 +5665,17 @@ function RosterAudit() {
             tap per row, and the list is drawn out of this document instead of by
             the operating system. Reported from a phone in the same round that
             took the last of the OS's own menus off every other screen. */}
-        <Field
-          label="กรองตามพนักงาน"
-          note="พิมพ์เพื่อค้นหา · ค้นได้ทั้งรหัสและชื่อ · เว้นว่างไว้คือทุกคน"
-        >
+        {/* `search` IS THE WIDTH, not a second kind of field: `.queue-tools
+            .field.search` gives the one box on a bar that is TYPED INTO twice
+            the basis of the dropdowns beside it — a Thai name in a 200px box is
+            a box you cannot read back what you put in.
+
+            ITS NOTE IS GONE, NOT MOVED — it read "พิมพ์เพื่อค้นหา · ค้นได้ทั้ง
+            รหัสและชื่อ · เว้นว่างไว้คือทุกคน", which is the placeholder inside
+            the box (พิมพ์ชื่อ หรือ รหัสพนักงาน…) and the ทุกคน row at the top of
+            its own list, read out loud underneath itself. Same deletion
+            เว้นว่าง = ทุกประเภท took on การใช้สิทธิ์พิเศษ. */}
+        <Field label="กรองตามพนักงาน" className="search">
           <PickPerson
             people={people}
             value={filters.employee}
@@ -5678,7 +5704,6 @@ function RosterAudit() {
             filter by — is which ACCOUNT made the change. */}
         <PickOne
           label="กรองตามบัญชีผู้แก้ไข"
-          note="รายชื่อมาจากประวัติเอง — ไม่ใช่ทะเบียนวันนี้"
           value={filters.by}
           onChange={(v) => setFilter('by', v)}
           allLabel="— ทุกบัญชี —"
@@ -5687,18 +5712,19 @@ function RosterAudit() {
             label: `${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
           }))}
         />
-      </div>
-
-      {narrowed && (
-        <div className="row" style={{ marginBottom: 12 }}>
+        {/* LAST CELL OF THE BAR, and it was a row of its own underneath —
+            a lone button on white directly under a wash band, which is the
+            shape บันทึกประวัติระบบ had its two buttons in until 2026-09-10.
+            Drawn only while something is filtering, like every other one. */}
+        {narrowed && (
           <button
             className="btn ghost sm"
             onClick={() => setFilters({ employee: '', field: '', action: '', by: '' })}
           >
             ล้างตัวกรองทั้งหมด
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {error && <Alert kind="error">{error}</Alert>}
       {hasMore && (
