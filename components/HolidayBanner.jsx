@@ -37,7 +37,9 @@ import { useBackHandler } from './nav.jsx';
  * the requirement actually asks for.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * ⚠ ONE ROW, AND NO FOLD — 2026-09-11.
+ * ⚠ ONE ROW — 2026-09-11. **THE FOLD CAME BACK ON 2026-09-15**, without its
+ * memory; this heading read *"ONE ROW, AND NO FOLD"* until that day, and the
+ * paragraph beside `useOneLine` below is the current one.
  *
  * It was three rows tall in the state the request arrived with a picture of:
  * a heading, the sentence about an empty month, and the calendar button on a
@@ -51,13 +53,16 @@ import { useBackHandler } from './nav.jsx';
  * instead of breaking once per piece: the same shape `PeriodStatus`'s งวด band
  * and `MonthAlerts` landed in earlier the same day.
  *
- * THE FOLD WENT WITH THE HEIGHT. `ot-holiday-fold` remembered, per browser,
- * that somebody had collapsed a three-row panel down to one; the panel is one
- * row before anybody presses anything now, so the control had nothing left to
- * hide and the stored answer answers a question that is gone. What the fold was
- * careful about — that no press can make the announcement disappear — is still
- * true and still tested, and it is now true by construction: there is no state
- * in this component that draws less than the whole row.
+ * THE FOLD WENT WITH THE HEIGHT, AND THE MEMORY NEVER CAME BACK.
+ * `ot-holiday-fold` remembered, per browser, that somebody had collapsed a
+ * three-row panel down to one — which is how next month's announcement goes up
+ * and nobody sees it. That key is gone for good and `test/disclosure.test.js`
+ * refuses `localStorage` anywhere in this file.
+ *
+ * It read *"there is no state in this component that draws less than the whole
+ * row"* until 2026-09-15. There is one now, and what makes it safe is that it
+ * draws the whole SENTENCE: the row is complete in the DOM in every state and
+ * cut by `overflow` alone.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * WHAT IT IS ALLOWED TO GET WRONG.
