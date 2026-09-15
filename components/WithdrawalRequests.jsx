@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName } from '@/lib/api.js';
+import { cancelCutoffQueueNote, isPastCancelCutoff, mayCorrectEntries } from '@/lib/entries.js';
 import { Alert, Modal } from './common.jsx';
+import { usePolicy } from './policyContext.jsx';
 
 /**
  * คำขอถอนใบที่อนุมัติแล้ว — the reviewer's side of lib/withdrawal.js.
@@ -38,6 +40,32 @@ import { Alert, Modal } from './common.jsx';
  * counted, and the list reloads from the server rather than being assumed.
  */
 export default function WithdrawalRequests({ user, onChanged }) {
+  /**
+   * ── งวดปิดเอง — WHAT THIS QUEUE HAD TO LEARN ─────────────────────────────
+   *
+   * `cancelCutoffDay` closes ตัดสินคำขอถอน to signers once the entry's own งวด
+   * has passed a day of the following month — measured at TODAY, so a request
+   * asked in time and left sitting is out of the หัวหน้า's hands. ฝ่ายบุคคล
+   * still decides it.
+   *
+   * THE ROW STAYS AND THE BUTTONS GO GREY. Not removed: the app draws a
+   * disabled pair when the decision STILL EXISTS and is somebody else's, and a
+   * sentence in place of buttons only when nobody will ever press them again.
+   * This is the first case — ฝ่ายบุคคล presses exactly these two — which is
+   * also how คิวรออนุมัติ answers a row a หัวหน้า may only watch. The reason
+   * line is drawn for EVERYONE, so it is the หัวหน้า's explanation and
+   * ฝ่ายบุคคล's warning in one place rather than two.
+   *
+   * IT ASKS THE RULE, NOT THE ROLE — `isPastCancelCutoff` is the arithmetic
+   * half in lib/entries.js and `mayCorrectEntries` is the app's one spelling of
+   * who is exempt. The component does not work out a deadline for itself; the
+   * day it does is the day there are two date rules.
+   */
+  const policy = usePolicy();
+  const mayPass = mayCorrectEntries(user);
+  const past = (e) => isPastCancelCutoff(e, policy);
+  const locked = (e) => past(e) && !mayPass;
+
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -46,6 +74,18 @@ export default function WithdrawalRequests({ user, onChanged }) {
   const [granting, setGranting] = useState(null); // entry
   const [grantingAll, setGrantingAll] = useState(false); // the whole open list
   const [done, setDone] = useState(0); // how many of a batch have been written
+  /**
+   * The one reason that goes onto every row in the batch whose งวด has closed.
+   *
+   * ONE FIELD AND NOT ONE PER ROW. The question it answers is about the PRESS —
+   * "why is ฝ่ายบุคคล deciding requests the signers no longer can" — and that
+   * has one answer for the whole press. `decisionNote` is stored per entry
+   * (lib/withdrawal.js), so each of those rows still carries it in its own
+   * history; what is shared is the typing, not the record.
+   */
+  const [batchNote, setBatchNote] = useState('');
+  /** …and its single-row counterpart, on the อนุมัติให้ถอน dialog. */
+  const [grantNote, setGrantNote] = useState('');
 
   async function load() {
     try {
@@ -89,9 +129,16 @@ export default function WithdrawalRequests({ user, onChanged }) {
     setDone(0);
     const failed = [];
     let ok = 0;
-    for (const e of rows) {
+    for (const e of batch) {
       try {
-        await api.post(`/entries/${e._id}/withdraw/decide`, { granted: true });
+        // The reason rides only on the rows that need one. On a row whose งวด
+        // is still open the server asks for nothing, and sending a note about
+        // a closed period would put a sentence about งวดปิด into the history of
+        // an entry whose งวด is open.
+        await api.post(`/entries/${e._id}/withdraw/decide`, {
+          granted: true,
+          note: past(e) ? batchNote.trim() || undefined : undefined,
+        });
         ok += 1;
       } catch (err) {
         failed.push(`${e.employee?.name || e.employee?.code} · ${thaiDate(e.workDate)} — ${err.message}`);
@@ -99,6 +146,7 @@ export default function WithdrawalRequests({ user, onChanged }) {
       setDone(ok + failed.length);
     }
     setGrantingAll(false);
+    setBatchNote('');
     setError(failed.length
       ? `ถอนสำเร็จ ${ok} รายการ · ไม่สำเร็จ ${failed.length} รายการ — ${failed.join(' · ')}`
       : '');
@@ -122,7 +170,22 @@ export default function WithdrawalRequests({ user, onChanged }) {
      to two places, which is what keeps a sum of quarter-hours from printing as
      12.299999999999999 — the figures themselves are already rounded to the
      policy's block by the engine, so this is float noise and nothing else. */
-  const totalHours = rows.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
+  /**
+   * ── WHAT อนุมัติให้ถอนทั้งหมด IS ACTUALLY ABOUT ──────────────────────────
+   *
+   * `rows` is everything open. `batch` is everything open THIS READER CAN
+   * DECIDE — which past a งวด's cutoff is not the same list, because the
+   * signer's two buttons on those rows are grey. A button headed "ทั้งหมด"
+   * that clears some of the list is a button that lies twice: in its name, and
+   * again in the failure list it produces when the server refuses the rest.
+   *
+   * `closed` is the part of that list whose งวด has passed — always empty for a
+   * หัวหน้า, since those rows are not in `batch` at all, and possibly non-empty
+   * for ฝ่ายบุคคล, who go through and must say why.
+   */
+  const batch = rows.filter((e) => !locked(e));
+  const closed = batch.filter((e) => past(e));
+  const totalHours = batch.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
 
   return (
     <div className="card flush">
@@ -149,11 +212,11 @@ export default function WithdrawalRequests({ user, onChanged }) {
             read, it does not commit anything, and the filled red on each card
             stays the mark of the press that writes. There is no
             ไม่อนุมัติทั้งหมด beside it — see the head of this file. */}
-        {rows.length > 1 && (
+        {batch.length > 1 && (
           <button
             className="btn ghost warn sm withdraw-batch"
             disabled={busy}
-            onClick={() => setGrantingAll(true)}
+            onClick={() => { setGrantingAll(true); setBatchNote(''); }}
           >
             อนุมัติให้ถอนทั้งหมด
           </button>
@@ -267,13 +330,47 @@ export default function WithdrawalRequests({ user, onChanged }) {
                   <> · <span className="withdraw-unsigned">ใบนี้ยังรอฝ่ายบุคคลยืนยัน</span></>
                 )}
               </div>
+              {/* ── งวดนี้ปิดไปแล้ว — DRAWN FOR EVERY READER ─────────────────
+                  A หัวหน้า needs it to understand why their two buttons are
+                  grey. ฝ่ายบุคคล, whose buttons still work, needs the same
+                  sentence as a warning that they are about to act where the
+                  signer no longer can — which is the แถบเตือน §8.6 of the plan
+                  asked for, already here, not written a second time.
+
+                  On the provenance line's own block and not beside the buttons,
+                  for the reason the status pill was taken off this card: a
+                  sentence next to a decision is read as a third decision. */}
+              {past(e) && (
+                <div className="hint">
+                  <span className="withdraw-unsigned">{cancelCutoffQueueNote(e, policy)}</span>
+                </div>
+              )}
             </div>
-            {/* Two buttons and nothing else: refuse the request, or grant it. */}
-            <div className="withdraw-actions">
-              <button className="btn ghost sm" disabled={busy} onClick={() => { setRefusing(e); setRefuseNote(''); }}>
+            {/* Two buttons and nothing else: refuse the request, or grant it.
+                Past the งวด's cutoff both are still DRAWN and both are dead for
+                anybody but ฝ่ายบุคคล — see the head of this component for why a
+                grey pair and not a sentence. The wrapper carries the whole
+                reason as its tooltip and as its `aria-label`, the way
+                `WatchActions` does in คิวรออนุมัติ; the visible half of it is
+                the line under the card, which everybody gets. */}
+            <div
+              className="withdraw-actions"
+              title={locked(e) ? cancelCutoffQueueNote(e, policy) : undefined}
+              aria-label={locked(e) ? cancelCutoffQueueNote(e, policy) : undefined}
+              role={locked(e) ? 'note' : undefined}
+            >
+              <button
+                className="btn ghost sm"
+                disabled={busy || locked(e)}
+                onClick={() => { setRefusing(e); setRefuseNote(''); }}
+              >
                 ไม่อนุมัติการถอน
               </button>
-              <button className="btn danger sm" disabled={busy} onClick={() => setGranting(e)}>
+              <button
+                className="btn danger sm"
+                disabled={busy || locked(e)}
+                onClick={() => setGranting(e)}
+              >
                 อนุมัติให้ถอน
               </button>
             </div>
@@ -285,11 +382,25 @@ export default function WithdrawalRequests({ user, onChanged }) {
         <Modal
           title="อนุมัติให้ถอนใบนี้"
           subtitle={`${granting.employee?.name} · ${thaiDate(granting.workDate)} · ${hours(granting.totals?.otHours)} ชม.`}
-          onClose={() => setGranting(null)}
+          onClose={() => { setGranting(null); setGrantNote(''); }}
+          dirty={grantNote.trim().length > 0}
           footer={(
             <>
-              <button className="btn ghost" onClick={() => setGranting(null)}>ยังไม่อนุมัติ</button>
-              <button className="btn danger" disabled={busy} onClick={() => decide(granting, true)}>
+              <button
+                className="btn ghost"
+                onClick={() => { setGranting(null); setGrantNote(''); }}
+              >
+                ยังไม่อนุมัติ
+              </button>
+              <button
+                className="btn danger"
+                /* Past the cutoff the reason is required, and the server says so
+                   too — `withdrawDecisionPermission` answers 400 without one.
+                   This is the half that stops anybody meeting that, not the
+                   rule: a gate that lives only here is a gate curl walks past. */
+                disabled={busy || (past(granting) && !grantNote.trim())}
+                onClick={() => decide(granting, true, past(granting) ? grantNote.trim() : undefined)}
+              >
                 ยืนยันการถอนใบ
               </button>
             </>
@@ -298,6 +409,31 @@ export default function WithdrawalRequests({ user, onChanged }) {
           <div style={{ font: '500 14px/1.6 var(--sans)' }}>
             เหตุผลที่พนักงานแจ้ง: {granting.withdrawal?.reason}
           </div>
+          {/* ── ฝ่ายบุคคล GOING THROUGH A CLOSED งวด ────────────────────────
+              Second warning on this dialog and it is about a different thing
+              from the one below it: that one says what a grant DOES, this says
+              whose decision it is standing in for. The หัวหน้า cannot press
+              these two buttons any more; ฝ่ายบุคคล can, and the record should
+              not have to be reconstructed later from the fact that they did.
+
+              NO ⚠️ IN THE TEXT — `Alert` draws its own mark from `mark`, which
+              defaults to true. */}
+          {past(granting) && (
+            <>
+              <Alert kind="warn">{cancelCutoffQueueNote(granting, policy)}</Alert>
+              <div className="field">
+                <label>เหตุผลที่ตัดสินหลังงวดปิด *</label>
+                <input
+                  value={grantNote}
+                  onChange={(ev) => setGrantNote(ev.target.value)}
+                  maxLength={200}
+                  placeholder="เช่น พนักงานแจ้งย้อนหลัง ตรวจสอบกับหัวหน้าแล้ว"
+                  autoFocus
+                />
+                <span className="field-note">บันทึกในใบนี้คู่กับผลการตัดสิน</span>
+              </div>
+            </>
+          )}
           {/* Said before anything else, because this is the button that moves
               money. The entry has been signed by at least one person and its
               hours are in the month's totals; a reviewer who thought this
@@ -335,6 +471,11 @@ export default function WithdrawalRequests({ user, onChanged }) {
           <div style={{ font: '500 14px/1.6 var(--sans)' }}>
             เหตุผลที่พนักงานแจ้ง: {refusing.withdrawal?.reason}
           </div>
+          {/* The same warning the grant dialog carries, and NO second field:
+              this box already required a reason before any of this existed, for
+              its own reason — the employee reads it. One box, one reason, and
+              the server is satisfied by the same string. */}
+          {past(refusing) && <Alert kind="warn">{cancelCutoffQueueNote(refusing, policy)}</Alert>}
           <div className="field">
             <label>เหตุผลที่ไม่อนุมัติ</label>
             <input
@@ -376,16 +517,25 @@ export default function WithdrawalRequests({ user, onChanged }) {
       {grantingAll && (
         <Modal
           title="อนุมัติให้ถอนทั้งหมด"
-          subtitle={`${rows.length} รายการ · รวม ${hours(totalHours)} ชม.`}
+          subtitle={`${batch.length} รายการ · รวม ${hours(totalHours)} ชม.`}
           wide
-          onClose={() => { if (!busy) setGrantingAll(false); }}
+          onClose={() => { if (!busy) { setGrantingAll(false); setBatchNote(''); } }}
+          dirty={batchNote.trim().length > 0}
           footer={(
             <>
-              <button className="btn ghost" disabled={busy} onClick={() => setGrantingAll(false)}>
+              <button
+                className="btn ghost"
+                disabled={busy}
+                onClick={() => { setGrantingAll(false); setBatchNote(''); }}
+              >
                 ยังไม่อนุมัติ
               </button>
-              <button className="btn danger" disabled={busy} onClick={grantAll}>
-                {busy ? `กำลังถอน ${done}/${rows.length}…` : `ยืนยันการถอนทั้ง ${rows.length} รายการ`}
+              <button
+                className="btn danger"
+                disabled={busy || (closed.length > 0 && !batchNote.trim())}
+                onClick={grantAll}
+              >
+                {busy ? `กำลังถอน ${done}/${batch.length}…` : `ยืนยันการถอนทั้ง ${batch.length} รายการ`}
               </button>
             </>
           )}
@@ -394,12 +544,38 @@ export default function WithdrawalRequests({ user, onChanged }) {
               one change: these entries do not share a month, so the sentence
               may not say "เดือนนี้". */}
           <Alert kind="warn">
-            ทั้ง {rows.length} รายการจะเปลี่ยนเป็น “ยกเลิก” ทันทีและ<strong>แก้กลับไม่ได้</strong> —
+            ทั้ง {batch.length} รายการจะเปลี่ยนเป็น “ยกเลิก” ทันทีและ<strong>แก้กลับไม่ได้</strong> —
             ชั่วโมงรวม {hours(totalHours)} ชม. จะถูกตัดออกจากเดือนที่แต่ละใบอยู่
             ทั้งจากเพดานของแผนกและจากรายงานส่งบัญชี
           </Alert>
+          {/* ── HOW MANY OF THEM ARE IN A CLOSED งวด, AND NOTHING WHEN NONE ARE
+              This whole block is absent unless at least one row needs it, so a
+              press in a month that is still open opens exactly the dialog it
+              opened before any of this existed — no count line, no field. The
+              gate must not appear where it has nothing to guard.
+
+              One reason for the press, written onto each of those rows. The
+              rows whose งวด is still open are not sent it — see `grantAll`. */}
+          {closed.length > 0 && (
+            <>
+              <div className="hint">
+                ในนั้น <strong>{closed.length} ใบ</strong> อยู่ในงวดที่ปิดไปแล้ว —
+                หัวหน้าตัดสินใบเหล่านั้นไม่ได้ การตัดสินนี้จึงเป็นการทำแทน
+              </div>
+              <div className="field">
+                <label>เหตุผลที่ตัดสินหลังงวดปิด *</label>
+                <input
+                  value={batchNote}
+                  onChange={(ev) => setBatchNote(ev.target.value)}
+                  maxLength={200}
+                  placeholder="เช่น พนักงานแจ้งย้อนหลัง ตรวจสอบกับหัวหน้าแล้ว"
+                />
+                <span className="field-note">บันทึกลงทั้ง {closed.length} ใบที่งวดปิดแล้ว</span>
+              </div>
+            </>
+          )}
           <div className="withdraw-batch-list">
-            {rows.map((e, i) => (
+            {batch.map((e, i) => (
               <div className="withdraw-batch-row" key={e._id}>
                 <div className="withdraw-batch-who">
                   <span className="withdraw-no">{i + 1}.</span>

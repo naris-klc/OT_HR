@@ -372,9 +372,15 @@ test('it still carries a note, and still decides nothing about months itself', (
   /**
    * The guard used to be ปิดงวด: `recomputeEntries` skipped a closed month
    * whatever it was asked to do, and this handler was forbidden to reach past
-   * that. ปิดงวด was withdrawn on 2026-08-31 (lib/periodStatus.js), so there is
-   * no month-level guard left anywhere — a corrected birth date now replays
-   * approved entries in every month, however old.
+   * that. ปิดงวด was withdrawn on 2026-08-31 (lib/periodStatus.js), so a
+   * corrected birth date now replays approved entries in every month, however
+   * old.
+   *
+   * IT READ "THERE IS NO MONTH-LEVEL GUARD LEFT ANYWHERE" UNTIL 2026-09-14.
+   * `cancelCutoffDay` is one, and it does not touch this: it refuses แก้ไข ·
+   * ยกเลิก · ขอถอนใบ · ตัดสินคำขอถอน to EMPLOYEES AND SIGNERS, and a replay is
+   * none of the four and is run by ผู้ดูแลระบบ, whom it never refuses. The
+   * sentence below is the one that still holds.
    *
    * The assertion is kept and its reason is the one that outlived the lock: a
    * route that starts deciding for itself which months a replay may touch is a
@@ -428,6 +434,14 @@ test('3 · ฝ่ายบุคคล cannot replay entries that were signed of
  * along with the thing they could. What remains of that argument is item 3
  * above — `authorizeReplay` is admin-only for exactly the same reason, and it
  * is now the only path by which a signed-off figure moves.
+ *
+ * `cancelCutoffDay` (2026-09-14) IS NOT A SEVENTH, and the difference is worth
+ * saying because it is a month-level rule and that is what the six are about.
+ * The asymmetry above was that ฝ่ายบุคคล could close a งวด and not reopen it.
+ * This one HR does not press and is never refused by: it closes four presses to
+ * employees and signers, and HR going through it is the ordinary case rather
+ * than an override that needs a second role. Nothing here has to say what HR
+ * may not do, because there is nothing.
  */
 
 test('4 · ฝ่ายบุคคล cannot read บันทึกระบบ, by any of its three doors', () => {

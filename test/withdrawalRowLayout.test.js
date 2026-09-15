@@ -249,7 +249,13 @@ test('the count is in the heading, and it is printed there once', () => {
 test('อนุมัติให้ถอนทั้งหมด is drawn above two or more, and never above one', () => {
   // On a single request it would do exactly what the button on the card below
   // it does, phrased as though it did more.
-  assert.match(head, /\{rows\.length > 1 && \(/);
+  //
+  // COUNTED OFF `batch` AND NOT `rows` SINCE 2026-09-14. `rows` is every open
+  // request; `batch` is the ones THIS READER can decide, which past a งวด's
+  // cutoff is a shorter list — those rows' two buttons are grey for a หัวหน้า.
+  // A button headed ทั้งหมด that clears part of the list lies twice: in its
+  // name, and again in the failure list the server hands back for the rest.
+  assert.match(head, /\{batch\.length > 1 && \(/);
   assert.match(head, /อนุมัติให้ถอนทั้งหมด/);
   // Amber OUTLINE. It commits nothing — it opens a list to read — and the card
   // below it holds a filled red on every row: a second filled thing in the
@@ -274,7 +280,7 @@ test('the batch box prints every reason in full — it is a list, not a count', 
   // has to open something to find out why they are being asked will grant on
   // the strength of having been asked. Ten at once multiplies that argument,
   // it does not weaken it.
-  assert.match(batch, /rows\.map\(\(e, i\) =>/);
+  assert.match(batch, /batch\.map\(\(e, i\) =>/);
   assert.match(batch, /withdraw-reason[\s\S]{0,200}e\.withdrawal\?\.reason/);
   assert.match(batch, /hours\(e\.totals\?\.otHours\)/);
   // The total, and the same irreversibility warning the single-row box gives —
@@ -292,7 +298,7 @@ test('the grants are written one at a time, in order, and a failure is named', (
   // Not `Promise.all`: each grant cancels an entry, and a cancel moves the
   // department's cap usage and the month's totals.
   assert.ok(!/Promise\.all/.test(fn), 'the batch fires its writes at once');
-  assert.match(fn, /for \(const e of rows\) \{/);
+  assert.match(fn, /for \(const e of batch\) \{/);
   assert.match(fn, /await api\.post\(`\/entries\/\$\{e\._id\}\/withdraw\/decide`/);
   // What failed is said, not counted — "3 รายการไม่สำเร็จ" tells a reviewer
   // nothing they can act on, and the rows are still on the reloaded list.

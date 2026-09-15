@@ -603,6 +603,15 @@ export const DEFAULT_POLICY = Object.freeze({
    *        past. Left at null rather than given a number here, because picking
    *        one is exactly the decision this key exists to leave to HR — but it
    *        is a decision they have not been asked to make yet.
+   *
+   *        STILL TRUE OF FILING, AND ONLY OF FILING, since 2026-09-14.
+   *        `cancelCutoffDay` below closes an entry's period to แก้ไข · ยกเลิก ·
+   *        ขอถอนใบ · ตัดสินคำขอถอน after a day of the following month — so a
+   *        request filed today for a day in March may well arrive already past
+   *        its own cutoff, unlimited filing and all. The two are different
+   *        rules on different code paths: this one guards `workDate` at the
+   *        moment of writing, that one guards what may be done to the entry
+   *        afterwards.
    * n    — a positive number of days.
    *
    * THE MIRROR OF `maxAdvanceSubmissionDays` ABOVE, AND NOT ITS EQUAL. The two
@@ -635,6 +644,58 @@ export const DEFAULT_POLICY = Object.freeze({
    * that neither direction can be checked in a path that forgot the other.
    */
   maxPastSubmissionDays: null,
+
+  // ── แก้ไข ยกเลิก และถอนใบ ได้ถึงวันที่เท่าไรของเดือนถัดไป ──────────────────
+  /**
+   * The day of the FOLLOWING month after which an entry's own period closes
+   * itself, and แก้ไข · ยกเลิก · ขอถอนใบ · ตัดสินคำขอถอน stop being possible on
+   * it. Asked for by the user on 2026-09-14; designed in
+   * docs/plan-cancel-cutoff-day.md.
+   *
+   * null — ไม่กำหนด (DEFAULT). No cutoff at all; every one of those four presses
+   *        behaves exactly as it did before this key existed. Shipped off
+   *        because switching it on takes a button away from every employee in
+   *        the company, and that is HR's decision to make rather than a default
+   *        to arrive in a deploy.
+   * 1–15 — a day of the month. An entry whose `workDate` falls in งวด 2026-08
+   *        may be touched until the Dth of 2026-09, inclusive of that whole day,
+   *        and not afterwards.
+   *
+   * MEASURED FROM THE ENTRY'S OWN PERIOD, not from the day it was filed. An
+   * entry filed today for a day two months ago is already past its cutoff at the
+   * moment it is written — deliberately, and confirmed twice. A minimum measured
+   * from the filing date was designed, offered and refused; see §1 of the plan,
+   * which keeps the refusal on the record so nobody adds it back believing it
+   * was forgotten.
+   *
+   * ฝ่ายบุคคล AND ผู้ดูแลระบบ ARE NEVER REFUSED. `mayCorrectEntries` is the first
+   * line of `cancelCutoffRefusal` in lib/entries.js, so the exception is spelled
+   * once for all four call sites. THIS IS THE WHOLE DIFFERENCE BETWEEN THIS KEY
+   * AND ปิดงวด, which closed HR's own correction path and was withdrawn on
+   * 2026-08-31 for exactly that (lib/periodStatus.js). A proposal to make HR
+   * feel this key is a proposal to bring ปิดงวด back, and belongs in front of HR
+   * before it belongs in code.
+   *
+   * MEASURED AGAINST THE OFFICE'S OWN DAY — `today()` in lib/today.js, never
+   * `new Date().getDate()`, for the reason written over
+   * `maxAdvanceSubmissionDays` above.
+   *
+   * A VALUE THAT DOES NOT READ AS 1–28 IS TREATED AS ไม่กำหนด, not as the
+   * strictest thing available — a rule that breaks open is better than a rule
+   * that breaks locking everybody out of their own entries, and there is no
+   * minimum here to catch the fall.
+   *
+   * NOT ARITHMETIC (see COSMETIC_KEYS in lib/policyVersion.js), and the case is
+   * stronger than for the two keys above: `computeSession` is never handed this
+   * key at all, so no stored figure can go stale when it moves. A replay could
+   * not restate it even if it wanted to — the rule asks what today's date is,
+   * and a replay always runs on a day that has already moved on.
+   *
+   * NOT A STATUS AND NOT STORED ANYWHERE. Nothing records that a period has
+   * closed; `cancelDeadline` and `isPastCancelCutoff` in lib/entries.js are pure
+   * functions that answer when asked.
+   */
+  cancelCutoffDay: null,
 });
 
 /**

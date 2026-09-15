@@ -2,6 +2,7 @@ import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { POPULATE, cancelPermission } from '@/lib/entries.js';
+import Setting from '@/src/models/Setting.js';
 
 /**
  * §6: own request, while nobody has approved it.
@@ -28,7 +29,14 @@ export const POST = route(async (req, { params }) => {
   const entry = await OtEntry.findById(params.id);
   if (!entry) return fail('ไม่พบรายการ', 404);
 
-  const allowed = cancelPermission(user, entry);
+  /**
+   * THIS ROUTE SERVES TWO ACTS, and the month wall must only reach one of them.
+   * ฝ่ายบุคคล retracting a row the SYSTEM wrote comes back as `action: 'void'`
+   * and is the only way such a row ever disappears (lib/entries.js). The rule
+   * lets HR through on its first line, so the separation is already right here
+   * — test/cancelCutoff.test.js pins it rather than leaving it a by-product.
+   */
+  const allowed = cancelPermission(user, entry, { policy: await Setting.effectivePolicy() });
   if (!allowed.ok) return fail(allowed.error, allowed.status);
 
   const from = entry.status;

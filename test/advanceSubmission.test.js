@@ -132,7 +132,11 @@ const screen = readFileSync(
 
 test('the settings page has a row for it, in its own block', () => {
   assert.match(screen, /key: 'maxAdvanceSubmissionDays'/);
-  assert.match(screen, /\{ id: 5, title: 'กรอบเวลาการยื่นใบ OT' \}/);
+  // It read 'กรอบเวลาการยื่นใบ OT' until 2026-09-14, when `cancelCutoffDay`
+  // joined the block — a date rule that is not about filing at all. The
+  // assertion pins the id and not the wording, because what this test is
+  // protecting is that the row has a heading to sit under.
+  assert.match(screen, /\{ id: 5, title: '[^']+' \}/);
   // The block is the ORDER of POLICY_FIELDS, not a lookup — a field carrying an
   // id no section declares would draw no heading at all.
   const field = screen.slice(screen.indexOf("key: 'maxAdvanceSubmissionDays'"));

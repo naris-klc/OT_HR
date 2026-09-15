@@ -3,6 +3,7 @@ import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { POPULATE } from '@/lib/entries.js';
 import { withdrawRequestPermission, withdrawalRequest } from '@/lib/withdrawal.js';
+import Setting from '@/src/models/Setting.js';
 
 /**
  * ขอถอนใบ — the employee asking for a signed entry to be taken back.
@@ -25,7 +26,10 @@ export const POST = route(async (req, { params }) => {
   const entry = await OtEntry.findById(params.id);
   if (!entry) return fail('ไม่พบรายการ', 404);
 
-  const may = withdrawRequestPermission(user, entry, payload?.reason);
+  // Straight through `withdrawEligibility`, which is where the month wall sits.
+  const may = withdrawRequestPermission(user, entry, payload?.reason, {
+    policy: await Setting.effectivePolicy(),
+  });
   if (!may.ok) return fail(may.error, may.status);
 
   entry.withdrawal = withdrawalRequest(user, may.reason);

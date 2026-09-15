@@ -2636,6 +2636,12 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    signature, not two, so granting takes back a figure ฝ่ายบุคคล never
    confirmed. A clause in the provenance line and not a chip — a chip is what
    was mistaken for a button, and nothing in this column can be pressed. */
+/* Two sentences wear this now, and they are the same KIND of sentence: a grey
+   clause at the foot of the card's prose, saying something true about the row
+   that is not a decision to be made about it. The second, since 2026-09-14, is
+   งวดนี้ปิดไปแล้ว — which on a หัวหน้า's screen is why the two buttons above it
+   are grey, and on ฝ่ายบุคคล's is the warning that they are about to act where
+   the signer no longer can. Neither may look like a third button. */
 .withdraw-unsigned { font-weight: 600; color: var(--ink-2); }
 
 /* ── อนุมัติให้ถอนทั้งหมด ────────────────────────────────────────────────────

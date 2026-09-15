@@ -1051,6 +1051,35 @@ migration ตัดสินใจเองได้
 ว่าทุกกฎในหน้านี้อยู่ที่ฝั่งเซิร์ฟเวอร์ และไม่มีปุ่มไหนถูกยื่นให้คนที่เซิร์ฟเวอร์
 จะปฏิเสธ
 
+#### ปุ่มที่กดไม่ได้ วาดสามแบบ ไม่ใช่แบบเดียว
+
+**แอปนี้ตอบ "กดไม่ได้" ด้วยสามรูปร่าง และเลือกด้วยคำถามเดียว** เขียนไว้ที่นี่ตั้งแต่
+2026-09-14 · ก่อนหน้านั้นกฎข้อนี้มีอยู่จริงและถูกใช้จริงทั้งสามชั้น แต่เหตุผลอยู่ใน
+คอมเมนต์ของ `components/HrEntries.jsx` กับ `app/styles.css` เท่านั้น จอที่สี่ที่ต้อง
+ใช้มันคือหน้าที่ทำวันตัดของงวด และการต้องไปอ่านคอมเมนต์ของจออื่นเพื่อรู้ว่าจอตัวเอง
+ควรวาดอะไร คือรูปแบบที่ทำให้จอที่ห้าเดาเอง
+
+| สถานการณ์ | จอวาดอะไร |
+|---|---|
+| คนอ่านทำสิ่งนี้ไม่ได้เลยทั้งจอ | **ไม่วาดอะไรเลย** |
+| การกดนั้น**ยังจะเกิดขึ้น** แต่ไม่ใช่โดยคนอ่าน | **ปุ่มเทา กดไม่ได้ + เหตุผล** |
+| การกดนั้น**จะไม่เกิดขึ้นอีก** กับใครก็ตาม | **ประโยคยืนแทนปุ่ม** |
+
+**เส้นแบ่งคือ "การกดนั้นยังมีอยู่ไหม" ไม่ใช่ "คนอ่านคนนี้จะได้กดไหม"** ปุ่มเทาคือ
+*รูปร่างของการตัดสินที่ยังมีอยู่* — คิวรออนุมัติวาดมันให้แถวที่หัวหน้าเซ็นไปแล้วและ
+แถวใบของตัวเอง ซึ่งคนอ่านไม่มีวันกดได้อีกเลย เพราะ**คนอื่นยังกดอยู่** · ส่วนประโยค
+แปลว่าไม่มีการตัดสินนั้นเหลือแล้ว
+
+วันตัดของงวดใช้กฎนี้แล้วได้คำตอบคนละข้างบนสองจอ และนั่นถูกต้อง: **คิวคำขอถอน**
+ได้ปุ่มเทา เพราะฝ่ายบุคคลยังตัดสินคำขอใบนั้นได้ เป็นการกดอันเดียวกัน · **แถวของ
+พนักงาน** ได้ประโยค `หมดเวลาแก้ไข` เพราะ `ยกเลิก` ของพนักงานไม่มีใครกดแทนได้ ทางของ
+ฝ่ายบุคคลคือ `hr_edit` ซึ่งเป็นคนละการกระทำบนคนละจอ
+
+**ประโยคต้องขึ้นเฉพาะตรงที่ปุ่มจะถูกวาดถ้าไม่ติดกฎนั้น** ประโยคที่ยืนอยู่ตรงที่ปุ่ม
+หายไปด้วยเหตุผลอื่น จะถูกอ่านว่าเป็นคำอธิบายของเหตุผลนั้น และมันโกหก — ดูคำเตือนใน
+`components/HrEntries.jsx` และคำถามย้อนสมมุติใน `components/EmployeeView.jsx` ที่
+เป็นวิธีเลี่ยง
+
 ### เจ็ดบทบาท — และคำว่า `manager` ที่ถูกปลดระวาง
 
 บทบาทเพิ่มจากสี่เป็นเจ็ดเมื่อ **2026-09-03** รายชื่อกับชื่อภาษาไทยอยู่ที่
@@ -1348,7 +1377,8 @@ lookup ที่ไม่เจออะไรกับบทบาทที่�
 | เซ็นขั้นหัวหน้าในฐานะ **ผู้รับช่วง** | ✅ | ✅ | `DELEGATE_ROLES` |
 | เซ็นขั้นหัวหน้า **แทนแผนกที่ไม่มีหัวหน้า** | ❌ | ✅ *(ต้องระบุเหตุผล)* | `mayOverrideManagerStep` |
 | เซ็นทั้งสองขั้นของใบเดียวกัน | ❌ | ❌ | `signedManagerStep` — §6 |
-| แก้ไขใบที่ยังไม่ปิด | ✅ | ✅ | `editPermission` |
+| แก้ไขใบที่ยังไม่ปิด | ✅ | ✅ | `editPermission` — **ไม่ติดวันตัดของงวด** ดูแถวถัดไป |
+| ตั้งวันตัดของงวด (แก้ไข/ยกเลิก/ถอนใบ ได้ถึงวันที่เท่าไรของเดือนถัดไป) | ✅ | ✅ | `cancelCutoffDay` · `cancelCutoffRefusal` — พ้นวันนั้นแล้วพนักงานกับผู้เซ็นทำสี่อย่างนั้นไม่ได้ **สองบทบาทนี้ผ่านเสมอ** ซึ่งคือทั้งหมดของความต่างจาก ปิดงวด ที่ถูกถอนไป |
 | **งวดและตัวเลข** | | | |
 | ดูสรุปสถานะงวด | ✅ | ✅ | `/api/periods/[period]` — ทุกคนที่ล็อกอินอ่านได้ |
 | คำนวณใหม่ (ใบที่ยังไม่อนุมัติ) | ✅ | ✅ | `authorizeReplay` |
@@ -1575,6 +1605,12 @@ route ปฏิเสธ — และแผนกที่ **ฝ่ายบุ
   นี่คือการอ่านกฎของฝ่ายบุคคลตามที่ตั้งใจ ไม่ใช่ช่องที่เหลือไว้ — วันเกิดที่บันทึกผิด
   ทำให้กระดาษผิดตั้งแต่วันที่พิมพ์ สิ่งที่การแก้ติดค้างไว้คือ*ความเห็นได้* ไม่ใช่
   *ความยับยั้ง* ซึ่งคือสามข้อที่เหลือ
+
+  **หัวข้อนี้เคยอ่านว่า "ไม่มีกำแพงระดับเดือนแล้ว" เฉย ๆ จนถึง 2026-09-14**
+  `cancelCutoffDay` เป็นกำแพงระดับเดือน แต่ไม่ได้อยู่ตรงนี้: มันปิด แก้ไข ·
+  ยกเลิก · ขอถอนใบ · ตัดสินคำขอถอน ให้**พนักงานกับผู้เซ็น** ส่วนการคำนวณใหม่ไม่ใช่
+  หนึ่งในสี่อย่างนั้น และคนสั่งคือผู้ดูแลระบบซึ่งกฎข้อนั้นไม่เคยปฏิเสธ · ย่อหน้า
+  ข้างบนจึงยังจริงทุกคำ แค่ประโยคหัวข้อกว้างเกินไปแล้ว
 - **ทุกใบที่ตัวเลขขยับจริงจะเก็บภาพ `before` ไว้** พร้อมบรรทัด `recompute` ที่ถือ
   `BIRTHDATE_REPLAY_NOTE` การแถลงตัวเลขใหม่จึงโผล่ใน ประวัติรายการ ข้าง ๆ การแก้ไข
   ธรรมดา
@@ -2043,7 +2079,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     150 files, run by `npm test`. Six named below as a
+test/                     152 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2056,9 +2092,15 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2692 tests
-across 150 files**, measured 2026-09-15 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2736 tests
+across 152 files**, measured 2026-09-15 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2692 tests across 150 files … measured 2026-09-15" until **งวดปิดเองเมื่อพ้น
+วันตัด**, which added `cancelCutoff` (24) and `cancelCutoffScreens` (20) — the
+whole of the difference, because the rule is pure and every existing case about
+`editPermission`, `cancelPermission` and `withdrawEligibility` was left
+untouched on purpose: not passing a policy is still the old answer, exactly.
+It read
 "2689 tests across 150 files … measured 2026-09-14" until the filters on
 ประวัติการแก้ทะเบียน were folded onto one bar the next day — three cases in
 `filterBar`, and NO new file, because that file is where "every filter bar in
@@ -13665,12 +13707,33 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2692 tests**, about 4 s, measured 2026-09-15 across 150
-  files, all green. **NO NEW FILE in the round that moved it off 2689** — the
-  four filters on ประวัติการแก้ทะเบียน became a `.queue-tools` bar, and the
-  three cases went into `filterBar`, which is the file that holds the rule they
-  are an instance of. It read "2689 tests … measured 2026-09-14" until then.
-  **`rosterFilters` is the new file of the round before it** — ทะเบียนพนักงาน's
+- `npm test` — **2736 tests**, about 4 s, measured 2026-09-15 across 152
+  files, all green. **`cancelCutoff` and `cancelCutoffScreens` are the new
+  files** — งวดปิดเองเมื่อพ้นวันตัด, 24 cases on the rule and 20 on the three
+  screens that obey it. Almost nothing existing needed changing, which is the
+  property the rule was built for: `editPermission`, `cancelPermission` and
+  `withdrawEligibility` take the policy in a trailing options object, and not
+  passing one is the old answer exactly. Two cases are worth naming. One pins
+  the ORDER inside `editPermission` — a rejected entry past the cutoff still
+  gets กด “ส่งใหม่” and not the period message, because that advice still works
+  and the wall has nothing to add to it. The other pins that
+  `isPastCancelCutoff` answers **true** for ฝ่ายบุคคล where
+  `cancelCutoffRefusal` answers **null**: they differ for exactly one reader,
+  and if they ever agreed the warning on HR's own form would silently never
+  appear again.
+  **Three existing files changed their assertions and none changed its
+  subject**: `advanceSubmission` stopped pinning the wording of block 5's title
+  (a third row joined it that is not about filing), and `withdrawalRowLayout`
+  now reads `batch` where it read `rows` — อนุมัติให้ถอนทั้งหมด counts what
+  this reader can actually decide.
+- It read "**2692 tests**, about 4 s, measured 2026-09-15 across 150 files" until
+  then, and "**2689 tests** … measured 2026-09-14" before that. **NO NEW FILE in
+  the round that moved it off 2689** — the four filters on ประวัติการแก้ทะเบียน
+  became a `.queue-tools` bar, and the three cases went into `filterBar`, which
+  is the file that holds the rule they are an instance of. Each quoted figure is
+  kept on ONE line deliberately: the check that a live count is claimed once
+  strips quoted history, and its regex does not cross a newline.
+  **`rosterFilters` was the new file the round before that** — ทะเบียนพนักงาน's
   ตำแหน่ง · แผนก · บทบาท, and half its cases never touch a component: what each
   box may offer is `lib/rosterFilters.js`'s arithmetic over a roster, and the
   two rules worth pinning — every list narrowed by the other two boxes, and the
