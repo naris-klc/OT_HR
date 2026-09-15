@@ -6270,11 +6270,11 @@ const POLICY_SECTIONS = [
   { id: 3, title: 'สิทธิ์วันเกิด และวันหยุดพิเศษ' },
   { id: 4, title: 'เวิร์กโฟลว์ และเพดานชั่วโมง' },
   /**
-   * WHICH DATES MAY BE FILED AT ALL — a question neither of the other four
-   * blocks asks.
+   * WHAT THE CALENDAR IS ALLOWED TO DECIDE — a question neither of the other
+   * four blocks asks.
    *
    * They answer "how are the hours worked out" and "who signs it". Folded into
-   * เวิร์กโฟลว์ these two would sit under a heading about desks and ceilings,
+   * เวิร์กโฟลว์ these rows would sit under a heading about desks and ceilings,
    * between rules that have nothing to do with a calendar, and the reader
    * looking for them would have no block to look in.
    *
@@ -6282,10 +6282,18 @@ const POLICY_SECTIONS = [
    * ย้อนหลัง are the same rule pointed in opposite directions, they are read
    * together, and neither is comprehensible beside a rule about break
    * deductions. The backward one shared the job with ปิดงวด until 2026-08-31;
-   * that feature was withdrawn (lib/periodStatus.js), so it is now the only
-   * backward limit there is and this page is the only place it can be set.
+   * that feature was withdrawn (lib/periodStatus.js), so it is the only
+   * backward limit on FILING there is and this page is the only place to set it.
+   *
+   * IT READ "WHICH DATES MAY BE FILED AT ALL" AND THE TITLE READ
+   * 'กรอบเวลาการยื่นใบ OT' UNTIL 2026-09-14. Both were true of two rows about
+   * filing and went narrow the moment a third arrived that is not about filing
+   * at all: `cancelCutoffDay` governs what may be done to an entry AFTERWARDS —
+   * corrected, cancelled, withdrawn — and an entry filed perfectly legally can
+   * be past it the same second. What all three share is that a DATE decides,
+   * which is what the block is now named for.
    */
-  { id: 5, title: 'กรอบเวลาการยื่นใบ OT' },
+  { id: 5, title: 'กรอบเวลาของใบ OT — ยื่น แก้ไข และถอน' },
 ];
 
 const POLICY_FIELDS = [
@@ -6743,8 +6751,11 @@ const POLICY_FIELDS = [
     // The one clause worth missing is that ฝ่ายบุคคล can still file what an
     // employee no longer can; `warn` below says it, on every setting that makes
     // it true, which is where somebody is in a position to act on it.
+    // The parenthesis read '— ตั้งแต่ยกเลิกการปิดงวด นี่คือตัวคุมย้อนหลังตัวเดียว
+    // ที่เหลือ' until 2026-09-14, when the row below arrived. It is still the
+    // only backward limit on FILING; it stopped being the only backward limit.
     hint: 'กำหนดระยะเวลาย้อนหลังที่พนักงานยื่น OT ได้นับจากวันที่ทำ '
-      + '(“ไม่จำกัด” = ย้อนหลังได้ไม่จำกัด — ตั้งแต่ยกเลิกการปิดงวด นี่คือตัวคุมย้อนหลังตัวเดียวที่เหลือ)',
+      + '(“ไม่จำกัด” = ย้อนหลังได้ไม่จำกัด — คุมเฉพาะการยื่น ส่วนการแก้ไขและถอนใบอยู่แถวถัดไป)',
     /**
      * On EVERY number, not on one end. The row above warns only about ไม่จำกัด,
      * because its other answers refuse nothing that exists. Every number here
@@ -6756,6 +6767,59 @@ const POLICY_FIELDS = [
       : `⚠️ พนักงานที่กลับมาจากลาป่วยหรือไปทำงานต่างจังหวัดเกิน ${value} วัน `
         + 'จะบันทึก OT ที่ทำไปแล้วไม่ได้เลย — ต้องให้ฝ่ายบุคคลเป็นผู้บันทึกให้ '
         + '· ระบบไม่มีช่องผ่อนผันรายใบสำหรับข้อนี้'),
+  },
+  {
+    section: 5,
+    key: 'cancelCutoffDay', num: true, nullable: true,
+    /**
+     * THE LABEL NAMES ALL THREE VERBS, AND IT IS LONG BECAUSE OF IT.
+     *
+     * A shorter one naming only ยกเลิก and ถอน would read correctly and be
+     * false by omission — แก้ไข is in this rule too, it is the most used of the
+     * three, and a name that leaves it out lets somebody set a day here without
+     * knowing they just took the แก้ไข button off every employee in the
+     * company. If this needs shortening, shorten the `hint`.
+     */
+    label: 'แก้ไข ยกเลิก และถอนใบ ได้ถึงวันที่เท่าไรของเดือนถัดไป',
+    /**
+     * ไม่กำหนด FIRST, as on the row above and for the same reason: it is the
+     * shipped answer and the first option reads as the recommended one. Turning
+     * this on takes a button away from everybody at once, and that is HR's call
+     * to make deliberately rather than a default that arrived in a deploy.
+     *
+     * The numbers stop at 15. February is why the ceiling is not 31 — วันที่ 30
+     * ของเดือนถัดไป would be a deadline that does not exist every spring — and
+     * 15 rather than 28 because a cutoff is a few days after a งวด ends or it
+     * is not a cutoff.
+     */
+    options: [
+      [null, 'ไม่กำหนด — แก้ไข ยกเลิก และถอนใบได้ตลอด (ค่าเริ่มต้น)'],
+      [1, 'ถึงวันที่ 1 ของเดือนถัดไป'],
+      [2, 'ถึงวันที่ 2 ของเดือนถัดไป'],
+      [3, 'ถึงวันที่ 3 ของเดือนถัดไป'],
+      [5, 'ถึงวันที่ 5 ของเดือนถัดไป'],
+      [7, 'ถึงวันที่ 7 ของเดือนถัดไป'],
+      [10, 'ถึงวันที่ 10 ของเดือนถัดไป'],
+      [15, 'ถึงวันที่ 15 ของเดือนถัดไป'],
+    ],
+    hint: 'นับจากงวดของใบ ไม่ใช่จากวันที่กด — ใบของเดือน ส.ค. แก้ไขหรือยกเลิกได้ถึงวันที่ที่เลือกในเดือน ก.ย. '
+      + '(ฝ่ายบุคคลและผู้ดูแลระบบไม่ติดข้อนี้) · วันที่ที่เลือกยังกดได้ทั้งวัน',
+    /**
+     * THREE CLAUSES BECAUSE THERE ARE THREE CONSEQUENCES, and two of them
+     * cannot be worked out from the label.
+     *
+     * The first is what the label says. The second — that a หัวหน้า sitting on
+     * an open คำขอถอน loses the ability to answer it — is a queue filling up in
+     * a screen the person setting this may never open. The third is that an
+     * entry filed late across a month boundary is past this deadline the second
+     * it exists, which is not a bug and is the direct consequence of a minimum
+     * that was offered and refused. Delete either and somebody sets 3 without
+     * knowing.
+     */
+    warn: (value) => (value === null ? '' :
+      `⚠️ พ้นวันที่ ${value} แล้ว พนักงานแก้ไข ยกเลิก หรือขอถอนใบของงวดนั้นเองไม่ได้ `
+      + 'และหัวหน้าตัดสินคำขอที่ค้างอยู่ไม่ได้ด้วย — เหลือทางเดียวคือฝ่ายบุคคล '
+      + `· ใบที่ยื่นย้อนหลังข้ามเดือนจะเลยวันที่ ${value} ตั้งแต่วินาทีที่ยื่น`),
   },
 ];
 

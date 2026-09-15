@@ -14,6 +14,7 @@ import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { normaliseDescription } from '@/src/config/policy.js';
+import Setting from '@/src/models/Setting.js';
 
 /**
  * THERE IS NO `GET` HERE, AND THERE HAS NOT BEEN SINCE 2026-09-11.
@@ -41,7 +42,14 @@ export const PATCH = route(async (req, { params }) => {
   // Who may rewrite this, and what the edit is called in the history. The rule
   // itself lives in lib/entries.js so it can be read — and tested — on its own.
   const reason = String(payload.note || '').trim();
-  const may = editPermission(user, entry, reason);
+  /**
+   * THE POLICY IN FORCE TODAY, not the one the งวด was computed under.
+   * `cancelCutoffDay` answers "may this be touched now", which is a question
+   * about this morning; `versionForDate` answers "what were the hours worth
+   * then", which is a different one. Same choice `maxPastSubmissionDays` makes.
+   */
+  const policy = await Setting.effectivePolicy();
+  const may = editPermission(user, entry, reason, { policy });
   if (!may.ok) return fail(may.error, may.status);
 
   // What the entry says now, captured before anything overwrites it. F-HR-027

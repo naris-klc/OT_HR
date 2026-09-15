@@ -53,6 +53,22 @@ export const GET = route(async (req) => {
        */
       maxAdvanceSubmissionDays: policy.maxAdvanceSubmissionDays,
       maxPastSubmissionDays: policy.maxPastSubmissionDays,
+      /**
+       * วันตัดของงวด — and for this one the browser NEEDS it, which is not true
+       * of everything above.
+       *
+       * The two windows above only refine a date picker; get them wrong and a
+       * write path still says no correctly. This key decides whether a BUTTON
+       * IS DRAWN AT ALL. รายการของฉัน takes แก้ไข · ยกเลิก · ขอถอนใบ away and
+       * puts a sentence in their place, which it can only do by knowing the
+       * answer BEFORE it renders — there is no dialog left to ask in. Leave this
+       * out and every employee keeps a set of buttons the server refuses, which
+       * is the one thing README §สิทธิ์ says a screen may not do.
+       *
+       * Sent as it stands, null included. Absent and null mean the same thing
+       * here (ไม่กำหนด), unlike `maxAdvanceSubmissionDays` above.
+       */
+      cancelCutoffDay: policy.cancelCutoffDay,
     },
   });
 });

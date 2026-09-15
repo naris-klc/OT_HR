@@ -2043,7 +2043,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     150 files, run by `npm test`. Six named below as a
+test/                     151 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2056,9 +2056,14 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2689 tests
-across 150 files**, measured 2026-09-14 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2713 tests
+across 151 files**, measured 2026-09-15 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2689 tests across 150 files" until **งวดปิดเองเมื่อพ้นวันตัด**, which added
+`cancelCutoff` and 24 cases — the whole of the difference, because the rule is
+pure and every existing case about `editPermission`, `cancelPermission` and
+`withdrawEligibility` was left untouched on purpose: not passing a policy is
+still the old answer, exactly. And it read
 "2667 tests across 149 files" until **ทะเบียนพนักงานได้ตัวกรอง ตำแหน่ง · แผนก ·
 บทบาท** later the same day — `rosterFilters` is the new file, and `lib/` gained
 one too: the rule about what the three boxes may OFFER is arithmetic over a
@@ -13643,8 +13648,19 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2689 tests**, about 4 s, measured 2026-09-14 across 150
-  files, all green. **`rosterFilters` is the new file** — ทะเบียนพนักงาน's
+- `npm test` — **2713 tests**, about 4 s, measured 2026-09-15 across 151
+  files, all green. **`cancelCutoff` is the new file** — งวดปิดเองเมื่อพ้นวัน
+  ตัด, and the whole 24-case difference is in it. Nothing existing needed
+  changing, which is the property the rule was built for: `editPermission`,
+  `cancelPermission` and `withdrawEligibility` take the policy in a trailing
+  options object, and not passing one is the old answer exactly. The one case
+  worth naming pins the ORDER inside `editPermission` — a rejected entry past
+  the cutoff still gets กด “ส่งใหม่” and not the period message, because that
+  advice still works and the wall has nothing to add to it.
+- It read "**2689 tests**, about 4 s, measured 2026-09-14 across 150 files" until
+  then — the quoted figure is kept on ONE line deliberately, because the check
+  that a live count is claimed once strips quoted history and its regex does not
+  cross a newline. **`rosterFilters` was the new file that round** — ทะเบียนพนักงาน's
   ตำแหน่ง · แผนก · บทบาท, and half its cases never touch a component: what each
   box may offer is `lib/rosterFilters.js`'s arithmetic over a roster, and the
   two rules worth pinning — every list narrowed by the other two boxes, and the

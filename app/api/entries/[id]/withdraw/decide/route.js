@@ -6,6 +6,7 @@ import { POPULATE, DECIDE_POPULATE } from '@/lib/entries.js';
 import { withdrawDecisionPermission, withdrawalDecision } from '@/lib/withdrawal.js';
 import { historyExtra } from '@/lib/delegation.js';
 import { heldBy, today } from '@/lib/delegationQuery.js';
+import Setting from '@/src/models/Setting.js';
 
 /**
  * อนุมัติ หรือ ปฏิเสธ คำขอถอนใบ.
@@ -40,6 +41,15 @@ export const POST = route(async (req, { params }) => {
     delegations: await heldBy(user, on),
     today: on,
     verb,
+    /**
+     * `policy` closes this press to signers once the งวด has passed its cutoff
+     * — measured at `on`, so a request asked in time and left sitting is out of
+     * their hands. `note` is the other half: past the cutoff ฝ่ายบุคคล may
+     * still decide, and must say why. Both enforced HERE and not only in the
+     * dialog, because a rule that lives on a screen is a rule curl walks past.
+     */
+    policy: await Setting.effectivePolicy(),
+    note: payload?.note,
   });
   if (!may.ok) return fail(may.error, may.status);
 
