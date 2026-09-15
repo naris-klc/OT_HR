@@ -10,7 +10,7 @@ import { capChips, capFigure } from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
 import {
   ENTERED_FIELDS, filingLead, filingOf, idOf, isBirthdayWelfare, isHrVerifiedBirthday,
-  isProxyFiled, isSystemFiled, isSystemLog, lastAction, sameSession, sameValue,
+  isProxyFiled, isSystemLog, lastAction, sameSession, sameValue,
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople, textMatches } from '@/lib/personSearch.js';
 import {
@@ -674,11 +674,11 @@ const ACTION_META = {
   // says who, `toStatus` says where it went, and the note says why when the
   // manager's step was skipped.
   submit_proxy: { label: 'หัวหน้างานบันทึกแทนพนักงาน', tone: 'file' },
-  // Nobody filled a form in. The label says so plainly rather than borrowing the
-  // one above it: "บันทึกแทน" means a person typed this for another person, and
-  // reading it on a row the system generated is how a reader concludes the wrong
-  // thing about who checked the hours.
-  submit_birthday: { label: 'ระบบสร้างใบวันเกิด (ฝ่ายบุคคลสั่ง)', tone: 'file' },
+  // `submit_birthday` — ระบบสร้างใบวันเกิด (ฝ่ายบุคคลสั่ง) — was next until
+  // 2026-09-15, and `void` — ฝ่ายบุคคลถอนใบที่ระบบสร้าง — stood below beside
+  // `cancel`. Both went when their action values were deleted from the schema's
+  // enum, which happened only after both installations were counted and neither
+  // held a row carrying either.
   // One row for one event, and the label has to carry both halves of it: this
   // is the only action in the list whose `toStatus` is 'อนุมัติ' without an
   // approval before it, and a trail that said only "ฝ่ายบุคคลบันทึกแทน" would
@@ -702,10 +702,6 @@ const ACTION_META = {
   // reader opens the trail to understand. See `cancelPermission` in
   // lib/entries.js.
   hr_cancel: { label: 'ฝ่ายบุคคลยกเลิกใบ', tone: 'off' },
-  // RETIRED 2026-09-15 with the generator and the rule behind it. No new row can
-  // carry this, and the label stays so that one written before then still reads
-  // as what it was rather than as a bare action name.
-  void: { label: 'ฝ่ายบุคคลถอนใบที่ระบบสร้าง', tone: 'off' },
   /**
    * The three rows of ขอถอนใบ. `withdraw_request` is the only action in the
    * list that changes no status, so its label has to carry that itself — a
@@ -809,9 +805,12 @@ const FILER_LABEL = {
 };
 
 export function ProxyMark({ entry }) {
-  const generated = isSystemFiled(entry);
+  /* A third branch — the ระบบสร้างใบวันเกิด chip — stood between these two until
+     2026-09-15. It was drawn on rows the withdrawn birthday generator had
+     written, which neither database holds any more and no code can write; see
+     where `isSystemFiled` used to be in lib/entries.js. */
   const verified = isHrVerifiedBirthday(entry);
-  if (!generated && !verified && !isProxyFiled(entry)) return null;
+  if (!verified && !isProxyFiled(entry)) return null;
 
   const name = entry.filedBy?.name;
 
@@ -835,18 +834,6 @@ export function ProxyMark({ entry }) {
           + 'ใบนี้เป็นของพนักงานตามเดิม'}
       >
         HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว{name ? ` · ${name}` : ''}
-      </span>
-    );
-  }
-
-  if (generated) {
-    return (
-      <span
-        className="chip proxy"
-        title={`ระบบสร้างรายการนี้จากกฎสวัสดิการวันเกิด${name ? ` ตามคำสั่งของ ${name}` : ''} `
-          + '— ไม่มีใครกรอกแบบฟอร์ม และยังรอฝ่ายบุคคลยืนยัน ใบนี้เป็นของพนักงานตามเดิม'}
-      >
-        ระบบสร้างใบวันเกิด{name ? ` · ${name}` : ''}
       </span>
     );
   }

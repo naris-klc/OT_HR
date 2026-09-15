@@ -13,7 +13,7 @@ import {
   OVER_CEILING_REASON_REQUIRED, OVER_CEILING_REASON_SAY,
 } from '@/lib/caps.js';
 import {
-  MAX_LIST_LIMIT, isProxyFiled, isSystemFiled,
+  MAX_LIST_LIMIT, isProxyFiled,
   maySignFirstStep, isOwnRequest, FLAT_DAY_TIMES, isBirthdayWelfare,
   humanHistory, isFlatDailyPosition, isCompanyOffDay, mayCorrectEntries,
 } from '@/lib/entries.js';
@@ -3172,19 +3172,13 @@ function DetailModal({
               would normally have approved it has already formed the view. */}
           {isProxyFiled(e) && (
             <Alert kind="warn">
-              {/* Who wrote it, in words that are true of them: a หัวหน้า filing
-                  for their team, ฝ่ายบุคคล filing for somebody, or nobody at all
-                  on a row the system generated. */}
-              <strong>
-                {/* `isSystemFiled` alone since 2026-09-15. It read
-                    `isUntouchedSystemFiling(e) || isSystemFiled(e)`, and the
-                    first was always a subset of the second — an untouched
-                    generated row is a generated row — so the pair only ever
-                    answered what the second answers. */}
-                {isSystemFiled(e)
-                  ? 'รายการนี้ระบบสร้างจากกฎสวัสดิการวันเกิด ไม่มีใครกรอกแบบฟอร์ม'
-                  : 'รายการนี้มีผู้อื่นเป็นผู้บันทึกแทนพนักงาน'}
-              </strong>
+              {/* Who wrote it: a หัวหน้า filing for their team, or ฝ่ายบุคคล
+                  filing for somebody. A third answer — nobody at all, on a row
+                  the withdrawn birthday generator had written — was chosen here
+                  by `isSystemFiled` until 2026-09-15, when that predicate and
+                  the action it read were deleted; no row anywhere can take that
+                  branch, so `isProxyFiled` above is the whole question now. */}
+              <strong>รายการนี้มีผู้อื่นเป็นผู้บันทึกแทนพนักงาน</strong>
               {e.filedBy?.name && <> — ผู้บันทึก: {e.filedBy.name}</>}
               {/* READ OFF THE ROW'S OWN NOTE, NOT OFF ITS STATUS. This said
                   `pending_hr && !managerDecision?.at`, which is true of a row

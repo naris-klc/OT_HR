@@ -119,11 +119,15 @@ test('the filing row wins over createdAt, and createdAt stands in when there is 
   );
 });
 
-test('all five ways of filing are read, not only a bare submit', () => {
-  // `FILING_ACTIONS` is the list; a proxy filing and a birthday sheet are
+test('all four ways of filing are read, not only a bare submit', () => {
+  // `FILING_ACTIONS` is the list; a proxy filing and an HR-verified one are
   // filings too, and a row that reported nothing for them would be blank on the
   // rows where "who put this in, and when" is most of the question.
-  for (const action of ['submit_proxy', 'submit_birthday', 'submit_hr_verified', 'resubmit']) {
+  //
+  // IT READ "five" AND INCLUDED `submit_birthday` UNTIL 2026-09-15, when that
+  // action was deleted from the schema's enum — both installations were counted
+  // first and neither held a row carrying it. See src/models/OtEntry.js.
+  for (const action of ['submit_proxy', 'submit_hr_verified', 'resubmit']) {
     assert.deepEqual(
       filingLead({
         workDate: '2026-09-01',
