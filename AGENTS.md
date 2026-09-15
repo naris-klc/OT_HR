@@ -293,7 +293,7 @@ no precedent is designed at all.
 
 - **`components/common.jsx`** is the shared kit and nearly every screen imports
   from it (`from './common.jsx'`): `Modal`, `ConfirmDialog`, `Section`, `Fact`,
-  `Field`, `Empty`, `Alert`, `StatusChip`, `ShowMore`. A screen that hand-rolls
+  `Field`, `Empty`, `Alert`, `AlertFold`, `StatusChip`, `ShowMore`. A screen that hand-rolls
   its own dialog, its own empty state or its own status pill is exactly the
   failure this rule is here to stop — the second one of those is the moment the
   app has two styles.

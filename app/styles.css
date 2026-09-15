@@ -6485,6 +6485,23 @@ td > .approver-line { margin-top: 5px; }
 .alert-fold:hover { opacity: 1; }
 .alert-fold:focus-visible { outline-offset: 1px; }
 
+/* ══ .one-line — แถวเดียว ที่เหลือรอให้กด ═══════════════════════════════════
+
+   สั่งไว้ 2026-09-15 สำหรับสามกล่องที่ยืนอยู่บนหน้าแรกพร้อมกัน — ดู
+   `useOneLine` ใน components/common.jsx ว่าทำไม alert ถึงพับได้ทั้งที่กฎเดิม
+   ห้าม
+
+   `nowrap` + `ellipsis` ไม่ใช่ clamp หนึ่งบรรทัด ทั้งที่สองทางให้ … เท่ากัน:
+   clamp เป็น `-webkit-box` ซึ่งเปลี่ยนชนิดกล่องของแถวนี้ และแถวนี้ถือ
+   `<h3 display:inline>` กับ `<code>` ที่ต้องไหลอยู่ในประโยคเดียวกัน ส่วน
+   test/disclosure.test.js ก็นับจำนวนครั้งที่ไฟล์นี้เอ่ยถึง clamp ไว้เป็นกำแพง
+   กัน clamp งอกในที่ที่ไม่มีปุ่มกำกับ — ทางนี้ไม่ต้องขยับกำแพงนั้นเลย
+
+   `min-width: 0` อยู่บน `.alert-fold-text` และ `.announce-line` อยู่แล้ว ซึ่ง
+   เป็นเงื่อนไขที่ ellipsis ต้องมี: flex child ที่ไม่ยอมหดต่ำกว่าเนื้อในไม่มี
+   วันล้น จึงไม่มีวันตัด */
+.one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* THE SAME NOTICE, ONE SIZE DOWN — for a dialog, where height is the scarce
    thing.
 
@@ -6820,6 +6837,24 @@ td > .approver-line { margin-top: 5px; }
    taller than the type beside it, and half of that back up puts its centre on
    the text's. */
 .announce > .fold-pill { flex: none; margin: -2px 0 0; }
+
+/* ▲/▼ ของประกาศ — ท้ายแถว หลังปุ่มปฏิทิน และท้ายสุดเสมอ.
+
+   ตำแหน่งเดียวกับ ▲/▼ ของ alert สองใบที่ยืนเหนือมันบนหน้าแรก (2026-09-15):
+   กล่องสามใบเรียงกันโดยปุ่มพับอยู่คนละมุมคือสามกล่องที่ต้องเรียนรู้ทีละใบ
+
+   ลอกระยะจาก `.alert-fold` ทั้งคู่ — -2px คือระยะเดียวกับที่ `.fold-pill`
+   ข้างบนใช้ดึงศูนย์กลางปุ่มมาอยู่บนเส้นของตัวหนังสือ และ -6px ขวาคือการดึงเข้า
+   มุมที่ ✕ ของ `.alert-x` เคยยืน */
+.announce > .alert-fold { flex: none; margin: -2px -6px 0 0; }
+
+/* พับอยู่ กดที่ไหนในกล่องก็กาง — กล่องทั้งใบจึงใส่มือชี้ หากางแล้วเหลือเฉพาะ
+   แถวข้อความที่พับกลับได้ (`foldClick`) มือชี้ก็อยู่แค่แถวนั้น กติกาเดียวกับ
+   `.alert` ข้างบน และหาเจอจาก `aria-expanded` ของลูกศรเอง ไม่ใช่จากคลาสที่
+   ผู้เรียกแต่ละที่ต้องจำใส่ */
+.announce:has(.alert-fold[aria-expanded="false"]) { cursor: pointer; }
+.announce:has(.alert-fold[aria-expanded="true"]) > .announce-line { cursor: pointer; }
+.announce:hover > .alert-fold { opacity: 1; }
 
 @media (max-width: 860px) {
   /* The card's own padding at this width is 15px; the banner sits above a card
@@ -17470,6 +17505,10 @@ table.mini tbody tr:hover { background: none; }
      a page that printed two lines of a paragraph would be reporting the screen
      rather than the text. */
   .disclosure-body.clamp, .disclosure-body.clamp-whole { display: block; -webkit-line-clamp: none; overflow: visible; }
+  /* เหตุผลเดียวกับบรรทัดบน: กระดาษไม่มีลูกศรให้กด แถวที่ตัดด้วย … บนกระดาษคือ
+     การพิมพ์สถานะของหน้าจอออกมา ไม่ใช่การพิมพ์ข้อความ (กล่องทั้งสามใบเป็น
+     `no-print` อยู่แล้ว กฎนี้กันไว้เผื่อใบที่สี่ที่ขึ้นกระดาษ) */
+  .one-line { white-space: normal; overflow: visible; text-overflow: clip; }
   .disclosure-body.clamp-whole { visibility: visible; }
   .disclosure-slide { display: block; }
   .disclosure-more { display: none !important; }

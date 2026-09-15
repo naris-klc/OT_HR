@@ -218,6 +218,115 @@ export const foldClick = (folded, toggle, head = '.alert-fold-row') => (e) => {
 };
 
 /**
+ * แถวเดียวก่อน ที่เหลือกดกาง — สำหรับกล่องที่ยืนอยู่บนหน้าแรกทุกวัน.
+ *
+ * ── ทำไม alert ถึงพับได้ ทั้งที่กฎเดิมห้าม ────────────────────────────────
+ *
+ * `Disclosure` ข้างบนเขียนไว้ว่า alert ถูกอ่านตอนที่มันขึ้น ไม่งั้นไม่ถูกอ่าน
+ * และนั่นยังจริง — สิ่งที่เปลี่ยนเมื่อ 2026-09-15 คือหน้าแรกของฝ่ายบุคคลมี
+ * กล่องแบบนี้ยืนพร้อมกันสามใบ (สำรองข้อมูล · รหัสผ่านที่ตั้งให้ · ประกาศ
+ * วันหยุด) รวมกันสูงเกือบเต็มจอมือถือ ก่อนถึงคิวที่คนเปิดหน้านี้มาทำ
+ *
+ * ที่ต่างจากการซ่อนทั้งใบคือ **ประโยคยังอยู่บนจอเสมอ** หัวข้อและคำต่อเท่าที่
+ * แถวเดียวรับไหวถูกวาดครบ ตัดท้ายด้วย … ที่บอกว่ายังมีต่อ — คนที่ไม่กดก็ยัง
+ * รู้ว่าสำรองข้อมูลเก่ากว่า 24 ชั่วโมง สิ่งที่หายคือรายละเอียดท้ายประโยค
+ * ไม่ใช่ตัวเตือน และไม่มีสถานะไหนในนี้ที่วาดน้อยกว่าหนึ่งประโยค
+ *
+ * ── ลูกศรต้องมีของให้ซ่อนจริง ─────────────────────────────────────────────
+ *
+ * วัดจากของจริงว่าประโยคล้นแถวแรกไหม (`scrollWidth` เทียบ `clientWidth`) ไม่ใช่
+ * นับตัวอักษรและไม่ใช่ดู breakpoint — สตริงเดียวกันจบในแถวเดียวบนจอ 1440 และ
+ * ล้นสามรอบบนจอ 360 กล่องที่มีปุ่มข้างในพับได้เสมอ เพราะปุ่มคือของที่ซ่อนได้
+ * ต่อให้ประโยคจะสั้นแค่ไหน
+ *
+ * `> 2` ไม่ใช่ `> 0` ด้วยเหตุผลเดียวกับ `Disclosure`: ที่ zoom ส่วนใหญ่ความ
+ * กว้างจริงเป็นเศษพิกเซล
+ *
+ * **หยุดวัดตอนกาง** ตอนนั้น nowrap ถูกถอด ประโยคไหลหลายแถว scrollWidth เท่า
+ * clientWidth พอดี ถ้ายังวัดต่อคำตอบจะกลายเป็น "ไม่มีอะไรถูกซ่อน" แล้วลูกศร
+ * จะหายไปจากนิ้วที่เพิ่งกดมัน `cut` จึงค้างค่าล่าสุดไว้
+ *
+ * ── ไม่จำว่าใครพับอะไรไว้ ─────────────────────────────────────────────────
+ *
+ * ไม่มี `localStorage` ในทางนี้ สั่งไว้ 2026-09-15 และเป็นเหตุผลเดียวกับที่
+ * `ot-holiday-fold` ถูกถอดออกไปเมื่อ 2026-09-11: ประกาศที่คนกดปิดครั้งเดียว
+ * แล้วหายตลอดไปคือประกาศที่ไม่ได้ประกาศ ทุกครั้งที่เปิดหน้าใหม่ทุกใบพับ และ
+ * ทุกใบยังพูดประโยคของมันออกมา
+ *
+ * `watch` คือเนื้อในของแถว — ส่ง `children` มาก็พอ วัดใหม่เมื่อข้อความเปลี่ยน
+ * `ResizeObserver` รับกรณีหน้าต่างเปลี่ยนความกว้าง แต่ข้อความที่ยาวขึ้นในกล่อง
+ * ขนาดเดิมไม่ทำให้กล่องเปลี่ยนขนาด จึงไม่มีอะไรไปสะกิดมัน
+ */
+export function useOneLine({ actions = false, of = '', watch } = {}) {
+  const id = React.useId();
+  const [open, setOpen] = React.useState(false);
+  const [cut, setCut] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || open) return undefined;
+    const read = () => setCut(el.scrollWidth - el.clientWidth > 2);
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open, watch]);
+
+  const foldable = cut || actions;
+  const folded = foldable && !open;
+  const toggle = () => setOpen((v) => !v);
+  const label = `${folded ? 'กาง' : 'ย่อ'}ข้อความ${of ? ` — ${of}` : ''}`;
+
+  /* ▲/▼ ไม่มี `onClick` ของตัวเอง: Enter หรือ Space บนปุ่มคือคลิกที่ลอยขึ้นไป
+     ถึง `foldClick` บนกล่อง ถ้าใส่ทั้งสองที่จะสลับสองรอบแล้วดูเหมือนไม่ทำงาน */
+  const arrow = foldable ? (
+    <button
+      type="button"
+      className="alert-fold"
+      aria-expanded={!folded}
+      aria-controls={id}
+      aria-label={label}
+      title={label}
+    >
+      {folded ? '▼' : '▲'}
+    </button>
+  ) : null;
+
+  return { id, ref, arrow, folded, foldable, toggle };
+}
+
+/**
+ * `Alert` ที่พับเหลือแถวเดียว — สามกล่องบนหน้าแรกใช้ร่วมกัน.
+ *
+ * `actions` คือปุ่มของกล่อง แยกจาก `children` เพราะมันหายตอนพับและประโยคไม่หาย
+ * ปุ่มที่ถูก `overflow: hidden` ตัดทิ้งยังอยู่ใน DOM — กดด้วยแท็บไปเจอได้ และ
+ * โปรแกรมอ่านจออ่านออก ทั้งที่ตาไม่เห็น การไม่วาดมันเลยจึงเป็นคนละเรื่องกับ
+ * การวาดแล้วตัด
+ *
+ * ประโยคกลับกัน: อยู่ใน DOM ครบทุกคำในทุกสถานะ สิ่งที่ตัดคือภาพ ไม่ใช่ข้อความ
+ */
+export function AlertFold({
+  kind = 'warn', of = '', actions = null, children,
+}) {
+  const { id, ref, arrow, folded, toggle } = useOneLine({ actions: !!actions, of, watch: children });
+  return (
+    <Alert kind={kind} onClick={foldClick(folded, toggle)}>
+      <div className="alert-fold-row">
+        <div id={id} ref={ref} className={`alert-fold-text${folded ? ' one-line' : ''}`}>
+          {children}
+        </div>
+        {arrow}
+      </div>
+      {/* `.alert-actions` ของเดิม — แถวปุ่มใต้ประโยคที่ AdminView ใช้อยู่แล้ว
+          ระยะห่างและการ wrap จึงเป็นค่าเดียวกันทั้งแอป ไม่ใช่สองค่าที่ค่อยๆ
+          เพี้ยนจากกัน */}
+      {actions && !folded && <div className="alert-actions">{actions}</div>}
+    </Alert>
+  );
+}
+
+/**
  * Approved hours that reached no row on the sheet.
  *
  * The one shortfall สรุป OT ส่งบัญชี and สรุป OT แยกแผนก cannot show by being

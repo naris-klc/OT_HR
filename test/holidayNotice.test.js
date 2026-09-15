@@ -155,11 +155,20 @@ test('there is no state in which it disappears, and none in which it is half-dra
   // persistence was added on 2026-08-28 and this test explained why that was
   // compatible (folded, the month and the day count were still on screen).
   //
-  // ⚠ THE FOLD IS GONE SINCE 2026-09-11 and the requirement is stronger for it:
-  // the panel is ONE ROW before anybody presses anything, so there is no
-  // collapsed state to argue about and nothing to be shown "after" a press.
-  // What must never exist is a branch that draws less than the whole row
-  // because somebody pressed something.
+  // The fold went on 2026-09-11 — *"the panel is ONE ROW before anybody presses
+  // anything"* — and ⚠ CAME BACK ON 2026-09-15, asked for with a picture of a
+  // phone carrying three standing notices above the work: *"ข้อความแจ้งเตือน
+  // ในหน้าจอมือถืออยากให้แสดงตัดซ่อนไว้เป็นแถวเดียว แต่กดเพื่อขยายได้"*.
+  //
+  // THE REQUIREMENT SURVIVES IT, and this is the assertion that says how. What
+  // never came back is `ot-holiday-fold`: nothing remembers a press, so every
+  // visit draws the announcement again. And the folded state is not a state
+  // that draws LESS — it draws the same row, cut by `overflow` at the width of
+  // the screen, sentence and all. What a press adds is the tail after the `…`
+  // and the calendar button.
+  //
+  // So the branch that must never exist is narrower than it was: one that
+  // withholds the SENTENCE, not one that withholds the tail of it.
   //
   // `!holidays` is the one early return and it is about the FETCH, not about a
   // press — a banner cannot be drawn before its calendar arrives.
@@ -168,12 +177,18 @@ test('there is no state in which it disappears, and none in which it is half-dra
   assert.ok(/if \(!holidays\) return null/.test(bannerCode), 'ทางเดียวที่ไม่วาดต้องเป็นตอนที่ยังโหลดปฏิทินไม่เสร็จ');
   assert.ok(!/alertsDismissed|alert-x/.test(bannerCode), 'แถบประกาศรับกลไกปิดถาวรมาจากที่อื่น');
 
-  // NOTHING IS HIDDEN AND NOTHING REMEMBERS A PRESS. `hidden={...}`, the ▲/▼,
-  // `aria-expanded`, the localStorage key and the state it was read into all
-  // went together; any one of them coming back is the fold coming back.
-  for (const gone of ['hidden={', 'announce-fold', 'aria-expanded', 'collapsed', 'ot-holiday-fold', 'localStorage']) {
-    assert.ok(!bannerCode.includes(gone), `แถบประกาศมี ${gone} อีกแล้ว — มันควรเหลือแถวเดียวโดยไม่มีอะไรพับ`);
+  // NOTHING REMEMBERS A PRESS, and nothing in this file hides the row by hand.
+  // `ot-holiday-fold` and every other browser-side memory stay gone: a notice
+  // somebody folded in สิงหาคม must not be folded for them in กันยายน.
+  //
+  // `hidden={` and `announce-fold` stay banned for a second reason — the fold
+  // is `useOneLine` in common.jsx and the arrow is `.alert-fold`, the same two
+  // the alerts above it on the landing screen use. A private copy here would be
+  // a second answer to the same question, three notices deep.
+  for (const gone of ['hidden={', 'announce-fold', 'collapsed', 'ot-holiday-fold', 'localStorage']) {
+    assert.ok(!bannerCode.includes(gone), `แถบประกาศมี ${gone} อีกแล้ว`);
   }
+  assert.ok(bannerCode.includes('useOneLine({'), 'แถบประกาศพับด้วยกลไกของตัวเองแทนที่จะใช้ของกลาง');
 
   // `onClose` and the dialog's own state are a different thing and must stay:
   // the calendar is a Modal somebody opened, not a part of the row being hidden.
@@ -194,7 +209,9 @@ test('the row says the whole announcement — heading, count, days, and the empt
   // result. A `<ul>`, a `<p>` and an `<h3>` cannot share a line however short
   // they are; written as text in one container the row breaks where a SENTENCE
   // breaks. `.announce-days` and `.announce-none` were those blocks.
-  assert.ok(bannerCode.includes('<div className="announce-line">'), 'ไม่มีสายข้อความเดียวของแถว');
+  // `.one-line` rides the same container while folded (2026-09-15) — the class
+  // is added, the flow is not split.
+  assert.match(bannerCode, /className=\{`announce-line\$\{folded \? ' one-line' : ''\}`\}/, 'ไม่มีสายข้อความเดียวของแถว');
   for (const block of ['announce-days', 'announce-none', '<ul', '<li', '<p ']) {
     assert.ok(!bannerCode.includes(block), `${block} ยังอยู่ — แถวจะแตกเป็นก้อนแทนที่จะตัดแบบประโยค`);
   }

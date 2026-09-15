@@ -892,6 +892,11 @@ QC→`PROD2` · WH→`WH-FG` · ADM→`HRD`) พร้อมใบ OT 22 ใบ�
 - **แถบเตือนบนหน้าแรกของบทบาทนั้น** “คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่”
   พร้อมปุ่มที่พาไป ข้อมูลส่วนตัว (`PasswordReminder` ใน `components/App.jsx`)
   วาดครั้งเดียวบนหน้าแรก กฎเดียวกับแถบสำรองข้อมูลและประกาศวันหยุด ·
+  **ตั้งแต่ 2026-09-15 แถบนี้พับเหลือแถวเดียว กดแล้วกาง** (`AlertFold`) ประโยค
+  เตือนยังอยู่ครบในทุกสถานะ ส่วนปุ่ม เปลี่ยนรหัสผ่าน โผล่เฉพาะตอนกาง — และ
+  **แถบนี้พับได้เสมอไม่ว่าจอจะกว้างแค่ไหน** เพราะปุ่มคือของที่ซ่อนได้ ต่อให้
+  ประโยคจะไม่ถูกตัด · ยังไม่มี ✕ เหมือนเดิม: พับไม่ใช่ปิด และเงื่อนไขนี้หายไป
+  ตอนเปลี่ยนรหัสผ่านเท่านั้น ·
   **ตั้งแต่ 2026-09-10 ปุ่มไม่ได้พาไปแค่*หน้า* แต่ลงจอดที่การ์ด เปลี่ยนรหัสผ่าน เลย**
   เดิมมันเรียก `goTab('profile')` เฉย ๆ ซึ่งลงที่หัวหน้า — ข้อมูลของคุณ · ธีมสีหน้าจอ
   (· ผู้รักษาการแทน ถ้าเป็นหัวหน้า) อยู่เหนือฟอร์ม บนมือถือคือต้องเลื่อนอีกจอครึ่ง
@@ -3541,7 +3546,9 @@ and the point is that everybody has read the same thing **before** they file.
 month's day count, the days themselves and a pill that opens the year's calendar,
 all on one line: *"📢 ประกาศวันหยุดประจำเดือน สิงหาคม 2569 · 3 วัน — 12 (พ.)
 วันแม่แห่งชาติ · 13 (พฤ.) ชดเชยวันแม่แห่งชาติ · 28 (ศ.) หยุดบริษัท"*, with
-`ดูปฏิทินวันหยุดประจำปี 2569 📅` against the right edge. On a month with none it
+`ดูปฏิทินวันหยุดประจำปี 2569 📅` against the right edge — **and since 2026-09-15
+that row is cut to the width of the screen with a `…` until somebody presses it**
+(§ย่อ / กาง below). On a month with none it
 says so out loud (`เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้`) and names the next
 one, because an empty month and a month nobody has entered look identical from
 the screen, and the reader who assumes the second files a normal-rate request for
@@ -3740,25 +3747,46 @@ second green control one card away — even an outlined one — makes the reader
 decide which is the point. Anything copying this template onto another screen
 inherits that constraint, not just the numbers.
 
-### ~~ย่อ / กาง~~ — withdrawn 2026-09-11, and the requirement is stronger without it
+### ย่อ / กาง — withdrawn 2026-09-11, **back on 2026-09-15 without its memory**
 
-**The fold is gone.** *"การแจ้งเตือนนี้กระชับให้เป็นแถวเดียว แต่ได้เนื้อหา
-ครบถ้วน"* — and a panel that is one row before anybody presses anything has
-nothing left to hide. The ▲/▼, `ot-holiday-fold` in localStorage, the state it
-was read into, `aria-expanded`/`aria-controls` and the `.announce-fold` rule went
-together; `test/holidayNotice.test.js` now refuses each of them by name, because
-they only make sense as a set and any one of them coming back is the fold coming
-back.
+**The fold came back, the key did not, and that distinction is the whole
+change.** It was withdrawn on 2026-09-11 (*"การแจ้งเตือนนี้กระชับให้เป็นแถวเดียว
+แต่ได้เนื้อหาครบถ้วน"*) on the argument that a panel already one row tall had
+nothing left to hide — true of this banner alone, and the request that arrived
+on 2026-09-15 was about the landing screen as a whole: *"ข้อความแจ้งเตือน
+ในหน้าจอมือถืออยากให้แสดงตัดซ่อนไว้เป็นแถวเดียว แต่กดเพื่อขยายได้"*, with a
+picture of three standing notices stacked above the queue somebody opened the
+page to work.
 
-**The requirement it was argued against is now true by construction.** This
-banner was built to *"ให้คงอยู่บนหน้าจอ ไม่หายไปเอง เพื่อให้พนักงานรับรู้ข้อมูล
-ตรงกันก่อนยื่นเอกสาร"* and shipped with no dismiss control at all, pinned by a
-test that said so. The fold was compatible with it — the requirement is about the
-announcement being **seen**, not about its height — and the invariant that
-replaced "no control exists" was better: **there is no state in the component
-where the section is not rendered**, the one early `return null` being about the
-fetch and not about a press. That invariant survives, and there is now no press
-for it to survive.
+**What came back is the ▲/▼ and `foldClick`. What stayed gone is
+`ot-holiday-fold`** — and every other browser-side memory of a press. The key
+remembered ACROSS VISITS that somebody had folded the panel, which is how next
+month's announcement goes up and nobody sees it; `test/holidayNotice.test.js`
+and `test/disclosure.test.js` both still refuse it by name, and the second one
+refuses `localStorage` anywhere in this file at all.
+
+**The folded state is not a state that draws less.** It draws the same sentence,
+complete in the DOM, cut by `overflow` at the width of the screen and marked
+with a `…`. What a press adds is the tail after that mark and the calendar pill.
+So the invariant below survives in a narrower form: no branch may withhold the
+SENTENCE. `.announce-fold` and `aria-expanded` written by hand stay gone too —
+the mechanism is `useOneLine` in `components/common.jsx`, shared with the two
+alerts above this banner on the same screen, and a private copy here would be a
+second answer to one question three notices deep.
+
+**The requirement it was argued against still holds.** This banner was built to
+*"ให้คงอยู่บนหน้าจอ ไม่หายไปเอง เพื่อให้พนักงานรับรู้ข้อมูลตรงกันก่อนยื่นเอกสาร"*
+and shipped with no dismiss control at all, pinned by a test that said so. The
+fold was compatible with it then and is now, for the same reason — the
+requirement is about the announcement being **seen**, not about its height — and
+the invariant that replaced "no control exists" is the one doing the work:
+**there is no state in the component where the section is not rendered**, the one
+early `return null` being about the fetch and not about a press.
+
+> **It read** *"That invariant survives, and there is now no press for it to
+> survive"* **until 2026-09-15.** There is a press again; what makes it safe is
+> that the press changes how much of the row is VISIBLE and never whether the
+> row is drawn — and that nothing remembers it.
 
 **What the fold is worth keeping on the record for** is the argument it settled,
 because the same one comes back on every notice in this app:
@@ -3775,10 +3803,12 @@ because the same one comes back on every notice in this app:
   explanation, and the password warning on ข้อมูลส่วนตัว"* until 2026-09-14:
   the last two of those went that day, leaving the notices above an F-HR-027
   and `OverCeilingNote`, which passes a heading of its own. The banner was the
-  fourth caller and stopped being one on 2026-09-11.
-  `test/disclosure.test.js` has lost a row from that loop on each of those two
-  days, and now names all three withdrawals in an assertion of their own — so a
-  fold returning to any of them fails there rather than passing quietly.
+  fourth caller and stopped being one on 2026-09-11. ⚠ **It calls `foldClick`
+  again since 2026-09-15**, and so does `AlertFold` on behalf of the backup
+  strip and the password warning — three callers of the box-is-the-target rule,
+  drawn from one place this time. `test/disclosure.test.js` names the two
+  withdrawals that stand (ผู้รับช่วงอนุมัติแทน and the ข้อมูลส่วนตัว password
+  warning) and pins this banner to the key it must never take back.
 - **The state was a browser preference, not an account setting** —
   `ot-holiday-fold` in localStorage, `ot-` prefixed like `ot-theme`, stored as
   *"folded, or nothing at all"* so an absent key IS the default, and read in a
@@ -9435,6 +9465,8 @@ about 60px more. Not done: it is a title, not spacing.
 | เข้าสู่ระบบไม่สำเร็จ N ครั้ง | สายเดียวอยู่แล้ว แต่สี่วรรคยาว | สายเดียว หัวข้อเป็นตัวหนา สั้นลงสองวรรค |
 | วันเกิดของคุณนับเป็นวันหยุด · บันทึกแทน | ชิป แล้วขึ้นบรรทัดใหม่เป็นย่อหน้า | ชิปเป็นคำแรกของประโยค |
 | กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน | ห้าก้อน | **ยกเว้น — ยังห้าก้อน ย่อแต่ร้อยแก้ว** |
+
+> **สายเดียวนั้นถูกพับตั้งแต่ 2026-09-15 ในสองใบแรกของตารางนี้** — สถานะการสำรองข้อมูล กับ คำเตือนรหัสผ่านบนหน้าแรก (ซึ่งไม่ได้อยู่ในกอง ก) ตัดท้ายด้วย … เหลือแถวเดียวจนกว่าจะกด ดู §ย่อ / กาง ของแถบประกาศวันหยุด ข้างล่าง · **การย่อของวันนั้นยังเป็นสิ่งที่ทำให้การพับนี้เป็นไปได้**: กล่องที่เป็นสายข้อความสายเดียวอยู่แล้วพับแล้วยังพูดประโยคของมันครบ ส่วนกล่องที่เป็นสามก้อนซ้อนกันจะเหลือแค่หัวข้อ
 
 **ใบที่หกไม่ถูกย่อ และนั่นคือการตัดสินใจที่ถามแล้วตอบ** ด้วยเหตุผลสองข้อที่เป็น
 เรื่องของ*จออื่น*ทั้งคู่:
