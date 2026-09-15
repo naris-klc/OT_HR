@@ -213,28 +213,45 @@ test('cancelling a row with a request waiting closes that request as granted', (
 // ── the vocabulary ──────────────────────────────────────────────────────────
 
 test('hr_cancel is a history action with a Thai label of its own', () => {
-  assert.match(model, /'cancel', 'void', 'hr_cancel', 'edit', 'hr_edit', 'recompute',/);
+  assert.match(model, /'cancel', 'hr_cancel', 'edit', 'hr_edit', 'recompute',/);
   assert.match(kit, /hr_cancel: \{ label: 'ฝ่ายบุคคลยกเลิกใบ', tone: 'off' \},/);
   // …and it does not borrow the employee's.
   assert.match(kit, /cancel: \{ label: 'พนักงานยกเลิกคำขอ', tone: 'off' \},/);
 });
 
 /**
- * `void` AND `submit_birthday` STAY IN THE ENUM AND IN THE LABELS, AND THAT IS
- * DELIBERATE.
+ * `void` AND `submit_birthday` ARE GONE FROM THE ENUM AND FROM THE LABELS — the
+ * only two values ever taken OUT of that list.
  *
- * No new row can carry either. The laptop's database holds none — 0 of 431 —
- * but it is not the only installation: docs/docker.md describes a second one on
- * a Linux box with its own `mongod`, and a backup restored from before today
- * would bring such rows with it. A value dropped from the enum fails validation
- * the next time anything touches the row that has it. They are vocabulary for
- * reading old rows; the FEATURE is the button and the rule, and those are gone.
+ * THIS TEST SAID THE OPPOSITE FOR PART OF ONE DAY, and the reversal is the
+ * point rather than an embarrassment: keeping them was the right answer while
+ * the count was unknown. It read "…KEEP their enum entries", on the reasoning
+ * that this laptop is not the only installation — docs/docker.md describes a
+ * second one on a Linux box with its own `mongod` — and that a value dropped
+ * from the enum fails validation the next time anything saves a row that has
+ * it. Then the Docker box was counted: **0 of 328**, beside 0 of 431 here. A
+ * vocabulary kept for rows that exist nowhere is not caution, it is three
+ * screens preparing to draw something that cannot happen.
+ *
+ * ⚠ WHAT THE COUNT DOES NOT COVER IS THE BACKUPS. A dump taken before
+ * 2026-09-15 can still hold such a row, and `npm run restore` would put it back.
+ * It would LOAD — mongoose validates on write — and fail the next time anything
+ * saved it. The fix then is to put the value back here for as long as the row
+ * exists, not to edit the row.
  */
-test('the two retired actions keep their enum entries and their labels', () => {
-  assert.match(model, /'submit', 'submit_proxy', 'submit_birthday',/);
-  assert.match(model, /'cancel', 'void', 'hr_cancel',/);
-  assert.match(kit, /void: \{ label: 'ฝ่ายบุคคลถอนใบที่ระบบสร้าง', tone: 'off' \},/);
-  assert.match(kit, /submit_birthday: \{ label: 'ระบบสร้างใบวันเกิด \(ฝ่ายบุคคลสั่ง\)', tone: 'file' \},/);
+test('the two retired actions are gone from the enum and the labels', () => {
+  /* THE HISTORY ARRAY, and not the file: the comment above it names both values
+     and has to, because it is the only record left of what they were. Anchored
+     on `'approve_mgr'` rather than on the first `enum:` in the file — `dayType`
+     has one too, three fields higher up. */
+  const at = model.indexOf("'approve_mgr'");
+  const list = model.slice(model.lastIndexOf('enum: [', at), model.indexOf('],', at));
+  assert.ok(!/submit_birthday/.test(list), 'submit_birthday is back in the enum');
+  assert.ok(!/'void'/.test(list), 'void is back in the enum');
+  assert.ok(!/^\s*void: \{/m.test(kit), 'the void label is back');
+  assert.ok(!/^\s*submit_birthday: \{/m.test(kit), 'the submit_birthday label is back');
+  // The enum still reads as a list, not as a hole where two values were.
+  assert.match(list, /'submit', 'submit_proxy', 'submit_hr_verified', 'resubmit',/);
 });
 
 // ── void, withdrawn ─────────────────────────────────────────────────────────
@@ -269,13 +286,34 @@ test('ถอนใบวันเกิด is not a button on either screen any 
   assert.ok(!/voidEntry/.test(strip(hrEntries)));
 });
 
-/** `isSystemFiled` STAYS. It is a MARK for reading an old row — "the system
-    wrote this, nobody filled a form in" — and not a permission. The pair
-    `isUntouchedSystemFiling(e) || isSystemFiled(e)` only ever answered what the
-    second answers, since an untouched generated row is a generated row. */
-test('the generated-row mark survives the rule that used to read it', () => {
-  assert.match(rules, /export function isSystemFiled\(entry\)/);
-  assert.match(queue, /\{isSystemFiled\(e\)\s*\n\s*\? 'รายการนี้ระบบสร้างจากกฎสวัสดิการวันเกิด/);
+/**
+ * `isSystemFiled` WENT WITH THE ACTION IT READ.
+ *
+ * It outlived `isUntouchedSystemFiling` by part of a day, because it was a MARK
+ * for reading an old row rather than a permission — worth keeping while such a
+ * row might exist somewhere. `SYSTEM_FILED_ACTIONS` held `submit_birthday`
+ * alone, and once that value left the enum the predicate could never again be
+ * true. Its two drawing sites went with it: the ระบบสร้างใบวันเกิด chip in
+ * `ProxyMark`, and the generated-row sentence in the queue's detail pop-up,
+ * which is now the single sentence `isProxyFiled` was always the question for.
+ *
+ * `isBirthdayWelfare` IS WHAT REMAINS AND IS NOT THE SAME QUESTION. It reads the
+ * SEGMENTS the engine produced, so a row is สวัสดิการวันเกิด because the hours
+ * are — true of the วันเกิด entries people file by hand today, which is the whole
+ * arrangement now.
+ */
+test('the generated-row mark goes with the action it read', () => {
+  assert.ok(!/export function isSystemFiled/.test(rules));
+  assert.ok(!/SYSTEM_FILED_ACTIONS = /.test(rules));
+  for (const [name, src] of Object.entries({
+    'components/common.jsx': kit,
+    'components/ApprovalQueue.jsx': queue,
+  })) {
+    assert.ok(!/isSystemFiled\(/.test(strip(src)), `${name} still calls it`);
+  }
+  assert.match(queue, /<strong>รายการนี้มีผู้อื่นเป็นผู้บันทึกแทนพนักงาน<\/strong>/);
+  // The one birthday predicate that is still true of rows people file today.
+  assert.match(rules, /export function isBirthdayWelfare/);
 });
 
 /** One sentence for every barred row, which is what was always true of all but

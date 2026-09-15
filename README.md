@@ -12935,8 +12935,9 @@ build แล้ว
   ถ้าอ่านจากสแตมป์ดิบ — คนทำกะดึกที่คีย์งานวันพุธตอนตีหนึ่งของวันพฤหัสจะกลายเป็น
   *วันเดียวกัน* และไม่ขึ้นแท็กเลย ซึ่งคือแถวที่ตัวเลขนี้มีไว้เพื่อ · `today()` คือที่เดียวในระบบที่แปลง
   instant เป็นวันของบริษัท
-  · **อ่านจากประวัติของใบ** `filingOf()` หาแถวการยื่นทั้งห้าแบบ (รวม `submit_proxy` และ
-  `submit_birthday`) ส่วน `createdAt` เป็นตัวสำรองของใบที่ไม่มีแถวนั้น
+  · **อ่านจากประวัติของใบ** `filingOf()` หาแถวการยื่นทั้งสี่แบบ (รวม `submit_proxy` และ
+  `submit_hr_verified`) ส่วน `createdAt` เป็นตัวสำรองของใบที่ไม่มีแถวนั้น · เคยอ่านว่า
+  "ทั้งห้าแบบ" และนับ “submit_birthday” ด้วย จนถึง 2026-09-15 ที่ค่านั้นถูกลบออกจาก enum
   · ⚠ **ราคาที่จ่ายคือความกว้าง** `th.when-col` 92 → 136px และพื้นความกว้างของตาราง
   1262 → 1306 (= ผลรวมสิบเอ็ดคอลัมน์ของหัวหน้า คอลัมน์ `สถานะ` ของฝ่ายบุคคลยังไม่ถูกนับ
   เหมือนเดิม) — **ราคานี้ถูกคืนทั้งหมดในวันเดียวกัน และคืนมาเกินด้วย: พื้นนั้นคือ 1032
@@ -13848,9 +13849,18 @@ build แล้ว
   `approvalPermission` answers 409 to anything already decided, and แก้ไข cannot
   reach nought. 419 of the 431 entries on this database were live and in that
   state. In the same round **`void` was withdrawn for good** — the generator
-  whose rows it existed for is gone, this database holds none of them, and the
-  new rule reaches every live row instead of that one kind; only the two history
-  action VALUES stay, for rows another installation may still hold.
+  whose rows it existed for is gone and the new rule reaches every live row
+  instead of that one kind. The two history action values went with it,
+  `submit_birthday` and `void`: **the only values ever taken OUT of the
+  schema's enum**, and taken out only after BOTH installations were counted —
+  0 of 431 here and 0 of 328 in the Docker box. `SYSTEM_FILED_ACTIONS` and
+  `isSystemFiled` went with them, since a predicate reading an action that can
+  no longer exist is three screens preparing to draw a row that cannot.
+  ⚠ What the count does not cover is the BACKUPS: a dump from before
+  2026-09-15 can still hold such a row, and `npm run restore` would put it
+  back. It loads — mongoose validates on write — and fails the next time
+  anything saves it; the fix then is to put the value back in the enum for as
+  long as the row exists, not to edit the row.
   It read "**2753 tests** … across 153 files" until then, when
   **`queueWithdrawChips` was the new file** —
   คำขอถอนใบที่อนุมัติแล้ว moved into the same card as รออนุมัติ, switched by a
