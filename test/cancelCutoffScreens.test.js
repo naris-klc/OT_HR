@@ -161,7 +161,10 @@ test('the two buttons are drawn and dead, never removed', () => {
  * rather than the same fact written in two places.
  */
 test('the reason line is gated on past(e), not on locked(e)', () => {
-  assert.match(queue, /\{past\(e\) && \(\n\s+<div className="hint">/);
+  // A `.cell-note` under the reason since 2026-09-15, where it was a `.hint`
+  // at the foot of the card's prose. Same place in the reading order and the
+  // same gate: under what is being decided, never beside the buttons.
+  assert.match(queue, /\{past\(e\) && <div className="cell-note">/);
   assert.match(queue, /cancelCutoffQueueNote\(e, policy\)/);
 });
 
@@ -178,11 +181,17 @@ test('the queue asks mayCorrectEntries rather than listing roles', () => {
  * the failure list the server hands back for the rest.
  */
 test('the batch button, its dialog and its loop all use batch', () => {
-  assert.match(queue, /const batch = rows\.filter\(\(e\) => !locked\(e\)\);/);
-  assert.match(queue, /\{batch\.length > 1 && \(/);
+  assert.match(queue, /const batch = \(rows \|\| \[\]\)\.filter\(\(e\) => !locked\(e\)\);/);
   assert.match(queue, /for \(const e of batch\) \{/);
   assert.match(queue, /\{batch\.map\(\(e, i\) =>/);
   assert.match(queue, /const totalHours = batch\.reduce\(/);
+  // THE BUTTON MOVED TO THE CARD'S HEAD ON 2026-09-15 — the head belongs to
+  // ApprovalQueue now that the two piles share one card — and it moved with the
+  // figure it is counted off. `wBatch` is this `batch.length`, reported upward;
+  // reading `wOpen` there would put the old lie back in a new place.
+  assert.match(queue, /const batchCount = batch\.length;/);
+  assert.match(queue, /onCount\?\.\(openCount, batchCount\);/);
+  assert.match(read('components/ApprovalQueue.jsx'), /wBatch > 1 && \(/);
 });
 
 /**

@@ -2512,97 +2512,124 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .item:hover .item-go { color: var(--green-text); }
 .item:hover .item-go .t { color: var(--green-text); border-color: var(--ok-line); }
 
-/* ── ขอถอนใบที่อนุมัติแล้ว's row — A GRID, BECAUSE A FLEX LINE HAD ONE
-      SHRINKABLE ITEM AND IT WAS THE SENTENCE ─────────────────────────────────
-   Five items in one `.item`: the date chip, the whole of what is being read,
-   the figure, the status and two buttons. Four of the five were `flex: none`
-   and came to about 430px between them; only the middle one could give, and
-   `min-width: 0` said it could give everything. Under 470px of card it was
-   drawn at nought and Thai broke between letters — a ribbon two characters
-   wide running down the row, which is the bug this block is the repair for.
+/* ── คำขอถอนใบที่อนุมัติแล้ว — A TABLE, AND NO LONGER A PANEL OF ITS OWN ───
+   Asked on 2026-09-15: *"ถ้าเอาไปแสดงรวมกับตาราง รออนุมัติ ได้หรือไม่"*. The
+   two piles share one card and one heading now, switched by `.queue-tabs`
+   above — two tables that are never on screen together, so neither has to
+   learn to skip the other's rows. That was the whole objection to merging
+   them into one list: the tick boxes, the batch bar and the cap columns all
+   belong to signatures, and none of them mean anything on a request to take
+   hours back off the books.
 
-   The grid deals the space out instead. `minmax(0, 1fr)` is the declaration
-   that does the work: an `auto` column would still size to its content and
-   overflow, and a plain `1fr` would refuse to go below its minimum content
-   width. The right-hand column holds ONE thing now — the two buttons — and
-   the text keeps everything else.
+   WHAT THE CARD'S OWN LAYOUT WAS FOR IS STILL OWED. The stack was a grid
+   because a flex line with exactly one shrinkable item drew Thai as a
+   two-character ribbon down the left of the row — reported 2026-09-02, and the
+   repair is pinned by test/withdrawalRowLayout.test.js. A `fixed` table is
+   that same answer in the shape this screen already uses: every column that
+   must not wrap is pinned in px, the two prose columns share what is left, and
+   the table SCROLLS rather than compressing when the two do not fit. The
+   sentence can no longer be squeezed to nought, because nothing is competing
+   with it for width any more.
 
-   THREE CELLS, NOT FIVE, since 2026-09-02. The figure moved into the clock
-   line it belongs to and the status pill went altogether: a green `อนุมัติ`
-   sitting a few pixels from `อนุมัติให้ถอน` was read as a third decision, and
-   on this card of all cards that is the confusion that cannot be afforded.
-   The one thing the pill said that the card's own heading does not is drawn
-   as a grey clause at the foot of the text — see `.withdraw-unsigned`.
+   THE 400px CEILING WENT WITH THE PANEL, and that is the point of the change
+   rather than something dropped on the way. `.withdraw-list { max-height:
+   400px }` existed because this card sat ABOVE รออนุมัติ OT and its height —
+   set by how many people happened to ask for something — decided where the
+   queue somebody works every day began. It sits BESIDE that queue now and
+   never above it, so the reason is spent; a scrolling box inside a scrolling
+   page kept out of habit is what §6.1 of docs/design.md forbids.
 
-   THE NAME BAND IS ITS OWN ROW, so the date chip can be centred against the
-   employee's name rather than against a four-line block. Both cells sit in
-   row 1 and both are `align-self: center`, so they share the row's centre
-   line exactly — an alignment that stays true when the name wraps, which a
-   measured `margin-top` would not. Row 2's first cell is empty and the
-   column keeps the chip's width, so the prose stays indented under the name.
+   1032px IS `.queue-table`'s OWN FLOOR, matched deliberately. The two tables
+   swap under one heading, and a card that changed width when a chip was
+   pressed would read as the page having reloaded. */
+.withdraw-table { table-layout: fixed; min-width: 1032px; }
+/* Four of the six cells are prose and two are one line. Ranged from the top
+   they all start on the same line, which `middle` would not do. */
+.withdraw-table td { vertical-align: top; }
+/* ── FIVE PINNED, ONE ELASTIC, AND EVERY ONE OF THE FIVE IS WRITTEN OUT ────
+   `th.why-col` and `th.act-col` HAVE BARE RULES OF THEIR OWN further down this
+   sheet — 150px and 258px, the defaults a queue-shaped table inherits — so a
+   column left undeclared here is not an elastic column, it is somebody else's
+   measurement. Measured on the built app at 1440 before this block was written
+   out in full: รายละเอียด came out at exactly 150px and เหตุผลที่ขอถอน took the
+   whole of the remainder at 500, which is not the split this table wants and is
+   not a split anything here had decided.
 
-   `.item.withdraw-item` and not `.withdraw-item`: at one class each these
-   would tie with `.item`'s own `display: flex` and be settled by which came
-   later in this file, which is not a thing to leave to an edit two years from
-   now. The same reason `.item.row-link` is written that way in the 860px
-   block. */
-.item.withdraw-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas:
-    "date who  actions"
-    ".    rest actions";
-  align-items: start;
-  gap: 4px 14px;
-  /* TIGHTER THAN AN `.item`'s 15px, since 2026-09-02, and the reason is the
-     ceiling below: this is the only stack in the app whose height is decided
-     by how many people asked for something, so four pixels a row is four rows
-     more of it visible before the scroll starts. Not tighter than 11px — the
-     card is four lines tall and the rule between two of them has to read as a
-     gap between cards, not as an underline. */
-  padding: 11px 18px;
-  /* Nothing here opens anything — the two buttons are the only way in — so the
-     row does not offer the finger that every other `.item` does. */
-  cursor: default;
-}
+   เหตุผลที่ขอถอน IS THE ONE LEFT ELASTIC, deliberately. It is free text an
+   employee typed and it is the whole of what the reviewer is deciding;
+   รายละเอียด is the job description, which `DESCRIPTION_MAX_CHARS` has capped
+   at 22 characters since it was added. The column that grows with the card
+   should be the one whose content has no ceiling.
 
-/* ── THE STACK HAS A CEILING ───────────────────────────────────────────────
-   This card sits above รออนุมัติ OT, the queue somebody works every day, and
-   its height is set by how many people asked for something — ten open
-   requests at ~110px each put the queue's first row a screen and a half down
-   the page. 400px is between three and four cards: enough that the next one
-   is cut rather than hidden — a half-drawn row is what tells a reader there
-   is more — and not so much that this panel decides where the page begins.
-
-   `overflow-y: auto` and NOT `scroll` — one request draws no track. Every row
-   stays in the DOM, so Ctrl-F and a screen reader's list still find all of
-   them, which is the half a "แสดงเพิ่ม" button gives away. `contain` keeps a
-   flick that reaches the end of the list from carrying on into the page. */
-.withdraw-list { max-height: 400px; overflow-y: auto; overscroll-behavior: contain; }
+   856px pinned against the 1032px floor leaves it 176px at its narrowest —
+   narrow, but it is a wrapping column with `min-width: 0`, and the floor is
+   only reached on a window where the table is already scrolling. */
+.withdraw-table th.who-col { width: 190px; }
+.withdraw-table th.when-col { width: 130px; }
+.withdraw-table th.why-col { width: 170px; }
+.withdraw-table th.asked-col { width: 130px; }
+.withdraw-table th.act-col { width: 236px; }
+/* วันที่ · ช่วงเวลา · ชั่วโมง ARE ONE FACT AND ONE CELL — the hours are NOT
+   given a numeric column of their own, however much the rest of this app would
+   give them one. The card's reason has not changed with the shape: the figure
+   is what a grant takes off the books, and reading it away from the clock it
+   belongs to is how the wrong row gets withdrawn. */
+.withdraw-table td.when-col { white-space: nowrap; }
+.withdraw-table td.who-col,
+.withdraw-table td.why-col,
+.withdraw-table td.reason-col,
+.withdraw-table td.asked-col { min-width: 0; }
 
 /* ลำดับที่ — the number a reviewer says out loud, and the only thing that
-   tells three cards apart when the same employee has asked for all three.
-   Mono, muted and a size down: every other figure on this card is hours, and
+   tells three rows apart when the same employee has asked for all three.
+   Mono, muted and a size down: every other figure on this row is hours, and
    this one is not about the request at all. `tabular-nums` so 9. and 10. put
    the name in the same place. */
 .withdraw-no {
   flex: none; font: 600 12.5px/1.4 var(--mono); font-variant-numeric: tabular-nums;
   color: var(--muted-2);
 }
-.item.withdraw-item:hover { background: var(--card); }
-.item.withdraw-item > .date { grid-area: date; align-self: center; }
-.withdraw-rest { grid-area: rest; min-width: 0; }
 
-/* Bottom right, under the last line of what they are deciding about. The
-   argument is the one the card is built on: the reason is read first and the
-   two ways to answer it come after, not beside. */
-.withdraw-actions {
-  grid-area: actions; justify-self: end; align-self: end;
-  display: flex; gap: 6px;
-}
+/* THE COLUMN HEADING NAMES THE CELL ON A DESKTOP; THE CELL NAMES ITSELF ON A
+   PHONE. Below 860px `thead` is gone and every cell has to carry its own label
+   — docs/design.md §6.1. The label is in the DOM at both widths and hidden
+   here, so the two cannot drift apart, and no word was invented for it:
+   `เหตุผลที่ขอถอน:` and `ขอโดย` are the card's own words, kept. */
+.withdraw-table .lbl { white-space: nowrap; color: var(--muted); }
+
+/* Two buttons, ranged right, and the reason is read BEFORE them rather than
+   beside them — the argument the card was built on, which the shape does not
+   touch. */
+.withdraw-actions { display: flex; justify-content: flex-end; gap: 6px; }
 /* อนุมัติให้ถอน is a decision, not a paragraph. A label that wraps at the
-   width its own row happens to leave is a label that has been read wrong. */
+   width its own row happens to leave is a label that has been read wrong.
+
+   AND IT IS NOT FOLDED TO AN ICON THE WAY `.queue-table td.act-col .btn-word`
+   IS. That table trades both words for glyphs above 860px and buys 160px with
+   it. These two buttons are opposites, and one of them takes hours off the
+   books for good — a pair of glyphs that can be read the wrong way round is
+   not a width worth having. */
 .withdraw-actions .btn { white-space: nowrap; }
+
+@media (min-width: 861px) {
+  /* The label belongs to the phone's cards; up here the column heading has
+     already said it, and a cell that repeats its own heading is one word of
+     noise on every row. */
+  .withdraw-table .lbl { display: none; }
+  /* AND THE DECISION NEVER LEAVES THE SCREEN. `.queue-table td.act-col` is
+     pinned for this reason and this table inherits it: the floor is 1032px
+     against a card measured at 1178, so an ordinary window does not scroll —
+     but a narrow one, a wide zoom or a long department name each bring the
+     overflow back, and when they do this is the difference between pushing a
+     table sideways to reach อนุมัติให้ถอน and not having to.
+
+     The background has to be opaque or the rows scroll through it, and it has
+     to answer the row's own hover — hence the second line. */
+  .withdraw-table td.act-col {
+    position: sticky; right: 0; z-index: 1; background: var(--card);
+  }
+  .withdraw-table tbody tr:hover td.act-col { background: var(--green-wash); }
+}
 
 /* The name and the code · department are one line of two runs, and the break
    may only fall BETWEEN them — the flex wrap is what puts the second on a line
@@ -2610,9 +2637,13 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    Thai half of that: a full name is two short runs with a space in the middle,
    so the space stays the only place it can come apart. Not applied to any of
    the prose below, where forbidding every break inside a Thai run would push
-   the sentence out through the side of the card instead of wrapping it. */
+   the sentence out through the side of the card instead of wrapping it.
+
+   It was `grid-area: who` on the stack's row until 2026-09-15; inside a table
+   cell the placement is the cell's, and what is left here is the band itself —
+   the half test/withdrawalRowLayout.test.js pins. */
 .withdraw-who {
-  grid-area: who; min-width: 0; align-self: center;
+  min-width: 0;
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px;
   font: 500 14.5px/1.4 var(--sans);
 }
@@ -5852,7 +5883,25 @@ td > .approver-line { margin-top: 5px; }
 
 /* Two piles of work on one screen — ใบรอยืนยัน and วันเกิดรอตรวจ. Drawn as a
    segmented control rather than as underlined tabs: these switch what the whole
-   page is, and the sidebar already owns the underline idiom for navigation. */
+   page is, and the sidebar already owns the underline idiom for navigation.
+
+   ── IT WAS DEAD CSS FROM 2026-09-03 TO 2026-09-15 ──────────────────────────
+   The birthday pile went that day, `components/QueueTabs.jsx` was deleted
+   rather than left as a tab bar with one tab in it, and this block stayed
+   behind with nothing rendering it. The two piles are คิวรออนุมัติ and
+   คำขอถอนใบที่อนุมัติแล้ว now, which is the same sentence at the top of this
+   comment with different nouns — so it is used again rather than written
+   again. `ApprovalQueue` draws it.
+
+   THE ONE-TAB RULE STILL HOLDS AND IS WHY THE BAR CAN VANISH. With nothing
+   waiting to be withdrawn there is no second pile, and `ApprovalQueue` draws
+   the card's ordinary heading instead of a segmented control with one segment
+   in it. That is the lesson of 2026-09-03 applied rather than repeated.
+
+   IT LIVES IN `.card-head`, whose items are centred above 860px — so the bar
+   sits at its content's width beside the button — and which is a stretched
+   COLUMN below it, where the bar takes the whole line and `flex: 1` below
+   splits it evenly between the two. Neither needs a rule of its own here. */
 .queue-tabs {
   display: flex; gap: 6px; padding: 6px; border-radius: 12px;
   background: var(--neutral-wash); border: 1px solid var(--line);
@@ -12324,37 +12373,73 @@ table.mini tbody tr:hover { background: none; }
      the column it now sits in is the one that stretches. */
   .item.row-link > .item-go { grid-area: go; justify-self: end; }
 
-  /* ── ขอถอนใบที่อนุมัติแล้ว on a phone ───────────────────────────────────
-     Three rows, and the third is the decision.
+  /* ── คำขอถอนใบที่อนุมัติแล้ว on a phone — THE TABLE BECOMES CARDS ────────
+     THE MECHANISM IS `.queue-table`'s, A FEW RULES ABOVE, AND NOT
+     `.stack-table`'s. That one prints the column heading in front of every
+     cell, which is right for a roster of short fields and wrong here: four of
+     these six cells are sentences, and a heading over each would be more label
+     than text. The two cells that genuinely need naming carry their own word
+     instead — `.lbl`, which is in the DOM at both widths and drawn only at
+     this one. That is `docs/design.md` §6.1 answered, not skipped.
 
-     The wide row already gives the sentence its own column; at 360px there is
-     no room for a second column beside it at all — two Thai buttons want about
-     300px on their own. So they come out of the line and become a row under
-     the text.
-
-     The name band and the chip beside it stay row 1, so the alignment the wide
-     row makes holds here too; the prose keeps its indent under the name from
-     row 2's empty first cell.
+     WHY THE TWO TABLES ANSWER IT THE SAME WAY. They swap under one heading on
+     one card. A reader who presses คำขอถอน and meets a different KIND of list
+     — labelled fields where the other had cards — has been told the page
+     changed, which is exactly what a chip is meant not to say.
 
      The buttons take the full width and split it evenly, at 44px tall like
      every other pair of decisions on a phone in this sheet. Two decisions of
      equal standing at equal width, on the line where a thumb ends up — the
      argument `.alert-actions` makes higher up in this block, and the reason
      they are not left to trail off the end of the reason they answer. */
-  .item.withdraw-item {
-    grid-template-columns: auto minmax(0, 1fr);
+  .withdraw-table { display: block; min-width: 0; table-layout: auto; }
+  .withdraw-table thead { display: none; }
+  .withdraw-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+  .withdraw-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "date    who"
-      ".       rest"
-      "actions actions";
-    gap: 6px 12px;
-    /* 11px, down from 14px, on the argument the wide rule gives: the ceiling
-       below is 400px on a phone too, and a phone card is the taller of the two
-       — the buttons are a row of their own here. */
+      "who    when"
+      "why    why"
+      "reason reason"
+      "asked  asked"
+      "act    act";
+    gap: 4px 12px;
     padding: 11px 12px;
+    border: 1px solid var(--line-softer); border-radius: 12px; background: var(--card);
   }
-  .item.withdraw-item > .withdraw-actions { justify-self: stretch; gap: 8px; margin-top: 4px; }
-  .item.withdraw-item .withdraw-actions .btn { flex: 1 1 0; min-height: 44px; }
+  .withdraw-table td { display: block; border: 0; padding: 0; }
+  .withdraw-table td.who-col { grid-area: who; }
+  /* The date rides the name's line at the right edge — the one pairing the
+     stack made too, where a date chip sat beside the name band. Ranged right
+     so a long name wraps into the space instead of pushing it. */
+  .withdraw-table td.when-col { grid-area: when; text-align: right; }
+  .withdraw-table td.why-col { grid-area: why; }
+  .withdraw-table td.reason-col { grid-area: reason; }
+  .withdraw-table td.asked-col { grid-area: asked; }
+  .withdraw-table td.act-col { grid-area: act; }
+  .withdraw-table .withdraw-actions { margin-top: 4px; gap: 8px; }
+  .withdraw-table .withdraw-actions .btn { flex: 1 1 0; min-height: 44px; }
+
+  /* ── AND AT THE VERY BOTTOM THE DATE COMES OFF THE NAME'S LINE ────────────
+     `14/09/2569` over `18:00–21:00 3 ชม.` is one unbreakable fact and about
+     128px of it, which does not shrink. Measured on the built CSS: at 390 that
+     leaves the name 162px and at 360 it leaves 132 — and 132 is under the
+     widest single name token on the live roster, `นางสาวฟ้าประทาน` at 115.4px,
+     by seventeen pixels. A cell one bad import away from being overflowed by a
+     name is not a cell to leave measured that finely.
+
+     389px IS AN EXISTING BREAKPOINT and this is what §6 of docs/design.md says
+     it is for — the edge of the small screens, used on single elements. The
+     card becomes one column there: the date takes its own line and ranges left
+     with everything else, and the name gets the whole width. */
+  @media (max-width: 389px) {
+    .withdraw-table tr {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: "who" "when" "why" "reason" "asked" "act";
+    }
+    .withdraw-table td.when-col { text-align: left; }
+  }
 
   /* อนุมัติให้ถอนทั้งหมด takes the whole line under the heading. `.card-head`
      wraps, so at 320px it would otherwise sit on a line of its own at its own

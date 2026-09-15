@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, hours, thaiDate, dayName } from '@/lib/api.js';
+import { api, hours, thaiDate } from '@/lib/api.js';
 import { cancelCutoffQueueNote, isPastCancelCutoff, mayCorrectEntries } from '@/lib/entries.js';
 import { Alert, Modal } from './common.jsx';
 import { usePolicy } from './policyContext.jsx';
@@ -16,6 +16,28 @@ import { usePolicy } from './policyContext.jsx';
  * cap columns — applies to a decision about whether hours should come back off
  * the books. Sharing the table would have meant teaching every one of those
  * features to skip these rows.
+ *
+ * ── IT IS A CHIP ON THAT SCREEN'S CARD NOW, NOT A PANEL ABOVE IT — 2026-09-15
+ *
+ * Asked in as many words: *"ถ้าเอาไปแสดงรวมกับตาราง รออนุมัติ ได้หรือไม่"*. The
+ * paragraph above still decides the shape and is the reason the answer is a
+ * SWITCH rather than a merge — two tables under one heading, never both on
+ * screen, so nothing in either has to learn to skip the other's rows. What
+ * changed is only where this one is drawn, and that it is now a table like its
+ * neighbour instead of a stack of cards.
+ *
+ * WHAT `ApprovalQueue` NEEDS FROM HERE, AND WHY IT IS TWO NUMBERS AND A COUNTER
+ * rather than the list itself. The chip carries a count and the card's head
+ * carries อนุมัติให้ถอนทั้งหมด, both of which are ABOUT this list — so `onCount`
+ * reports how many are open and how many this reader may actually decide, and
+ * `batchSignal` comes back down when the head's button is pressed. The rows,
+ * the fetch, the writes and all three dialogs stay here. Lifting the fetch into
+ * the queue would have put a second screen's list in a component that already
+ * owns one, which is the merge this arrangement exists to avoid.
+ *
+ * IT KEEPS FETCHING WHILE `active` IS FALSE, and must: the chip that switches
+ * to it is drawn from the count, so a component that only counted once it was
+ * looked at could never be the thing that says to look.
  *
  * ONE AT A TIME UNTIL 2026-09-02, where this paragraph read "It is deliberately
  * NOT batchable": granting takes a figure two people signed off a month that may
@@ -39,7 +61,9 @@ import { usePolicy } from './policyContext.jsx';
  * therefore leaves the grants before it standing — so what failed is NAMED, not
  * counted, and the list reloads from the server rather than being assumed.
  */
-export default function WithdrawalRequests({ user, onChanged }) {
+export default function WithdrawalRequests({
+  user, onChanged, active, onCount, batchSignal,
+}) {
   /**
    * ── งวดปิดเอง — WHAT THIS QUEUE HAD TO LEARN ─────────────────────────────
    *
@@ -95,6 +119,57 @@ export default function WithdrawalRequests({ user, onChanged }) {
   }
 
   useEffect(() => { load(); }, []);
+
+  /**
+   * ── WHAT อนุมัติให้ถอนทั้งหมด IS ACTUALLY ABOUT ──────────────────────────
+   *
+   * `rows` is everything open. `batch` is everything open THIS READER CAN
+   * DECIDE — which past a งวด's cutoff is not the same list, because the
+   * signer's two buttons on those rows are grey. A button headed "ทั้งหมด"
+   * that clears some of the list is a button that lies twice: in its name, and
+   * again in the failure list it produces when the server refuses the rest.
+   *
+   * `closed` is the part of that list whose งวด has passed — always empty for a
+   * หัวหน้า, since those rows are not in `batch` at all, and possibly non-empty
+   * for ฝ่ายบุคคล, who go through and must say why.
+   *
+   * COMPUTED BEFORE THE EARLY RETURNS since 2026-09-15, because the two figures
+   * are now reported upward on every render and not only on the renders that
+   * draw something. See `onCount`.
+   */
+  const batch = (rows || []).filter((e) => !locked(e));
+  const closed = batch.filter((e) => past(e));
+  /* What อนุมัติให้ถอนทั้งหมด takes off the books, added up. `hours()` rounds
+     to two places, which is what keeps a sum of quarter-hours from printing as
+     12.299999999999999 — the figures themselves are already rounded to the
+     policy's block by the engine, so this is float noise and nothing else. */
+  const totalHours = batch.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
+
+  /**
+   * TWO NUMBERS UP TO THE CARD'S HEAD, and they are two rather than one because
+   * they answer different questions. The chip says how many people are waiting
+   * for an answer — every open request, including the ones this reader may only
+   * look at. อนุมัติให้ถอนทั้งหมด is drawn from the other: what a press would
+   * actually clear.
+   *
+   * Sent as plain numbers into two `useState` setters, so React's own bail-out
+   * on an unchanged value is what stops this from looping. An object literal
+   * would be a new value every time and would not.
+   */
+  const openCount = rows?.length || 0;
+  const batchCount = batch.length;
+  useEffect(() => { onCount?.(openCount, batchCount); }, [onCount, openCount, batchCount]);
+
+  /**
+   * The head's button opens this component's own dialog. A counter and not a
+   * boolean, for the reason `openSignal` is one in components/App.jsx: a
+   * boolean that has to be set back to false leaves the parent holding a piece
+   * of this component's state, and the two get out of step the first time the
+   * dialog is closed from inside. `0` is "never pressed".
+   */
+  useEffect(() => {
+    if (batchSignal) { setGrantingAll(true); setBatchNote(''); }
+  }, [batchSignal]);
 
   async function decide(entry, granted, note) {
     setBusy(true);
@@ -156,226 +231,159 @@ export default function WithdrawalRequests({ user, onChanged }) {
   }
 
   /**
-   * Nothing at all when there is nothing waiting — no empty card, no zero.
+   * Nothing at all when there is nothing waiting — no empty panel, no zero.
    *
-   * This sits above a queue somebody works every day, and a permanent empty
-   * panel for a thing that happens a few times a month is a row of furniture
-   * they learn to read past. When it does appear it should be new.
+   * IT READ `if (!rows?.length) return null` FOR A CARD THAT SAT ABOVE THE
+   * QUEUE, on the argument that a permanent empty panel for a thing which
+   * happens a few times a month becomes furniture a reader learns to look past.
+   * The same argument decides the chip: `ApprovalQueue` draws no segmented
+   * control while this count is nought, so on the ordinary day the screen
+   * somebody works every day is exactly the screen it has always been.
+   *
+   * THE FETCH ERROR OUTLIVES THE PANEL, AND HAS TO. A failed load leaves `rows`
+   * null, which makes the count nought, which takes the chip away — and a
+   * missing chip reads as *nobody has asked for anything*, which is the one
+   * wrong thing it could say. So that single case is drawn from behind the
+   * other pile rather than swallowed with the panel.
    */
-  if (!rows?.length) {
-    return error ? <Alert kind="error">{error}</Alert> : null;
+  if (!active) {
+    return !rows && error
+      ? <Alert kind="error">โหลดคำขอถอนใบไม่สำเร็จ — {error}</Alert>
+      : null;
   }
-
-  /* What อนุมัติให้ถอนทั้งหมด takes off the books, added up. `hours()` rounds
-     to two places, which is what keeps a sum of quarter-hours from printing as
-     12.299999999999999 — the figures themselves are already rounded to the
-     policy's block by the engine, so this is float noise and nothing else. */
-  /**
-   * ── WHAT อนุมัติให้ถอนทั้งหมด IS ACTUALLY ABOUT ──────────────────────────
-   *
-   * `rows` is everything open. `batch` is everything open THIS READER CAN
-   * DECIDE — which past a งวด's cutoff is not the same list, because the
-   * signer's two buttons on those rows are grey. A button headed "ทั้งหมด"
-   * that clears some of the list is a button that lies twice: in its name, and
-   * again in the failure list it produces when the server refuses the rest.
-   *
-   * `closed` is the part of that list whose งวด has passed — always empty for a
-   * หัวหน้า, since those rows are not in `batch` at all, and possibly non-empty
-   * for ฝ่ายบุคคล, who go through and must say why.
-   */
-  const batch = rows.filter((e) => !locked(e));
-  const closed = batch.filter((e) => past(e));
-  const totalHours = batch.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
+  if (!rows?.length) return null;
 
   return (
-    <div className="card flush">
-      <div className="card-head">
-        <div>
-          {/* THE COUNT IS IN THE HEADING, and the grey `{n} คำขอ` chip that
-              used to sit on the right of this line is gone with it. The chip
-              was the only thing in the head, so the count could be read there;
-              it is not any more — the batch button is — and a figure printed
-              twice on one line is read as two figures about different things.
-              The queue next door prints its own count twice on purpose and
-              says why at its heading: one of the two is always `display:
-              none`. Here they would both have been drawn. */}
-          <div className="t">คำขอถอนใบที่อนุมัติแล้ว ({rows.length} รายการ)</div>
-          <div className="hint" style={{ margin: '3px 0 0' }}>
-            พนักงานขอถอนรายการที่มีผู้อนุมัติไปแล้ว · รายการเหล่านี้
-            <strong>ยังมีผลและยังถูกนับอยู่</strong>จนกว่าจะอนุมัติให้ถอน
-          </div>
-        </div>
-        {/* ── อนุมัติให้ถอนทั้งหมด — ABOVE TWO OR MORE, AND NEVER ABOVE ONE ───
-            On a single request it would be a second button that does exactly
-            what the button on the card below it does, one of them phrased as
-            if it did more. Outline amber and not filled: it opens a list to
-            read, it does not commit anything, and the filled red on each card
-            stays the mark of the press that writes. There is no
-            ไม่อนุมัติทั้งหมด beside it — see the head of this file. */}
-        {batch.length > 1 && (
-          <button
-            className="btn ghost warn sm withdraw-batch"
-            disabled={busy}
-            onClick={() => { setGrantingAll(true); setBatchNote(''); }}
-          >
-            อนุมัติให้ถอนทั้งหมด
-          </button>
-        )}
-      </div>
-
+    <>
       {error && <Alert kind="error">{error}</Alert>}
 
-      {/* ── THE ROW IS A GRID, AND EVERY CELL IN IT IS A CLASS ────────────────
-          It was five items in one flex line, and only the middle one — the
-          whole of what is being read — was allowed to shrink. The date chip,
-          the figure, the status and the two buttons come to about 430px of
-          `flex: none`; inside a card 294px wide on a phone that leaves the
-          sentence a negative share, so it was drawn at its minimum: Thai torn
-          between letters, one or two characters to a line, a ribbon of type
-          four words long running down the left of the row.
+      {/* ── THE ROW IS A TABLE ROW, AND EVERY CELL CARRIES ITS COLUMN'S CLASS ─
+          It was a stack of `.item` cards in a panel of its own. The same six
+          facts are the same six cells; what they are laid out BY is the column
+          class each one wears, exactly as คิวรออนุมัติ next door does it — so
+          the phone layout is a re-placement of these cells and not a second
+          rendering of them, and a change to a row shows up at both widths or at
+          neither. See `.withdraw-table` in app/styles.css.
 
-          A grid instead, so the space is dealt out rather than fought over.
-          `minmax(0, 1fr)` on the text column is what an `auto` column is not —
-          it may take everything that is left, and it may not be pushed below
-          nought.
+          FIVE COLUMNS OF CONTENT AND ONE OF DECISION. The three facts the stack
+          held in one unbreakable run — the day, the span of it and what that
+          comes to — are ONE CELL here for the reason they were one run: the
+          figure is what a grant takes off the books, and reading it away from
+          the clock it belongs to is how the wrong row gets withdrawn. It is not
+          given a numeric column of its own however much the rest of this app
+          would give it one.
 
-          THREE CELLS NOW, NOT FIVE. The figure went into the clock line it
-          belongs to and the status pill went altogether — see the note at the
-          provenance line below for what was kept out of it and why. What is
-          left on the right is the decision, and nothing else.
+          THE REASON IS A COLUMN, NOT A POP-UP. The card's argument, unchanged:
+          a reviewer who has to open something to find out why they are being
+          asked will grant on the strength of having been asked.
 
-          The inline styles that were here are gone for the reason the comment
-          at `.item-main` gives: an inline style is the one thing the 860px
-          block cannot take back, and on a phone this row is a different shape
-          entirely. */}
-
-      {/* ── THE STACK HAS A CEILING, AND THE CEILING IS THE POINT ─────────────
-          `.withdraw-list` is `max-height: 400px; overflow-y: auto`. This card
-          sits ABOVE รออนุมัติ OT — the queue somebody works every day — and it
-          is the only card on the page whose height is set by how many people
-          asked for something. Ten open requests at ~110px each pushed the
-          queue's first row a full screen down; the panel that is news once a
-          month decided where the panel that is worked daily began.
-
-          A ceiling and not a "show 5 more": every request is still in the DOM
-          and still reachable by Ctrl-F and by a screen reader's list, which is
-          not true of rows a button has not drawn yet. `overscroll-behavior:
-          contain` keeps a flick inside the list from carrying on into the
-          page once it hits the end. */}
-      <div className="withdraw-list">
-        {rows.map((e, i) => (
-          <div className="item withdraw-item" key={e._id}>
-            <div className="date">
-              <div className="n">{Number(e.workDate.slice(8, 10))}</div>
-              <div className="c">{dayName(e.workDate).slice(0, 2)}</div>
-            </div>
-            {/* The name band is its own grid row, and the date chip is centred
-                against IT rather than against the whole four-line block. Two
-                cells sharing one row share its centre line, which is the
-                alignment without a measured offset to keep in step. */}
-            <div className="withdraw-who">
-              {/* Two runs, and the break may only fall between them. A
-                  code is one token and `PM-0620 · ฝ่ายวิศวกรรม` reads as one
-                  label, so `.nb` holds each together and the flex wrap puts
-                  the second on its own line when the first has taken the
-                  width. */}
-              {/* ลำดับที่ — a place in the list, not a chip. It is the number a
-                  reviewer says out loud to the person beside them ("ใบที่สาม")
-                  and the one thing that tells five cards apart at a glance when
-                  the same employee has asked for three of them. `.withdraw-no`
-                  is mono and quiet: it must not read as a figure ABOUT the
-                  request, next to a card whose other numbers are hours. */}
-              <span className="withdraw-no">{i + 1}.</span>
-              <span className="nm">{e.employee?.name}</span>
-              <span className="hint">
-                <span className="nb">{e.employee?.code}</span> · {e.department?.nameTh || e.department?.name}
-              </span>
-            </div>
-            <div className="withdraw-rest">
-              <div className="hint">
-                {/* The day, the span of it and WHAT THAT COMES TO are one fact,
-                    held in one unbreakable run: the figure is what a grant takes
-                    off the books, and reading it away from the clock it belongs
-                    to is how the wrong row gets withdrawn. The description after
-                    it is prose and wraps the way Thai prose does. */}
-                <span className="nb">
-                  {thaiDate(e.workDate)} · {e.startTime}–{e.endTime}
-                  {' '}<span className="withdraw-hrs">{hours(e.totals?.otHours)} ชม.</span>
-                </span>
-                {' · '}{e.description}
-              </div>
-              {/* The reason is the whole of what is being decided, so it is not
-                  behind a button. A reviewer who has to open something to find
-                  out why they are being asked will approve on the strength of
-                  the fact that they were asked. */}
-              <div className="withdraw-reason">
-                <span className="lbl">เหตุผลที่ขอถอน:</span> {e.withdrawal?.reason}
-              </div>
-              <div className="hint">
-                ขอโดย {e.withdrawal?.requestedByName}
-                {e.withdrawal?.requestedAt && ` · ${thaiDate(String(e.withdrawal.requestedAt).slice(0, 10))}`}
-                {/* NOT A CHIP, and not beside the buttons. The green `อนุมัติ`
-                    status pill that used to sit there was read as a third
-                    decision next to อนุมัติให้ถอน, which is the one confusion
-                    this card cannot afford — so it is gone.
-
-                    What is NOT gone is the one case where the status is news
-                    rather than a restatement of the card's own heading. These
-                    rows are `approved` or `pending_hr` (see cancelPermission:
-                    the ask opens at the FIRST signature, not the last), and on
-                    a `pending_hr` row a grant withdraws a figure ฝ่ายบุคคล have
-                    not confirmed yet. Said as a grey clause at the end of the
-                    provenance line, where nothing can be pressed. */}
-                {e.status !== 'approved' && (
-                  <> · <span className="withdraw-unsigned">ใบนี้ยังรอฝ่ายบุคคลยืนยัน</span></>
-                )}
-              </div>
-              {/* ── งวดนี้ปิดไปแล้ว — DRAWN FOR EVERY READER ─────────────────
-                  A หัวหน้า needs it to understand why their two buttons are
-                  grey. ฝ่ายบุคคล, whose buttons still work, needs the same
-                  sentence as a warning that they are about to act where the
-                  signer no longer can — which is the แถบเตือน §8.6 of the plan
-                  asked for, already here, not written a second time.
-
-                  On the provenance line's own block and not beside the buttons,
-                  for the reason the status pill was taken off this card: a
-                  sentence next to a decision is read as a third decision. */}
-              {past(e) && (
-                <div className="hint">
-                  <span className="withdraw-unsigned">{cancelCutoffQueueNote(e, policy)}</span>
-                </div>
-              )}
-            </div>
-            {/* Two buttons and nothing else: refuse the request, or grant it.
-                Past the งวด's cutoff both are still DRAWN and both are dead for
-                anybody but ฝ่ายบุคคล — see the head of this component for why a
-                grey pair and not a sentence. The wrapper carries the whole
-                reason as its tooltip and as its `aria-label`, the way
-                `WatchActions` does in คิวรออนุมัติ; the visible half of it is
-                the line under the card, which everybody gets. */}
-            <div
-              className="withdraw-actions"
-              title={locked(e) ? cancelCutoffQueueNote(e, policy) : undefined}
-              aria-label={locked(e) ? cancelCutoffQueueNote(e, policy) : undefined}
-              role={locked(e) ? 'note' : undefined}
-            >
-              <button
-                className="btn ghost sm"
-                disabled={busy || locked(e)}
-                onClick={() => { setRefusing(e); setRefuseNote(''); }}
-              >
-                ไม่อนุมัติการถอน
-              </button>
-              <button
-                className="btn danger sm"
-                disabled={busy || locked(e)}
-                onClick={() => setGranting(e)}
-              >
-                อนุมัติให้ถอน
-              </button>
-            </div>
-          </div>
-        ))}
+          AND THE TWO GREY CLAUSES ARE NOT BESIDE THE BUTTONS. `.cell-sub` under
+          รายละเอียด for the ใบ that has one signature and not two; `.cell-note`
+          under the reason for a งวด that has closed. Both are things that are
+          TRUE of the row rather than decisions to be made about it, and a
+          sentence set next to a decision is read as a third decision — which is
+          what took the green status pill off this row in the first place. */}
+      <div className="table-wrap">
+        <table className="withdraw-table">
+          <thead>
+            <tr>
+              <th className="who-col">พนักงาน</th>
+              <th className="when-col">วันที่ · เวลา</th>
+              <th className="why-col">รายละเอียด</th>
+              <th className="reason-col">เหตุผลที่ขอถอน</th>
+              <th className="asked-col">ผู้ขอ</th>
+              <th className="act-col" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((e, i) => (
+              <tr key={e._id}>
+                <td className="who-col">
+                  {/* Two runs, and the break may only fall between them — the
+                      name is allowed a second line and must take it at the
+                      space, never inside a Thai word (`test/queueNameWrap`).
+                      ลำดับที่ rides with it: it is the number a reviewer says
+                      out loud, and the one thing that tells three rows apart
+                      when the same employee has asked for all three. */}
+                  <div className="withdraw-who">
+                    <span className="withdraw-no">{i + 1}.</span>
+                    <span className="nm">{e.employee?.name}</span>
+                  </div>
+                  <div className="cell-sub">
+                    <span className="nb">{e.employee?.code}</span>
+                    {' · '}{e.department?.nameTh || e.department?.name}
+                  </div>
+                </td>
+                <td className="when-col">
+                  {thaiDate(e.workDate)}
+                  <div className="cell-sub">
+                    {e.startTime}–{e.endTime}
+                    {' '}<span className="withdraw-hrs">{hours(e.totals?.otHours)} ชม.</span>
+                  </div>
+                </td>
+                <td className="why-col">
+                  {e.description}
+                  {/* The one row whose grant takes back a figure ฝ่ายบุคคล have
+                      never confirmed. These rows are `approved` or `pending_hr`
+                      — the ask opens at the FIRST signature, not the last — so
+                      on that one the status is news rather than a restatement
+                      of the column it sits in. */}
+                  {e.status !== 'approved' && (
+                    <div className="cell-sub withdraw-unsigned">ใบนี้ยังรอฝ่ายบุคคลยืนยัน</div>
+                  )}
+                </td>
+                <td className="reason-col">
+                  <span className="lbl">เหตุผลที่ขอถอน: </span>{e.withdrawal?.reason}
+                  {/* ── งวดนี้ปิดไปแล้ว — DRAWN FOR EVERY READER ─────────────
+                      A หัวหน้า needs it to understand why their two buttons are
+                      grey. ฝ่ายบุคคล, whose buttons still work, needs the same
+                      sentence as a warning that they are about to act where the
+                      signer no longer can. One sentence, both readings. */}
+                  {past(e) && <div className="cell-note">{cancelCutoffQueueNote(e, policy)}</div>}
+                </td>
+                <td className="asked-col">
+                  <span className="lbl">ขอโดย </span>{e.withdrawal?.requestedByName}
+                  {e.withdrawal?.requestedAt && (
+                    <div className="cell-sub">
+                      {thaiDate(String(e.withdrawal.requestedAt).slice(0, 10))}
+                    </div>
+                  )}
+                </td>
+                {/* Two buttons and nothing else: refuse the request, or grant
+                    it. Past the งวด's cutoff both are still DRAWN and both are
+                    dead for anybody but ฝ่ายบุคคล — a disabled pair says the
+                    decision still exists and is somebody else's, which a
+                    sentence in their place would not. The wrapper carries the
+                    whole reason as its tooltip and as its `aria-label`, the way
+                    `WatchActions` does in คิวรออนุมัติ; the visible half of it
+                    is the note under the reason, which everybody gets. */}
+                <td className="act-col">
+                  <div
+                    className="withdraw-actions"
+                    title={locked(e) ? cancelCutoffQueueNote(e, policy) : undefined}
+                    aria-label={locked(e) ? cancelCutoffQueueNote(e, policy) : undefined}
+                    role={locked(e) ? 'note' : undefined}
+                  >
+                    <button
+                      className="btn ghost sm"
+                      disabled={busy || locked(e)}
+                      onClick={() => { setRefusing(e); setRefuseNote(''); }}
+                    >
+                      ไม่อนุมัติการถอน
+                    </button>
+                    <button
+                      className="btn danger sm"
+                      disabled={busy || locked(e)}
+                      onClick={() => setGranting(e)}
+                    >
+                      อนุมัติให้ถอน
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {granting && (
@@ -609,6 +617,6 @@ export default function WithdrawalRequests({ user, onChanged }) {
           </div>
         </Modal>
       )}
-    </div>
+    </>
   );
 }
