@@ -2084,7 +2084,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     152 files, run by `npm test`. Six named below as a
+test/                     153 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2097,9 +2097,16 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2739 tests
-across 152 files**, measured 2026-09-15 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2753 tests
+across 153 files**, measured 2026-09-15 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2739 tests across 152 files … measured 2026-09-15" until **คำขอถอนใบ ย้ายเข้า
+ไปอยู่การ์ดเดียวกับ รออนุมัติ** later the same day — `queueWithdrawChips` is
+file 153 and holds the switch itself; `withdrawalRowLayout` was rewritten rather
+than added to, because the row it pinned was a grid in a panel of its own and is
+a table beside the queue now, and the paragraph saying WHY that file exists —
+the Thai drawn as a two-character ribbon, reported 2026-09-02 — was carried over
+whole. It read
 "2736 tests across 152 files … measured 2026-09-15" until the last two stacked
 labels went onto bars later the same day — three cases in `filterBar`, one
 figure changed in `pickDate` (nineteen month and date boxes to eighteen,
@@ -6653,6 +6660,17 @@ batches a rejection.
 
 ### The row is a grid, and it was a flex line with one item allowed to shrink
 
+> **This heading read "The row is a grid" as a statement about today until
+> 2026-09-15**, when คำขอถอนใบที่อนุมัติแล้ว moved into the same card as
+> รออนุมัติ — two chips, one card — and the stack of cards became a table
+> beside the queue it now shares a heading with. Everything below is the
+> history of WHY the space in a row of this list is dealt out rather than
+> fought over, which is the part that had to survive the move; the mechanism
+> that carries it today is `table-layout: fixed` with every one-line column
+> pinned in px, and the section after this one has it. The 400px ceiling went
+> with the panel, and for the reason it existed: it was there because this card
+> sat ABOVE the queue somebody works every day, and it does not any more.
+
 Fixed 2026-09-02, reported as *"ข้อความบีบอัดตกบรรทัดเป็นแนวตั้ง"*. The row held
 five things in one `.item` flex line — the date chip, the sentence, the figure,
 the status chip and two buttons — and four of the five were `flex: none`,
@@ -6729,6 +6747,62 @@ and drifted the first time a long name wrapped.
 
 The row is `date · name` over `· rest` with the buttons down the right, and the
 second row's first cell is empty so the prose keeps the chip's indent.
+
+### And on 2026-09-15 it stopped being a panel: two piles, one card, one chip each
+
+Asked in as many words — *"ถ้าเอาไปแสดงรวมกับตาราง รออนุมัติ ได้หรือไม่"*.
+
+**The answer is a switch, not a merge, and the reason is the paragraph at the
+head of `components/WithdrawalRequests.jsx`.** The tick boxes, เลือกทั้งหมด, the
+batch bar and the สะสม / เพดาน column all belong to a signature that has not
+been given yet. A withdrawal request is an `approved` entry whose hours are
+already in the month's totals and the decision is whether to take them back out
+— so one list holding both kinds of row would have meant teaching every one of
+those controls to skip half of it, and putting two buttons headed **ทั้งหมด**,
+acting on two different lists, at the same corner of one card. Two tables that
+are never on screen together need none of that.
+
+**The control was already in the stylesheet.** `.queue-tabs` was written for
+ใบรอยืนยัน beside วันเกิดรอตรวจ; when the birthday pile went on 2026-09-03
+“components/QueueTabs.jsx” was deleted rather than left as a tab bar with one
+tab in it, and the block stayed behind with nothing rendering it. Its own
+comment makes the case for a segmented control over underlined tabs — *these
+switch what the whole panel is, and the sidebar owns the underline idiom* —
+which is this case with different nouns. It is used again rather than written
+again, and `.queue-tabs .count`'s note about the nav badge carrying the SUM of
+the two became true again with it.
+
+| | |
+|---|---|
+| the chips | `รออนุมัติ` and `คำขอถอนใบ`, each with its own pile's count |
+| the nav badge | the sum of the two — unchanged since 2026-09-03, see `queueBadge` |
+| opens on | `รออนุมัติ`, always, whatever is in either pile |
+| no open request | **no chip bar at all** — the card's head is what it always was |
+| the head's button | `+ บันทึก OT แทนพนักงาน` on the queue, `อนุมัติให้ถอนทั้งหมด` on the other, never both |
+
+**No chip bar while there is nothing behind the second chip**, and the app has
+paid for both halves of that already: `WithdrawalRequests` returned `null` on an
+empty list because a permanent empty panel for a thing that happens a few times
+a month becomes furniture a reader learns to look past, and `QueueTabs.jsx` was
+deleted rather than left showing one tab. `คำขอถอน 0` every day of the month is
+both of those mistakes at once. So on the ordinary day the screen somebody works
+every day is exactly the screen it has always been.
+
+**The list itself is `.withdraw-table` now** — `table-layout: fixed`, six
+columns of content and one of decision, `min-width: 1032px` matched to
+`.queue-table`'s own floor so the card cannot change width when a chip is
+pressed. พนักงาน · วันที่ · เวลา · รายละเอียด · เหตุผลที่ขอถอน · ผู้ขอ, and the
+two buttons pinned to the right edge while the table scrolls. The hours stay
+**inside the date cell** rather than taking a numeric column, for the reason
+given two sections up: the figure is what a grant takes off the books, and
+reading it away from its own clock is how the wrong row gets withdrawn. Below
+860px the cells come out of the row and become a card, the way `.queue-table`'s
+do, with the two decisions as equal halves of a 44px line.
+
+**Nothing on the server changed, and nothing about who may press what.** No new
+route, no new field, no migration. `isPastCancelCutoff`, `mayCorrectEntries` and
+`cancelCutoffQueueNote` decide the grey pair exactly as before, the three
+dialogs are untouched, and the writes are still one POST per entry in order.
 
 ### An open request is ตกค้าง, and the card says so
 
@@ -13760,8 +13834,19 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2739 tests**, about 4 s, measured 2026-09-15 across 152
-  files, all green. **NO NEW FILE in the round that moved it off 2736** —
+- `npm test` — **2753 tests**, about 4 s, measured 2026-09-15 across 153
+  files, all green. **`queueWithdrawChips` is the new file of the last round** —
+  คำขอถอนใบที่อนุมัติแล้ว moved into the same card as รออนุมัติ, switched by a
+  chip, and that file holds the switch: that the chip bar is drawn only while
+  there is a second pile, that the screen opens on the queue whatever the data
+  says, that the filter bar and the batch bar and the pager are not drawn behind
+  the other chip, and that the head's one button belongs to the pile on screen.
+  `withdrawalRowLayout` was REWRITTEN rather than added to — the row it pinned
+  was a grid in a panel of its own and is a table beside the queue now — and the
+  paragraph saying why that file exists at all, the Thai drawn as a
+  two-character ribbon on 2026-09-02, was carried over whole.
+  It read "**2739 tests** … across 152 files" until then. **NO NEW FILE in the
+  round that moved it off 2736** —
   พิมพ์ใบขออนุมัติ OT and ประวัติการขอ OT put their month pickers on bars, and
   the three cases went into `filterBar` beside the rule they are an instance of.
   `pickDate`'s count of month and date boxes went 19 → 18 in the same commit:
@@ -14245,21 +14330,31 @@ build แล้ว
   **Before it, `test/withdrawalRowLayout.test.js`** — twenty-one cases
   over the reviewer's card on คำขอถอนใบที่อนุมัติแล้ว. It read "1915/1915" and
   "thirteen cases" until that card learnt to answer several requests at once.
-  **Nine of the twenty-one are that round**: the count moved into the heading
-  and the chip that used to repeat it is gone; `.withdraw-list` holds the stack
-  to 400px and scrolls, because this card sits above the queue somebody works
-  every day and its height is set by how many people asked for something; and
-  the shape of **อนุมัติให้ถอนทั้งหมด** — above two or more only, an amber
-  outline that writes nothing, a box that prints every reason in full, one POST
-  per entry in order, and no ไม่อนุมัติทั้งหมด beside it.
-  **The row underneath** was five things in
-  one flex line with four of them `flex: none` and only the sentence allowed to
-  give. What is pinned there is the allocation: `minmax(0, 1fr)` on the text
-  column, the date chip and the name band sharing one grid row so their centres
-  cannot drift, the two-class selector that keeps `display: grid` from being
-  settled against `.item` by file order, and the split between what is held
-  together (a code, a clock span *with the figure inside it*, a button label)
-  and what is left to wrap (every line of Thai prose in the row).
+  **It was REWRITTEN on 2026-09-15** and this paragraph with it: the card became
+  a chip on รออนุมัติ's own card and the stack became `.withdraw-table`, so the
+  assertions about a grid had nothing left to hold. What is pinned there now is
+  the SAME property in the shape that carries it — `table-layout: fixed` with
+  every one-line column pinned in px so the prose columns take what is left and
+  cannot be squeezed below their share, the `min-width` shared with
+  `.queue-table` so the card does not change width when a chip is pressed, the
+  cells re-placed as a card below 860px with every one of the six named, and the
+  same split between what is held together (a code, a clock span *with the
+  figure inside it*, a button label, both cell labels) and what is left to wrap
+  (every line of Thai prose in the row). **The paragraph explaining why the file
+  exists was carried over whole** — the text column measured at 0.0px and the
+  Thai running down the row as a ribbon, reported 2026-09-02 — because that is
+  the half that cannot be recovered from the code. Two cases are new and are
+  about what went: the 400px ceiling, which existed only because this card sat
+  above the queue and does not any more, and the two grey clauses, which must
+  stay under the prose and never beside the buttons.
+  **The head's own assertions moved to `test/queueWithdrawChips.test.js`**, with
+  the head: the count, and the shape of **อนุมัติให้ถอนทั้งหมด** — above two or
+  more only, counted off the rows this reader can actually decide, an amber
+  outline that writes nothing, and no ไม่อนุมัติทั้งหมด beside it. The box it
+  opens, which prints every reason in full, and the one-POST-per-entry loop
+  stayed where the list is. It read "**Nine of the twenty-one are that round**:
+  the count moved into the heading … `.withdraw-list` holds the stack to 400px
+  and scrolls" until then.
   **Three of the first twelve are about what is NOT drawn**: the row offers exactly
   two buttons, `ไม่อนุมัติการถอน` and `อนุมัติให้ถอน`, and no chip of any kind —
   the green `อนุมัติ` status pill beside them was read as a third decision.

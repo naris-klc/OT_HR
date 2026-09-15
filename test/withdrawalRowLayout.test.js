@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 /**
- * คำขอถอนใบที่อนุมัติแล้ว — the reviewer's row, and why it is a grid.
+ * คำขอถอนใบที่อนุมัติแล้ว — the reviewer's row, and why the space in it is
+ * DEALT OUT rather than fought over.
+ *
+ * ── THE BUG THIS FILE IS THE REPAIR FOR, WHICH HAS NOT CHANGED ─────────────
  *
  * Reported 2026-09-02 as "ข้อความบีบอัดตกบรรทัดเป็นแนวตั้ง". The row was five
  * things in one `.item` flex line — the date chip, the sentence being read,
@@ -16,20 +19,30 @@ import { dirname, join } from 'node:path';
  * one or two characters to a line, and the whole of what the reviewer is meant
  * to read ran down the left of the row as a ribbon.
  *
- * What is pinned here is the ALLOCATION, because that is the whole of the fix
- * and it comes apart silently if one declaration moves:
+ * ── AND WHAT CHANGED ON 2026-09-15: IT IS A TABLE NOW ──────────────────────
  *
- *   · `minmax(0, 1fr)` on the text column, which an `auto` column is not (it
- *     sizes to its content and overflows) and a plain `1fr` is not either (it
- *     refuses to go below its minimum content width).
- *   · The figure and the buttons STACKED in a column of their own rather than
- *     ranged along the same line — half the fixed width the sentence pays for.
- *   · Below 860px they come out of the line entirely and become rows.
- *   · The two-class selector, so `display: grid` cannot be settled against
- *     `.item`'s `display: flex` by which rule happens to come later.
+ * Asked that day — *"ถ้าเอาไปแสดงรวมกับตาราง รออนุมัติ ได้หรือไม่"*. The two
+ * piles share one card and are switched by `.queue-tabs` (pinned separately, in
+ * test/queueWithdrawChips.test.js); this list became a table like the queue it
+ * now sits beside.
+ *
+ * THE OLD ASSERTIONS WERE ABOUT A GRID AND ARE GONE WITH IT. What is pinned
+ * here is the same PROPERTY in the shape that now carries it, because the
+ * property is the whole of the fix and it comes apart silently either way:
+ *
+ *   · `table-layout: fixed` with every one-line column pinned in px, so the
+ *     prose columns take what is left. In a `fixed` table a column cannot be
+ *     squeezed below the width the layout deals it — which is what
+ *     `minmax(0, 1fr)` was doing in the grid, and what a plain `auto` column
+ *     (sizes to content, overflows) and a plain `1fr` (refuses to go below its
+ *     minimum content width) each fail to do.
+ *   · The table SCROLLS rather than compressing when the pinned widths and the
+ *     prose do not fit — `min-width`, matched to `.queue-table`'s own floor.
+ *   · Below 860px the cells come out of the row and become a card, the way
+ *     `.queue-table`'s do, and the decision becomes a full-width 44px pair.
  *
  * And the second half of the answer, which is not one answer: single facts are
- * held together, prose is not. See the last two tests.
+ * held together, prose is not. See the last two tests in that section.
  *
  * Run with: npm test
  */
@@ -59,89 +72,183 @@ function rule(half, selector) {
   return half.slice(at, half.indexOf('}', at));
 }
 
-/** The row itself, markup only — not the two modals below it. */
+/** The row itself, markup only — not the three modals below it. */
 const row = jsx.slice(jsx.indexOf('{rows.map('), jsx.indexOf('{granting &&'));
+/** The column headings, which are the other half of the phone's labels. */
+const head = jsx.slice(jsx.indexOf('<thead>'), jsx.indexOf('</thead>'));
 
 // ── the markup the row is laid out from ─────────────────────────────────────
 
-test('every cell of the row names itself', () => {
-  // The grid places its cells by name. A cell added without a class lands in
-  // the next implicit row, under everything, at the full width of the grid.
-  for (const cls of ['withdraw-who', 'withdraw-rest', 'withdraw-hrs',
-    'withdraw-actions', 'withdraw-reason']) {
-    assert.ok(row.includes(cls), `the row lost .${cls}`);
+test('every cell of the row names its column', () => {
+  // The table places its cells by the class each one wears, and the phone
+  // block re-places those same cells by the same classes. A cell added without
+  // one is a cell that exists at one width and not at the other.
+  for (const cls of ['who-col', 'when-col', 'why-col', 'reason-col', 'asked-col', 'act-col']) {
+    assert.ok(row.includes(`className="${cls}"`), `the row lost .${cls}`);
+    assert.ok(head.includes(cls), `the heading lost .${cls}`);
   }
-  assert.match(row, /className="item withdraw-item"/);
+  assert.match(jsx, /<table className="withdraw-table">/);
 });
 
-test('nothing in the row is laid out by an inline style any more', () => {
-  // `.item-main` records the reason: an inline style is the one thing the
-  // 860px block cannot take back, and below 860px this row is a different
-  // shape entirely. `flex: 1, minWidth: 0` on the text column was the
-  // declaration that let it be squeezed to nought in the first place.
+test('the six headings say what the six columns are', () => {
+  // Above 860px these are what name the cells; below it they are gone and the
+  // two cells that need naming carry their own word. Both halves or neither.
+  for (const th of ['พนักงาน', 'วันที่ · เวลา', 'รายละเอียด', 'เหตุผลที่ขอถอน', 'ผู้ขอ']) {
+    assert.ok(head.includes(th), `the heading lost ${th}`);
+  }
+  // The decision column has no heading and must not grow one: a word over two
+  // buttons is a word on every row saying what the buttons already say.
+  assert.match(head, /<th className="act-col" \/>/);
+});
+
+test('nothing in the row is laid out by an inline style', () => {
+  // `.item-main` recorded the reason and it outlived the layout it was written
+  // for: an inline style is the one thing the 860px block cannot take back,
+  // and below 860px this row is a different shape entirely. `flex: 1,
+  // minWidth: 0` on the text column was the declaration that let it be
+  // squeezed to nought in the first place.
   assert.ok(!/style=\{\{[^}]*flex/.test(row), 'a flex is back in an inline style');
   assert.ok(!/style=\{\{[^}]*font/.test(row), 'a font is back in an inline style');
   assert.ok(!/minWidth/.test(row), 'minWidth: 0 is back on the text column');
 });
 
-// ── above 860px: three columns, and only one of them may grow ───────────────
+// ── above 860px: pinned columns, and the prose takes what is left ───────────
 
-test('the row is a grid, and it wins that against .item by specificity', () => {
-  // `.item` is one class and sets `display: flex`. At one class each these
-  // would tie and be settled by file order, which is not a thing to leave to
-  // an edit two years from now.
-  assert.match(rule(wide, '.item.withdraw-item {'), /display: grid;/);
-  assert.ok(!/^\.withdraw-item \{/m.test(wide), 'a single-class rule is back and can lose the tie');
+test('the table is fixed, and it scrolls rather than compressing', () => {
+  const base = rule(wide, '.withdraw-table {');
+  // `fixed` is what makes the pinned widths binding. `auto` would hand the
+  // widths back to the content and put the ribbon back.
+  assert.match(base, /table-layout: fixed;/);
+  // 1032px IS `.queue-table`'s OWN FLOOR. The two tables swap under one
+  // heading; a card that changed width when a chip was pressed would read as
+  // the page having reloaded.
+  assert.match(base, /min-width: 1032px;/);
+  assert.match(rule(wide, '.queue-table {'), /min-width: 1032px;/,
+    'the two tables no longer share a floor — one of them was re-measured alone');
 });
 
-test('the text column takes what is left and may not be pushed below nought', () => {
-  const base = rule(wide, '.item.withdraw-item {');
-  assert.match(base, /grid-template-columns: auto minmax\(0, 1fr\) auto;/);
-  // Two rows: the name band beside the date chip, the rest of the text under
-  // it, and the buttons spanning both down the right.
-  assert.match(base, /"date who {2}actions"/);
-  assert.match(base, /"\. {4}rest actions"/);
-  assert.match(rule(wide, '.withdraw-actions {'), /grid-area: actions;/);
-  assert.match(rule(wide, '.withdraw-rest {'), /min-width: 0;/);
+test('five columns are pinned by name and exactly one is left elastic', () => {
+  // EVERY PINNED COLUMN IS WRITTEN OUT, INCLUDING THE TWO THAT HAVE BARE RULES
+  // FURTHER DOWN THE SHEET. `th.why-col` (150px) and `th.act-col` (258px) are
+  // the defaults a queue-shaped table inherits, so a column left undeclared
+  // here takes somebody else's measurement rather than a share of what is left.
+  // Measured on the built app at 1440 before they were written out:
+  // รายละเอียด came out at exactly 150px — the inherited figure — and
+  // เหตุผลที่ขอถอน swallowed the whole remainder at 500.
+  assert.match(rule(wide, '.withdraw-table th.who-col {'), /width: 190px;/);
+  assert.match(rule(wide, '.withdraw-table th.when-col {'), /width: 130px;/);
+  assert.match(rule(wide, '.withdraw-table th.why-col {'), /width: 170px;/);
+  assert.match(rule(wide, '.withdraw-table th.asked-col {'), /width: 130px;/);
+  assert.match(rule(wide, '.withdraw-table th.act-col {'), /width: 236px;/);
+  // …and เหตุผลที่ขอถอน is the one that takes what is left. It is free text an
+  // employee typed and the whole of what is being decided, where รายละเอียด is
+  // a job description `DESCRIPTION_MAX_CHARS` has capped at 22 characters: the
+  // column that grows with the card should be the one with no ceiling on it.
+  assert.ok(!/\.withdraw-table th\.reason-col \{/.test(wide), 'เหตุผลที่ขอถอน has been pinned to a width');
 });
 
-test('the date chip is centred on the NAME, not on the four-line block', () => {
-  // Both cells sit in row 1 and both are centred in it, so they share the
-  // row's centre line — an alignment that survives the name wrapping, which a
-  // measured `margin-top` on the chip would not.
-  assert.match(rule(wide, '.item.withdraw-item > .date'), /align-self: center;/);
-  assert.match(rule(wide, '.withdraw-who {'), /align-self: center;/);
-  // Row 2's first cell is empty, so the prose keeps the chip's indent.
-  assert.match(rule(wide, '.item.withdraw-item {'), /"\. {4}rest/);
+test('the prose cells may be dealt a narrow share and still not overflow', () => {
+  // The table-layout half deals the width out; this is the half that stops a
+  // long unbroken run inside one cell from pushing the cell wider than its
+  // share. Both are needed and each reads as tidy-up without the other.
+  const decl = rule(wide, '.withdraw-table td.who-col,');
+  for (const col of ['why-col', 'reason-col', 'asked-col']) {
+    assert.ok(decl.includes(col), `${col} is out of the min-width: 0 list`);
+  }
+  assert.match(decl, /min-width: 0;/);
 });
 
-test('the buttons sit at the bottom of the row, under what they answer', () => {
-  assert.match(rule(wide, '.withdraw-actions {'), /justify-self: end; align-self: end;/);
+test('the cells are ranged from the top, not centred in the row', () => {
+  // Four of the six cells are several lines and two are one. `middle` — `td`'s
+  // own default in this sheet — starts each cell at a different height and the
+  // row reads as six unrelated blocks.
+  assert.match(rule(wide, '.withdraw-table td {'), /vertical-align: top;/);
 });
 
-test('the row does not offer a finger it has nothing to do with', () => {
-  // Every other `.item` is a link. Nothing here opens anything — the two
-  // buttons are the only way in — so the pointer and the hover wash come off.
-  assert.match(rule(wide, '.item.withdraw-item {'), /cursor: default;/);
-  assert.match(rule(wide, '.item.withdraw-item:hover'), /background: var\(--card\);/);
+test('the decision never leaves the screen when the table scrolls', () => {
+  // `.queue-table td.act-col` is pinned for this reason and this table
+  // inherits it: a reviewer must not have to push a table sideways to reach
+  // the press the screen exists for.
+  const at = wide.indexOf('.withdraw-table td.act-col {');
+  assert.ok(at > 0, '.withdraw-table td.act-col — no such rule');
+  // …above 860px ONLY. Below it the table is a stack of cards, and a sticky
+  // cell inside one of them is a cell that follows the reader down the page.
+  const opened = wide.lastIndexOf('@media (min-width: 861px)', at);
+  assert.ok(opened > 0 && opened > wide.lastIndexOf('\n}\n', at),
+    'the sticky decision column has escaped its 861px block');
+  const decl = wide.slice(at, wide.indexOf('}', at));
+  assert.match(decl, /position: sticky; right: 0;/);
+  // The background has to be opaque or the rows scroll through it, and it has
+  // to answer the row's own hover.
+  assert.match(decl, /background: var\(--card\)/);
+  assert.match(wide, /\.withdraw-table tbody tr:hover td\.act-col \{ background: var\(--green-wash\); \}/);
 });
 
-// ── below 860px: the side column becomes rows ───────────────────────────────
+// ── below 860px: the row becomes a card ─────────────────────────────────────
 
-test('at phone width the buttons come out of the line', () => {
-  const small = rule(phone, '.item.withdraw-item {');
-  assert.match(small, /grid-template-columns: auto minmax\(0, 1fr\);/);
-  // The name band keeps its place beside the chip; only the decision moves.
-  assert.match(small, /"date {4}who"/);
-  assert.match(small, /"\. {7}rest"/);
-  assert.match(small, /"actions actions"/);
+test('at phone width the table stops being a table', () => {
+  const base = rule(phone, '.withdraw-table {');
+  assert.match(base, /display: block;/);
+  // The floor has to go with it, or a 375px screen scrolls sideways by 657px.
+  assert.match(base, /min-width: 0;/);
+  assert.match(base, /table-layout: auto;/);
+  assert.match(rule(phone, '.withdraw-table thead {'), /display: none;/);
+  assert.match(rule(phone, '.withdraw-table td {'), /display: block;/);
+});
+
+test('each card places all six cells by name, and none of them is dropped', () => {
+  const tr = rule(phone, '.withdraw-table tr {');
+  assert.match(tr, /display: grid;/);
+  // The date rides the name's line; everything else takes the full width. A
+  // cell left out of the areas lands in the next implicit row, under
+  // everything — which is how a fact disappears from a phone and from nowhere
+  // else.
+  assert.match(tr, /"who {4}when"/);
+  assert.match(tr, /"why {4}why"/);
+  assert.match(tr, /"reason reason"/);
+  assert.match(tr, /"asked {2}asked"/);
+  assert.match(tr, /"act {4}act"/);
+  for (const col of ['who', 'when', 'why', 'reason', 'asked', 'act']) {
+    assert.match(phone, new RegExp(`\\.withdraw-table td\\.${col}-col \\{[^}]*grid-area: ${col};`),
+      `${col}-col is not placed on the card`);
+  }
+});
+
+test('at the smallest widths the date comes off the name\'s line', () => {
+  // `14/09/2569` over `18:00–21:00 3 ชม.` is one unbreakable fact and about
+  // 128px of it, which does not shrink. Measured on the built CSS: at 390 that
+  // leaves the name 162px, and at 360 it leaves 132 — seventeen pixels over
+  // `นางสาวฟ้าประทาน`, the widest single name token on the live roster at
+  // 115.4px. A cell one import away from being overflowed by a name is not a
+  // cell to leave measured that finely, so the card goes to one column.
+  const at = phone.indexOf('@media (max-width: 389px) {\n    .withdraw-table tr {');
+  assert.ok(at > 0, 'the one-column fallback at 389px is gone');
+  const decl = phone.slice(at, phone.indexOf('\n  }', at));
+  assert.match(decl, /grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(decl, /"who" "when" "why" "reason" "asked" "act"/);
+  // Ranged right only while it shares a line with the name.
+  assert.match(decl, /td\.when-col \{ text-align: left; \}/);
 });
 
 test('the two decisions are equal halves of a full-width line, 44px tall', () => {
   // The argument `.alert-actions` makes higher in the same block: two ways out
   // of one question have to look like a pair, and 44px is what a thumb needs.
-  assert.match(rule(phone, '.item.withdraw-item > .withdraw-actions'), /justify-self: stretch;/);
-  assert.match(rule(phone, '.item.withdraw-item .withdraw-actions .btn'), /flex: 1 1 0; min-height: 44px;/);
+  assert.match(rule(phone, '.withdraw-table .withdraw-actions .btn'), /flex: 1 1 0; min-height: 44px;/);
+});
+
+test('every cell a column heading was explaining names itself instead', () => {
+  // `thead` is gone at this width and takes the explanation with it —
+  // docs/design.md §6.1. The two cells that are not self-evident carry their
+  // own word, IN THE DOM AT BOTH WIDTHS and hidden above 860px, so the label
+  // and the heading cannot drift apart. No word was invented for either: both
+  // are the card's own.
+  assert.match(row, /<span className="lbl">เหตุผลที่ขอถอน: <\/span>/);
+  assert.match(row, /<span className="lbl">ขอโดย <\/span>/);
+  const at = wide.indexOf('.withdraw-table .lbl { display: none; }');
+  assert.ok(at > 0, 'the label is no longer hidden on the desktop — it repeats its own heading');
+  const opened = wide.lastIndexOf('@media (min-width: 861px)', at);
+  assert.ok(opened > 0 && opened > wide.lastIndexOf('\n}\n', at),
+    'the label is hidden at every width, which takes it off the phone too');
 });
 
 // ── what is held together, and what is left to wrap ─────────────────────────
@@ -150,25 +257,36 @@ test('single facts are unbreakable — code, clock, figure, both labels', () => 
   // A decision whose label wraps at whatever width its row happened to leave
   // has been read wrong.
   assert.match(rule(wide, '.withdraw-actions .btn'), /white-space: nowrap;/);
-  assert.match(rule(wide, '.withdraw-reason .lbl'), /white-space: nowrap;/);
-  // `.nb` in the markup: the employee code is one token, and the day, the
-  // clock span and WHAT IT COMES TO are one fact — the figure is what a grant
-  // takes off the books, and it may not be wrapped away from its own clock.
+  assert.match(rule(wide, '.withdraw-table .lbl {'), /white-space: nowrap;/);
+  // The day, the span of it and WHAT THAT COMES TO are one cell and one line:
+  // the figure is what a grant takes off the books, and it may not be wrapped
+  // away from the clock it belongs to. That is also why the hours are not a
+  // numeric column of their own, however much the rest of this app would give
+  // them one.
+  assert.match(rule(wide, '.withdraw-table td.when-col {'), /white-space: nowrap;/);
   assert.match(row, /<span className="nb">\{e\.employee\?\.code\}<\/span>/);
-  const clock = row.slice(row.indexOf('<span className="nb">\n'));
-  assert.match(clock, /thaiDate\(e\.workDate\)\} · \{e\.startTime\}–\{e\.endTime\}/);
-  assert.match(clock.slice(0, clock.indexOf('</span>\n')), /withdraw-hrs">\{hours\(e\.totals\?\.otHours\)\} ชม\./);
+  const when = row.slice(row.indexOf('<td className="when-col">'));
+  assert.match(when, /thaiDate\(e\.workDate\)\}/);
+  assert.match(when, /\{e\.startTime\}–\{e\.endTime\}/);
+  assert.match(when, /withdraw-hrs">\{hours\(e\.totals\?\.otHours\)\} ชม\./);
+  assert.ok(when.indexOf('withdraw-hrs') < when.indexOf('</td>'),
+    'the figure has left the cell that holds its own clock');
 });
 
-test('and the prose is NOT — keep-all on a Thai sentence overflows the card', () => {
+test('and the prose is NOT — keep-all on a Thai sentence overflows the cell', () => {
   // A full name is two short runs with a space between them, so `keep-all`
   // leaves exactly one place it can come apart. เหตุผลที่ขอถอน and รายละเอียด
   // are free text somebody typed: Thai wraps by dictionary, and forbidding
   // every break inside a run pushes the sentence out through the side of the
-  // card instead of wrapping it.
+  // cell instead of wrapping it.
   assert.match(rule(wide, '.withdraw-who .nm'), /word-break: keep-all;/);
-  for (const sel of ['.withdraw-reason {', '.withdraw-rest {', '.withdraw-who {']) {
+  for (const sel of ['.withdraw-who {', '.withdraw-table td.who-col,']) {
     assert.ok(!/keep-all|nowrap/.test(rule(wide, sel)), `${sel} is refusing to wrap prose`);
+  }
+  // …and the two prose columns are not in the nowrap rule the clock is.
+  const nb = rule(wide, '.withdraw-table td.when-col {');
+  for (const col of ['why-col', 'reason-col']) {
+    assert.ok(!nb.includes(col), `${col} has been given nowrap`);
   }
 });
 
@@ -194,77 +312,50 @@ test('the row offers two decisions and draws no third thing that looks like one'
   // quiet box, `.danger` the filled warning. Not two of the same weight.
   assert.match(row, /className="btn ghost sm"/);
   assert.match(row, /className="btn danger sm"/);
-  // And no chip anywhere in the row — the card's own count chip lives in the
-  // heading, which is outside this slice.
+  // And no chip anywhere in the row.
   assert.ok(!/StatusChip|className="chip/.test(row), 'a status pill is back in the row');
   assert.ok(!/StatusChip/.test(jsx), 'StatusChip is imported but no longer drawn');
 });
 
-// ── MANY AT ONCE: the heading, the ceiling, and the batch ───────────────────
+test('the two grey clauses sit under the prose, never beside the buttons', () => {
+  // A sentence set next to a decision is read as a third decision — which is
+  // what took the green pill off this row. `.cell-sub` for the ใบ that has one
+  // signature and not two; `.cell-note` for a งวด that has closed. Both are
+  // things TRUE of the row rather than decisions to be made about it.
+  const act = row.slice(row.indexOf('<td className="act-col">'));
+  assert.ok(!/cell-note|withdraw-unsigned/.test(act), 'a sentence has moved in beside the buttons');
+  assert.match(row, /className="cell-sub withdraw-unsigned">ใบนี้ยังรอฝ่ายบุคคลยืนยัน/);
+  assert.match(row, /\{past\(e\) && <div className="cell-note">\{cancelCutoffQueueNote\(e, policy\)\}/);
+});
+
+// ── MANY AT ONCE: the batch, and the ceiling that went with the panel ───────
 
 /**
  * Asked for on 2026-09-02: several คำขอถอน landing together.
  *
- * Three things came in with it and each is pinned below, because each one is
- * the kind that gets tidied away by somebody who does not know what it cost:
- *
- *   · the count moved INTO the heading and the chip that carried it went, so
- *     one line does not print the same figure twice;
- *   · the stack has a 400px ceiling, because this card sits above the queue
- *     somebody works every day and its height is set by how many people asked
- *     for something;
- *   · อนุมัติให้ถอนทั้งหมด exists — reversing "It is deliberately NOT
- *     batchable", which stood at the head of the component until that day —
- *     and what the old argument bought is the SHAPE of it: above two or more
- *     only, amber outline, and a box that prints every reason in full.
+ * อนุมัติให้ถอนทั้งหมด exists — reversing "It is deliberately NOT batchable",
+ * which stood at the head of the component until that day — and what the old
+ * argument bought is the SHAPE of it: above two or more only, amber outline,
+ * and a box that prints every reason in full. The BUTTON is drawn by
+ * `ApprovalQueue` since 2026-09-15, because it belongs to the card's head and
+ * the head is that component's; the dialog and the writes are still here, and
+ * test/queueWithdrawChips.test.js pins the press and the shape of the button.
  */
 
 /**
- * The component with its commentary stripped, for the three assertions below
- * that ask what the screen SAYS rather than what the file explains about what
- * it says. Both of the "and this is NOT here" tests caught their own comment
- * the first time they were run — the notes in this component quote the Thai
- * they are about, which is exactly what makes them worth keeping. Same guard,
- * and the same reason, as `hrCode` in test/birthdayCardUi.test.js.
+ * The component with its commentary stripped, for the assertions below that
+ * ask what the screen SAYS rather than what the file explains about what it
+ * says. Both of the "and this is NOT here" tests caught their own comment the
+ * first time they were run — the notes in this component quote the Thai they
+ * are about, which is exactly what makes them worth keeping. Same guard, and
+ * the same reason, as `hrCode` in test/birthdayCardUi.test.js.
  */
 const code = jsx.replace(/\/\*[\s\S]*?\*\//g, '');
 
-/** The card's head, from its opening tag to the first row. */
-const head = jsx.slice(jsx.indexOf('<div className="card-head">'), jsx.indexOf('{rows.map('));
 /** The batch dialog — everything from its guard to the end of the component. */
 const batch = jsx.slice(jsx.indexOf('{grantingAll && ('));
 /** The same, with the commentary out of it. */
 const batchCode = code.slice(code.indexOf('{grantingAll && ('));
-
-test('the count is in the heading, and it is printed there once', () => {
-  assert.match(head, /คำขอถอนใบที่อนุมัติแล้ว \(\{rows\.length\} รายการ\)/);
-  // `{n} คำขอ` in a `.chip.muted` on the right of the same line until
-  // 2026-09-02. The right of the line is a button now, and a count beside a
-  // count reads as two figures about different things. See the note in
-  // test/birthdayCardUi.test.js, which used this file as a witness that
-  // `.chip.muted` had not moved and now names three screens instead of four.
-  assert.ok(!/className="chip/.test(head), 'the count chip is back beside the heading count');
-});
-
-test('อนุมัติให้ถอนทั้งหมด is drawn above two or more, and never above one', () => {
-  // On a single request it would do exactly what the button on the card below
-  // it does, phrased as though it did more.
-  //
-  // COUNTED OFF `batch` AND NOT `rows` SINCE 2026-09-14. `rows` is every open
-  // request; `batch` is the ones THIS READER can decide, which past a งวด's
-  // cutoff is a shorter list — those rows' two buttons are grey for a หัวหน้า.
-  // A button headed ทั้งหมด that clears part of the list lies twice: in its
-  // name, and again in the failure list the server hands back for the rest.
-  assert.match(head, /\{batch\.length > 1 && \(/);
-  assert.match(head, /อนุมัติให้ถอนทั้งหมด/);
-  // Amber OUTLINE. It commits nothing — it opens a list to read — and the card
-  // below it holds a filled red on every row: a second filled thing in the
-  // head would read as the same press said twice.
-  assert.match(head, /className="btn ghost warn sm withdraw-batch"/);
-  const warn = rule(wide, '.btn.ghost.warn {');
-  assert.match(warn, /background: var\(--card\)/);
-  assert.match(warn, /border-color: var\(--amber-line\)/);
-});
 
 test('there is no batch REFUSAL, and that is not an oversight', () => {
   // A refusal carries a sentence the employee reads, and one sentence cannot
@@ -307,36 +398,32 @@ test('the grants are written one at a time, in order, and a failure is named', (
   assert.match(fn, /await load\(\);/);
 });
 
-test('the stack has a 400px ceiling and scrolls inside it', () => {
-  // รออนุมัติ OT is directly below this card and is worked every day. Ten open
-  // requests put its first row a screen and a half down the page.
-  assert.match(jsx, /<div className="withdraw-list">/);
-  const list = rule(wide, '.withdraw-list {');
-  assert.match(list, /max-height: 400px/);
-  assert.match(list, /overflow-y: auto/);
-  // A ceiling and not a "แสดงเพิ่ม": every row stays in the DOM, so Ctrl-F and
-  // a screen reader's list still reach all of them.
-  assert.ok(!/rows\.slice\(/.test(code), 'the list is being trimmed rather than scrolled');
+/**
+ * THE 400px CEILING IS GONE, AND THIS IS THE TEST THAT KEEPS IT GONE.
+ *
+ * `.withdraw-list { max-height: 400px; overflow-y: auto }` was right for as
+ * long as this list was a panel sitting ABOVE รออนุมัติ OT: its height was set
+ * by how many people happened to ask for something, and ten open requests put
+ * the first row of the queue somebody works every day a screen and a half down
+ * the page. The list sits BESIDE that queue now — one card, one chip each — and
+ * never above it, so the reason is spent. A scrolling box inside a scrolling
+ * page, kept out of habit, is what §6.1 of docs/design.md forbids.
+ */
+test('the list has no ceiling of its own, and still trims nothing', () => {
+  assert.ok(!/\.withdraw-list/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'the 400px ceiling is back — see the note above this test');
+  assert.ok(!/withdraw-list/.test(code), 'the markup is back inside a scrolling box');
+  // The half of it that was never about height: every row stays in the DOM, so
+  // Ctrl-F and a screen reader's list still reach all of them.
+  assert.ok(!/rows\.slice\(/.test(code), 'the list is being trimmed rather than drawn');
 });
 
-test('the cards are tighter than an ordinary row, at both widths', () => {
-  // Four pixels a row is four more rows above the scroll. Not tighter than
-  // 11px: the rule between two four-line cards has to read as a gap between
-  // cards rather than as an underline.
-  assert.match(rule(wide, '.item.withdraw-item {'), /padding: 11px 18px;/);
-  assert.match(rule(phone, '.item.withdraw-item {'), /padding: 11px 12px;/);
-  // `.item`'s own 15px is untouched — every other row in the app kept it.
-  assert.match(wide, /\.item \{[\s\S]{0,200}padding: 15px 18px;/);
-  // And the batch button takes the whole line on a phone, at 44px.
-  assert.match(rule(phone, '.withdraw-batch {'), /flex: 1 1 100%; min-height: 44px;/);
-});
-
-test('every card says which one of the list it is', () => {
+test('every row says which one of the list it is', () => {
   // ลำดับที่ — the number said out loud, and the only thing that tells three
-  // cards apart when the same employee has asked for all three.
+  // rows apart when the same employee has asked for all three.
   assert.match(row, /<span className="withdraw-no">\{i \+ 1\}\.<\/span>/);
   assert.match(batch, /<span className="withdraw-no">\{i \+ 1\}\.<\/span>/);
-  // Mono and muted: every other figure on this card is hours, and this is not
+  // Mono and muted: every other figure on this row is hours, and this is not
   // a figure about the request at all.
   const no = rule(wide, '.withdraw-no {');
   assert.match(no, /var\(--mono\)/);
@@ -346,9 +433,9 @@ test('every card says which one of the list it is', () => {
 test('the one thing the pill said that the heading does not is kept, as prose', () => {
   // These rows are `approved` or `pending_hr`: cancelPermission opens the ask
   // at the FIRST signature, not the last. On a `pending_hr` row a grant takes
-  // back a figure ฝ่ายบุคคล never confirmed, which is news — so it is said, in
-  // the provenance line at the foot of the text where nothing is pressable,
-  // and not as a chip beside the buttons.
+  // back a figure ฝ่ายบุคคล never confirmed, which is news — so it is said as a
+  // grey clause under รายละเอียด where nothing is pressable, and not as a chip
+  // beside the buttons.
   assert.match(row, /e\.status !== 'approved'[\s\S]{0,160}withdraw-unsigned/);
   assert.match(row, /ใบนี้ยังรอฝ่ายบุคคลยืนยัน/);
   assert.ok(!/chip|background/.test(rule(wide, '.withdraw-unsigned {')), 'it has been made a chip again');

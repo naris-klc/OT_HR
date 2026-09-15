@@ -87,7 +87,14 @@ test('the phone block does not restate white-space on the same element', () => {
 });
 
 test('the column is still 168px, which is what the wrap is measured against', () => {
-  assert.match(rule(css, 'th.who-col {'), /width:\s*168px/,
+  // THE SELECTOR IS ANCHORED TO A LINE START, and that is not tidiness. This
+  // sheet carries several `th.who-col` rules: the bare one is the default every
+  // queue-shaped table inherits, and `.hr-table`, `.acct-table`, `.allco-table`,
+  // `.dept-table` and — since 2026-09-15 — `.withdraw-table` each override it
+  // with a scoped one of their own. A bare `indexOf` returns whichever comes
+  // first in the file, which is how this assertion quietly began measuring
+  // somebody else's column the day one of them was written above it.
+  assert.match(rule(css, '\nth.who-col {'), /width:\s*168px/,
     'widening this column pushes ฝ่ายบุคคล\u2019s twelve into sideways scrolling at 1440 — re-measure before changing it');
 });
 
