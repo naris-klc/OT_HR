@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, currentPeriod, periodLabel, thaiDate, dayName, dayAbbr } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
 import { holidayCalendarByMonth, holidaysInMonth, nextHoliday } from '@/lib/holidayNotice.js';
-import { Empty, Modal } from './common.jsx';
+import { Empty, Modal, foldClick, useOneLine } from './common.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /**
@@ -111,6 +111,28 @@ export default function HolidayBanner({ period = currentPeriod() }) {
   // every other dialog on this screen behaves.
   useBackHandler(showCalendar, () => setShowCalendar(false));
 
+  /*
+   * พับเหลือแถวเดียว ตั้งแต่ 2026-09-15 — และ ⚠ ONE ROW, AND NO FOLD ข้างบน
+   * เป็นย่อหน้าของเมื่อวาน ไม่ใช่ของวันนี้.
+   *
+   * ที่กลับมาคือ fold ที่ไม่ใช่ตัวจำ: `ot-holiday-fold` ที่ถูกถอดไปเมื่อ
+   * 2026-09-11 จำไว้ข้ามครั้งว่าคนนี้เคยพับ ซึ่งแปลว่าประกาศเดือนหน้าขึ้นมา
+   * แล้วไม่มีใครเห็น อันนั้นไม่กลับมา — ทุกครั้งที่เปิดหน้าใหม่แถวนี้ถูกวาด
+   * เต็มประโยคก่อน แล้วค่อยถูกตัดด้วย … ตามความกว้างที่มีจริง
+   *
+   * เหตุผลที่ยังพับได้ทั้งที่แถวเดียวอยู่แล้ว: บนจอมือถือแถวเดียวของเดือนที่มี
+   * วันหยุดสามวันคือสามถึงสี่บรรทัด และปุ่มปฏิทินกินอีก 44px เต็มแถว — สามใบ
+   * บนหน้าแรกรวมกันแล้วคิวที่คนเปิดหน้านี้มาทำอยู่ใต้เส้นพับ
+   *
+   * `actions: true` เพราะปุ่มปฏิทินมีทุกสถานะ กล่องนี้จึงพับได้เสมอ ต่อให้
+   * ประโยคจะสั้นจนไม่ถูกตัดบนจอกว้าง
+   */
+  const { id, ref, arrow, folded, toggle } = useOneLine({
+    actions: true,
+    of: 'ประกาศวันหยุดบริษัท',
+    watch: `${period}:${holidays?.length}`,
+  });
+
   // Nothing is drawn until the year is in hand: a banner that appears a beat
   // after the page would push the hero down under the reader's eye.
   if (!holidays) return null;
@@ -127,7 +149,11 @@ export default function HolidayBanner({ period = currentPeriod() }) {
 
   return (
     <>
-      <section className="announce no-print" aria-label="ประกาศวันหยุดบริษัท">
+      <section
+        className="announce no-print"
+        aria-label="ประกาศวันหยุดบริษัท"
+        onClick={foldClick(folded, toggle, '.announce-line')}
+      >
         {/* The emoji is the alert family's mark column, and it says nothing a
             screen reader needs: the heading beside it names the panel. */}
         <span className="announce-mark" aria-hidden="true">📢</span>
@@ -137,7 +163,7 @@ export default function HolidayBanner({ period = currentPeriod() }) {
             is drawn `display: inline`, which changes where it sits and not what
             it is. Everything after it is text in the same flow, so a narrow
             window wraps the sentence instead of stacking four boxes. */}
-        <div className="announce-line">
+        <div id={id} ref={ref} className={`announce-line${folded ? ' one-line' : ''}`}>
           <h3 className="announce-head">
             ประกาศวันหยุดประจำเดือน {periodLabel(period)}
           </h3>
@@ -224,13 +250,23 @@ export default function HolidayBanner({ period = currentPeriod() }) {
             already goes for this box's control, in the same place whatever the
             sentence's length turns out to be. On a phone it stops being a
             corner and becomes the card's own row — see app/styles.css. */}
-        <button
-          type="button"
-          className="fold-pill"
-          onClick={() => setShowCalendar(true)}
-        >
-          ดูปฏิทินวันหยุดประจำปี {year + 543} 📅
-        </button>
+        {/* ซ่อนไปกับเนื้อหาตอนพับ — 2026-09-15. ปุ่มที่ถูกตัดด้วย
+            `overflow: hidden` ยังอยู่ใน DOM ให้แท็บไปโดนและให้โปรแกรมอ่านจอ
+            อ่านออก ทั้งที่ตาไม่เห็น การไม่วาดมันเลยจึงเป็นคนละเรื่องกับการวาด
+            แล้วตัด ส่วนประโยคยังอยู่ครบทุกคำในทุกสถานะ */}
+        {!folded && (
+          <button
+            type="button"
+            className="fold-pill"
+            onClick={() => setShowCalendar(true)}
+          >
+            ดูปฏิทินวันหยุดประจำปี {year + 543} 📅
+          </button>
+        )}
+
+        {/* ▲/▼ ท้ายแถว ที่เดียวกับที่ alert สองใบเหนือมันวางไว้ — กล่องสามใบบน
+            หน้าแรกจึงมีปุ่มพับอยู่ตำแหน่งเดียวกันทั้งสามใบ */}
+        {arrow}
       </section>
 
       {showCalendar && (

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
-import { Alert, PasswordInput, TipButton } from './common.jsx';
+import { Alert, AlertFold, PasswordInput, TipButton } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { ToastHost } from './Toast.jsx';
@@ -153,15 +153,27 @@ export default function App() {
  * button is for.
  */
 function PasswordReminder({ onOpenProfile }) {
+  /*
+   * พับเหลือแถวเดียว ตั้งแต่ 2026-09-15 — และใบนี้พับได้เสมอ ไม่ว่าจอจะกว้าง
+   * แค่ไหน เพราะปุ่มคือของที่ซ่อนได้ต่อให้ประโยคจบในแถวเดียว (`useOneLine`)
+   *
+   * ปุ่มอยู่ใน `actions` ไม่ใช่ใน `children` เพื่อให้มันไม่ถูกวาดเลยตอนพับ
+   * แทนที่จะถูก `overflow: hidden` ตัดออกจากสายตา — ปุ่มที่ตาไม่เห็นแต่แท็บ
+   * ไปเจอและโปรแกรมอ่านจออ่านออก คือปุ่มที่ซ่อนไม่สำเร็จ
+   *
+   * ประโยคเตือนไม่หายไปไหนในสถานะไหน: พับอยู่ก็ยังอ่านได้ว่ารหัสที่ใช้อยู่คือ
+   * รหัสที่คนอื่นทราบ ซึ่งเป็นสาเหตุที่กล่องนี้ยังไม่มี ✕ ให้ปิด — พับไม่ใช่ปิด
+   */
   return (
-    <Alert kind="warn">
+    <AlertFold
+      kind="warn"
+      of="คำเตือนเรื่องรหัสผ่าน"
+      actions={<button className="btn ghost" onClick={onOpenProfile}>เปลี่ยนรหัสผ่าน</button>}
+    >
       <strong>คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่</strong>
       {' '}— รหัสนี้คือรหัสพนักงานของคุณ ซึ่งมีคนอื่นทราบด้วย
       {' '}แนะนำให้เปลี่ยนเป็นรหัสผ่านของคุณเองเมื่อสะดวก
-      <div style={{ marginTop: 8 }}>
-        <button className="btn ghost" onClick={onOpenProfile}>เปลี่ยนรหัสผ่าน</button>
-      </div>
-    </Alert>
+    </AlertFold>
   );
 }
 

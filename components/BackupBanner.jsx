@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, thaiStamp } from '@/lib/api.js';
 import { backupNeedsAttention } from '@/lib/backupStatus.js';
-import { Alert } from './common.jsx';
+import { AlertFold } from './common.jsx';
 
 /**
  * งานสำรองข้อมูลล้มเหลว — บนหน้าที่ ฝ่ายบุคคล กับ admin เปิดทุกวัน
@@ -123,8 +123,19 @@ export function BackupBanner({ user }) {
    * fix for that pair is `--amber-ink` at 5.46, an app-wide change that
    * app/styles.css says out loud belongs to whoever owns the brand.
    */
+  /*
+   * พับเหลือแถวเดียว ตั้งแต่ 2026-09-15 — `AlertFold` แทน `Alert`.
+   *
+   * หัวข้อคือคำแรกของแถว จึงเป็นคำที่รอดการตัดเสมอ: ไม่ว่าจอจะแคบแค่ไหน
+   * ข้อมูลสำรองล่าสุดเก่ากว่า 24 ชั่วโมง ยังอยู่บนจอโดยไม่ต้องกดอะไร ส่วนที่
+   * พับไว้คือเวลาของชุดล่าสุดกับพาธของโฟลเดอร์ — รายละเอียดที่ใช้ตอนลงมือแก้
+   * ไม่ใช่ตอนรู้ว่าต้องแก้
+   *
+   * ไม่มี `actions`: กล่องนี้ไม่มีปุ่ม สิ่งที่ต้องทำเกิดนอกแอป (เสียบไดรฟ์
+   * ตั้ง Task Scheduler ใหม่) ลูกศรจึงขึ้นเฉพาะตอนที่ประโยคล้นแถวจริง
+   */
   return (
-    <Alert kind={kind}>
+    <AlertFold kind={kind} of="สถานะการสำรองข้อมูล">
       <strong>{headline}</strong>
       {state === 'unreadable' && (
         <>
@@ -142,7 +153,7 @@ export function BackupBanner({ user }) {
         && ` · ชุดที่สมบูรณ์ล่าสุดเมื่อ ${thaiStamp(newest.takenAt)} (${newest.totalDocuments} รายการ)`}
       {broken && incomplete > 0 && ` · และมีโฟลเดอร์ที่สำรองไม่จบอีก ${incomplete} ชุด`}
       {where && <> · {where}</>}
-    </Alert>
+    </AlertFold>
   );
 }
 

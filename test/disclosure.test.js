@@ -623,8 +623,14 @@ test('a ▲/▼ notice opens from anywhere in its frame, and folds from its head
   // row left is F-HR-027's, which folds rows somebody may or may not want to
   // read line by line. `Disclosure`, `ShowMore` and `fold-pill` stay for the
   // same reason and are pinned elsewhere in this file.
+  //
+  // ⚠ IT GREW BACK TO TWO ON 2026-09-15, and the second row is not a screen —
+  // it is `AlertFold` in common.jsx, the one box three notices on the landing
+  // screen share. See the loop below this one for what changed about the rule
+  // itself.
   for (const [file, box, button, state, fn2] of [
     ['components/PrintForm.jsx', '<Alert kind={kind} onClick=', 'className="alert-fold"', 'folded', 'toggle'],
+    ['components/common.jsx', '<Alert kind={kind} onClick=', 'className="alert-fold"', 'folded', 'toggle'],
   ]) {
     const src = sourceOf(file);
     assert.ok(src.includes(`${box}{foldClick(${state}, ${fn2}`), `${file}: กดในกรอบแล้วไม่กาง`);
@@ -634,19 +640,88 @@ test('a ▲/▼ notice opens from anywhere in its frame, and folds from its head
     assert.ok(!src.slice(at, src.indexOf('</button>', at)).includes('onClick'), `${file}: ปุ่ม ▲/▼ มี onClick ของตัวเอง`);
   }
 
-  // The withdrawn three are NAMED, not merely missing from the loop above: a
+  // The withdrawn ones are NAMED, not merely missing from the loop above: a
   // fold coming back to any of them should fail here rather than pass quietly,
   // and the day one is meant to return this assertion is what has to be argued
   // with first.
+  //
+  // ⚠ THAT ARGUMENT WAS HAD ON 2026-09-15, AND ประกาศวันหยุดบริษัท LEFT THIS
+  // LIST. It read three rows — HolidayBanner, Delegation, ProfileView — and the
+  // first one is now folded again, asked for with a picture of a phone whose
+  // landing screen was three standing notices tall before the queue underneath
+  // them: *"ข้อความแจ้งเตือน ในหน้าจอมือถืออยากให้แสดงตัดซ่อนไว้เป็นแถวเดียว
+  // แต่กดเพื่อขยายได้"*.
+  //
+  // WHAT CAME BACK IS THE ▲/▼. WHAT DID NOT IS `ot-holiday-fold`, and the
+  // distinction is the whole of why the return was allowed: the key remembered
+  // ACROSS VISITS that somebody had folded the panel, which is how next month's
+  // announcement goes up and nobody sees it. Every visit now starts folded and
+  // every folded state still says the whole first sentence — the month, the
+  // count, and as much of the day list as the row holds. Nothing here draws
+  // less than one sentence, which is the line `test/holidayNotice.test.js` now
+  // pins in place of "nothing draws less than the whole row".
+  //
+  // So the key stays banned for all three, and the ▲/▼ ban is now about the two
+  // that were withdrawn for being folds over a SENTENCE with nothing else in
+  // the box to reach.
   for (const [file, key] of [
     ['components/HolidayBanner.jsx', 'ot-holiday-fold'],
     ['components/Delegation.jsx', 'ot-deleg-note-fold'],
     ['components/ProfileView.jsx', 'ot-pw-warn-fold'],
   ]) {
     const src = sourceOf(file);
-    assert.ok(!src.includes('foldClick'), `${file}: ฝาพับกลับมาแล้ว ทั้งที่ถูกถอนไปแล้ว`);
     assert.ok(!src.includes(`'${key}'`), `${file}: ${key} กลับมาอยู่ใน localStorage อีกแล้ว`);
+    if (file === 'components/HolidayBanner.jsx') {
+      // The one that folds again keeps the stronger ban: not this key, not any
+      // browser memory at all. The other two store unrelated preferences.
+      assert.ok(!src.includes('localStorage'), `${file}: เริ่มจำสถานะฝาพับไว้ในเบราว์เซอร์`);
+      continue;
+    }
+    assert.ok(!src.includes('foldClick'), `${file}: ฝาพับกลับมาแล้ว ทั้งที่ถูกถอนไปแล้ว`);
     assert.ok(!src.includes('className="alert-fold"'), `${file}: ปุ่ม ▲/▼ กลับมาแล้ว`);
+  }
+
+  // ── แถวเดียว แล้วกดกาง — สามกล่องบนหน้าแรก, 2026-09-15 ────────────────────
+  //
+  // ONE IMPLEMENTATION, THREE CALL SITES. The rule that an alert is read when
+  // it is drawn is kept by the SHAPE of this fold rather than by refusing it:
+  // the sentence is always drawn, always complete in the DOM, and cut only by
+  // `overflow` — what a press adds is the tail that `…` already promised, plus
+  // the box's own buttons.
+  // The two exports and nothing after them: read wider and an assertion about
+  // what this fold does NOT do would be answered by a different component.
+  const fold = common.slice(
+    common.indexOf('export function useOneLine'),
+    common.indexOf('\nexport function ', common.indexOf('export function AlertFold')),
+  );
+
+  // The arrow is earned by MEASURING what the row hid, never by a breakpoint or
+  // a character count — the same rule `Disclosure` is held to two tests up. A
+  // box with buttons folds whatever its sentence measures, because the buttons
+  // are the thing being hidden.
+  assert.match(fold, /setCut\(el\.scrollWidth - el\.clientWidth > 2\)/, 'ลูกศรไม่ได้มาจากการวัดของจริง');
+  assert.match(fold, /const foldable = cut \|\| actions;/);
+  assert.match(fold, /if \(!el \|\| open\) return undefined;/, 'กางแล้วยังวัดต่อ ลูกศรจะหายกลางมือ');
+
+  // Folded on arrival, every arrival. No key, no memory, no dismissal.
+  assert.match(fold, /const \[open, setOpen\] = React\.useState\(false\);/);
+  assert.ok(!fold.includes('localStorage'), 'ฝาพับสามใบเริ่มจำสถานะไว้ในเบราว์เซอร์');
+
+  // The buttons are NOT DRAWN when folded rather than drawn and clipped: a
+  // button behind `overflow: hidden` still takes tab focus and is still read
+  // out, which is hiding that only works for the people who can see.
+  assert.match(fold, /\{actions && !folded && <div className="alert-actions">\{actions\}<\/div>\}/);
+  assert.ok(!/hidden=\{folded\}/.test(fold), 'ปุ่มถูกซ่อนด้วย hidden แทนที่จะไม่ถูกวาด');
+
+  // The cut is CSS, so the first paint is already one row — text drawn in full
+  // and collapsed a frame later is a page that jumps under the thumb.
+  assert.match(css, /\.one-line \{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; \}/);
+  for (const [file, of] of [
+    ['components/BackupBanner.jsx', 'สถานะการสำรองข้อมูล'],
+    ['components/App.jsx', 'คำเตือนเรื่องรหัสผ่าน'],
+    ['components/HolidayBanner.jsx', 'ประกาศวันหยุดบริษัท'],
+  ]) {
+    assert.ok(sourceOf(file).includes(`of="${of}"`) || sourceOf(file).includes(`of: '${of}'`), `${file}: ฝาพับไม่มีชื่อของสิ่งที่มันพับ`);
   }
   assert.ok(!common.includes('foldRowClick'), 'the row-only helper outlived the box one');
 });
