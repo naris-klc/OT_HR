@@ -2097,9 +2097,17 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2823 tests
+and the engine know nothing about Next.js, so the whole suite — **2824 tests
 across 156 files**, measured 2026-09-16 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read
+server and no database. Only `app/` and `lib/` touch the framework.
+(⚠ **COUNT IT IN THE TREE THAT HOLDS `dev`, AFTER THE MERGE.** This line said
+"2804 tests across 155 files" for one afternoon: the figure was true in the
+worktree it was measured in and was four cases short of `dev`, because another
+session had landed work meanwhile. A worktree isolates files; it does not
+isolate this number.
+It read "2823 tests across 156 files … measured 2026-09-16" until
+รายละเอียดงานที่ทำ became one line instead of a three-line box — no new file,
+one case into `otFormBlankDescription`. Before that
 "2804 tests across 155 files … measured 2026-09-16" until
 **วันทำงานปกติ ระบุเวลาในช่วง 08:00–16:59 ไม่ได้** — `coreHours` is file 156.
 Before that it read "2791 tests across 154 files … measured 2026-09-16" until
@@ -13992,14 +14000,18 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2823 tests**, about 4 s, measured 2026-09-16 across 156
-  files, all green. **`coreHours` is the new file of the last round** —
-  วันทำงานปกติ ระบุเวลาในช่วง 08:00–16:59 ไม่ได้ ปฏิเสธทั้งใบ, which is one
-  function in `lib/entries.js` read by three write paths and two screens; the
-  fifteen cases are mostly about the ใบ that คาบเกี่ยว, since the ใบ that lies
-  inside those hours end to end was refused by the 0-hour rule already.
-  It read "2804 tests … measured 2026-09-16" until then, when **`extraNote` was
-  the new file** — รายละเอียดเพิ่มเติม, a second description box that is stored,
+- `npm test` — **2824 tests**, about 4 s, measured 2026-09-16 across 156
+  files, all green. **No new file in the last round** — รายละเอียดงานที่ทำ
+  became an `<input>` instead of a 64px-tall `<textarea>`, which is also the
+  shape the paper has, and the one new case went into `otFormBlankDescription`.
+  It read "2823 tests … measured 2026-09-16" until then, when **`coreHours` was
+  the new file** — วันทำงานปกติ ระบุเวลาในช่วง 08:00–16:59 ไม่ได้ ปฏิเสธทั้งใบ,
+  which is one function in `lib/entries.js` read by three write paths and two
+  screens; the fifteen cases are mostly about the ใบ that คาบเกี่ยว, since the
+  ใบ that lies inside those hours end to end was refused by the 0-hour rule
+  already.
+  Before that, "2804 tests … measured 2026-09-16", when **`extraNote` was the
+  new file** — รายละเอียดเพิ่มเติม, a second description box that is stored,
   shown on the three pop-ups and never printed, so the 22 characters F-HR-027's
   cell can hold did not have to move. Thirteen cases, and the one that matters
   asserts that `PrintForm.jsx` does not mention the field at all.

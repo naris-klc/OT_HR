@@ -54,7 +54,12 @@ test('ช่องใหม่ยาวกว่าช่องที่พิ�
 });
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (p) => readFileSync(join(ROOT, p), 'utf8');
+/* LINE ENDINGS NORMALISED ON THE WAY IN, as test/otFormBlankDescription.test.js
+   does. This repository is checked out with `core.autocrlf` on, so a source file
+   is CRLF in a fresh worktree and a pattern anchored to a bare newline passes
+   where it was written and fails where it was not — a test failing over a
+   checkout setting rather than over the code. Walked on 2026-09-16. */
+const read = (p) => readFileSync(join(ROOT, p), 'utf8').replace(/\r\n/g, '\n');
 const policy = read('src/config/policy.js');
 const model = read('src/models/OtEntry.js');
 const form = read('components/OtForm.jsx');
