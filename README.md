@@ -2097,7 +2097,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2790 tests
+and the engine know nothing about Next.js, so the whole suite — **2791 tests
 across 154 files**, measured 2026-09-16 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "2779 tests across 154 files … measured 2026-09-15" until
@@ -13857,7 +13857,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2790 tests**, about 4 s, measured 2026-09-16 across 154
+- `npm test` — **2791 tests**, about 4 s, measured 2026-09-16 across 154
   files, all green. **There is no new file in the last round** — แถวคำขอถอนใบ
   was capped at two lines and made openable, and the eleven cases went into the
   four files that already pin that row, that sentence and the app's one clamp.
@@ -14417,6 +14417,20 @@ build แล้ว
   130 → 96px on `firstName`, พนักงาน 190 → 230px so a full name fits one line —
   and the งวดปิด sentence on the row is `cancelCutoffShortNote`, one line, with
   the whole sentence still on the tooltip and at the head of the box.
+  **Then the widths were re-dealt a second time the same day**, reported against
+  the built app as *แต่ละคอลัมน์ยังไม่พอดี · ตัวเลข 3ชม. ชิดเกินไป · คอลัมน์
+  เหตุผลที่ขอถอน ยังกระชับได้อีกเยอะ* — two complaints that are one fault, the
+  width sitting in the wrong column. วันที่ · เวลา went 130 → **184px**, because
+  it had been overflowing: `td` is `padding: 12px`, `white-space: nowrap` does
+  not clip, and the hours chip was being drawn on top of รายละเอียด. 184 is
+  measured against the widest figure `hours()` can produce (`12.25 ชม.`), not
+  against the row in the screenshot, which is how 130 happened. And
+  **เหตุผลที่ขอถอน stopped being the elastic column** — pinned at 260px, with
+  รายละเอียด taking the remainder at `width: auto`. It had the remainder on the
+  argument that the column with no ceiling should be the one that grows; the row
+  opens now, so no column has to hold the whole of anything, and on the live card
+  เหตุผล was dealt 442px for reasons of about 21 characters while รายละเอียด was
+  cut mid-word at 170.
   **Three of the first twelve are about what is NOT drawn**: the row offers exactly
   two buttons — `ไม่อนุมัติการถอน` and `อนุมัติให้ถอน` until 2026-09-16, `ปฏิเสธ`
   and `อนุมัติ` since, with the whole words kept as each one's `aria-label`

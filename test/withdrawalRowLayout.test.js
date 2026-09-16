@@ -136,25 +136,55 @@ test('five columns are pinned by name and exactly one is left elastic', () => {
   // รายละเอียด came out at exactly 150px — the inherited figure — and
   // เหตุผลที่ขอถอน swallowed the whole remainder at 500.
   // ⚠ THE FIVE READ 190 / 130 / 170 / 130 / 236 UNTIL 2026-09-16, when the row
-  // was reported as *ความกว้างไม่พอดี ดูไม่ค่อยสวยงาม*. Three of them moved and
-  // not one of the three is a matter of taste — each is paid for by something
-  // else in the same commit:
+  // was reported as *ความกว้างไม่พอดี ดูไม่ค่อยสวยงาม*. Three moved that round
+  // and not one of the three was a matter of taste — each is paid for by
+  // something else in the same commit:
   //   · act 236 → 150, because the pair reads `ปฏิเสธ` / `อนุมัติ` now;
   //   · asked 130 → 96, because `firstName` takes the คำนำหน้า and the นามสกุล
   //     off, so the cell is one word over a date instead of a wrapped name;
   //   · who 190 → 230, so a full name and its `1.` fit ONE line — which is what
   //     makes that cell two lines tall rather than three.
-  // 856px pinned became 736, and เหตุผลที่ขอถอน takes the whole difference.
+  //
+  // ⚠ AND when READ 130 LATER THE SAME DAY, reported against the built app:
+  // *ตัวเลข 3ชม. ชิดเกินไป*. That was not a missing margin, it was this column
+  // overflowing — `td` is `padding: 12px`, so 130 is 106px of content, and
+  // `nowrap` DOES NOT CLIP: the surplus is drawn on top of the next column.
+  //
+  // 184 IS MEASURED AGAINST THE WIDEST FIGURE `hours()` CAN PRODUCE, not against
+  // the row that was reported. It rounds to two places and pads nothing, so the
+  // chip can read `12.25 ชม.` — four mono characters more than the `3 ชม.` in
+  // the screenshot. Sizing this column to the sample is how it came to be 130.
   assert.match(rule(wide, '.withdraw-table th.who-col {'), /width: 230px;/);
-  assert.match(rule(wide, '.withdraw-table th.when-col {'), /width: 130px;/);
-  assert.match(rule(wide, '.withdraw-table th.why-col {'), /width: 170px;/);
+  assert.match(rule(wide, '.withdraw-table th.when-col {'), /width: 184px;/);
   assert.match(rule(wide, '.withdraw-table th.asked-col {'), /width: 96px;/);
   assert.match(rule(wide, '.withdraw-table th.act-col {'), /width: 150px;/);
-  // …and เหตุผลที่ขอถอน is the one that takes what is left. It is free text an
-  // employee typed and the whole of what is being decided, where รายละเอียด is
-  // a job description `DESCRIPTION_MAX_CHARS` has capped at 22 characters: the
-  // column that grows with the card should be the one with no ceiling on it.
-  assert.ok(!/\.withdraw-table th\.reason-col \{/.test(wide), 'เหตุผลที่ขอถอน has been pinned to a width');
+  // ⚠ AND เหตุผลที่ขอถอน WAS THE ELASTIC ONE UNTIL 2026-09-16 — *คอลัมน์เหตุผล
+  // ที่ขอถอน ยังกระชับได้อีกเยอะ*, reported in the same breath. It had been
+  // handed the remainder on the argument that the column with no ceiling on its
+  // content should be the one that grows; the row opens `WithdrawDetail` now, so
+  // NO column has to hold the whole of anything, and the one that should grow is
+  // the one a reviewer reads at a glance to recognise the ใบ. Measured on the
+  // live card: เหตุผล dealt 442px for reasons of about 21 characters, while
+  // รายละเอียด was cut mid-word at 170.
+  assert.match(rule(wide, '.withdraw-table th.reason-col {'), /width: 260px;/);
+  // …and รายละเอียด takes what is left. `auto` WRITTEN OUT, not the rule
+  // deleted: an undeclared column here inherits the bare `th.why-col` (150px)
+  // further down the sheet, which is what the first paragraph of this test is
+  // about. 920px pinned leaves it 258 on the card as measured, where the
+  // elastic column used to leave it 170.
+  assert.match(rule(wide, '.withdraw-table th.why-col {'), /width: auto;/);
+});
+
+test('the hours chip is not pressed against the clock it belongs to', () => {
+  // *ตัวเลข 3ชม. ชิดเกินไป*, and the column's own width above is only half of
+  // it. The markup puts ONE space between the clock and the chip, which is the
+  // right amount between two runs of TEXT and not enough between text and a
+  // filled pill whose background starts where the space ends.
+  assert.match(rule(wide, '.withdraw-hrs {'), /margin-left: 4px;/);
+  // It is still one fact with the clock and still inside the same cell — the
+  // gap is air, not a separation. See the nowrap on `td.when-col`.
+  const when = row.slice(row.indexOf('<td className="when-col">'));
+  assert.ok(when.indexOf('withdraw-hrs') < when.indexOf('</td>'));
 });
 
 test('the prose cells may be dealt a narrow share and still not overflow', () => {
