@@ -2564,11 +2564,33 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    856px pinned against the 1032px floor leaves it 176px at its narrowest —
    narrow, but it is a wrapping column with `min-width: 0`, and the floor is
    only reached on a window where the table is already scrolling. */
-.withdraw-table th.who-col { width: 190px; }
+/* ── RE-DEALT 2026-09-16 — WHO 190→230, ASKED 130→96, ACT 236→150 ──────────
+   Reported as *ความกว้างไม่พอดี ดูไม่ค่อยสวยงาม*, and the two narrowed columns
+   are what pay for the other two. Nothing was taken off the table: the user was
+   asked and kept all six.
+
+   · ACT loses 86px because the pair is `ปฏิเสธ` / `อนุมัติ` now. The nowrap
+     rule over the two buttons further down still stands — these are words and
+     not glyphs — and 150 is what two short Thai words in `.btn.sm` come to
+     with the gap between them. (The selector is deliberately not spelled here:
+     test/withdrawalRowLayout.test.js finds a rule by its first mention in this
+     file, so a comment that names one is a comment that answers for it.)
+   · ASKED loses 34px because it holds a given name and a date, not a full name
+     over a date: `firstName` cuts the คำนำหน้า and the นามสกุล, so the cell
+     that wrapped on every row is one word. 96px holds `15/09/2569` in mono.
+   · WHO gains 40px so that a full name and its `1.` fit ONE line. The widest
+     single token on the live roster is `นางสาวฟ้าประทาน` at 115.4px; with a
+     surname and the number that is about 195, and 230 leaves the margin a
+     roster one import away from a longer name needs.
+
+   856px pinned became 736, so at the 1032px floor เหตุผลที่ขอถอน is dealt 296
+   rather than 176, and on the card as measured (1178) it is 442 rather than
+   322. That column is the whole of what the reviewer is reading. */
+.withdraw-table th.who-col { width: 230px; }
 .withdraw-table th.when-col { width: 130px; }
 .withdraw-table th.why-col { width: 170px; }
-.withdraw-table th.asked-col { width: 130px; }
-.withdraw-table th.act-col { width: 236px; }
+.withdraw-table th.asked-col { width: 96px; }
+.withdraw-table th.act-col { width: 150px; }
 /* วันที่ · ช่วงเวลา · ชั่วโมง ARE ONE FACT AND ONE CELL — the hours are NOT
    given a numeric column of their own, however much the rest of this app would
    give them one. The card's reason has not changed with the shape: the figure
@@ -2579,6 +2601,44 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .withdraw-table td.why-col,
 .withdraw-table td.reason-col,
 .withdraw-table td.asked-col { min-width: 0; }
+
+/* ── ไม่เกินสองบรรทัดต่อช่อง — 2026-09-16 ──────────────────────────────────
+   The ceiling the row was asked for, dealt out cell by cell. `.cell-clamp` is
+   the mechanism and its warning is written over it in the cells section; this
+   is where each cell's SHARE of the two lines is decided.
+
+   ONE LINE EACH IN พนักงาน, because the cell is two things — the name, then
+   the รหัส · แผนก under it — and two lines between them is the whole budget.
+   `word-break: keep-all` on the name is untouched and still decides WHERE it
+   may break; the clamp decides how many of those breaks are drawn. */
+.withdraw-table td.who-col .cell-clamp { --clamp-lines: 1; }
+
+/* ONE LINE IN ผู้ขอ for the same reason: a given name, then the date under it. */
+.withdraw-table td.asked-col .cell-clamp { --clamp-lines: 1; }
+
+/* TWO LINES IN THE TWO PROSE CELLS — UNLESS THEY ARE CARRYING A CLAUSE.
+   รายละเอียด takes two on its own, and one when the ยังรอฝ่ายบุคคลยืนยัน line
+   is under it; เหตุผลที่ขอถอน the same, with the งวดปิด note. Either way the
+   cell comes to two, which is the promise.
+
+   `:has()` AND NOT A SECOND CLASS IN THE JSX. The question is "is there a
+   second line in this cell", which is a fact about the cell's own contents —
+   asking the markup to also announce it is two places to keep in step, and the
+   sheet already uses `:has()` for exactly this shape of question (see
+   `.card-head:has(...)`). */
+.withdraw-table td.why-col:has(.withdraw-unsigned) .cell-clamp,
+.withdraw-table td.reason-col:has(.cell-note) .cell-clamp { --clamp-lines: 1; }
+
+/* ── กดที่แถวเพื่อดูรายละเอียด ──────────────────────────────────────────────
+   Declaration for declaration what `.queue-table tbody tr.row-open` and
+   `.hr-table tbody tr.row-open` carry, because a row that means "open this" on
+   three screens has to look like it on all three. The hover fill this table
+   already had does the rest.
+
+   IT IS ALSO WHAT EARNS THE CLAMP ABOVE. A cut cell is only allowed where the
+   whole of it is one press away, and this rule is that press. */
+.withdraw-table tbody tr.row-open { cursor: pointer; }
+.withdraw-table tbody tr.row-open:focus-visible { outline-offset: -2px; }
 
 /* ลำดับที่ — the number a reviewer says out loud, and the only thing that
    tells three rows apart when the same employee has asked for all three.
@@ -8405,6 +8465,35 @@ tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
    any specificity, which is why this had to move to be fixable at all. */
 .cell-cap { max-width: 220px; }
 .cell-cap-lg { max-width: 260px; }
+
+/* ── A CELL WITH A CEILING IN LINES — 2026-09-16 ───────────────────────────
+   `.cell-cap` above caps a cell's WIDTH; this caps its HEIGHT, and the two are
+   answers to different complaints. Asked for as *ไม่อยากให้ความสูงเกิน 2 แถว*
+   on คำขอถอนใบ, where four cells of free text each wrapped to whatever depth
+   they liked and the row came out three and four lines deep.
+
+   ⚠ A CLAMP IS ONLY ALLOWED WHERE THE WHOLE TEXT IS ONE PRESS AWAY. That is
+   the rule test/disclosure.test.js has enforced by counting since the day
+   `.disclosure-body.clamp` was written: a clamp with nothing behind it hides
+   text with no way to reach it, which is worse than a tall row. There are two
+   ways past a clamp in this app and a third is not to be invented — the อ่านต่อ
+   button under `.disclosure-body`, and a `.row-open` row that opens the whole
+   record. A cell wearing this class MUST sit in a row that can be opened.
+
+   `-webkit-box` with `-webkit-line-clamp` is not a legacy spelling — see the
+   note over `.disclosure-body.clamp`, which explains it at length. The count
+   comes from the caller as a custom property, so a cell that needs one line
+   says so without a rule of its own; two is what a cell that says nothing gets.
+
+   NOTHING IS REMOVED FROM THE DOM. Ctrl-F finds the cut text, a screen reader
+   reads it out whole, and the print block below takes the clamp off — which is
+   the whole reason the cut is made here and not with a `slice()` in the JSX. */
+.cell-clamp {
+  --clamp-lines: 2;
+  display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--clamp-lines);
+  overflow: hidden;
+}
 
 .cell-note { margin-top: 3px; font: 400 11.5px/1.45 var(--sans); color: var(--amber); }
 
@@ -17612,7 +17701,11 @@ table.mini tbody tr:hover { background: none; }
      whether they want the rest; a printout is the answer already being yes, and
      a page that printed two lines of a paragraph would be reporting the screen
      rather than the text. */
-  .disclosure-body.clamp, .disclosure-body.clamp-whole { display: block; -webkit-line-clamp: none; overflow: visible; }
+  /* `.cell-clamp` joins the same rule and for the same reason, said in its own
+     words over it: กระดาษไม่มีแถวให้กด — a cell cut to two lines on paper is a
+     printout of the screen rather than of the request. */
+  .disclosure-body.clamp, .disclosure-body.clamp-whole,
+  .cell-clamp { display: block; -webkit-line-clamp: none; overflow: visible; }
   /* เหตุผลเดียวกับบรรทัดบน: กระดาษไม่มีลูกศรให้กด แถวที่ตัดด้วย … บนกระดาษคือ
      การพิมพ์สถานะของหน้าจอออกมา ไม่ใช่การพิมพ์ข้อความ (กล่องทั้งสามใบเป็น
      `no-print` อยู่แล้ว กฎนี้กันไว้เผื่อใบที่สี่ที่ขึ้นกระดาษ) */

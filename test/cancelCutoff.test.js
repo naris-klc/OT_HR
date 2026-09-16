@@ -14,7 +14,9 @@ import assert from 'node:assert/strict';
 
 import {
   cancelCutoffLead,
+  cancelCutoffQueueNote,
   cancelCutoffRefusal,
+  cancelCutoffShortNote,
   cancelDeadline,
   cancelPermission,
   editPermission,
@@ -329,6 +331,45 @@ test('every sentence the wall produces starts from that one lead', () => {
     user: BOSS, entry: withOpenRequest(), delegations: [], today: '2026-09-20', policy: D3,
   }).error;
   for (const line of [employee, decide]) assert.ok(line.startsWith(lead), line);
+});
+
+/**
+ * ── AND ONE ONE-LINE FORM, FOR THE ROW — 2026-09-16 ─────────────────────────
+ *
+ * Asked for with *ไม่อยากให้ความสูงเกิน 2 แถว* on คำขอถอนใบ. The whole sentence
+ * takes two lines of its own in that cell, under a reason that has already
+ * taken two, and it was the biggest single thing making the row four deep.
+ *
+ * WHAT IS DROPPED IS RECOVERABLE FROM WHERE THE READER ALREADY IS: the งวด,
+ * because the row's own วันที่ column says which month the ใบ is in, and
+ * `ซึ่งผ่านไปแล้ว`, because a deadline printed as the reason two buttons are
+ * grey is a deadline that has passed. WHAT IS KEPT is the date — the only fact
+ * in the sentence a reader cannot work out for themselves — and whose decision
+ * it now is. The whole sentence is still the row's tooltip and still opens the
+ * detail box behind it.
+ */
+test('the one-line form keeps the date and whose decision it is', () => {
+  const short = cancelCutoffShortNote(entry(), D3);
+  assert.equal(short, 'งวดปิด 03/09/2569 — เฉพาะฝ่ายบุคคล');
+  // The same date the long sentence prints, out of the same arithmetic — not a
+  // second deadline worked out beside it.
+  assert.ok(cancelCutoffLead(entry(), D3).includes('03/09/2569'));
+  assert.doesNotMatch(short, /2026-09-03/, 'raw ISO must never reach a screen');
+  // No cutoff configured means no sentence at all, exactly as the lead answers.
+  assert.equal(cancelCutoffShortNote(entry(), {}), '');
+});
+
+test('shortening it did not fork the sentence — the long one still says more', () => {
+  // The short form is a CUT of one fact, not a second wording of it. The day it
+  // stops being strictly less than the queue's own sentence is the day there
+  // are two sentences to keep in step, which is the failure §8.4 exists for.
+  const long = cancelCutoffQueueNote(entry(), D3);
+  const short = cancelCutoffShortNote(entry(), D3);
+  assert.match(long, /งวด สิงหาคม 2569/);
+  assert.match(long, /ซึ่งผ่านไปแล้ว/);
+  assert.ok(long.includes('03/09/2569') && short.includes('03/09/2569'));
+  assert.ok(long.includes('ฝ่ายบุคคล') && short.includes('ฝ่ายบุคคล'));
+  assert.ok(long.length > short.length);
 });
 
 test('the short form is the four words the button cell has room for', () => {

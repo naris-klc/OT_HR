@@ -135,11 +135,21 @@ test('five columns are pinned by name and exactly one is left elastic', () => {
   // Measured on the built app at 1440 before they were written out:
   // รายละเอียด came out at exactly 150px — the inherited figure — and
   // เหตุผลที่ขอถอน swallowed the whole remainder at 500.
-  assert.match(rule(wide, '.withdraw-table th.who-col {'), /width: 190px;/);
+  // ⚠ THE FIVE READ 190 / 130 / 170 / 130 / 236 UNTIL 2026-09-16, when the row
+  // was reported as *ความกว้างไม่พอดี ดูไม่ค่อยสวยงาม*. Three of them moved and
+  // not one of the three is a matter of taste — each is paid for by something
+  // else in the same commit:
+  //   · act 236 → 150, because the pair reads `ปฏิเสธ` / `อนุมัติ` now;
+  //   · asked 130 → 96, because `firstName` takes the คำนำหน้า and the นามสกุล
+  //     off, so the cell is one word over a date instead of a wrapped name;
+  //   · who 190 → 230, so a full name and its `1.` fit ONE line — which is what
+  //     makes that cell two lines tall rather than three.
+  // 856px pinned became 736, and เหตุผลที่ขอถอน takes the whole difference.
+  assert.match(rule(wide, '.withdraw-table th.who-col {'), /width: 230px;/);
   assert.match(rule(wide, '.withdraw-table th.when-col {'), /width: 130px;/);
   assert.match(rule(wide, '.withdraw-table th.why-col {'), /width: 170px;/);
-  assert.match(rule(wide, '.withdraw-table th.asked-col {'), /width: 130px;/);
-  assert.match(rule(wide, '.withdraw-table th.act-col {'), /width: 236px;/);
+  assert.match(rule(wide, '.withdraw-table th.asked-col {'), /width: 96px;/);
+  assert.match(rule(wide, '.withdraw-table th.act-col {'), /width: 150px;/);
   // …and เหตุผลที่ขอถอน is the one that takes what is left. It is free text an
   // employee typed and the whole of what is being decided, where รายละเอียด is
   // a job description `DESCRIPTION_MAX_CHARS` has capped at 22 characters: the
@@ -307,7 +317,21 @@ test('the row offers two decisions and draws no third thing that looks like one'
     const end = b.indexOf('</button>');
     return b.slice(b.lastIndexOf('>', end) + 1, end).trim();
   });
-  assert.deepEqual(buttons, ['ไม่อนุมัติการถอน', 'อนุมัติให้ถอน']);
+  // ⚠ IT READ `['ไม่อนุมัติการถอน', 'อนุมัติให้ถอน']` UNTIL 2026-09-16, asked
+  // for as *กระชับข้อความปุ่ม อนุมัติ/ไม่อนุมัติ*, and the 86px it gave back
+  // went to เหตุผลที่ขอถอน.
+  //
+  // `อนุมัติ` ON ITS OWN IS AMBIGUOUS ON THIS CARD and the user chose it after
+  // being told so: the other tab under the same heading is รออนุมัติ OT, where
+  // that word means the opposite of what it means here. The next three
+  // assertions are what carry the difference instead of the label, and they are
+  // the reason this shortening is allowed to stand.
+  assert.deepEqual(buttons, ['ปฏิเสธ', 'อนุมัติ']);
+  // The whole words are still what a screen reader announces and what a pointer
+  // is told — the label got shorter, the meaning did not.
+  assert.match(row, /aria-label="ไม่อนุมัติการถอน"/);
+  assert.match(row, /aria-label="อนุมัติให้ถอนใบนี้"/);
+  assert.match(row, /title="อนุมัติให้ถอนใบนี้ — ชั่วโมงจะถูกตัดออกจากเดือนนี้"/);
   // Secondary then the one that moves the figure: `.ghost` is the house's
   // quiet box, `.danger` the filled warning. Not two of the same weight.
   assert.match(row, /className="btn ghost sm"/);
@@ -325,7 +349,17 @@ test('the two grey clauses sit under the prose, never beside the buttons', () =>
   const act = row.slice(row.indexOf('<td className="act-col">'));
   assert.ok(!/cell-note|withdraw-unsigned/.test(act), 'a sentence has moved in beside the buttons');
   assert.match(row, /className="cell-sub withdraw-unsigned">ใบนี้ยังรอฝ่ายบุคคลยืนยัน/);
-  assert.match(row, /\{past\(e\) && <div className="cell-note">\{cancelCutoffQueueNote\(e, policy\)\}/);
+  // ⚠ IT WAS `cancelCutoffQueueNote` HERE UNTIL 2026-09-16 — the whole sentence,
+  // which took two lines of its own under a reason that had already taken two
+  // and was the single biggest thing making this row four lines deep. The short
+  // form says the date and whose decision it is; the rest is recoverable from
+  // the row's own วันที่ column and from the fact that the buttons are grey.
+  assert.match(row, /\{past\(e\) && <div className="cell-note">\{cancelCutoffShortNote\(e, policy\)\}/);
+  // AND THE WHOLE SENTENCE IS STILL ONE PRESS AWAY — on the row's own tooltip
+  // and at the head of the box the row opens. Shortening a warning is only
+  // allowed where the long form is still reachable.
+  assert.match(jsx, /title=\{locked\(e\) \? cancelCutoffQueueNote\(e, policy\) : undefined\}/);
+  assert.match(jsx, /\{past && <Alert kind="warn">\{cancelCutoffQueueNote\(e, policy\)\}<\/Alert>\}/);
 });
 
 // ── MANY AT ONCE: the batch, and the ceiling that went with the panel ───────
@@ -439,4 +473,180 @@ test('the one thing the pill said that the heading does not is kept, as prose', 
   assert.match(row, /e\.status !== 'approved'[\s\S]{0,160}withdraw-unsigned/);
   assert.match(row, /ใบนี้ยังรอฝ่ายบุคคลยืนยัน/);
   assert.ok(!/chip|background/.test(rule(wide, '.withdraw-unsigned {')), 'it has been made a chip again');
+});
+
+// ── ไม่เกินสองบรรทัดต่อช่อง และกดแถวเพื่ออ่านเต็ม — 2026-09-16 ────────────────
+
+/**
+ * Reported in one sentence with the width: *ไม่อยากให้ความสูงเกิน 2 แถว ·
+ * อยากให้กดที่รายการแล้วแสดงรายละเอียดเพิ่มเติม*.
+ *
+ * THE TWO HALVES ARE ONE CHANGE AND NEITHER IS SOUND ALONE. A clamped cell
+ * with nothing behind it hides text with no way to reach it — which is the ban
+ * test/disclosure.test.js has enforced by counting since `.disclosure-body`
+ * was written — and a detail box on a row that already said everything is a
+ * press that buys nothing. So every assertion below about the cut is paired
+ * with one about the way past it.
+ *
+ * WHAT WAS NOT DONE: no column was taken away. The user was asked and kept all
+ * six, so the height had to come out of the cells rather than out of the table.
+ */
+/**
+ * The row and the box with their commentary stripped.
+ *
+ * The notes in this component QUOTE the things they are about — `role="button"`
+ * in the paragraph explaining why the row is not one, `.withdraw-actions` in the
+ * one explaining why the dialog's foot is not wrapped in it — and every "and
+ * this is NOT here" assertion below caught its own comment the first time it
+ * was run. Same guard and the same reason as `code` further down this file.
+ */
+const bare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+const bareRow = bare(row);
+
+test('every prose cell is clamped, and the cut is the stylesheet’s', () => {
+  // The cut is CSS because cutting the string in the component would take the
+  // text out of the DOM: Ctrl-F would stop finding it, a screen reader would
+  // stop reading it, and @media print could not put it back. (The one `slice`
+  // left in the row is on a TIMESTAMP — `requestedAt` down to its ten date
+  // characters — which is a date being formatted, not a sentence being cut.)
+  const cuts = [...bareRow.matchAll(/\.slice\(|\.substring\(/g)];
+  assert.equal(cuts.length, 1, 'something in the row is trimming text in the markup');
+  assert.match(bareRow, /String\(e\.withdrawal\.requestedAt\)\.slice\(0, 10\)/);
+  // ANCHORED TO A LINE START, for the reason test/queueNameWrap.test.js anchors
+  // `th.who-col`: the scoped overrides in the withdraw section carry the same
+  // class name and sit higher in the file, so a bare `indexOf` measures one of
+  // them instead of the class itself.
+  const base = rule(wide, '\n.cell-clamp {');
+  assert.match(base, /-webkit-box-orient: vertical;/);
+  assert.match(base, /-webkit-line-clamp: var\(--clamp-lines\);/);
+  // Declared on the class rather than left to a `var()` fallback — an undeclared
+  // token is what test/theme.test.js counts as a token with no definition.
+  assert.match(base, /--clamp-lines: 2;/);
+});
+
+test('each cell gets a share of the two lines that adds up to two', () => {
+  // พนักงาน and ผู้ขอ are each two THINGS — a name over a code, a name over a
+  // date — so the text half of them is one line and the note under it is the
+  // other.
+  assert.match(rule(wide, '.withdraw-table td.who-col .cell-clamp'), /--clamp-lines: 1;/);
+  assert.match(rule(wide, '.withdraw-table td.asked-col .cell-clamp'), /--clamp-lines: 1;/);
+  // The two prose cells take both lines — unless they are carrying a grey
+  // clause, in which case the prose takes one and the clause takes the other.
+  // `:has()` and not a second class in the JSX: the question is about the
+  // cell's own contents, and markup that also announced it is two places to
+  // keep in step.
+  const both = rule(wide, '.withdraw-table td.why-col:has(.withdraw-unsigned) .cell-clamp,');
+  assert.match(both, /td\.reason-col:has\(\.cell-note\) \.cell-clamp \{ --clamp-lines: 1;/);
+  // …and the cells wear it in the markup at both widths — the phone block
+  // re-places these cells, it does not re-render them.
+  assert.match(row, /<span className="nm cell-clamp">\{e\.employee\?\.name\}<\/span>/);
+  assert.match(row, /<div className="cell-sub cell-clamp">/);
+  assert.match(row, /<div className="cell-clamp">\{e\.description\}<\/div>/);
+  assert.match(row, /<div className="cell-clamp">\r?\n\s+<span className="lbl">เหตุผลที่ขอถอน: <\/span>/);
+});
+
+test('the clamp comes off on paper', () => {
+  // กระดาษไม่มีแถวให้กด. A cell cut to two lines on a printout is a picture of
+  // the screen rather than of the request — the same argument the อ่านต่อ fold
+  // is unclamped by, and it shares that rule.
+  const at = css.indexOf('@media print');
+  assert.ok(at > 0, 'the print block is gone');
+  assert.match(css.slice(at), /\.cell-clamp \{ display: block; -webkit-line-clamp: none; overflow: visible; \}/);
+});
+
+test('ผู้ขอ is the given name alone, and only in that column', () => {
+  // Asked for as *ชื่อผู้ขอ ให้แสดงแค่ชื่อ ไม่ต้องแสดงนามสกุล*, and the
+  // คำนำหน้า came off with it. `firstName` in lib/api.js makes both cuts and
+  // is where the roster they were measured against is written down — the ลงชื่อ
+  // boxes on the printed form have used it since 2026-09-08. Not a second
+  // splitter written here: the day this file has one is the day two screens
+  // disagree about what a name's first word is.
+  assert.match(jsx, /import \{[\s\S]{0,200}firstName,[\s\S]{0,200}\} from '@\/lib\/api\.js';/);
+  assert.match(row, /\{firstName\(e\.withdrawal\?\.requestedByName\)\}/);
+  // THE พนักงาน COLUMN KEEPS ITS FULL NAME. That cell is the identity of the
+  // person the ใบ belongs to; this one answers "who asked", which on nearly
+  // every row is that same person, and the whole name is in the detail box.
+  const who = row.slice(row.indexOf('<td className="who-col">'), row.indexOf('<td className="when-col">'));
+  assert.ok(!/firstName/.test(who), 'the employee column has been cut down to a given name');
+  assert.match(who, /\{e\.employee\?\.name\}/);
+});
+
+test('the row opens, the same way rows open everywhere else in this app', () => {
+  // Declaration for declaration what คิวรออนุมัติ and หน้ารายการ OT carry. A
+  // row that means "open this" on three screens has to behave the same on all
+  // three, and this one also has to exist for the clamp above to be allowed.
+  assert.match(row, /className="row-open"/);
+  assert.match(row, /tabIndex=\{0\}/);
+  assert.match(row, /title="กดที่แถวเพื่อดูรายละเอียด"/);
+  // NOT `role="button"`. A <tr> that claims to be a button stops being a row to
+  // a screen reader, and its six cells stop being cells.
+  assert.ok(!/role="button"/.test(bareRow), 'the row claims to be a button');
+  // THE GUARD IS THE POINT OF THE HANDLER: two decision buttons live inside the
+  // row and both would otherwise open the box on their way to their own job.
+  // `closest` asks the pressed element, so a press on something INSIDE a button
+  // is caught too — which a check on `ev.target.tagName` would not be.
+  assert.match(row, /ev\.target\.closest\?\.\('button, input, a, label, select, textarea'\)\) return;/);
+  // Enter and Space, and Space must not also scroll the page.
+  assert.match(row, /ev\.key !== 'Enter' && ev\.key !== ' '/);
+  assert.match(row, /ev\.preventDefault\(\);/);
+  assert.match(rule(wide, '.withdraw-table tbody tr.row-open {'), /cursor: pointer;/);
+  assert.match(wide, /\.withdraw-table tbody tr\.row-open:focus-visible \{ outline-offset: -2px; \}/);
+});
+
+/** The box behind the row — assembled from the kit, deciding through the same
+    two setters the row's own buttons call. */
+const box = jsx.slice(jsx.indexOf('function WithdrawDetail('));
+
+test('the detail box is built from the shared kit and invents nothing', () => {
+  assert.ok(box.length > 0, 'WithdrawDetail is gone');
+  // Every one of these is a component คิวรออนุมัติ's own pop-up reads this same
+  // entry with. What HR learns to read on one screen they can read on the
+  // other, and a change to any of them lands on both.
+  for (const kit of ['Modal', 'Section', 'Fact', 'ReasonCard', 'ScanDayPunches',
+    'ScanMismatchMark', 'SignatureFacts', 'EntryHistory']) {
+    assert.ok(box.includes(`<${kit}`), `the detail box no longer uses ${kit}`);
+  }
+  // The four things asked for by name on 2026-09-16, in the box that was asked
+  // for to hold them.
+  assert.match(box, /e\.withdrawal\?\.reason/);
+  assert.match(box, /e\.withdrawal\?\.requestedByName/);
+  assert.match(box, /BUCKET_LABEL\[b\]/);
+  assert.match(box, /เทียบกับไฟล์สแกนนิ้วมือ/);
+});
+
+test('the box decides through the row’s own two setters, not a write of its own', () => {
+  // ONE WAY IN TO THE DECISION. The box's buttons call `setGranting` and
+  // `setRefusing` — the same setters the row's pair calls — so both routes end
+  // at one confirm dialog and one write, and neither the dialog nor `decide()`
+  // has to know which of them it was reached from.
+  assert.ok(!/api\.post/.test(box), 'the detail box writes a decision of its own');
+  assert.match(jsx, /onRefuse=\{\(\) => \{ setRefusing\(detail\); setRefuseNote\(''\); \}\}/);
+  assert.match(jsx, /onGrant=\{\(\) => setGranting\(detail\)\}/);
+  // The same words on the same two buttons, in the same order and colours.
+  const foot = bare(box).slice(bare(box).indexOf('footer={('), bare(box).indexOf('</>'));
+  assert.match(foot, /className="btn ghost"[\s\S]{0,200}ปฏิเสธ/);
+  assert.match(foot, /className="btn danger"[\s\S]{0,200}อนุมัติ/);
+  // NOT WRAPPED IN `.withdraw-actions`. Below 860px the modal's own foot makes
+  // every dialog's buttons equal halves of the bar and it reaches CHILDREN; a
+  // wrapper would take that layout for itself and leave these two ranged right
+  // at thumb-miss width.
+  assert.ok(!/withdraw-actions/.test(foot), 'the foot has grown a wrapper that steals the phone layout');
+});
+
+test('the box offers no way to edit the ใบ it is deciding about', () => {
+  // คิวรออนุมัติ's pop-up carries แก้ไขชั่วโมง; this one must not. A ใบ under a
+  // withdrawal request is one somebody has asked to have cancelled outright,
+  // and offering to adjust its hours in the same box is a third answer to a
+  // question that has two.
+  assert.ok(!/QuickEdit|แก้ไขชั่วโมง/.test(box), 'an edit control appeared in the withdrawal detail');
+});
+
+test('a decided row takes its open detail box with it', () => {
+  // The row is about to leave the list, so the box behind the dialog goes with
+  // it rather than standing there offering two buttons for a request that has
+  // been answered. Both write paths, because the batch can clear the open row.
+  const decide = jsx.slice(jsx.indexOf('async function decide('), jsx.indexOf('* อนุมัติให้ถอนทั้งหมด'));
+  assert.match(decide, /setDetail\(null\);/);
+  const all = jsx.slice(jsx.indexOf('async function grantAll'), jsx.indexOf('* Nothing at all when'));
+  assert.match(all, /setDetail\(null\);/);
 });

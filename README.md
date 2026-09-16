@@ -2097,10 +2097,15 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2779 tests
-across 154 files**, measured 2026-09-15 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2790 tests
+across 154 files**, measured 2026-09-16 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"2753 tests across 153 files … measured 2026-09-15" until
+"2779 tests across 154 files … measured 2026-09-15" until
+**แถวคำขอถอนใบ สูงไม่เกินสองบรรทัด และกดเปิดรายละเอียดได้** — NO new file, and
+that is the shape of the round: eleven cases went into `withdrawalRowLayout`,
+`cancelCutoff`, `cancelCutoffScreens` and `disclosure`, because the change is to
+a row four of them already pin rather than to a screen none of them do. Before
+that it read "2753 tests across 153 files … measured 2026-09-15" until
 **ฝ่ายบุคคลยกเลิกใบได้ พร้อมเหตุผล** later the same day — `hrCancelEntry` is
 file 154. Before that it read "2739 tests across 152 files" until **คำขอถอนใบ ย้ายเข้า
 ไปอยู่การ์ดเดียวกับ รออนุมัติ** later the same day — `queueWithdrawChips` is
@@ -6617,6 +6622,12 @@ being a status either.
 | **อนุมัติให้ถอน** | the department's หัวหน้า, a ผู้รับช่วง holding their queue, or ฝ่ายบุคคล | `granted` · `withdraw_grant` · status → `cancelled` |
 | **ไม่อนุมัติ** | the same people | `refused` · `withdraw_refuse`, status unchanged |
 
+Those three name the ACTS. **The two buttons on the row have read `ปฏิเสธ` and
+`อนุมัติ` since 2026-09-16** — they read `ไม่อนุมัติการถอน` and `อนุมัติให้ถอน`
+until then, and the whole words are still each button's `aria-label` and
+tooltip, because the other tab on that card uses `อนุมัติ` for approving the
+overtime, which is the opposite act.
+
 A reason is **required** to ask, where `cancelPermission` deliberately asks for
 none: removing a request nobody has looked at establishes nothing, but this asks
 somebody to take back what they established, and the person deciding cannot
@@ -6726,6 +6737,12 @@ entry's own status, and it was correct: these rows are still approved and still
 counted. But it sat a few pixels from a button reading **อนุมัติให้ถอน** — two
 small rounded objects side by side, one of them pressable, both saying อนุมัติ.
 It was reported as a duplicate button, which is exactly how it read.
+
+**That button reads `อนุมัติ` on its own since 2026-09-16**, so the collision
+this paragraph describes is one shortened label away from coming back. What
+keeps it away is that nothing else on the row is green, nothing else is
+pressable, and the whole words are on the `aria-label`. A chip, a pill or a
+second green control anywhere in this row puts it back.
 
 **What is NOT gone is the one thing it said that the card's heading does not.**
 These rows are `approved` **or** `pending_hr` — `cancelPermission` opens the ask
@@ -13840,8 +13857,12 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2779 tests**, about 4 s, measured 2026-09-15 across 154
-  files, all green. **`hrCancelEntry` is the new file of the last round** —
+- `npm test` — **2790 tests**, about 4 s, measured 2026-09-16 across 154
+  files, all green. **There is no new file in the last round** — แถวคำขอถอนใบ
+  was capped at two lines and made openable, and the eleven cases went into the
+  four files that already pin that row, that sentence and the app's one clamp.
+  It read "2779 tests … measured 2026-09-15" until then.
+  **`hrCancelEntry` was the new file of the round before** —
   ฝ่ายบุคคล may now cancel any LIVE entry outright, with a reason recorded as
   `hr_cancel`. It closes a hole nobody had named: an `approved` entry whose งวด
   had passed its วันตัด could be removed by **nobody at all**, because ขอถอนใบ is
@@ -14382,8 +14403,24 @@ build แล้ว
   stayed where the list is. It read "**Nine of the twenty-one are that round**:
   the count moved into the heading … `.withdraw-list` holds the stack to 400px
   and scrolls" until then.
+  **Eleven more cases landed on 2026-09-16**, and they are one change asked for
+  in one sentence: *ไม่อยากให้ความสูงเกิน 2 แถว · อยากให้กดที่รายการแล้วแสดง
+  รายละเอียดเพิ่มเติม*. No cell on that row is more than two lines now — a new
+  `.cell-clamp` cuts the prose and the stylesheet deals each cell its share —
+  and the row opens `WithdrawDetail`, the same `Modal` คิวรออนุมัติ opens,
+  assembled from `Section`, `Fact`, `ReasonCard`, `ScanDayPunches`,
+  `SignatureFacts` and `EntryHistory` with no piece of its own. **The clamp is
+  only allowed because the row opens**: a clamp with nothing behind it hides
+  text, which is the ban `test/disclosure.test.js` enforces by counting, and its
+  count went 2 → 3 with that reasoning written into it. Three widths moved to
+  pay for it — the decision column 236 → 150px on `ปฏิเสธ` / `อนุมัติ`, ผู้ขอ
+  130 → 96px on `firstName`, พนักงาน 190 → 230px so a full name fits one line —
+  and the งวดปิด sentence on the row is `cancelCutoffShortNote`, one line, with
+  the whole sentence still on the tooltip and at the head of the box.
   **Three of the first twelve are about what is NOT drawn**: the row offers exactly
-  two buttons, `ไม่อนุมัติการถอน` and `อนุมัติให้ถอน`, and no chip of any kind —
+  two buttons — `ไม่อนุมัติการถอน` and `อนุมัติให้ถอน` until 2026-09-16, `ปฏิเสธ`
+  and `อนุมัติ` since, with the whole words kept as each one's `aria-label`
+  because the other tab on this card uses `อนุมัติ` for the opposite act — and no chip of any kind —
   the green `อนุมัติ` status pill beside them was read as a third decision.
   What the pill said that the heading does not is kept as prose, and the test
   fails if it is made a chip again. It read "1912" until then.

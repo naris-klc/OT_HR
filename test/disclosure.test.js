@@ -227,9 +227,11 @@ test('the two words say which direction they go', () => {
 
 test('printing unfolds every paragraph and drops the control', () => {
   const print = css.slice(css.indexOf('@media print {'));
+  // `.cell-clamp` joined this rule on 2026-09-16 and for the same reason said
+  // in its own words: paper has no row to press either.
   assert.match(
     print,
-    /\.disclosure-body\.clamp, \.disclosure-body\.clamp-whole \{ display: block; -webkit-line-clamp: none;/,
+    /\.disclosure-body\.clamp, \.disclosure-body\.clamp-whole,\r?\n\s*\.cell-clamp \{ display: block; -webkit-line-clamp: none;/,
   );
   assert.match(print, /\.disclosure-more \{ display: none !important; \}/);
 });
@@ -877,12 +879,30 @@ test('a live figure is not an explanation, and is left on the screen', () => {
 // ── one clamp, in one place ─────────────────────────────────────────────────
 
 test('no screen grows a clamp of its own', () => {
-  // A second line-clamp is a second answer to "how much of this is shown", and
-  // the one on `.disclosure-body` is the one with a button under it. A clamp
-  // without one hides text with no way to reach it.
-  // Two: the rule that clamps, and the one in @media print that undoes it.
+  /*
+   * A second line-clamp is a second answer to "how much of this is shown", and
+   * what makes an answer legitimate is not WHERE it is written — it is whether
+   * there is a way past it. A clamp with nothing behind it hides text with no
+   * way to reach it, and that is the whole of the ban.
+   *
+   * ⚠ THE COUNT READ 2 UNTIL 2026-09-16, and the third is `.cell-clamp`. It was
+   * asked for on คำขอถอนใบ as *ไม่อยากให้ความสูงเกิน 2 แถว*, IN ONE SENTENCE
+   * with *อยากให้กดที่รายการแล้วแสดงรายละเอียดเพิ่มเติม* — the row opens the
+   * whole record, so every cell it cuts is one press from being read in full.
+   * That is the same bargain `.disclosure-body` makes with อ่านต่อ under it,
+   * struck with a row instead of a button.
+   *
+   * SO THE COUNT IS STILL WHAT ENFORCES THE RULE, and a fourth is still a
+   * failure until somebody writes down which press reaches the text it hides.
+   * Three: the two rules that clamp, and the one in @media print that undoes
+   * them both.
+   */
   const rules = [...css.matchAll(/(-webkit-)?line-clamp:/g)];
-  assert.equal(rules.length, 2, 'มี line-clamp มากกว่าที่ .disclosure-body.clamp กับบล็อกพิมพ์ใช้');
+  assert.equal(rules.length, 3, 'มี line-clamp มากกว่าที่ .disclosure-body.clamp, .cell-clamp กับบล็อกพิมพ์ใช้');
+  // …and the newcomer's own way past it, so this count cannot be raised by a
+  // clamp that merely hides something.
+  assert.match(css, /\.withdraw-table tbody tr\.row-open \{ cursor: pointer; \}/,
+    'the row that reaches what .cell-clamp cuts is gone — the clamp may not stay without it');
   for (const f of components) {
     assert.doesNotMatch(
       read(`components/${f}`),

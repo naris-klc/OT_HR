@@ -1,9 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, hours, thaiDate } from '@/lib/api.js';
-import { cancelCutoffQueueNote, isPastCancelCutoff, mayCorrectEntries } from '@/lib/entries.js';
-import { Alert, Modal } from './common.jsx';
+import {
+  BUCKETS, BUCKET_LABEL, api, firstName, hours, thaiDate,
+} from '@/lib/api.js';
+import {
+  cancelCutoffQueueNote, cancelCutoffShortNote, isPastCancelCutoff, mayCorrectEntries,
+} from '@/lib/entries.js';
+import {
+  Alert, EntryHistory, Fact, Modal, ReasonCard, ScanDayPunches, ScanMismatchMark,
+  Section, SignatureFacts,
+} from './common.jsx';
 import { usePolicy } from './policyContext.jsx';
 
 /**
@@ -93,6 +100,18 @@ export default function WithdrawalRequests({
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * The row that has been opened for reading — 2026-09-16, asked for as
+   * *อยากให้กดที่รายการแล้วแสดงรายละเอียดเพิ่มเติม* in the same breath as the
+   * two-line ceiling below, and the two are one change: a cell may only be cut
+   * short where the whole of it is one press away.
+   *
+   * IT IS NOT A SECOND WAY TO DECIDE. The box's two buttons call `setGranting`
+   * and `setRefusing` — the same setters the row's own pair calls — so both
+   * routes end at one confirm dialog and one write, and neither the dialog nor
+   * `decide()` has to know which of them it was reached from.
+   */
+  const [detail, setDetail] = useState(null); // entry
   const [refusing, setRefusing] = useState(null); // entry
   const [refuseNote, setRefuseNote] = useState('');
   const [granting, setGranting] = useState(null); // entry
@@ -177,6 +196,10 @@ export default function WithdrawalRequests({
       await api.post(`/entries/${entry._id}/withdraw/decide`, { granted, note: note || undefined });
       setRefusing(null);
       setGranting(null);
+      // The row this was decided from is about to leave the list, so the
+      // รายละเอียด box behind the dialog goes with it rather than standing
+      // there offering two buttons for a request that has been answered.
+      setDetail(null);
       setRefuseNote('');
       await load();
       onChanged?.();
@@ -221,6 +244,7 @@ export default function WithdrawalRequests({
       setDone(ok + failed.length);
     }
     setGrantingAll(false);
+    setDetail(null); // it may have been one of the rows this press just cleared
     setBatchNote('');
     setError(failed.length
       ? `ถอนสำเร็จ ${ok} รายการ · ไม่สำเร็จ ${failed.length} รายการ — ${failed.join(' · ')}`
@@ -282,7 +306,31 @@ export default function WithdrawalRequests({
           under the reason for a งวด that has closed. Both are things that are
           TRUE of the row rather than decisions to be made about it, and a
           sentence set next to a decision is read as a third decision — which is
-          what took the green status pill off this row in the first place. */}
+          what took the green status pill off this row in the first place.
+
+          ── AND SINCE 2026-09-16 NO CELL IS MORE THAN TWO LINES TALL ─────────
+
+          Reported as *ตารางความกว้างไม่พอดี ดูไม่ค่อยสวยงาม ไม่อยากให้ความสูง
+          เกิน 2 แถว*. Three things were making the row three and four lines
+          deep, and all three are fixed here rather than by taking a column
+          away — the user was asked and kept all six:
+
+            · the two prose cells wrap as far as `.cell-clamp` lets them and
+              are cut with an ellipsis after that;
+            · the งวดปิด sentence is `cancelCutoffShortNote` now, one line;
+            · ผู้ขอ is the given name alone (`firstName`), so the cell that was
+              a wrapped full name on every row is one word.
+
+          THE CUT IS MADE IN THE STYLESHEET AND NOT HERE, and that is the whole
+          reason it is allowed to exist at all. Every character is still in the
+          DOM: Ctrl-F reaches it, a screen reader reads it out, and @media print
+          takes the clamp off so the paper carries what the screen abbreviated.
+          A `slice()` in this file would lose all three, silently.
+
+          AND THE WHOLE OF WHAT WAS CUT IS ONE PRESS AWAY — the row opens
+          `WithdrawDetail`. A clamp with no way past it hides text, which is
+          exactly what test/disclosure.test.js bans; this one has the way past
+          it, and that test now says so in as many words. */}
       <div className="table-wrap">
         <table className="withdraw-table">
           <thead>
@@ -297,7 +345,38 @@ export default function WithdrawalRequests({
           </thead>
           <tbody>
             {rows.map((e, i) => (
-              <tr key={e._id}>
+              /**
+               * THE ROW OPENS ITSELF, and it is the same handler คิวรออนุมัติ
+               * and หน้ารายการ OT carry, declaration for declaration — a row
+               * that means "open this" on three screens has to behave the same
+               * on all three.
+               *
+               * NOT `role="button"`. A <tr> that claims to be a button stops
+               * being a row to a screen reader and its six cells stop being
+               * cells; what it gets instead is a tab stop, Enter and Space, a
+               * title, and the pointer `.row-open` gives it.
+               *
+               * THE GUARD IS THE POINT OF THE HANDLER. Two decision buttons
+               * live inside this row and both would otherwise open the box on
+               * their way to their own job. `closest` asks the pressed element,
+               * so a press inside a button is caught too.
+               */
+              <tr
+                key={e._id}
+                className="row-open"
+                tabIndex={0}
+                title="กดที่แถวเพื่อดูรายละเอียด"
+                onClick={(ev) => {
+                  if (ev.target.closest?.('button, input, a, label, select, textarea')) return;
+                  setDetail(e);
+                }}
+                onKeyDown={(ev) => {
+                  if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                  if (ev.target !== ev.currentTarget) return;
+                  ev.preventDefault(); // Space scrolls the page when nothing claims it
+                  setDetail(e);
+                }}
+              >
                 <td className="who-col">
                   {/* Two runs, and the break may only fall between them — the
                       name is allowed a second line and must take it at the
@@ -307,9 +386,17 @@ export default function WithdrawalRequests({
                       when the same employee has asked for all three. */}
                   <div className="withdraw-who">
                     <span className="withdraw-no">{i + 1}.</span>
-                    <span className="nm">{e.employee?.name}</span>
+                    {/* ONE LINE EACH, so this cell is two and not three.
+                        `word-break: keep-all` is still on the name and still
+                        does its job — it decides WHERE a name may break, and
+                        the clamp decides how many of those breaks are drawn.
+                        A name long enough to need a second line is a name
+                        whose surname is an ellipsis here and whole in the box
+                        the row opens; the รหัสพนักงาน under it is what tells
+                        two people with one given name apart in the meantime. */}
+                    <span className="nm cell-clamp">{e.employee?.name}</span>
                   </div>
-                  <div className="cell-sub">
+                  <div className="cell-sub cell-clamp">
                     <span className="nb">{e.employee?.code}</span>
                     {' · '}{e.department?.nameTh || e.department?.name}
                   </div>
@@ -322,7 +409,12 @@ export default function WithdrawalRequests({
                   </div>
                 </td>
                 <td className="why-col">
-                  {e.description}
+                  {/* Its own element because a bare text node cannot be
+                      clamped — the same reason `who-name` is a <div> in
+                      คิวรออนุมัติ. Two lines normally; one when the ยังรอ
+                      ฝ่ายบุคคล clause below is drawn, so the pair is still two
+                      (`td.why-col:has(.withdraw-unsigned)` in the sheet). */}
+                  <div className="cell-clamp">{e.description}</div>
                   {/* The one row whose grant takes back a figure ฝ่ายบุคคล have
                       never confirmed. These rows are `approved` or `pending_hr`
                       — the ask opens at the FIRST signature, not the last — so
@@ -333,16 +425,46 @@ export default function WithdrawalRequests({
                   )}
                 </td>
                 <td className="reason-col">
-                  <span className="lbl">เหตุผลที่ขอถอน: </span>{e.withdrawal?.reason}
+                  <div className="cell-clamp">
+                    <span className="lbl">เหตุผลที่ขอถอน: </span>{e.withdrawal?.reason}
+                  </div>
                   {/* ── งวดนี้ปิดไปแล้ว — DRAWN FOR EVERY READER ─────────────
                       A หัวหน้า needs it to understand why their two buttons are
                       grey. ฝ่ายบุคคล, whose buttons still work, needs the same
                       sentence as a warning that they are about to act where the
                       signer no longer can. One sentence, both readings. */}
-                  {past(e) && <div className="cell-note">{cancelCutoffQueueNote(e, policy)}</div>}
+                  {/* THE SHORT FORM HERE AND THE WHOLE SENTENCE EVERYWHERE
+                      ELSE — 2026-09-16. `งวด สิงหาคม 2569 · กำหนดสุดท้าย
+                      03/09/2569 ซึ่งผ่านไปแล้ว — ตัดสินคำขอนี้ได้เฉพาะฝ่ายบุคคล`
+                      is two lines of its own under a reason that has already
+                      taken two, and it was the single biggest thing making
+                      this row four lines deep.
+
+                      Nothing is hidden by shortening it: the whole sentence is
+                      this row's tooltip, it is the first thing in the
+                      รายละเอียด box, and both confirm dialogs open with it. */}
+                  {past(e) && <div className="cell-note">{cancelCutoffShortNote(e, policy)}</div>}
                 </td>
                 <td className="asked-col">
-                  <span className="lbl">ขอโดย </span>{e.withdrawal?.requestedByName}
+                  {/* ชื่อตัว ไม่มีคำนำหน้าและนามสกุล — asked for on 2026-09-16.
+                      `firstName` in lib/api.js makes both cuts and is where the
+                      roster they were measured against is written down; the
+                      ลงชื่อ boxes on the printed form have used it since
+                      2026-09-08. The column that was a wrapped full name on
+                      every row is one word now.
+
+                      THE พนักงาน COLUMN KEEPS ITS FULL NAME. That one is the
+                      identity of the person the ใบ belongs to; this one answers
+                      "who asked", which on nearly every row is that same person
+                      — and the whole name is in the box the row opens. */}
+                  {/* The label is INSIDE the clamped box, not before it: a
+                      `-webkit-box` is a block, so a label left outside would
+                      sit on a line of its own at the phone width where it is
+                      the only width it is drawn at. Same shape as the reason
+                      cell above. */}
+                  <div className="cell-clamp">
+                    <span className="lbl">ขอโดย </span>{firstName(e.withdrawal?.requestedByName)}
+                  </div>
                   {e.withdrawal?.requestedAt && (
                     <div className="cell-sub">
                       {thaiDate(String(e.withdrawal.requestedAt).slice(0, 10))}
@@ -364,19 +486,46 @@ export default function WithdrawalRequests({
                     aria-label={locked(e) ? cancelCutoffQueueNote(e, policy) : undefined}
                     role={locked(e) ? 'note' : undefined}
                   >
+                    {/* ── ปฏิเสธ / อนุมัติ — SHORTENED 2026-09-16 ───────────
+                        Asked for as *กระชับข้อความปุ่ม อนุมัติ/ไม่อนุมัติ*. The
+                        pair was `ไม่อนุมัติการถอน` / `อนุมัติให้ถอน` and cost
+                        this column 236px of a table whose floor is 1032; at 150
+                        it hands 86px back to the reason, which is the column
+                        the reviewer is actually reading.
+
+                        ⚠ `อนุมัติ` ON ITS OWN IS AMBIGUOUS ON THIS CARD, and
+                        the user was told so before choosing it: the other tab
+                        under the same heading is รออนุมัติ OT, where อนุมัติ
+                        means *approve the overtime*. Here it means *approve
+                        throwing the ใบ away*, which is its opposite. Three
+                        things carry that difference and none of them may be
+                        quietly tidied away later:
+
+                          · the fill. `.danger` red, never the green อนุมัติ OT
+                            wears — this is the same argument that took the
+                            green status pill off this row;
+                          · `title` and `aria-label`, which are the whole words
+                            and are what a screen reader announces;
+                          · the confirm dialog, which still says what a grant
+                            does and that it cannot be undone. Nothing on this
+                            screen withdraws a ใบ on one press. */}
                     <button
                       className="btn ghost sm"
+                      title="ไม่อนุมัติการถอน — ใบนี้ยังมีผลตามเดิม"
+                      aria-label="ไม่อนุมัติการถอน"
                       disabled={busy || locked(e)}
                       onClick={() => { setRefusing(e); setRefuseNote(''); }}
                     >
-                      ไม่อนุมัติการถอน
+                      ปฏิเสธ
                     </button>
                     <button
                       className="btn danger sm"
+                      title="อนุมัติให้ถอนใบนี้ — ชั่วโมงจะถูกตัดออกจากเดือนนี้"
+                      aria-label="อนุมัติให้ถอนใบนี้"
                       disabled={busy || locked(e)}
                       onClick={() => setGranting(e)}
                     >
-                      อนุมัติให้ถอน
+                      อนุมัติ
                     </button>
                   </div>
                 </td>
@@ -385,6 +534,22 @@ export default function WithdrawalRequests({
           </tbody>
         </table>
       </div>
+
+      {/* Drawn before the two confirm dialogs and closed by neither: a reviewer
+          who opens รายละเอียด, presses อนุมัติ inside it and then thinks better
+          of it at the confirm step comes back to what they were reading. */}
+      {detail && (
+        <WithdrawDetail
+          entry={detail}
+          policy={policy}
+          locked={locked(detail)}
+          past={past(detail)}
+          busy={busy}
+          onClose={() => setDetail(null)}
+          onRefuse={() => { setRefusing(detail); setRefuseNote(''); }}
+          onGrant={() => setGranting(detail)}
+        />
+      )}
 
       {granting && (
         <Modal
@@ -618,5 +783,170 @@ export default function WithdrawalRequests({
         </Modal>
       )}
     </>
+  );
+}
+
+/**
+ * ── รายละเอียดคำขอถอน — everything the row was cut down to two lines from ──
+ *
+ * Asked for on 2026-09-16, in one sentence with the two-line ceiling: *ไม่อยาก
+ * ให้ความสูงเกิน 2 แถว และอยากให้กดที่รายการแล้วแสดงรายละเอียดเพิ่มเติม*. The
+ * two are one change and neither works alone — a clamped cell with nothing
+ * behind it hides text, and a detail box on a row that already said everything
+ * is a press that buys nothing.
+ *
+ * IT IS BUILT ENTIRELY FROM `components/common.jsx` AND HAS NO PIECE OF ITS
+ * OWN. `Modal` is the same frame คิวรออนุมัติ opens — centred on a desktop, a
+ * sheet from the bottom edge on a phone, closed by ✕, Escape, the backdrop or a
+ * swipe down. `Section`, `Fact`, `ReasonCard`, `ScanDayPunches`,
+ * `ScanMismatchMark`, `SignatureFacts` and `EntryHistory` are the same seven
+ * components the queue's own pop-up reads this entry with. What HR learns to
+ * read on one screen they can read on the other, and a change to any of them
+ * lands on both.
+ *
+ * THE ORDER IS THE REVIEWER'S QUESTION ORDER, and it is not the queue's. There
+ * the question is *should this overtime be approved*, so the hours come first;
+ * here it is *should this approved ใบ be taken back*, so the ASK comes first —
+ * who asked, when, and in their own words — and the hours follow as what a
+ * grant would remove.
+ *
+ * NO EDITING OF ANY KIND. The queue's pop-up carries แก้ไขชั่วโมง; this one
+ * must not. A ใบ under a withdrawal request is a ใบ somebody has asked to have
+ * cancelled outright, and offering to adjust its hours in the same box is
+ * offering a third answer to a question that has two.
+ *
+ * `busy` GREYS THE PAIR the same way the row's does, and `locked` is the งวด's
+ * cutoff — passed in rather than recomputed, so the box and the row behind it
+ * cannot disagree about whose decision this is. The same rule, asked once.
+ */
+function WithdrawDetail({
+  entry: e, policy, locked, past, busy, onClose, onRefuse, onGrant,
+}) {
+  return (
+    <Modal
+      title="รายละเอียดคำขอถอนใบ"
+      subtitle={`${e.employee?.name} · ${thaiDate(e.workDate)} · ${hours(e.totals?.otHours)} ชม.`}
+      onClose={onClose}
+      footer={(
+        /* The row's own pair, in the row's own order and the row's own colours
+           — secondary first, then the one that moves the figure. They call the
+           same two setters the row calls, so this box is a way IN to the
+           decision and never a second version of it.
+
+           DIRECT CHILDREN OF THE FOOT AND NOT WRAPPED IN `.withdraw-actions`
+           the way the row's pair is. Below 860px `.modal-foot .btn` makes every
+           dialog's buttons equal halves of the bar, and it reaches CHILDREN: a
+           wrapper would take that layout for itself and leave these two ranged
+           right at thumb-miss width. The row needs its wrapper because a
+           disabled button cannot carry a tooltip; here the whole sentence is
+           the first thing in the body, so there is nothing for one to say. */
+        <>
+          <button
+            className="btn ghost"
+            aria-label="ไม่อนุมัติการถอน"
+            disabled={busy || locked}
+            onClick={onRefuse}
+          >
+            ปฏิเสธ
+          </button>
+          <button
+            className="btn danger"
+            aria-label="อนุมัติให้ถอนใบนี้"
+            disabled={busy || locked}
+            onClick={onGrant}
+          >
+            อนุมัติ
+          </button>
+        </>
+      )}
+    >
+      {/* FIRST, BECAUSE IT IS ABOUT WHETHER THIS BOX HAS A DECISION ON IT — the
+          same placement and the same argument as `blocked` in คิวรออนุมัติ. It
+          is also the whole sentence the row could only fit the short form of,
+          so this is where a reader who pressed the row to find out WHY the pair
+          is grey arrives. Drawn for ฝ่ายบุคคล too, whose buttons work: there it
+          is the warning that they are acting where the signer no longer can. */}
+      {past && <Alert kind="warn">{cancelCutoffQueueNote(e, policy)}</Alert>}
+
+      {/* The one row whose grant takes back a figure ฝ่ายบุคคล never confirmed.
+          `approved` and `pending_hr` both reach this list — the ask opens at
+          the FIRST signature, not the last. */}
+      {e.status !== 'approved' && (
+        <Alert kind="info">
+          ใบนี้ยัง<strong>รอฝ่ายบุคคลยืนยัน</strong> — การถอนจะดึงชั่วโมงที่ยังไม่ผ่านการยืนยันกลับคืน
+        </Alert>
+      )}
+
+      <Section title="คำขอถอน">
+        <dl className="fact-grid">
+          <Fact
+            k="เหตุผลที่ขอถอน"
+            v={e.withdrawal?.reason || '—'}
+            wide
+          />
+          <Fact k="ผู้ขอ" v={e.withdrawal?.requestedByName || '—'} />
+          <Fact
+            k="วันที่ขอ"
+            v={e.withdrawal?.requestedAt
+              ? thaiDate(String(e.withdrawal.requestedAt).slice(0, 10))
+              : '—'}
+          />
+        </dl>
+      </Section>
+
+      {/* รายละเอียดงาน in full — the same card หน้ารายการ OT ของฉัน and the
+          queue's pop-up both draw, so the sentence the employee typed reads the
+          same wherever it is read. */}
+      <ReasonCard description={e.description} />
+
+      <Section title="ชั่วโมงที่จะถูกตัดออก">
+        <dl className="fact-grid">
+          <Fact k="วันที่ทำงาน" v={thaiDate(e.workDate)} />
+          <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}`} />
+          <Fact k="ชั่วโมงตามนาฬิกา" v={`${hours(e.totals?.clockHours)} ชม.`} />
+        </dl>
+        {/* The four buckets and their total, in the strip คิวรออนุมัติ uses —
+            `.ot-split` is what folds it to one horizontal band on a phone and
+            hides the buckets that came out at nought. A bucket at zero is
+            MARKED and not dropped: "×3 คือ 0.00" is an answer. */}
+        <div className="split ot-split" style={{ marginTop: 12 }}>
+          {Object.values(BUCKETS).map((b) => (
+            <div className={(e.buckets?.[b] || 0) === 0 ? 'box zero' : 'box'} key={b}>
+              <div className="k">{BUCKET_LABEL[b]}</div>
+              <div className="v">{hours(e.buckets?.[b])}</div>
+            </div>
+          ))}
+          <div className="box total">
+            <div className="k">รวม</div>
+            <div className="v">{hours(e.totals?.otHours)}</div>
+          </div>
+        </div>
+      </Section>
+
+      {/* เทียบกับไฟล์สแกนนิ้วมือ — asked for by name on 2026-09-16, and it is
+          the fact this particular decision turns on more often than any other:
+          a great many คำขอถอน say ลงวันที่ผิด, and whether anybody touched the
+          door that evening is how a reviewer checks. Nothing is drawn when the
+          day has no punches at all — `ScanDayPunches` returns null — so a month
+          imported without a scan file is silent here rather than empty. */}
+      <Section title="เทียบกับไฟล์สแกนนิ้วมือ">
+        <ScanMismatchMark entry={e} />
+        <ScanDayPunches entry={e} />
+      </Section>
+
+      {/* Who signed it, and then everything that has happened to it. Both are
+          about the ใบ being withdrawn rather than the request to withdraw it —
+          a reviewer deciding whether to take hours back off the books is asking
+          who put them there. `hideSystem` is off: unlike the queue, where the
+          question is a signature, here the question is the whole life of the
+          ใบ, and a correction somebody made to its hours last week is exactly
+          the kind of thing that explains a request to withdraw it. */}
+      <Section title="ผู้อนุมัติ">
+        <SignatureFacts entry={e} />
+      </Section>
+      <Section title="ประวัติของใบนี้">
+        <EntryHistory entry={e} />
+      </Section>
+    </Modal>
   );
 }

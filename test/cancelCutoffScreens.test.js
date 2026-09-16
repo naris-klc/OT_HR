@@ -165,7 +165,17 @@ test('the reason line is gated on past(e), not on locked(e)', () => {
   // at the foot of the card's prose. Same place in the reading order and the
   // same gate: under what is being decided, never beside the buttons.
   assert.match(queue, /\{past\(e\) && <div className="cell-note">/);
-  assert.match(queue, /cancelCutoffQueueNote\(e, policy\)/);
+  // ⚠ THE CELL CARRIED `cancelCutoffQueueNote` UNTIL 2026-09-16 and carries the
+  // one-line form now: the whole sentence was two lines of its own in a row the
+  // user asked to be no more than two (*ไม่อยากให้ความสูงเกิน 2 แถว*). The GATE
+  // is what this test is about and it has not moved — `past(e)`, so ฝ่ายบุคคล,
+  // whose buttons still work, get the warning as well.
+  assert.match(queue, /cancelCutoffShortNote\(e, policy\)/);
+  // AND THE WHOLE SENTENCE IS STILL ONE PRESS AWAY, for both readers: the row's
+  // own tooltip, and the head of the box the row opens. Shortening a warning is
+  // only allowed where the long form is still reachable from the same row.
+  assert.match(queue, /title=\{locked\(e\) \? cancelCutoffQueueNote\(e, policy\) : undefined\}/);
+  assert.match(queue, /\{past && <Alert kind="warn">\{cancelCutoffQueueNote\(e, policy\)\}<\/Alert>\}/);
 });
 
 /** It asks the rule and the app's one spelling of who is exempt. */
