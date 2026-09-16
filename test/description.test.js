@@ -86,7 +86,16 @@ test('รายละเอียดงานเป็นการ์ดที�
   // Both readers ask for it, and neither has gone back to a shape of its own:
   // not a bare paragraph, and not a cell in the คำขอ grid either.
   for (const [name, src] of [['คิวรออนุมัติ', queue], ['รายการ OT ของฉัน', mine]]) {
-    assert.match(src, /<ReasonCard description=\{e\.description\} \/>/, `${name} ไม่ได้เรียกการ์ด`);
+    /* `extraNote` HAS RIDDEN ALONG SINCE 2026-09-16, and the pattern allows a
+       further prop rather than pinning the call character for character: what
+       this test is about is that both screens hand the description to the
+       shared card instead of drawing a shape of their own. The note's own
+       assertions are in test/extraNote.test.js. */
+    assert.match(
+      src,
+      /<ReasonCard description=\{e\.description\}[^/]*\/>/,
+      `${name} ไม่ได้เรียกการ์ด`,
+    );
     assert.doesNotMatch(src, /<p className="note"[^>]*>\{e\.description\}<\/p>/, name);
     assert.doesNotMatch(src, /k="รายละเอียดงาน" v=\{e\.description\}/, name);
   }

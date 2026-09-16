@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { api, dayName, thaiDate, hours } from '@/lib/api.js';
-import { DESCRIPTION_MAX_CHARS, normaliseDescription } from '@/src/config/policy.js';
+import {
+  DESCRIPTION_MAX_CHARS, EXTRA_NOTE_MAX_CHARS, normaliseDescription,
+} from '@/src/config/policy.js';
 import {
   submissionWindow, zeroOtHoursAllowed,
   isFlatDailyPosition, isCompanyOffDay,
@@ -68,6 +70,13 @@ const blank = () => ({
    * notice below the split says whose birthday the date turned out to be.
    */
   description: '',
+  /**
+   * รายละเอียดเพิ่มเติม — optional, and the one entered field that never
+   * reaches F-HR-027. `''` rather than absent so the PATCH path's
+   * `payload.extraNote != null` test reads "the form sent an answer" and an
+   * emptied box actually clears the stored note.
+   */
+  extraNote: '',
 });
 
 /**
@@ -314,6 +323,9 @@ export default function OtForm({
         noBreakTaken: from.noBreakTaken,
         flatDaily,
         description: from.description,
+        // An entry filed before 2026-09-16 has no note at all, which is `''`
+        // here and not a box the form has to explain.
+        extraNote: from.extraNote || '',
         /**
          * A STORED FLAT ROW OPENS ON 08:00–17:00, whatever it was filed with —
          * 2026-09-09, with the lock.
@@ -432,6 +444,20 @@ export default function OtForm({
    */
   const [descriptionRefusal, setDescriptionRefusal] = useState('');
   const descriptionRef = useRef(null);
+  /**
+   * Whether รายละเอียดเพิ่มเติม is unfolded.
+   *
+   * SHUT BY DEFAULT because most filings do not need it and an empty box on
+   * every form is another thing between the person and บันทึก — asked for in
+   * that shape on 2026-09-16.
+   *
+   * OPEN FROM THE FIRST RENDER WHEN THERE IS SOMETHING IN IT, and that is the
+   * half that matters: a correction opens this form filled from the stored
+   * entry, and a note hidden behind a link on the screen where somebody is
+   * editing the request is a note they will not know they are leaving behind.
+   */
+  const [extraOpen, setExtraOpen] = useState(() => Boolean((entry || template)?.extraNote));
+  const extraNoteRef = useRef(null);
   const timer = useRef(null);
 
   /**
@@ -1395,6 +1421,60 @@ export default function OtForm({
           </span>
         )}
       </div>
+
+      {/* ── รายละเอียดเพิ่มเติม — the room the paper does not have ────────────
+          ASKED FOR ON 2026-09-16, and the question it answers is why the cap
+          above cannot simply be raised: employees wanted to describe the work
+          in more than 22 characters, ฝ่ายบุคคล wanted the sheet not to
+          overflow, and the user refused the obvious middle — *ผมไม่อยากให้มัน
+          ตัดคำแบบอ่านไม่รู้เรื่อง*. Thai is written without spaces, so every
+          automatic shortening lands mid-word. Two boxes is the only shape in
+          which no sentence is ever squeezed into a cell smaller than itself.
+
+          BEHIND A LINK, because most filings do not use it and an empty box on
+          every form is one more thing between the person and บันทึก. It opens
+          by itself when the entry already has a note — see `extraOpen`.
+
+          THE PAIR OF HINTS IS THE FEATURE. The line above says the box over it
+          is what prints; the placeholder here names this one as the part that
+          does not. Without both, the second box reads as a second chance at the
+          first and the same sentence gets typed twice. Wording is the user's,
+          to the character — the ` Rev.4` that ships in `formCode` is left off
+          on purpose: the code is what does not change, the revision is what
+          does, and a hint with a stale revision number in it is a hint that
+          lies. */}
+      {extraOpen ? (
+        <div className="field" style={{ marginTop: 14 }}>
+          <label>
+            รายละเอียดเพิ่มเติม
+            <span style={{ float: 'right', fontWeight: 400, color: 'var(--muted)' }}>
+              {form.extraNote.length}/{EXTRA_NOTE_MAX_CHARS}
+            </span>
+          </label>
+          <textarea
+            ref={extraNoteRef}
+            value={form.extraNote}
+            onChange={(e) => set('extraNote', e.target.value)}
+            maxLength={EXTRA_NOTE_MAX_CHARS}
+            placeholder="อธิบายรายละเอียดเพิ่มเติม (ไม่แสดงในแบบฟอร์ม F-HR-027)"
+          />
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+            ข้อความนี้เก็บไว้ในระบบและเห็นได้ในหน้ารายละเอียดใบ — ไม่ถูกพิมพ์ลงใบ F-HR-027
+          </span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="link"
+          style={{ marginTop: 10 }}
+          /* Focus follows the press: the link is replaced by the box it opens,
+             and a keyboard that had to Tab back to it would be the one thing
+             this control asks that the boxes above do not. */
+          onClick={() => { setExtraOpen(true); setTimeout(() => extraNoteRef.current?.focus(), 0); }}
+        >
+          อธิบายเพิ่มเติม (ไม่บังคับ)
+        </button>
+      )}
 
       {/* Asked on every correction of a stored request, not only ฝ่ายบุคคล's.
           An employee revising their own request before the manager sees it

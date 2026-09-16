@@ -723,6 +723,11 @@ const FIELD = {
   noBreakTaken: ['ไม่พักเที่ยง', (v) => (v ? 'ใช่' : 'ไม่')],
   flatDaily: ['เหมารายวัน', (v) => (v ? 'ใช่' : 'ไม่')],
   description: ['รายละเอียดงานที่ทำ', (v) => v || '—'],
+  // รายละเอียดเพิ่มเติม. In the trail although it never prints: this list is
+  // what a person typed, not what the paper says, and a correction nobody can
+  // see afterwards is a correction nobody can question. `—` covers both an
+  // empty box and a snapshot taken before the field existed.
+  extraNote: ['รายละเอียดเพิ่มเติม', (v) => v || '—'],
 };
 
 /**
@@ -2160,7 +2165,21 @@ export const stamp = (at) => (at ? thaiStamp(at) : undefined);
  * is the answer, and it is a different thing from a description that happens to
  * be short.
  */
-export function ReasonCard({ description }) {
+/**
+ * `extraNote` — รายละเอียดเพิ่มเติม, the part of the same answer F-HR-027 does
+ * not print (2026-09-16).
+ *
+ * IN THIS CARD AND NOT A CARD OF ITS OWN, asked for in that shape: the two are
+ * one person answering one question at two lengths, and a reader who has to
+ * look in two places to finish a sentence is the reason the description itself
+ * was moved in here twice already.
+ *
+ * ONE PROP, THREE POP-UPS. This card is what รออนุมัติ, ประวัติของพนักงาน and
+ * คำขอถอนใบ all draw, so the note appears on every screen that shows a request
+ * in full and on no screen that shows a row — the queue's own รายละเอียด column
+ * stays exactly as it was, which is what was asked (*ไม่ต้องแสดงในแถวรายการ*).
+ */
+export function ReasonCard({ description, extraNote = '' }) {
   return (
     <div className="reason-card">
       {/* NOT a `kicker-sm`. Every other heading in these pop-ups is one — mono,
@@ -2180,6 +2199,23 @@ export function ReasonCard({ description }) {
       {description
         ? <Disclosure className="reason-text" lines={4} of="รายละเอียดงานที่ขอ OT">{description}</Disclosure>
         : <p className="reason-text none">ไม่ได้ระบุรายละเอียดงาน</p>}
+      {/* NOTHING AT ALL WHEN THERE IS NO NOTE, which is most rows and every row
+          filed before this field existed. A labelled empty space under every
+          description would be furniture on the one card in the pop-up that is
+          read rather than scanned — the same rule `ActingNote` follows on the
+          printed sheet.
+
+          The sub-label is needed because the text above it has one: two
+          paragraphs run together would read as one description with a strange
+          second half. Same `Disclosure` and the same four lines — 200
+          characters is two to three lines of Thai at this width, so the button
+          appears rarely, and when it does it behaves as the one above it. */}
+      {extraNote && (
+        <>
+          <div className="reason-label sub">เพิ่มเติม</div>
+          <Disclosure className="reason-text" lines={4} of="รายละเอียดเพิ่มเติม">{extraNote}</Disclosure>
+        </>
+      )}
     </div>
   );
 }

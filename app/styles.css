@@ -10935,6 +10935,13 @@ table.mini tbody tr:hover { background: none; }
 /* Not a description — the absence of one. Grey, so it is not read as something
    somebody typed. */
 .reason-text.none { color: var(--muted-2); }
+/* เพิ่มเติม — the second label in the same card, over รายละเอียดเพิ่มเติม
+   (2026-09-16). Same type as the label above it, because it names words in
+   exactly the same way; what tells the two paragraphs apart is the space over
+   it, which says the text under it continues the answer rather than starting a
+   new subject. A request with no note draws neither this nor the gap — see
+   `ReasonCard` in components/common.jsx. */
+.reason-label.sub { margin-top: 8px; }
 
 /* ── สะสม / เพดาน, on a card of its own ───────────────────────────────────
    Every other block in the pop-up is about the request. This one is about the

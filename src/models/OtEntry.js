@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { model } from './model.js';
 import { BUCKETS, DAY_REASONS } from '../lib/otEngine.js';
 import { WITHDRAWAL_STATES } from '../../lib/withdrawal.js';
+import { EXTRA_NOTE_MAX_CHARS } from '../config/policy.js';
 
 export const STATUSES = ['pending_mgr', 'pending_hr', 'approved', 'rejected', 'cancelled'];
 
@@ -99,6 +100,10 @@ const snapshotSchema = new mongoose.Schema(
        what it was. */
     flatDaily: Boolean,
     description: String,
+    /* รายละเอียดเพิ่มเติม. Absent on every snapshot taken before 2026-09-16 and
+       on every entry that never had one — `sameValue` reads absent and `''` the
+       same way, so neither shows up in ประวัติการแก้ไข as a change nobody made. */
+    extraNote: String,
     /** The hours those values computed to — what the form printed at the time. */
     buckets: {
       [BUCKETS.OT15_WEEKDAY]: Number,
@@ -372,6 +377,24 @@ const otEntrySchema = new mongoose.Schema(
      * could no longer approve, cancel or recompute a historic month.
      */
     description: { type: String, required: true, trim: true, maxlength: 500 },
+
+    /**
+     * รายละเอียดเพิ่มเติม — the same work described at the length the person
+     * needed, and **the one entered field F-HR-027 never prints**.
+     *
+     * Optional, empty on every row filed before 2026-09-16, and that blank is
+     * the correct value rather than missing data: the sheet said everything the
+     * app knew about those rows. What it buys is that `description` above can
+     * stay at 22 characters — see `EXTRA_NOTE_MAX_CHARS` in src/config/policy.js
+     * for why that number cannot move and why shortening text automatically was
+     * refused.
+     *
+     * `maxlength` HERE EQUALS THE CAP, unlike `description`'s deliberately loose
+     * 500. That looseness exists for rows written before their cap; this field
+     * has no such rows and never will, so a document that fails to save is a
+     * bug rather than history.
+     */
+    extraNote: { type: String, default: '', trim: true, maxlength: EXTRA_NOTE_MAX_CHARS },
 
     // ── computed ────────────────────────────────────────────────────────────
     segments: { type: [segmentSchema], default: [] },
@@ -723,6 +746,7 @@ otEntrySchema.methods.snapshot = function snapshot() {
     noBreakTaken: Boolean(this.noBreakTaken),
     flatDaily: Boolean(this.flatDaily),
     description: this.description,
+    extraNote: this.extraNote || '',
     buckets: {
       [BUCKETS.OT15_WEEKDAY]: this.buckets?.[BUCKETS.OT15_WEEKDAY] ?? 0,
       [BUCKETS.OT15_HOLIDAY]: this.buckets?.[BUCKETS.OT15_HOLIDAY] ?? 0,

@@ -1127,7 +1127,7 @@ function EntryDetail({
           It is a card of its own now, the same card the reviewer reads, for the
           reason written over `ReasonCard`: it is not a measurement, it is the
           answer to "why". */}
-      <ReasonCard description={e.description} />
+      <ReasonCard description={e.description} extraNote={e.extraNote} />
 
       {/* WHERE THE MONTH STANDS — new here on 2026-09-02, and the reason the
           pop-up was asked for. The hero at the top of the dashboard says this

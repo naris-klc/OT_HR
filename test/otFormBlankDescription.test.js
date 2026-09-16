@@ -62,7 +62,14 @@ test('required ยังอยู่ — เป็นสิ่งที่โป
 });
 
 test('ประโยคที่ขึ้นคือประโยคของฝั่งเซิร์ฟเวอร์ ไม่ได้พิมพ์ซ้ำ', () => {
-  has(form, "import { DESCRIPTION_MAX_CHARS, normaliseDescription } from '@/src/config/policy.js';");
+  /* THE IMPORT, HOWEVER IT IS WRAPPED. It was pinned as one exact line until
+     2026-09-16, when EXTRA_NOTE_MAX_CHARS joined it and the line went over the
+     margin — what this test is about is that the refusal comes from the policy
+     file rather than being retyped here, not how the import is formatted. */
+  assert.match(
+    form,
+    /import \{[^}]*normaliseDescription[^}]*\} from '@\/src\/config\/policy\.js';/s,
+  );
   has(form, 'const description = normaliseDescription(form.description);');
   has(form, 'setDescriptionRefusal(description.error);');
   // The words are the checker's, so nothing in the component may spell them out.

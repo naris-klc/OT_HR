@@ -897,7 +897,7 @@ function WithdrawDetail({
       {/* รายละเอียดงาน in full — the same card หน้ารายการ OT ของฉัน and the
           queue's pop-up both draw, so the sentence the employee typed reads the
           same wherever it is read. */}
-      <ReasonCard description={e.description} />
+      <ReasonCard description={e.description} extraNote={e.extraNote} />
 
       <Section title="ชั่วโมงที่จะถูกตัดออก">
         <dl className="fact-grid">
