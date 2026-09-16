@@ -2555,19 +2555,31 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    whole of the remainder at 500, which is not the split this table wants and is
    not a split anything here had decided.
 
-   เหตุผลที่ขอถอน IS THE ONE LEFT ELASTIC, deliberately. It is free text an
-   employee typed and it is the whole of what the reviewer is deciding;
-   รายละเอียด is the job description, which `DESCRIPTION_MAX_CHARS` has capped
-   at 22 characters since it was added. The column that grows with the card
-   should be the one whose content has no ceiling.
+   ⚠ IT READ "เหตุผลที่ขอถอน IS THE ONE LEFT ELASTIC, deliberately … the column
+   that grows with the card should be the one whose content has no ceiling"
+   UNTIL 2026-09-16, AND รายละเอียด IS THE ELASTIC ONE NOW. The old argument was
+   sound on the day it was written and it was made obsolete by something else in
+   the same week, not disproved: the row opens `WithdrawDetail` now, so NO column
+   has to hold the whole of anything. Once two clamped lines and a press are
+   enough for the longest text on the row, the question stops being "which
+   content has no ceiling" and becomes "which cell does a reviewer read at a
+   glance to know which ใบ this is" — and that is รายละเอียด.
 
-   856px pinned against the 1032px floor leaves it 176px at its narrowest —
-   narrow, but it is a wrapping column with `min-width: 0`, and the floor is
-   only reached on a window where the table is already scrolling. */
-/* ── RE-DEALT 2026-09-16 — WHO 190→230, ASKED 130→96, ACT 236→150 ──────────
-   Reported as *ความกว้างไม่พอดี ดูไม่ค่อยสวยงาม*, and the two narrowed columns
-   are what pay for the other two. Nothing was taken off the table: the user was
-   asked and kept all six.
+   THE MEASUREMENT THAT SETTLED IT. Reported the same day the elastic column was
+   first handed to เหตุผล: *แต่ละคอลัมน์ยังไม่พอดี · คอลัมน์เหตุผลที่ขอถอน ยัง
+   กระชับได้อีกเยอะ*. On the live card เหตุผล was dealt 442px and the reasons HR
+   actually writes — `ลงวันที่ผิด ขอถอนใบนี้`, 21 characters — used less than
+   half of it, while รายละเอียด four columns to the left was being cut mid-word
+   at 170px. 280px holds about seventy characters over two lines, which is more
+   than any reason on the live roster, and what will not fit is one press away.
+
+   920px pinned against the 1032px floor leaves รายละเอียด 112px at its
+   narrowest — narrow, but it is a wrapping column with `min-width: 0`, and the
+   floor is only reached on a window where the table is already scrolling. */
+/* ── RE-DEALT TWICE ON 2026-09-16 ───────────────────────────────────────────
+   FIRST PASS — WHO 190→230, ASKED 130→96, ACT 236→150, on *ความกว้างไม่พอดี
+   ดูไม่ค่อยสวยงาม*. The two narrowed columns paid for the other two. Nothing was
+   taken off the table: the user was asked and kept all six.
 
    · ACT loses 86px because the pair is `ปฏิเสธ` / `อนุมัติ` now. The nowrap
      rule over the two buttons further down still stands — these are words and
@@ -2583,12 +2595,49 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
      surname and the number that is about 195, and 230 leaves the margin a
      roster one import away from a longer name needs.
 
-   856px pinned became 736, so at the 1032px floor เหตุผลที่ขอถอน is dealt 296
-   rather than 176, and on the card as measured (1178) it is 442 rather than
-   322. That column is the whole of what the reviewer is reading. */
+   SECOND PASS — WHEN 130→184, REASON PINNED AT 260, WHY TAKES THE REMAINDER.
+   The first pass was reported against the built app the same day: *แต่ละคอลัมน์
+   ยังไม่พอดีครับ ตัวเลข 3ชม. ชิดเกินไป · คอลัมน์เหตุผลที่ขอถอน ยังกระชับได้อีก
+   เยอะ*. Two faults, and they are one fault: the width was in the wrong column.
+
+   · WHEN WAS OVERFLOWING ITS OWN CELL, and that is what `3 ชม.` sitting against
+     รายละเอียด actually was — not a missing margin. `td` is `padding: 12px`, so
+     130px is 106px of content, and `white-space: nowrap` DOES NOT CLIP: the
+     surplus is drawn past the cell edge, on top of the next column.
+
+     184px IS MEASURED AGAINST THE WIDEST FIGURE THE FORMATTER CAN PRODUCE, not
+     against the row that was reported. `hours()` in lib/api.js rounds to two
+     places and trims nothing else, so the chip can read `12.25 ชม.` — four mono
+     characters wider than the `3 ชม.` in the screenshot. The line is then
+     `18:00–21:00` (11 glyphs of IBM Plex Mono at 12px, 0.6em each = 79.2) + the
+     4px gap + the chip (about 62 of content inside 12 of padding) ≈ 157, and
+     181 with the cell's own 24. Sizing this column to the sample is how it came
+     to be 130 in the first place.
+
+     THE COLUMN IS WHAT THE nowrap RULE COSTS, and the rule is not the thing to
+     change if a longer figure ever appears. `td.when-col`'s `nowrap` is there
+     because the figure is what a grant takes off the books and may not be
+     wrapped away from the clock it belongs to — see the note over it. The price
+     of that decision is that this width has to be right; pay it here.
+   · THE CHIP ALSO TOOK A `margin-left`. A filled pill one space from a mono
+     clock reads as the end of the clock whatever the column does, and the
+     report said both things at once.
+   · REASON IS PINNED, so the slack stops collecting in the emptiest cell on the
+     row. See the ⚠ paragraph above for why it may be pinned at all — the row
+     opens, so nothing on it has to be complete.
+   · WHY TAKES THE REMAINDER, and `width: auto` is written out rather than the
+     rule being deleted. A column left undeclared here inherits `th.why-col`'s
+     bare 150px further down this sheet, which is the trap the first paragraph
+     of this block is about; `auto` in a fixed table is how "the rest" is spelled.
+
+   920px pinned on the card as measured (1178) leaves รายละเอียด 258px, where it
+   was 170 and being cut mid-word, and เหตุผล 260 where it was 442 and half
+   empty. At the 1032px floor รายละเอียด is 112 — narrow, but it wraps, it
+   clamps, and the floor is only reached where the table already scrolls. */
 .withdraw-table th.who-col { width: 230px; }
-.withdraw-table th.when-col { width: 130px; }
-.withdraw-table th.why-col { width: 170px; }
+.withdraw-table th.when-col { width: 184px; }
+.withdraw-table th.why-col { width: auto; }
+.withdraw-table th.reason-col { width: 260px; }
 .withdraw-table th.asked-col { width: 96px; }
 .withdraw-table th.act-col { width: 150px; }
 /* วันที่ · ช่วงเวลา · ชั่วโมง ARE ONE FACT AND ONE CELL — the hours are NOT
@@ -2715,6 +2764,15 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    quiet fill is the `.chip.muted` family's, at the size of the line it sits
    in rather than of a heading. */
 .withdraw-hrs {
+  /* ── AND IT IS NOT PRESSED AGAINST THE CLOCK — 2026-09-16 ───────────────
+     Reported as *ตัวเลข 3ชม. ชิดเกินไป*. Half of that was the column
+     overflowing (see `th.when-col` above); this is the other half and it
+     would have looked tight in a column of any width. The markup puts ONE
+     space between the clock and this chip, and a space is the right amount
+     between two runs of text — it is not enough between text and a filled
+     pill, whose own background starts where the space ends. 4px is what makes
+     the pill read as a separate object rather than as the end of the clock. */
+  margin-left: 4px;
   padding: 1px 6px; border-radius: 5px;
   background: var(--neutral-wash); color: var(--ink-2);
   font: 600 12px/1.5 var(--mono); font-variant-numeric: tabular-nums;
