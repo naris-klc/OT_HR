@@ -2097,12 +2097,17 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2804 tests
-across 155 files**, measured 2026-09-16 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read
+and the engine know nothing about Next.js, so the whole suite — **2809 tests
+across 155 files**, measured 2026-09-16 on `dev` — runs with plain `node --test`,
+no server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2804 tests across 155 files" for as long as it took to merge: that figure was
+measured in a worktree branched before another session landed four cases on
+`dev`, which is the failure mode of counting anything in an isolated tree —
+**measure the suite in the tree that has `dev` checked out, after the merge.**
+Before that it read
 "2791 tests across 154 files … measured 2026-09-16" until **รายละเอียดเพิ่มเติม —
-ช่องที่ยาวได้ โดยไม่แตะใบ F-HR-027** — `extraNote` is file 155, and thirteen of the
-new cases are in it. Before that it read
+ช่องที่ยาวได้ โดยไม่แตะใบ F-HR-027** — `extraNote` is file 155, and fourteen of
+the new cases are in it. Before that it read
 "2779 tests across 154 files … measured 2026-09-15" until
 **แถวคำขอถอนใบ สูงไม่เกินสองบรรทัด และกดเปิดรายละเอียดได้** — NO new file, and
 that is the shape of the round: eleven cases went into `withdrawalRowLayout`,
@@ -13940,13 +13945,16 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2804 tests**, about 4 s, measured 2026-09-16 across 155
-  files, all green. **`extraNote` is the new file of the last round** —
+- `npm test` — **2809 tests**, about 4 s, measured 2026-09-16 across 155
+  files, all green — **counted in the tree that holds `dev`, after the merge**. **`extraNote` is the new file of the last round** —
   รายละเอียดเพิ่มเติม, a second description box that is stored, shown on the
   three pop-ups and never printed, so the 22 characters F-HR-027's cell can
-  hold did not have to move. Thirteen cases, and the one that matters asserts
-  that `PrintForm.jsx` does not mention the field at all.
-  It read "2791 tests … measured 2026-09-16" until then, and **the round before
+  hold did not have to move. Fourteen cases, and the one that matters asserts
+  that `PrintForm.jsx` does not mention the field at all; the fourteenth came
+  with รายละเอียดงานที่ทำ becoming one line instead of a three-line box.
+  It read "2804 tests" until that figure met `dev` — it was counted in a
+  worktree, and four cases had landed meanwhile.
+  It read "2791 tests … measured 2026-09-16" before that, and **the round before
   added no file** — แถวคำขอถอนใบ was capped at two lines and made openable, and
   its eleven cases went into the four files that already pin that row, that
   sentence and the app's one clamp.

@@ -56,9 +56,38 @@ test('เบราว์เซอร์ไม่ตรวจฟอร์มน�
   assert.equal((form.match(/<form /g) || []).length, 1, 'มีมากกว่าหนึ่งฟอร์มในไฟล์นี้');
 });
 
+/* ⚠ IT READ `<textarea` HERE UNTIL 2026-09-16, when the box became one line.
+   `.field textarea` carries `min-height: 64px` — the app's default for a box
+   somebody types paragraphs into — and it was standing three lines tall over a
+   field capped at 22 characters (*กินพื้นที่เกินจำเป็น*). An `<input>` is also
+   the shape the paper has: F-HR-027 prints this in one line of one cell, so a
+   newline was never storable in any useful sense.
+
+   The file has a `<textarea>` still — รายละเอียดเพิ่มเติม, 200 characters — so
+   this slice has to name the input rather than "the first box in the form", or
+   it would quietly start asserting `required` on the optional field. */
+const descriptionField = () => {
+  const at = form.indexOf('<input\n          type="text"');
+  assert.notEqual(at, -1, 'หาช่องรายละเอียดงานที่ทำไม่เจอ');
+  return form.slice(at, form.indexOf('/>', at));
+};
+
 test('required ยังอยู่ — เป็นสิ่งที่โปรแกรมอ่านหน้าจอใช้บอกว่าช่องนี้ต้องกรอก', () => {
-  const field = form.slice(form.indexOf('<textarea'), form.indexOf('</div>', form.indexOf('<textarea')));
-  has(field, 'required', 'ช่องรายละเอียดงานต้องยังเป็น required');
+  has(descriptionField(), 'required', 'ช่องรายละเอียดงานต้องยังเป็น required');
+});
+
+test('ช่องรายละเอียดงานเป็นบรรทัดเดียว — เท่าที่ 22 ตัวอักษรต้องใช้', () => {
+  const field = descriptionField();
+  has(field, 'maxLength={DESCRIPTION_MAX_CHARS}');
+  // The refusal machinery is unchanged by the swap: same ref, same class, same
+  // aria wiring — an input wears `.field input.invalid`, which the stylesheet
+  // has always paired with the textarea rule below.
+  has(field, "className={descriptionRefusal ? 'invalid' : undefined}");
+  has(css, '.field input.invalid,');
+  // The optional box below it is still a textarea, and is still the app's own
+  // height: 200 characters is three lines of Thai and belongs in a box.
+  assert.match(form, /<textarea\s+ref=\{extraNoteRef\}/);
+  assert.match(css, /\.field textarea \{[^}]*min-height: 64px;/);
 });
 
 test('ประโยคที่ขึ้นคือประโยคของฝั่งเซิร์ฟเวอร์ ไม่ได้พิมพ์ซ้ำ', () => {

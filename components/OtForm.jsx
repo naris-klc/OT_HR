@@ -1412,7 +1412,26 @@ export default function OtForm({
             {form.description.length}/{DESCRIPTION_MAX_CHARS}
           </span>
         </label>
-        <textarea
+        {/* ONE LINE, NOT A BOX — 2026-09-16, asked for as *กินพื้นที่เกินจำเป็น
+            ทั้งๆที่ระบุได้แค่ 22 ตัวอักษร*.
+
+            It was a `<textarea>`, which `.field textarea` gives `min-height:
+            64px` — about three lines standing open over a field that cannot
+            hold one. The height was never a decision; it was the app's default
+            for every textarea, inherited by a box whose contents are capped at
+            22 characters.
+
+            AND THE SHAPE IS NOW THE PAPER'S. F-HR-027 prints this in one line
+            of one cell, so a second line was never storable in any useful
+            sense: `Enter` put a newline into a value the sheet renders as a
+            space. `input` cannot take one, which makes the control say what the
+            rule already was.
+
+            รายละเอียดเพิ่มเติม below stays a textarea at the app's own height.
+            That one takes 200 characters — three lines of Thai — and is the
+            box this length of text belongs in. */}
+        <input
+          type="text"
           ref={descriptionRef}
           className={descriptionRefusal ? 'invalid' : undefined}
           aria-invalid={descriptionRefusal ? true : undefined}
