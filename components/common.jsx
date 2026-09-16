@@ -4413,9 +4413,24 @@ export function PickMany({
   const sheet = useSheet();
 
   const chosen = draft || (values || []).map(String);
+  /**
+   * รายการที่วาด — ตัวเลือกที่มี บวกค่าที่ติ๊กไว้แต่ไม่มีในนั้น.
+   *
+   * THE ROW IS WHAT MAKES IT UNTICKABLE. A stored value with no row of its own
+   * is a tick nothing on the screen can reach — the same trap the ช่องติ๊ก rules
+   * themselves fell into before HR chose to have them cleared instead. Here
+   * there is no clearing: the answer belongs to whoever set it, so it gets a
+   * row and they decide.
+   */
+  const withChosen = [
+    ...(options || []),
+    ...chosen
+      .filter((v) => !(options || []).some((r) => String(r.value) === v))
+      .map((v) => ({ value: v, label: v })),
+  ];
   const rows = searchable && query.trim() !== ''
-    ? (options || []).filter((r) => textMatches(r.label, query))
-    : (options || []);
+    ? withChosen.filter((r) => textMatches(r.label, query))
+    : withChosen;
   const at = Math.min(Math.max(active, 0), Math.max(rows.length - 1, 0));
 
   /**
@@ -4489,7 +4504,24 @@ export function PickMany({
     if (open && searchable && !sheet) searchRef.current?.focus();
   }, [open, searchable, sheet]);
 
-  const picked = (options || []).filter((r) => chosen.includes(String(r.value)));
+  /**
+   * WHAT THE CLOSED BOX SAYS — every ticked value, including ones the option
+   * list does not hold.
+   *
+   * ⚠ IT READ ONLY THE OPTIONS UNTIL 2026-09-16, and that is a control that
+   * lies about its own value: ตำแหน่งของช่องเหมารายวัน showed ยังไม่ได้เลือก
+   * ตำแหน่ง while the row beside it said ค่าที่ใช้อยู่: เจ้าหน้าที่บริการ.
+   * Reported from the screen the day it shipped, on a page where the list had
+   * not arrived at all — but a list that arrives and simply no longer HOLDS a
+   * stored value is the ordinary case: the last person with that ตำแหน่ง
+   * resigns, the roster stops offering it, and the rule still names it.
+   *
+   * So a value with no row of its own is shown as itself. It stays ticked, and
+   * unticking it is what takes it out — the caller's stored answer is never
+   * edited by this control's idea of what exists.
+   */
+  const byValue = new Map((options || []).map((r) => [String(r.value), r]));
+  const picked = chosen.map((v) => byValue.get(v) || { value: v, label: v });
   const shown = picked.length === 0
     ? placeholder
     : (summary ? summary(picked) : picked.map((r) => r.label).join(' · '));

@@ -2641,7 +2641,6 @@ function Employees({ user }) {
   }
 
   useEffect(() => { load(); }, []);
-  useEffect(() => { loadPositions(); }, []);
 
   /**
    * Create one row from the dialog.
@@ -7235,6 +7234,21 @@ function Policy({ user }) {
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
   useEffect(() => { load(); }, []);
+  /**
+   * ⚠ IN `Policy` AND NOWHERE ELSE, and it is worth a line because it shipped
+   * in the wrong component on 2026-09-16 and was reported from the screen the
+   * same day: *hr ตั้งค่านโยบายไม่ได้ … เลือกตำแหน่งไม่ได้*.
+   *
+   * It landed in `Employees` — the first `useEffect(() => { load(); }, [])` in
+   * this file — where `loadPositions` is not in scope. Two failures at once,
+   * and NEITHER is visible from here: ทะเบียนพนักงาน threw on mount, and this
+   * page left `positions` at `null` forever, which is what disables the two
+   * ตำแหน่ง controls. Nothing in the test suite could see it either; every test
+   * on this screen reads the file as text, and a `useEffect` reads the same
+   * whichever function encloses it. `test/tickPolicy.test.js` now slices the
+   * component before looking.
+   */
+  useEffect(() => { loadPositions(); }, []);
 
   /**
    * Sign one rule off. Its own endpoint, not `save()` — that one PATCHes a
