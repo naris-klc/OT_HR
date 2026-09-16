@@ -2084,7 +2084,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     154 files, run by `npm test`. Six named below as a
+test/                     155 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2097,10 +2097,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2791 tests
-across 154 files**, measured 2026-09-16 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2810 tests
+across 155 files**, measured 2026-09-16 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"2779 tests across 154 files … measured 2026-09-15" until
+"2791 tests across 154 files … measured 2026-09-16" until
+**วันทำงานปกติ ระบุเวลาในช่วง 08:00–16:59 ไม่ได้** — `coreHours` is file 155.
+Before that it read "2779 tests across 154 files … measured 2026-09-15" until
 **แถวคำขอถอนใบ สูงไม่เกินสองบรรทัด และกดเปิดรายละเอียดได้** — NO new file, and
 that is the shape of the round: eleven cases went into `withdrawalRowLayout`,
 `cancelCutoff`, `cancelCutoffScreens` and `disclosure`, because the change is to
@@ -4231,10 +4233,58 @@ has since been withdrawn is still a row somebody signed for. The same goes for
 the “otBirthdayChecks” collection the “ไม่ได้มาทำงาน” button wrote to: nothing
 reads it any more, and nothing deletes it.
 
+### วันทำงานปกติ ระบุเวลาในช่วง 08:00–16:59 ไม่ได้ — ปฏิเสธทั้งใบ
+
+HR, **2026-09-16**: *วันปกติระบุเวลา OT 08:00–17:00 ไม่ได้ เพราะ OT จะเกิดขึ้นนอกเหนือจาก
+08:00–17:00 เท่านั้น* — และถามย้ำเรื่องขอบในวันเดียวกันว่า *ต้องเป็น 8.00–16.59*. So on a
+Monday–Friday that is not a holiday, a request is refused when **any minute of it** falls
+before OT begins. 17:00 itself is a time somebody may file, and so is a shift ending at
+exactly 08:00.
+
+**What this catches is the OVERLAP, and nothing was catching it.** A ใบ lying inside
+08:00–17:00 end to end was already refused, by arithmetic rather than by rule: it
+computes to nought and the section below turns every nought away. 15:00–19:00 was not.
+The engine dropped 15:00–17:00 into `nonOtMinutes`, kept the two hours after it, said so
+in a `NORMAL_HOURS_IGNORED` warning that has been drawn on no screen since 2026-09-10 —
+and the request was filed with half of itself gone and nothing anybody could see saying
+which half.
+
+**16:59 is read off the policy and never written down.** `coreHoursRefusal()` in
+[`lib/entries.js`](lib/entries.js) asks the engine for that warning rather than comparing
+times of its own, so the window it names is `bucketFor`'s own
+`[coreStartMinute, otStartMinute)` to the minute. Move the office day in ตั้งค่าระบบ, or
+answer [OPEN 5] the other way so that OT begins at 17:01, and the sentence says
+08:00–17:00 and 17:01 without being edited.
+
+**วันหยุด วันเกิด และใบเหมารายวัน ไม่ถูกแตะ — และไม่ได้เขียนยกเว้นเอาไว้.**
+`nonOtMinutes` counts only the minutes the engine put in NO bucket: on a holiday,
+including the one-person holiday a birthday is, every minute lands in a holiday bucket,
+and a เหมารายวัน ใบ never reaches that arithmetic at all. A day whose type changes
+therefore moves this rule with it — a condition on `dayTypes` spelled out beside the
+refusal is the thing that would fail to. **วันหยุดกับวันเกิดยังระบุเวลาได้อิสระเหมือนเดิม**
+(ถามยืนยันแล้ว 2026-09-16): ไม่มีการล็อกเวลา 08:00–17:00 ให้ใครนอกจากช่องติ๊กเหมารายวัน
+ที่ล็อกอยู่ก่อนแล้ว
+
+**Three write paths ask it, and one deliberately does not.** POST `/api/entries`, PATCH
+`/api/entries/[id]` — the employee's own edit and ฝ่ายบุคคล's แก้ไขชั่วโมง alike — and
+`/api/entries/preview`, which is what greys บันทึก under the server's own sentence on
+บันทึก OT, on บันทึก OT แทนพนักงาน and in the queue's correction panel. **The replay is
+not one of them**: it re-prices rows that are already stored rather than accepting typed
+ones, so a row filed before this rule keeps the hours it was filed with instead of
+failing a recompute nobody looked at it under.
+
+> ⚠️ **ใบเก่าที่คาบเกี่ยวยังอยู่ในฐานข้อมูลตามเดิม และยังพิมพ์ตามเดิม** — แต่การแก้ไขใบนั้น
+> ครั้งต่อไป ไม่ว่าโดยพนักงานหรือฝ่ายบุคคล จะถูกปฏิเสธจนกว่าจะแก้เวลาให้พ้นช่วง
+> 08:00–16:59 · ยังไม่ได้เดินนับว่าฐานจริงมีใบแบบนี้กี่ใบ
+
 ### A request that computes to nothing is refused, in words
 
 08:00–17:00 on an ordinary Wednesday is entirely normal working time, so the
 engine keeps none of it (`NORMAL_HOURS_IGNORED`) and the session totals zero.
+(**Since 2026-09-16 a ใบ like that is refused before it reaches this rule** — by
+the core-hours rule above, which names the window rather than the nought. What
+still arrives here from a form on a working day is a session with no core-hours
+minutes in it at all.)
 (**That warning is stored but shown nowhere since 2026-09-10** — it read as a
 paragraph in the เหตุผล column of รออนุมัติ OT on any session that began inside
 08:00–17:00, telling reviewers what they already know. `shownWarnings` in
@@ -4249,9 +4299,11 @@ The sentence is `noOtHoursMessage()` in [`lib/entries.js`](lib/entries.js), in o
 place because four routes on two servers say it. It names the boundary from the
 **policy** rather than hard-coding 08:00–17:00, and it names the way out — a
 holiday, including your own birthday when the rule is on, counts the whole day. On
-a day that already IS a holiday it says something else entirely: there is no
-normal working time to blame, so a nought there means the break rule or the
-rounding ate the session.
+a day that already IS a holiday — **and since 2026-09-16 on any working-day
+session with no core-hours minutes in it** — it says something else entirely:
+there is no normal working time to blame, so a nought there means the break rule
+or the rounding ate the session. The 08:00–17:00 sentence is kept for the one
+caller that can still meet that case, the replay below, where it is still true.
 
 It also takes the **engine's result**, for the one case where no sentence about
 the clock is true. เวลาขั้นต่ำในการเริ่มนับ OT can empty a session that is on the
@@ -13917,11 +13969,16 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2791 tests**, about 4 s, measured 2026-09-16 across 154
-  files, all green. **There is no new file in the last round** — แถวคำขอถอนใบ
-  was capped at two lines and made openable, and the eleven cases went into the
-  four files that already pin that row, that sentence and the app's one clamp.
-  It read "2779 tests … measured 2026-09-15" until then.
+- `npm test` — **2810 tests**, about 4 s, measured 2026-09-16 across 155
+  files, all green. **`coreHours` is the new file of the last round** —
+  วันทำงานปกติ ระบุเวลาในช่วง 08:00–16:59 ไม่ได้ ปฏิเสธทั้งใบ, which is one
+  function in `lib/entries.js` read by three write paths and two screens; the
+  fifteen cases are mostly about the ใบ that คาบเกี่ยว, since the ใบ that lies
+  inside those hours end to end was refused by the 0-hour rule already.
+  It read "2791 tests … measured 2026-09-16" until then — no new file that
+  round, แถวคำขอถอนใบ capped at two lines and made openable, its eleven cases
+  going into the four files that already pin that row, that sentence and the
+  app's one clamp. Before that it read "2779 tests … measured 2026-09-15".
   **`hrCancelEntry` was the new file of the round before** —
   ฝ่ายบุคคล may now cancel any LIVE entry outright, with a reason recorded as
   `hr_cancel`. It closes a hole nobody had named: an `approved` entry whose งวด

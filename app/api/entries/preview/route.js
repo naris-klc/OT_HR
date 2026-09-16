@@ -3,7 +3,7 @@ import { SIGNER_ROLES, filesStraightToHr } from '@/lib/roles.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, checkCap, loadContext } from '@/src/services/otService.js';
-import { pickSession, isDepartmentManager } from '@/lib/entries.js';
+import { coreHoursRefusal, pickSession, isDepartmentManager } from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
@@ -128,6 +128,19 @@ export const POST = route(async (req) => {
   const weekdayRefusal = employee ? weekdayOtRefusal(employee.department, result) : null;
 
   /**
+   * ช่วง 08:00–16:59 ของวันทำงานปกติ — said while the times are being typed, and
+   * from the very function POST and PATCH refuse with, so the line under the
+   * form and the line in the 400 are one line.
+   *
+   * NO EMPLOYEE NEEDED, unlike `weekdayRefusal` above: this reads the hours the
+   * engine already computed, and on บันทึก OT แทนพนักงาน those hours are the
+   * first ticked person's — which is the same answer for everybody on the batch
+   * unless one of them has a birthday on the date, and that is the one case the
+   * per-POST refusal is still there for.
+   */
+  const coreHoursBlock = coreHoursRefusal(result, ctx.policy);
+
+  /**
    * `birthdayRefusal` WAS ANSWERED HERE AND IS NOT ANY MORE — 2026-09-08, with
    * the ช่อง “วันเกิด” it was the verdict on. It is not replaced by a quieter
    * field: the form has no claim to have checked.
@@ -178,6 +191,6 @@ export const POST = route(async (req) => {
     : null;
 
   return json({
-    result, cap, routing, weekdayRefusal, conflict,
+    result, cap, routing, weekdayRefusal, coreHoursRefusal: coreHoursBlock, conflict,
   });
 });

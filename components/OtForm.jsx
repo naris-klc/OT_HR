@@ -361,6 +361,17 @@ export default function OtForm({
    */
   const [weekdayRefusal, setWeekdayRefusal] = useState(null);
   /**
+   * ช่วง 08:00–16:59 ของวันทำงานปกติ — a sentence or null, answered by the server
+   * for THESE times, for the reason `weekdayRefusal` above is: the rule turns on
+   * whether the date is a holiday, and on a birthday only the server may know —
+   * `publicEmployee` keeps `birthDate` off every roster this screen can read.
+   *
+   * So the browser never works this out from `form.startTime`. A copy here
+   * would refuse somebody's own birthday as an ordinary Tuesday, which is the
+   * one day the whole 08:00–17:00 window is theirs to file.
+   */
+  const [coreHoursRefusal, setCoreHoursRefusal] = useState(null);
+  /**
    * `birthdayRefusal` WENT WITH THE TICK ON 2026-09-08. It held one sentence —
    * ติ๊ก “วันเกิด” ไว้แต่วันนั้นไม่ใช่วันเกิด — and there is no claim left for it
    * to be the verdict on. The preview no longer answers the field; see the note
@@ -625,7 +636,7 @@ export default function OtForm({
       // computed against nobody would disagree with what saving produces.
       if (proxy && !targets.length) {
         setPreview(null); setCap(null); setWeekdayRefusal(null);
-        setConflict(null); return;
+        setCoreHoursRefusal(null); setConflict(null); return;
       }
       try {
         const res = await api.post('/entries/preview', {
@@ -635,12 +646,14 @@ export default function OtForm({
         setCap(res.cap);
         setRouting(res.routing || null);
         setWeekdayRefusal(res.weekdayRefusal || null);
+        setCoreHoursRefusal(res.coreHoursRefusal || null);
         setConflict(res.conflict || null);
         setError('');
       } catch (err) {
         setPreview(null);
         setRouting(null);
         setWeekdayRefusal(null);
+        setCoreHoursRefusal(null);
         // Cleared with everything else. A clash left on the screen beside times
         // the server could not even read is a refusal about a request that is
         // no longer being typed.
@@ -1490,6 +1503,14 @@ export default function OtForm({
         </Alert>
       )}
 
+      {/* ABOVE `weekdayRefusal`, in the order the two would be met: a ใบ whose
+          times are inside working hours is wrong for everybody, while the
+          department rule is a further answer about hours that would otherwise
+          be fileable. Both can be true at once — an evening ใบ overlapping
+          17:00 in a เหมารายวัน แผนก — and the times are the half somebody can
+          fix. The server's own sentence, so pressing บันทึก adds nothing. */}
+      {coreHoursRefusal && <Alert kind="warn">{coreHoursRefusal}</Alert>}
+
       {/* Shown with the hours still computed below it, deliberately: the times
           are not wrong and the split is worth reading — what is missing is a
           department that pays for them. The same sentence the write path would
@@ -1678,7 +1699,9 @@ export default function OtForm({
           //
           // ติ๊กวันเกิดไว้แต่ไม่ใช่วันเกิด stood beside it until 2026-09-08 and
           // greyed this button too. There is no claim left to be wrong about.
-          || Boolean(weekdayRefusal)}
+          || Boolean(weekdayRefusal)
+          // วันทำงานปกติ ระบุเวลาในช่วง 08:00–16:59 ไม่ได้ — 400 on every write path.
+          || Boolean(coreHoursRefusal)}
       >
         {entry ? 'บันทึกการแก้ไข'
           : proxy ? (busy
