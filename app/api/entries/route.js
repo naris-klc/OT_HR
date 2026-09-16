@@ -19,7 +19,7 @@ import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { blockedMessage, needsOverCeilingReason } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
-import { normaliseDescription } from '@/src/config/policy.js';
+import { normaliseDescription, normaliseExtraNote } from '@/src/config/policy.js';
 import { scanChecksFor } from '@/lib/scanMatchQuery.js';
 
 // ── list ────────────────────────────────────────────────────────────────────
@@ -391,6 +391,10 @@ export const POST = route(async (req) => {
   const session = pickSession(payload);
   const { value: description, error: descriptionError } = normaliseDescription(payload.description);
   if (descriptionError) return fail(descriptionError, 400);
+  // รายละเอียดเพิ่มเติม — optional, never printed, measured on the server for the
+  // reason the line above is: the browser's `maxlength` is a convenience.
+  const { value: extraNote, error: extraNoteError } = normaliseExtraNote(payload.extraNote);
+  if (extraNoteError) return fail(extraNoteError, 400);
 
   // The day types belong to whoever the entry is FOR. Filing for oneself that
   // is the caller, whose document is already in hand; filing for somebody else
@@ -621,6 +625,7 @@ export const POST = route(async (req) => {
     filedBy: user._id,
     ...session,
     description,
+    extraNote,
     status: start.status,
     refiledFrom,
   });

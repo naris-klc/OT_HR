@@ -2084,7 +2084,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     154 files, run by `npm test`. Six named below as a
+test/                     155 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2097,9 +2097,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2791 tests
-across 154 files**, measured 2026-09-16 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2804 tests
+across 155 files**, measured 2026-09-16 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2791 tests across 154 files … measured 2026-09-16" until **รายละเอียดเพิ่มเติม —
+ช่องที่ยาวได้ โดยไม่แตะใบ F-HR-027** — `extraNote` is file 155, and thirteen of the
+new cases are in it. Before that it read
 "2779 tests across 154 files … measured 2026-09-15" until
 **แถวคำขอถอนใบ สูงไม่เกินสองบรรทัด และกดเปิดรายละเอียดได้** — NO new file, and
 that is the shape of the round: eleven cases went into `withdrawalRowLayout`,
@@ -8858,6 +8861,26 @@ every entry written before the cap unsaveable — you could no longer approve or
 recompute a historic month. Editing such an entry asks HR to shorten it rather
 than truncating it silently.
 
+**รายละเอียดเพิ่มเติม is where the rest of the sentence goes** — `extraNote`,
+optional, 200 characters (`EXTRA_NOTE_MAX_CHARS`, enforced by
+`normaliseExtraNote()` on both write paths), stored on the entry and **never
+printed on any document**. Added 2026-09-16, when employees asked to describe
+the work in more than 22 characters and ฝ่ายบุคคล asked for the sheet not to
+overflow. Raising the cap above was refused because the cell cannot hold more,
+and shortening text automatically was refused because Thai is written without
+spaces — every ellipsis lands mid-word, so the paper stops saying what the
+employee wrote. Splitting the question is the only shape in which no text is
+squeezed into a cell smaller than itself.
+
+On the form it is folded away behind **อธิบายเพิ่มเติม (ไม่บังคับ)** and opens
+by itself on an entry that already has one; on screen it is the second
+paragraph of `ReasonCard`, so it appears in the รายละเอียด pop-up on
+รออนุมัติ OT, on ประวัติการขอ OT and on คำขอถอนใบ — and **in no table row**,
+asked for in those words. It is in `ENTERED_FIELDS`, so rewriting it is a
+correction the history keeps like any other. `test/extraNote.test.js` asserts
+that `components/PrintForm.jsx` does not mention the field at all, which is the
+promise the whole design rests on.
+
 **Who may edit a submitted request, and until when.** `PATCH
 /api/entries/:id` takes two callers, and the line between them is the first
 signature on the entry.
@@ -13917,11 +13940,17 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2791 tests**, about 4 s, measured 2026-09-16 across 154
-  files, all green. **There is no new file in the last round** — แถวคำขอถอนใบ
-  was capped at two lines and made openable, and the eleven cases went into the
-  four files that already pin that row, that sentence and the app's one clamp.
-  It read "2779 tests … measured 2026-09-15" until then.
+- `npm test` — **2804 tests**, about 4 s, measured 2026-09-16 across 155
+  files, all green. **`extraNote` is the new file of the last round** —
+  รายละเอียดเพิ่มเติม, a second description box that is stored, shown on the
+  three pop-ups and never printed, so the 22 characters F-HR-027's cell can
+  hold did not have to move. Thirteen cases, and the one that matters asserts
+  that `PrintForm.jsx` does not mention the field at all.
+  It read "2791 tests … measured 2026-09-16" until then, and **the round before
+  added no file** — แถวคำขอถอนใบ was capped at two lines and made openable, and
+  its eleven cases went into the four files that already pin that row, that
+  sentence and the app's one clamp.
+  Before that, "2779 tests … measured 2026-09-15".
   **`hrCancelEntry` was the new file of the round before** —
   ฝ่ายบุคคล may now cancel any LIVE entry outright, with a reason recorded as
   `hr_cancel`. It closes a hole nobody had named: an `approved` entry whose งวด

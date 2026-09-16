@@ -18,6 +18,9 @@ const SESSION = {
   noBreakTaken: false,
   flatDaily: false,
   description: 'สอบเทียบชุด PM-3000',
+  // รายละเอียดเพิ่มเติม (2026-09-16) — entered by a person and so in this list,
+  // although F-HR-027 never prints it. See test/extraNote.test.js.
+  extraNote: 'เครื่องที่ 3 ค่าเพี้ยนหลุด',
 };
 
 test('a save that changed nothing is not treated as an edit', () => {
@@ -32,6 +35,7 @@ test('every entered field on its own marks the entry as changed', () => {
     noBreakTaken: true,
     flatDaily: true,
     description: 'สอบเทียบชุด PM-4000',
+    extraNote: 'รอช่างมาเซ็ตใหม่',
   };
   for (const field of ENTERED_FIELDS) {
     assert.equal(

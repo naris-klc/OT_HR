@@ -3282,7 +3282,7 @@ function DetailModal({
           {/* Why the request exists, and where the month stands — both cards
               now live in common.jsx, because หน้ารายการ OT ของฉัน draws the same
               two. See the note over them there. */}
-          <ReasonCard description={e.description} />
+          <ReasonCard description={e.description} extraNote={e.extraNote} />
           <CapCard month={e.usage?.month} counted={e.usage?.counted} />
 
           <Section

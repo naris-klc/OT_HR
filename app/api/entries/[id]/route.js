@@ -13,7 +13,7 @@ import { today } from '@/lib/today.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
-import { normaliseDescription } from '@/src/config/policy.js';
+import { normaliseDescription, normaliseExtraNote } from '@/src/config/policy.js';
 import Setting from '@/src/models/Setting.js';
 
 /**
@@ -136,6 +136,27 @@ export const PATCH = route(async (req, { params }) => {
     const { value, error } = normaliseDescription(payload.description);
     if (error) return fail(error, 400);
     entry.description = value;
+  }
+
+  /**
+   * รายละเอียดเพิ่มเติม — measured unconditionally, with no `unchanged` guard
+   * beside it.
+   *
+   * The guard above exists for entries written BEFORE `DESCRIPTION_MAX_CHARS`,
+   * which are longer than the cap and would otherwise refuse an edit that never
+   * touched the text. No row can be over this cap: the field and its 200 arrived
+   * together on 2026-09-16, and the schema refuses more. A guard here would
+   * only be a second rule to keep in step with nothing.
+   *
+   * `payload.extraNote == null` leaves the stored value alone, for the editors
+   * that post a subset of the form — `QuickEdit` in the review screen sends the
+   * times and nothing else, and an absent key there must not empty a note
+   * somebody wrote.
+   */
+  if (payload.extraNote != null) {
+    const { value, error } = normaliseExtraNote(payload.extraNote);
+    if (error) return fail(error, 400);
+    entry.extraNote = value;
   }
 
   /**

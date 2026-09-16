@@ -764,6 +764,46 @@ export function normaliseDescription(raw) {
 }
 
 /**
+ * รายละเอียดเพิ่มเติม — how much of the text that never reaches the paper may
+ * be entered, in characters.
+ *
+ * THE POINT OF THIS FIELD IS THAT THE CAP ABOVE CANNOT MOVE. F-HR-027 gives
+ * รายละเอียดงานที่ทำ one line of a 51mm cell that also has to hold ` (รออนุมัติ)`,
+ * ` [ไม่พักเที่ยง]` and ` (แทน)`, so 22 is the room that is left over rather
+ * than a number somebody picked. Employees needed more room than that and
+ * ฝ่ายบุคคล needed the sheet not to overflow; asked on 2026-09-16 and answered
+ * by splitting the question in two — the short line prints, this one does not.
+ *
+ * Widening the printed column was refused for the same reason automatic
+ * shortening was: Thai is written without spaces, so any ellipsis lands
+ * mid-word and the paper stops saying what the employee wrote. Two fields is
+ * the only shape where no text is ever squeezed into a cell smaller than
+ * itself.
+ *
+ * 200 is ฝ่ายบุคคล's answer and matches `MAX_REASON` in lib/withdrawal.js, the
+ * app's other free-text box — one length for free text a person types, so
+ * neither box has to explain a limit the other does not have.
+ */
+export const EXTRA_NOTE_MAX_CHARS = 200;
+
+/**
+ * รายละเอียดเพิ่มเติม, as it is allowed to be stored. Returns `{ value }` or
+ * `{ error }`.
+ *
+ * OPTIONAL, so an empty box is an answer and returns `{ value: '' }` — the one
+ * way this differs from `normaliseDescription` above, which refuses a blank.
+ * Beside it for the same reason that one is not in a route: submit and HR
+ * correction have to measure it identically.
+ */
+export function normaliseExtraNote(raw) {
+  const value = String(raw ?? '').trim();
+  if (value.length > EXTRA_NOTE_MAX_CHARS) {
+    return { error: `รายละเอียดเพิ่มเติมต้องไม่เกิน ${EXTRA_NOTE_MAX_CHARS} ตัวอักษร (ขณะนี้ ${value.length})` };
+  }
+  return { value };
+}
+
+/**
  * [OPEN 10] Holiday calendar format and [OPEN 11] employee roster format are
  * not arithmetic, so they are not flags — both import paths are built. See
  * `app/api/holidays/import/` and `app/api/employees/import/`: each accepts a CSV
