@@ -4004,14 +4004,24 @@ td > .approver-line { margin-top: 5px; }
 /* The home row answers no click, so it must not light up like the rows that do
    — see `li.home` below. Both states are cancelled on it. */
 .pick-menu.dept-menu li.home:hover { background: transparent; }
-.pick-menu.dept-menu li .tick {
+/* ── ONE TICK BOX, TWO PANELS ───────────────────────────────────────────────
+   `.many-menu` is `PickMany`'s list (components/common.jsx) and draws the same
+   box as แผนกที่ดูแล does, from this rule rather than from a copy of it. The
+   pair was written as one selector the day the second panel arrived —
+   2026-09-16 — because a tick box that is 16px here and 15px there is exactly
+   the drift §Inherit before you invent is about. */
+.pick-menu.many-menu li { display: flex; align-items: center; gap: 10px; }
+.pick-menu.many-menu li .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pick-menu.dept-menu li .tick,
+.pick-menu.many-menu li .tick {
   flex: none; width: 16px; height: 16px;
   display: grid; place-items: center;
   border: 1.5px solid var(--input-line); border-radius: 4px;
   background: var(--card);
   font-size: 10.5px; line-height: 1; color: transparent;
 }
-.pick-menu.dept-menu li .tick.on {
+.pick-menu.dept-menu li .tick.on,
+.pick-menu.many-menu li .tick.on {
   background: var(--green); border-color: var(--green); color: var(--on-fill);
 }
 /* The home row's box is filled and quiet — it is chosen and cannot be changed,

@@ -696,7 +696,84 @@ export const DEFAULT_POLICY = Object.freeze({
    * functions that answer when asked.
    */
   cancelCutoffDay: null,
+
+  // ── ช่องติ๊กบนฟอร์มบันทึก OT ───────────────────────────────────────────────
+  /**
+   * WHO IS OFFERED เหมารายวัน, AND ON WHICH DAYS — six keys, two ticks, one
+   * shape each: a ตำแหน่ง rule and a วัน rule.
+   *
+   * THEY WERE THREE LINES OF CODE UNTIL 2026-09-16. `FLAT_DAILY_POSITIONS` in
+   * lib/entries.js held one ตำแหน่ง, the day rule was an `isCompanyOffDay` call
+   * written into each screen, and changing either meant an edit and a deploy.
+   * HR asked for both to be settable: *อยากให้แก้ไขนโยบายหรือเงื่อนไขนี้บน ui
+   * ตั้งค่าได้แบบยืดหยุ่น เผื่อการเปลี่ยนแปลงในอนาคตโดยไม่ต้องแก้ไขโค้ด*.
+   *
+   * ⚠ THESE DECIDE WHAT IS DRAWN, NOT WHAT IS ACCEPTED, and that is the whole
+   * of their reach. `flatDaily` and `noBreakTaken` are entered fields the write
+   * path takes from anybody, and every stored row keeps the hours it was filed
+   * with. So they are COSMETIC_KEYS: a save moves no figure and replays
+   * nothing. What a change DOES reach is the next time somebody opens a row
+   * whose ticks the new rules no longer allow — the tick is cleared, silently,
+   * and the figures move when that correction is saved. See `tickClearing` in
+   * lib/entries.js.
+   *
+   * WHY A MODE PLUS A LIST RATHER THAN ONE LIST. The two ticks want opposite
+   * answers about the same ตำแหน่ง — เหมารายวัน is offered ONLY to
+   * เจ้าหน้าที่บริการ, ไม่พักเที่ยง to everybody EXCEPT them — and an allow-list
+   * cannot say the second without naming every other ตำแหน่ง in the company,
+   * which would then be wrong on the day a new one is created. HR's answer,
+   * 2026-09-16, chose the three modes.
+   */
+  /**
+   * 'all'    — ทุกตำแหน่ง.
+   * 'only'   — เฉพาะที่อยู่ใน `flatDailyPositions` (DEFAULT).
+   * 'except' — ทุกตำแหน่งยกเว้นที่อยู่ในนั้น.
+   */
+  flatDailyPositionMode: 'only',
+  /**
+   * ตำแหน่งที่กฎข้างบนพูดถึง — matched WHOLE and trimmed, never as a substring.
+   *
+   * `หัวหน้าแผนกบริการ` is in the same department as `เจ้าหน้าที่บริการ` and is
+   * deliberately not the same answer: the rule HR gave names a job, not a team.
+   * A substring match on `บริการ` would take that row in, and the next ตำแหน่ง
+   * containing the word after it — the shape of mistake nobody reports, because
+   * a box shown to too many people looks exactly like a box.
+   *
+   * The shipped value is the one ตำแหน่ง HR named on 2026-09-08, so an install
+   * that never opens the settings page behaves exactly as it did before these
+   * keys existed.
+   */
+  flatDailyPositions: ['เจ้าหน้าที่บริการ'],
+  /**
+   * 'all'      — ทุกวัน.
+   * 'offDays'  — เฉพาะวันหยุด: เสาร์อาทิตย์ตาม `weekendDays` และวันหยุดบริษัท
+   *              ตามประกาศ (DEFAULT — HR, 2026-09-16).
+   * 'workDays' — เฉพาะวันทำงาน.
+   *
+   * วันเกิดไม่เคยนับเป็นวันหยุดในกฎนี้ และนับไม่ได้ด้วย: the predicate is handed
+   * the company calendar and `weekendDays` and nothing else, and no screen that
+   * draws these ticks is allowed to hold a birth date (`publicEmployee`).
+   */
+  flatDailyDayScope: 'offDays',
+
+  /** ไม่พักเที่ยง — ตำแหน่ง: ยกเว้นเจ้าหน้าที่บริการ (HR, 2026-09-16). */
+  noBreakPositionMode: 'except',
+  /**
+   * วันที่ถูกจ้างทั้งวันไม่มีคำถามเรื่องชั่วโมงพักอยู่ในนั้น — so the ตำแหน่ง that
+   * is offered เหมารายวัน is exactly the one that is not offered this. The two
+   * lists are separate keys rather than one, because nothing forces them to stay
+   * each other's opposite: HR can put a ตำแหน่ง on both, or on neither.
+   */
+  noBreakPositions: ['เจ้าหน้าที่บริการ'],
+  /** ไม่พักเที่ยง — วัน: เฉพาะวันหยุด (HR, 2026-09-08). */
+  noBreakDayScope: 'offDays',
 });
+
+/** โหมดของเงื่อนไขตำแหน่ง — ค่าที่ `*PositionMode` รับได้. */
+export const POSITION_MODES = Object.freeze(['all', 'only', 'except']);
+
+/** โหมดของเงื่อนไขวัน — ค่าที่ `*DayScope` รับได้. */
+export const DAY_SCOPES = Object.freeze(['all', 'offDays', 'workDays']);
 
 /**
  * HR_UNCONFIRMED LIVED HERE UNTIL 2026-09-08, AND WHAT IT DID IS WORTH KNOWING

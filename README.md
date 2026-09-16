@@ -2084,7 +2084,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     155 files, run by `npm test`. Six named below as a
+test/                     156 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2097,9 +2097,11 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2804 tests
-across 155 files**, measured 2026-09-16 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2818 tests
+across 156 files**, measured 2026-09-16 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2804 tests across 155 files … measured 2026-09-16" until **เงื่อนไขช่องติ๊กย้าย
+ขึ้นหน้าตั้งค่า** — `tickPolicy` is file 156. Before that it read
 "2791 tests across 154 files … measured 2026-09-16" until **รายละเอียดเพิ่มเติม —
 ช่องที่ยาวได้ โดยไม่แตะใบ F-HR-027** — `extraNote` is file 155, and thirteen of the
 new cases are in it. Before that it read
@@ -4454,11 +4456,21 @@ meant refusing the request and having it filed again.
 2026-09-16:** *ตัวเลือก เหมารายวัน … แสดงเฉพาะวันหยุดเสาร์-อาทิตย์ และวันหยุด
 บริษัทที่กำหนด*. Nine people on the live roster hold that ตำแหน่ง and they are the
 only ones sold by the day; for everybody else the box was a control with no
-correct use, sitting beside one that has one. The list is `FLAT_DAILY_POSITIONS`
-in [`lib/entries.js`](lib/entries.js), and `ticksAllowed` beside it is the
-predicate BOTH screens draw behind — one function, because the pair had already
-drifted once: the ตำแหน่ง half reached only this box and the calendar half only
-ไม่พักเที่ยง.
+correct use, sitting beside one that has one.
+
+**BOTH HALVES ARE SETTINGS SINCE 2026-09-16**, asked for the same day the rule
+was corrected: *อยากให้แก้ไขนโยบายหรือเงื่อนไขนี้บน ui ตั้งค่าได้แบบยืดหยุ่น
+เผื่อการเปลี่ยนแปลงในอนาคตโดยไม่ต้องแก้ไขโค้ด*. ตั้งค่าระบบ → นโยบายการคำนวณ →
+**กลุ่มที่ 6 ช่องติ๊กบนฟอร์มบันทึก OT** holds six rows, three per tick: which
+ตำแหน่ง (ทุก · เฉพาะที่เลือก · ยกเว้นที่เลือก), the ตำแหน่ง themselves, and which
+days (ทุกวัน · เฉพาะวันหยุด · เฉพาะวันทำงาน). The shipped values are the rules
+below, so an install that never opens that page behaves exactly as this section
+describes. *(It read "the list is `FLAT_DAILY_POSITIONS` in lib/entries.js" until
+that day — a frozen array and an edit-and-deploy to change it.)*
+
+`ticksAllowed` in [`lib/entries.js`](lib/entries.js) is the predicate BOTH
+screens draw behind — one function, because the pair had already drifted once:
+the ตำแหน่ง half reached only this box and the calendar half only ไม่พักเที่ยง.
 
 *(The second sentence was reported from the screen: a เจ้าหน้าที่บริการ filing for
 วันพุธ 16/09/2569 was offered เหมารายวัน on an ordinary working day. It read
@@ -4533,7 +4545,10 @@ the ตำแหน่ง that is offered เหมารายวัน is exac
 this.
 
 `isCompanyOffDay` in [`lib/entries.js`](lib/entries.js) is the predicate — the
-holiday calendar plus the policy’s own `weekendDays`, and nothing else.
+holiday calendar plus the policy’s own `weekendDays`, and nothing else. Which
+ตำแหน่ง see this box and on which days is set on ตั้งค่าระบบ alongside
+เหมารายวัน's, in the block described above (`noBreakPositionMode` ·
+`noBreakPositions` · `noBreakDayScope`).
 
 **The exclusion HR asked for is the boundary this app already enforces.** A
 สวัสดิการวันเกิด is a holiday for one person, resolved from a stored วันเกิด that
@@ -13940,8 +13955,16 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2804 tests**, about 4 s, measured 2026-09-16 across 155
-  files, all green. **`extraNote` is the new file of the last round** —
+- `npm test` — **2818 tests**, about 4 s, measured 2026-09-16 across 156
+  files. **`tickPolicy` is the new file of the last round** — the six keys that
+  moved the ช่องติ๊ก rules out of the code and onto ตั้งค่าระบบ, plus `PickMany`,
+  the kit's first control whose answer is a list. Nine cases, and the one that
+  matters asserts a key absent from a browser's policy copy reads as the SHIPPED
+  default rather than as an empty list — the failure that would take เหมารายวัน
+  off every form in the company at once.
+  *(One test in `extraNote` — another session's work, landed in `d2ede89` — was
+  already failing on `dev` before this branch started and is theirs to finish.)*
+  **`extraNote` was the new file of the round before** —
   รายละเอียดเพิ่มเติม, a second description box that is stored, shown on the
   three pop-ups and never printed, so the 22 characters F-HR-027's cell can
   hold did not have to move. Thirteen cases, and the one that matters asserts
