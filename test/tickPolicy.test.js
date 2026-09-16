@@ -104,6 +104,46 @@ test('หน้าตั้งค่ามีบล็อกที่ 6 แล�
   }
 });
 
+/** `Policy` เท่านั้น — ตัดคอมโพเนนต์ออกมาก่อนแล้วค่อยอ่าน. */
+const policyComponent = (() => {
+  const at = admin.indexOf('function Policy({ user }) {');
+  assert.ok(at > 0, 'Policy หายไปจาก AdminView.jsx');
+  return admin.slice(at, admin.indexOf('\nfunction ', at + 1));
+})();
+
+/**
+ * เอฟเฟกต์ที่โหลดรายชื่อตำแหน่ง ต้องอยู่ใน `Policy` ไม่ใช่คอมโพเนนต์อื่นในไฟล์
+ * เดียวกัน — แจ้งจากหน้าจอ 2026-09-16: *hr ตั้งค่านโยบายไม่ได้ … เลือกตำแหน่ง
+ * ไม่ได้*.
+ *
+ * WHAT SHIPPED: `useEffect(() => { loadPositions(); }, [])` landed in
+ * `Employees`, the first `useEffect(() => { load(); }, [])` in a 8,000-line
+ * file. ทะเบียนพนักงาน threw on mount because the function is not in its scope,
+ * and นโยบายการคำนวณ left `positions` at `null` for good — which is precisely
+ * what disables the two ตำแหน่ง controls. The page looked finished.
+ *
+ * WHY NO TEST SAW IT: every assertion on this screen reads the file as TEXT,
+ * and `useEffect(() => { loadPositions(); }, [])` reads identically whichever
+ * function encloses it. The fix is to slice the component first — which is what
+ * every check below now does, and what the `Employees` line pins from the other
+ * side.
+ */
+test('เอฟเฟกต์โหลดรายชื่อตำแหน่ง อยู่ในคอมโพเนนต์ Policy', () => {
+  assert.match(policyComponent, /useEffect\(\(\) => \{ loadPositions\(\); \}, \[\]\);/);
+  assert.match(policyComponent, /async function loadPositions\(\) \{/);
+
+  // และต้องไม่ไปโผล่ที่อื่นในไฟล์นี้ — สโคปอื่นเรียกแล้วพังตอน mount
+  assert.equal(
+    (admin.match(/loadPositions\(\);/g) || []).length, 1,
+    'loadPositions ถูกเรียกมากกว่าหนึ่งที่ — ที่ที่ไม่ใช่ Policy จะพังตอน mount',
+  );
+  const employees = admin.slice(
+    admin.indexOf('function Employees({ user }) {'),
+    admin.indexOf('\nfunction ', admin.indexOf('function Employees({ user }) {') + 1),
+  );
+  assert.ok(!employees.includes('loadPositions'), 'loadPositions ไปอยู่ในทะเบียนพนักงานอีกแล้ว');
+});
+
 test('แถวตำแหน่งใช้ตัวเลือกหลายค่า และรายชื่อมาจากทะเบียนจริง', () => {
   // คอนโทรลของแถวนี้เป็น PickMany ไม่ใช่ดรอปดาวน์ค่าเดียว
   assert.match(admin, /\{f\.positions \? \(\s*\n\s*<PickMany/);
@@ -169,6 +209,27 @@ test('PickMany — ติ๊กทีละช่องไม่บันทึ�
   // — ข้อนี้คุมว่ามันเป็นแผงเดียวกับ PickOne จริง)
   assert.match(src, /className="pick-menu one-menu many-menu"/);
   assert.match(src, /aria-multiselectable="true"/);
+});
+
+/**
+ * ค่าที่ติ๊กไว้ต้องแสดงเสมอ แม้รายการตัวเลือกจะไม่มีมัน — แจ้งจากหน้าจอพร้อมภาพ
+ * 2026-09-16: กล่องอ่านว่า *ยังไม่ได้เลือกตำแหน่ง* ขณะที่บรรทัดข้าง ๆ อ่านว่า
+ * *ค่าที่ใช้อยู่: เจ้าหน้าที่บริการ* — คอนโทรลโกหกเรื่องค่าของตัวเอง.
+ *
+ * ORDINARY CASE, NOT ONLY THE BUG: the last person holding a ตำแหน่ง resigns,
+ * the roster stops offering it, and the policy still names it. A value with no
+ * row of its own would then be a tick nothing on the screen can reach.
+ */
+test('PickMany — ค่าที่เก็บไว้ต้องแสดงและปลดได้ แม้ไม่มีในรายการ', () => {
+  const at = common.indexOf('export function PickMany(');
+  const src = common.slice(at, common.indexOf('\nexport ', at + 1));
+
+  // กล่องตอนปิด อ่านจากค่าที่ติ๊ก ไม่ใช่จากรายการตัวเลือก
+  assert.match(src, /const picked = chosen\.map\(\(v\) => byValue\.get\(v\) \|\| \{ value: v, label: v \}\);/);
+  // และแถวในแผงมีของที่ติ๊กไว้ด้วยเสมอ ไม่งั้นปลดไม่ได้
+  assert.match(src, /const withChosen = \[/);
+  assert.match(src, /\.filter\(\(v\) => !\(options \|\| \[\]\)\.some\(\(r\) => String\(r\.value\) === v\)\)/);
+  assert.ok(!/const picked = \(options \|\| \[\]\)\.filter/.test(src), 'กล่องกลับไปอ่านจากรายการตัวเลือกอีกแล้ว');
 });
 
 test('PickMany ใช้กล่องติ๊กใบเดียวกับแผนกที่ดูแล', () => {

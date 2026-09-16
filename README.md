@@ -2097,7 +2097,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2834 tests
+and the engine know nothing about Next.js, so the whole suite — **2836 tests
 across 157 files**, measured 2026-09-16 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
 (⚠ **COUNT IT IN THE TREE THAT HOLDS `dev`, AFTER THE MERGE.** This line said
@@ -12709,6 +12709,31 @@ build แล้ว
 
 **Verified**
 
+- **ฝ่ายบุคคลเลือกตำแหน่งบนหน้านโยบายไม่ได้ — เอฟเฟกต์ไปอยู่ผิดคอมโพเนนต์** —
+  2026-09-16 รอบแก้ · แจ้งจากหน้าจอพร้อมภาพ: *hr ตั้งค่านโยบายไม่ได้ตามรูป
+  เลือกตำแหน่งไม่ได้* · กล่องอ่านว่า **ยังไม่ได้เลือกตำแหน่ง** และกดไม่ได้ ขณะที่
+  บรรทัดข้าง ๆ อ่านว่า **ค่าที่ใช้อยู่: เจ้าหน้าที่บริการ**
+  · **ไม่ใช่เรื่องสิทธิ์เลย** — `canEdit` รับ `hr` อยู่แล้ว และ PATCH
+  /api/settings/policy ก็เป็น `requireRole('admin', 'hr')` มาแต่เดิม
+  · **`useEffect(() => { loadPositions(); }, [])` ไปตกอยู่ใน `Employees`** ซึ่งเป็น
+  `useEffect(() => { load(); }, [])` ตัวแรกในไฟล์ 8,000 บรรทัด · **พังสองทางพร้อมกัน
+  และไม่มีทางไหนเห็นได้จากหน้านโยบาย**: ทะเบียนพนักงาน throw ตอน mount เพราะ
+  ฟังก์ชันไม่อยู่ในสโคปนั้น ส่วนหน้านโยบายปล่อย `positions` เป็น `null` ตลอดไป
+  ซึ่งคือเงื่อนไขที่ปิดคอนโทรลทั้งสองแถว
+  · **ทำไมเทสต์ 2834 ข้อไม่เห็น** — ทุกข้อที่ตรวจจอนี้อ่านไฟล์เป็น*ข้อความ* และ
+  `useEffect(() => { loadPositions(); }, [])` อ่านเหมือนกันทุกประการไม่ว่าจะอยู่ใน
+  ฟังก์ชันไหน · ที่แก้คือ **ตัดคอมโพเนนต์ออกมาก่อนแล้วค่อยอ่าน** — `tickPolicy`
+  ตรึงทั้งสองด้าน: เอฟเฟกต์ต้องอยู่ใน `Policy` และต้องไม่มีคำว่า `loadPositions`
+  ใน `Employees`
+  · **และกล่องก็โกหกเรื่องค่าของตัวเองด้วย** — `PickMany` อ่านชื่อที่จะแสดงจาก
+  *รายการตัวเลือก* ไม่ใช่จาก*ค่าที่ติ๊กไว้* ค่าที่รายการไม่มีจึงหายไปจากกล่อง ·
+  เป็นเคสธรรมดา ไม่ใช่แค่ตอนบั๊กนี้: คนสุดท้ายที่ถือตำแหน่งนั้นลาออก ทะเบียนเลิก
+  เสนอชื่อนั้น แต่นโยบายยังอ้างอยู่ · ตอนนี้ค่าที่ติ๊กไว้ได้แถวของตัวเองเสมอ
+  จึงยังปลดออกได้ด้วยมือ
+  · ✅ เทสต์ **2836/2836** ผ่าน (`tickPolicy` +2 เคส) · ✅ build ผ่านบน distDir แยก
+  · ❓ **ยังไม่ได้เดินด้วยตาบนแอปจริง** — ข้อนี้คือของที่การเดินด้วยตาจะจับได้
+  ตั้งแต่แรก และเป็นเหตุผลที่บรรทัด ❓ นี้มีอยู่
+
 - **ช่องติ๊กสองช่องบนฟอร์ม OT แยกขาดจากกัน — เหมารายวัน เฉพาะเจ้าหน้าที่บริการและ
   เฉพาะวันหยุด · ไม่พักเที่ยง ทุกตำแหน่งยกเว้นเจ้าหน้าที่บริการ** — 2026-09-16 ·
   แจ้งมาพร้อมภาพหน้าจอ: **เจ้าหน้าที่บริการยื่นวันพุธ 16/09/2569 แล้วยังเห็นช่อง
@@ -14015,7 +14040,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2834 tests**, about 4 s, measured 2026-09-16 across 157
+- `npm test` — **2836 tests**, about 4 s, measured 2026-09-16 across 157
   files, all green. **`tickPolicy` is the new file of the last round** — the six keys that
   moved the ช่องติ๊ก rules out of the code and onto ตั้งค่าระบบ, plus `PickMany`,
   the kit's first control whose answer is a list. Nine cases, and the one that
