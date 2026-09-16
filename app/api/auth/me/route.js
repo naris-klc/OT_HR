@@ -38,6 +38,28 @@ export const GET = route(async (req) => {
        * breach. Nothing in this app should read one for the other.
        */
       weekendDays: policy.weekendDays,
+      /**
+       * ใครเห็นช่องติ๊กไหน บนฟอร์มบันทึก OT — six keys, added 2026-09-16 when HR
+       * asked for the rule to be settable instead of compiled in.
+       *
+       * READ BY `ticksAllowed` / `tickClearing` in lib/entries.js, on บันทึก OT
+       * and on แก้ไขชั่วโมง. They decide whether a QUESTION is drawn and never
+       * what is accepted — the write path takes `flatDaily` and `noBreakTaken`
+       * from anybody either way — which is why a stale copy here costs a
+       * control on a form and not an hour on a sheet.
+       *
+       * SENT EVEN AT THE SHIPPED DEFAULTS, and the reason is `only`: a key left
+       * out reads as absent, and absent must mean "the default rule", not "the
+       * empty list". `tickRule` falls back to DEFAULT_POLICY one key at a time
+       * for the same reason — trimming this block to save six fields would take
+       * เหมารายวัน off every form in the company.
+       */
+      flatDailyPositionMode: policy.flatDailyPositionMode,
+      flatDailyPositions: policy.flatDailyPositions,
+      flatDailyDayScope: policy.flatDailyDayScope,
+      noBreakPositionMode: policy.noBreakPositionMode,
+      noBreakPositions: policy.noBreakPositions,
+      noBreakDayScope: policy.noBreakDayScope,
       hrSummaryBasis: policy.hrSummaryBasis,
       hrMayReject: policy.hrMayReject,
       /**

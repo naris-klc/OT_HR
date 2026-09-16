@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  isFlatDailyPosition, isCompanyOffDay, mayCorrectEntries,
+  isCompanyOffDay, mayCorrectEntries,
   ticksAllowed, tickClearing, applyTickClearing,
 } from '../lib/entries.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
@@ -121,8 +121,12 @@ test('ช่องเหมารายวัน — ตำแหน่งขอ
   assert.equal(mayCorrectEntries({ role: 'manager' }), false, 'หัวหน้าเห็นช่องที่เซิร์ฟเวอร์ปฏิเสธ');
   assert.equal(mayCorrectEntries({ role: 'accounting' }), false);
   assert.equal(mayCorrectEntries(null), false);
-  assert.equal(isFlatDailyPosition('เจ้าหน้าที่บริการ'), true);
-  assert.equal(isFlatDailyPosition('หัวหน้าแผนกบริการ'), false, 'ตำแหน่งอื่นในแผนกเดียวกันไม่ใช่');
+  // ตำแหน่งครึ่งหนึ่งของกฎ วัดผ่านฟังก์ชันร่วม — รายการอยู่ในนโยบายตั้งแต่ 2026-09-16
+  const onSat = (position) => ticksAllowed({
+    positions: [position], workDate: '2026-08-08', holidays: [], weekendDays: DEFAULT_POLICY.weekendDays,
+  }).flatDaily;
+  assert.equal(onSat('เจ้าหน้าที่บริการ'), true);
+  assert.equal(onSat('หัวหน้าแผนกบริการ'), false, 'ตำแหน่งอื่นในแผนกเดียวกันไม่ใช่');
 
   // ตำแหน่งของ “คนที่ใบนี้เป็นของเขา” — populated on every row this queue reads.
   assert.ok(read('lib/entries.js').includes(

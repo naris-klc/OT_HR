@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  isFlatDailyPosition, FLAT_DAILY_POSITIONS, isCompanyOffDay,
+  isCompanyOffDay,
   ticksAllowed, tickClearing, applyTickClearing,
   FLAT_DAY_TIMES,
 } from '../lib/entries.js';
@@ -127,20 +127,109 @@ test('ไม่เหลืออะไรเกี่ยวกับข้า�
  * `บริการ` would take that one in, and every ตำแหน่ง containing the word after
  * it — which is the shape of mistake nobody reports, because a box that is
  * shown to too many people looks exactly like a box.
+ *
+ * IT READ `FLAT_DAILY_POSITIONS` UNTIL 2026-09-16, a frozen array in
+ * lib/entries.js. The list is `flatDailyPositions` on the policy now and is set
+ * on ตั้งค่าระบบ; what is asserted here is unchanged — the shipped default is
+ * still the one ตำแหน่ง HR named, and the match is still whole-string.
  */
-test('isFlatDailyPosition — ตรงตัวเท่านั้น', () => {
-  assert.deepEqual(FLAT_DAILY_POSITIONS, ['เจ้าหน้าที่บริการ']);
-  assert.equal(isFlatDailyPosition('เจ้าหน้าที่บริการ'), true);
-  // Whitespace off a CSV import is not a different job.
-  assert.equal(isFlatDailyPosition('  เจ้าหน้าที่บริการ  '), true);
+test('ตำแหน่งเทียบทั้งชื่อ ไม่ใช่คำที่อยู่ในชื่อ', () => {
+  assert.deepEqual(DEFAULT_POLICY.flatDailyPositions, ['เจ้าหน้าที่บริการ']);
+  assert.equal(DEFAULT_POLICY.flatDailyPositionMode, 'only');
 
-  assert.equal(isFlatDailyPosition('หัวหน้าแผนกบริการ'), false);
-  assert.equal(isFlatDailyPosition('เจ้าหน้าที่บัญชี'), false);
-  assert.equal(isFlatDailyPosition('พนักงานผลิต1'), false);
+  const weekendDays = DEFAULT_POLICY.weekendDays;
+  // เสาร์ — วันที่ผ่านเงื่อนไขวันอยู่แล้ว เหลือครึ่งที่เป็นตำแหน่งให้วัด
+  const flat = (position) => ticksAllowed({
+    positions: [position], workDate: '2026-08-08', holidays: [], weekendDays,
+  }).flatDaily;
+
+  assert.equal(flat('เจ้าหน้าที่บริการ'), true);
+  // Whitespace off a CSV import is not a different job.
+  assert.equal(flat('  เจ้าหน้าที่บริการ  '), true);
+
+  assert.equal(flat('หัวหน้าแผนกบริการ'), false);
+  assert.equal(flat('เจ้าหน้าที่บัญชี'), false);
+  assert.equal(flat('พนักงานผลิต1'), false);
   // A row with no ตำแหน่ง filled in is not a เจ้าหน้าที่บริการ.
-  assert.equal(isFlatDailyPosition(''), false);
-  assert.equal(isFlatDailyPosition(null), false);
-  assert.equal(isFlatDailyPosition(undefined), false);
+  assert.equal(flat(''), false);
+  // …and a ตำแหน่ง the screen does not have YET is not an answer at all — no
+  // box, and `tickClearing` clears nothing. See `positionsKnown`.
+  assert.equal(flat(null), false);
+  assert.equal(flat(undefined), false);
+});
+
+/**
+ * กฎทั้งหกอ่านจากนโยบาย ไม่ใช่จากค่าคงที่ในโค้ด — HR, 2026-09-16: *อยากให้แก้ไข
+ * นโยบายหรือเงื่อนไขนี้บน ui ตั้งค่าได้แบบยืดหยุ่น เผื่อการเปลี่ยนแปลงในอนาคตโดย
+ * ไม่ต้องแก้ไขโค้ด*.
+ *
+ * WHAT THIS PINS IS THAT THE POLICY IS ACTUALLY READ, which is invisible when
+ * it is wrong: a `ticksAllowed` that ignored its `policy` argument would pass
+ * every other test in this file, because every other test uses the shipped
+ * defaults.
+ */
+test('ช่องติ๊กอ่านโหมดและรายชื่อจากนโยบาย', () => {
+  const weekendDays = DEFAULT_POLICY.weekendDays;
+  const sat = { workDate: '2026-08-08', holidays: [], weekendDays };
+  const wed = { workDate: '2026-08-05', holidays: [], weekendDays };
+
+  // ตำแหน่งอื่นได้ช่องเหมารายวัน เมื่อ HR ใส่ชื่อนั้นเข้าไปในรายการ
+  assert.equal(ticksAllowed({
+    ...sat,
+    positions: ['พนักงานผลิต1'],
+    policy: { flatDailyPositions: ['พนักงานผลิต1'] },
+  }).flatDaily, true);
+
+  // โหมด all — ทุกตำแหน่งเห็น
+  assert.equal(ticksAllowed({
+    ...sat, positions: ['เจ้าหน้าที่บัญชี'], policy: { flatDailyPositionMode: 'all' },
+  }).flatDaily, true);
+
+  // โหมด except — กลับด้าน
+  assert.equal(ticksAllowed({
+    ...sat, positions: ['เจ้าหน้าที่บริการ'], policy: { flatDailyPositionMode: 'except' },
+  }).flatDaily, false);
+
+  // วัน: ทุกวัน / เฉพาะวันทำงาน
+  assert.equal(ticksAllowed({
+    ...wed, positions: ['เจ้าหน้าที่บริการ'], policy: { flatDailyDayScope: 'all' },
+  }).flatDaily, true);
+  assert.equal(ticksAllowed({
+    ...wed, positions: ['เจ้าหน้าที่บริการ'], policy: { flatDailyDayScope: 'workDays' },
+  }).flatDaily, true);
+  assert.equal(ticksAllowed({
+    ...sat, positions: ['เจ้าหน้าที่บริการ'], policy: { flatDailyDayScope: 'workDays' },
+  }).flatDaily, false);
+
+  // ไม่พักเที่ยงก็ตั้งได้เหมือนกัน และไม่ได้ผูกกับรายการของเหมารายวัน
+  assert.equal(ticksAllowed({
+    ...sat, positions: ['เจ้าหน้าที่บริการ'], policy: { noBreakPositionMode: 'all' },
+  }).noBreak, true);
+  assert.equal(ticksAllowed({
+    ...sat, positions: ['พนักงานผลิต1'], policy: { noBreakPositions: ['พนักงานผลิต1'] },
+  }).noBreak, false);
+
+  /**
+   * ⚠ คีย์ที่หายไปคือค่าตั้งต้น ไม่ใช่รายการว่าง — the failure this guards
+   * against is a browser holding a policy from before these keys existed (an
+   * old session, a trimmed /auth/me): read as an empty list under `only`, the
+   * เหมารายวัน box would vanish for everybody in the company at once.
+   */
+  assert.equal(ticksAllowed({ ...sat, positions: ['เจ้าหน้าที่บริการ'], policy: {} }).flatDaily, true);
+  assert.equal(ticksAllowed({ ...sat, positions: ['เจ้าหน้าที่บริการ'], policy: null }).flatDaily, true);
+  // …และ tickClearing ก็ต้องไม่ปลดค่าด้วยเหตุผลเดียวกัน
+  assert.equal(tickClearing({ ...sat, positions: ['เจ้าหน้าที่บริการ'], policy: {} }).flatDaily, false);
+
+  // และหน้าจอต้องส่งนโยบายเข้าไปจริง ไม่ใช่เรียกลอย ๆ
+  assert.match(form, /weekendDays: policy\.weekendDays,\s*\r?\n?\s*policy,/);
+  assert.equal((form.match(/\n\s{4}policy,/g) || []).length, 2, 'ฟอร์มส่ง policy ให้ทั้ง ticksAllowed และ tickClearing');
+  assert.match(read('components/ApprovalQueue.jsx'), /weekendDays: policy\.weekendDays,\s*\r?\n?\s*policy,/);
+  // …และ /auth/me ต้องส่งคีย์ทั้งหกมาถึงเบราว์เซอร์ ไม่งั้นกฎนี้เงียบ ๆ เป็นค่าตั้งต้นเสมอ
+  const me = read('app/api/auth/me/route.js');
+  for (const key of [
+    'flatDailyPositionMode', 'flatDailyPositions', 'flatDailyDayScope',
+    'noBreakPositionMode', 'noBreakPositions', 'noBreakDayScope',
+  ]) assert.ok(me.includes(`${key}: policy.${key},`), `/auth/me ไม่ได้ส่ง ${key}`);
 });
 
 test('ฟอร์มถามตำแหน่งของ “คนที่ใบนี้เป็นของเขา” ไม่ใช่ของคนที่กำลังกรอก', () => {

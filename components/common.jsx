@@ -4343,6 +4343,295 @@ export function PickOne({
 }
 
 /**
+ * เลือกได้หลายค่า — `PickOne`'s panel with tick boxes in it, and the one control
+ * in this kit that answers with a LIST.
+ *
+ * ── WHY IT EXISTS, 2026-09-16 ───────────────────────────────────────────────
+ *
+ * ตั้งค่าระบบ → นโยบายการคำนวณ grew a question no dropdown can answer: WHICH
+ * ตำแหน่ง are offered เหมารายวัน, and which are kept off ไม่พักเที่ยง. Every other
+ * row on that page is one value out of a fixed list; these two are a set out of
+ * a list that comes from the roster and changes when HR hires.
+ *
+ * NOT A SECOND PANEL. The rows, the fill, the edge, the 44px phone rows, the
+ * sheet below 860px and the three ways out are `PickOne`'s — the same
+ * `Popover`, the same `.pick-menu`. What is added is a tick box per row, drawn
+ * by the rule `.dept-menu` already uses, and a summary on the closed box.
+ * `DeptCombo` on ทะเบียนพนักงาน is the other multi-select in this app and is
+ * deliberately NOT generalised into this: it carries แผนกหลัก, a home row that
+ * answers no click, and a ตั้งเป็นสังกัดหลัก button per row. Two controls, one
+ * panel, one stylesheet rule.
+ *
+ * ── `onCommit` AND NOT `onChange`, WHICH IS THE WHOLE OF ITS SHAPE ──────────
+ *
+ * Ticking does not tell the caller anything. The draft lives here while the
+ * panel is open and the caller hears ONE answer when it closes, and only when
+ * something moved. The reason is the page this was built for: on นโยบาย
+ * การคำนวณ, changing a control IS the save — it raises a confirm dialog that
+ * appends a policy version that can never be removed. A `onChange` per tick
+ * would be one dialog per ตำแหน่ง, over a list somebody is still building.
+ *
+ * A caller that wants every keystroke can pass `onChange` as well; nothing in
+ * this app does yet.
+ */
+export function PickMany({
+  label,
+  values,
+  options,
+  onCommit,
+  onChange = null,
+  /** The closed box's words when nothing is ticked. */
+  placeholder = 'ยังไม่ได้เลือก',
+  /** How the closed box says what is ticked — given the chosen rows in order. */
+  summary = null,
+  note,
+  tip,
+  style,
+  hideLabel = false,
+  disabled = false,
+  emptyLabel = 'ไม่มีตัวเลือก',
+  className = '',
+  searchable = false,
+  searchPlaceholder = 'พิมพ์เพื่อกรองรายการ…',
+}) {
+  const id = React.useId();
+  const [open, setOpen] = React.useState(false);
+  const [active, setActive] = React.useState(0);
+  const [query, setQuery] = React.useState('');
+  /**
+   * WHAT IS TICKED WHILE THE PANEL IS UP — `null` when it is not.
+   *
+   * Held rather than derived so that a list being built is not a list being
+   * saved, and cleared on the way out so the next open starts from whatever the
+   * caller now holds. A draft that outlived the panel would be the control
+   * disagreeing with the value it was handed.
+   */
+  const [draft, setDraft] = React.useState(null);
+  const btnRef = React.useRef(null);
+  const listRef = React.useRef(null);
+  const searchRef = React.useRef(null);
+  const sheet = useSheet();
+
+  const chosen = draft || (values || []).map(String);
+  const rows = searchable && query.trim() !== ''
+    ? (options || []).filter((r) => textMatches(r.label, query))
+    : (options || []);
+  const at = Math.min(Math.max(active, 0), Math.max(rows.length - 1, 0));
+
+  /**
+   * ปิดแผง แล้วค่อยบอกคนเรียก — and only if the set actually moved.
+   *
+   * COMPARED AS A SET AND NOT AS AN ARRAY. Ticking a ตำแหน่ง and unticking it
+   * again is not a change, and on the settings page a "change" that stores the
+   * same list mints a policy version recording that nothing happened.
+   */
+  const commit = React.useCallback((next) => {
+    setOpen(false);
+    setQuery('');
+    setDraft(null);
+    btnRef.current?.focus();
+    if (!next) return;
+    const was = (values || []).map(String);
+    const same = was.length === next.length && was.every((v) => next.includes(v));
+    if (!same) onCommit?.(next);
+  }, [values, onCommit]);
+
+  const toggle = (value) => {
+    const v = String(value);
+    const next = chosen.includes(v) ? chosen.filter((x) => x !== v) : [...chosen, v];
+    setDraft(next);
+    onChange?.(next);
+  };
+
+  function openList() {
+    if (disabled || open) return;
+    setDraft((values || []).map(String));
+    setActive(0);
+    setQuery('');
+    setOpen(true);
+  }
+
+  function onKeyDown(e) {
+    if (disabled) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { openList(); return; }
+      const n = rows.length;
+      if (!n) return;
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      setActive((i) => (i + step + n) % n);
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      /* SPACE TICKS, ENTER ON A CLOSED BOX OPENS — the split a listbox with
+         checkboxes in it has to make. Enter with the panel up is "I am done",
+         which is the one press that reaches the caller. */
+      if (!open) { openList(); return; }
+      if (e.key === ' ' && rows[at]) { toggle(rows[at].value); return; }
+      commit(draft);
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (!open) return;
+      e.stopPropagation();
+      /* ESCAPE THROWS THE DRAFT AWAY, and that is what makes the panel safe to
+         open: every other way out saves. */
+      setOpen(false);
+      setQuery('');
+      setDraft(null);
+      return;
+    }
+    if (e.key === 'Tab') { if (open) commit(draft); }
+  }
+
+  React.useEffect(() => {
+    if (open && searchable && !sheet) searchRef.current?.focus();
+  }, [open, searchable, sheet]);
+
+  const picked = (options || []).filter((r) => chosen.includes(String(r.value)));
+  const shown = picked.length === 0
+    ? placeholder
+    : (summary ? summary(picked) : picked.map((r) => r.label).join(' · '));
+
+  return (
+    <Field
+      label={label}
+      note={note}
+      tip={tip}
+      style={style}
+      className={[className, hideLabel ? 'label-off' : ''].filter(Boolean).join(' ') || undefined}
+      labelId={`${id}-label`}
+    >
+      <div className="pick-one-wrap">
+        <button
+          ref={btnRef}
+          type="button"
+          className={`pick-one${open ? ' open' : ''}${picked.length === 0 ? ' empty' : ''}`}
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={`${id}-list`}
+          aria-labelledby={`${id}-label`}
+          aria-activedescendant={open && rows[at] ? `${id}-${at}` : undefined}
+          disabled={disabled}
+          onMouseDown={(e) => {
+            if (!searchable) return;
+            e.preventDefault();
+            if (open) commit(draft); else { openList(); btnRef.current?.focus(); }
+          }}
+          onClick={() => {
+            if (searchable) return;
+            if (open) commit(draft); else openList();
+          }}
+          onKeyDown={onKeyDown}
+        >
+          <span className="val">{shown}</span>
+          <span className="caret" aria-hidden="true">▾</span>
+        </button>
+        {open && (
+          <Popover
+            anchorRef={btnRef}
+            sheet={sheet}
+            shape={rows.length}
+            label={label}
+            /* EVERY WAY OUT BUT ESCAPE SAVES — a press on the page behind, a
+               scroll, ปิด on a sheet. A panel whose ticks are lost by pressing
+               next to it is a panel that punishes the ordinary way people leave
+               one. */
+            onClose={() => commit(draft)}
+            className="one-pop"
+            matchWidth
+          >
+            {sheet && <div className="nav-sheet-head">{label}</div>}
+            {searchable && (
+              <div className="one-search">
+                <div className="field">
+                  <div className="searchbox">
+                    <Icon name="search" className="searchbox-icon" />
+                    <input
+                      ref={searchRef}
+                      type="text"
+                      role="combobox"
+                      aria-expanded
+                      aria-controls={`${id}-list`}
+                      aria-autocomplete="list"
+                      aria-activedescendant={rows[at] ? `${id}-${at}` : undefined}
+                      className="has-icon"
+                      value={query}
+                      placeholder={searchPlaceholder}
+                      aria-label={`ค้นหาใน${label}`}
+                      autoComplete="off"
+                      spellCheck={false}
+                      onChange={(e) => { setQuery(e.target.value); setActive(0); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          const n = rows.length;
+                          if (!n) return;
+                          setActive((i) => (i + (e.key === 'ArrowDown' ? 1 : -1) + n) % n);
+                          return;
+                        }
+                        /* Enter TICKS here rather than closing: the box is where
+                           a long list is narrowed to one row, and พิมพ์ → Enter →
+                           พิมพ์ → Enter is how a set is built out of forty
+                           ตำแหน่ง. The panel is closed by Escape, by ปิด, or by
+                           pressing the page — all three above. */
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (rows[at]) toggle(rows[at].value);
+                          return;
+                        }
+                        if (e.key === 'Escape') {
+                          e.stopPropagation();
+                          setOpen(false); setQuery(''); setDraft(null);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <ul
+              id={`${id}-list`}
+              role="listbox"
+              aria-multiselectable="true"
+              className="pick-menu one-menu many-menu"
+              ref={listRef}
+              aria-labelledby={`${id}-label`}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {rows.map((r, i) => {
+                const on = chosen.includes(String(r.value));
+                return (
+                  <li
+                    key={String(r.value)}
+                    id={`${id}-${i}`}
+                    role="option"
+                    aria-selected={on}
+                    data-active={i === at ? '1' : undefined}
+                    onClick={() => toggle(r.value)}
+                    onMouseMove={() => setActive(i)}
+                  >
+                    {/* The same box `.dept-menu` draws, by the same rule — see
+                        app/styles.css, where the two selectors are one. */}
+                    <span className={`tick${on ? ' on' : ''}`} aria-hidden="true">✓</span>
+                    <span className="nm">{r.label}</span>
+                    {r.count != null && <span className="ct">{r.count}</span>}
+                  </li>
+                );
+              })}
+              {rows.length === 0 && <li className="none" role="presentation">{emptyLabel}</li>}
+            </ul>
+            <PopFoot sheet={sheet} onClose={() => commit(draft)} />
+          </Popover>
+        )}
+      </div>
+    </Field>
+  );
+}
+
+/**
  * พิมพ์ / ส่งออก — ONE BUTTON WHERE THERE WERE THREE, 2026-09-10.
  *
  * Asked for with the rest of the declutter: *"หน้านี้ดูยากและรกมาก"*. The row

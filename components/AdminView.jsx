@@ -76,7 +76,7 @@ const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 // hook itself is still the app's one reading of that question; SheetScroll and
 // the printed sheets use it.
 import {
-  Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne,
+  Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, PickMany,
   ClearButton, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -2641,6 +2641,7 @@ function Employees({ user }) {
   }
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { loadPositions(); }, []);
 
   /**
    * Create one row from the dialog.
@@ -6320,6 +6321,23 @@ const POLICY_SECTIONS = [
    * which is what the block is now named for.
    */
   { id: 5, title: 'กรอบเวลาของใบ OT — ยื่น แก้ไข และถอน' },
+  /**
+   * WHICH QUESTIONS THE FILING FORM PUTS ON THE SCREEN — a group that decides
+   * no figure at all, which is why it is not folded into any of the four above.
+   *
+   * The other blocks answer "how are the hours worked out", "who signs it" and
+   * "which dates may be filed". These six decide whether a TICK IS DRAWN, for
+   * whom, and on which days. Nothing here is read by the engine: `flatDaily`
+   * and `noBreakTaken` are entered fields the write path takes from anybody,
+   * and every stored row keeps the hours it was filed with.
+   *
+   * ⚠ WHAT A CHANGE HERE DOES REACH is the next person to open a row whose
+   * ticks the new rules no longer allow — the tick is cleared, and the figures
+   * move when that correction is saved. One row at a time, by a person, not by
+   * a replay. Said on the rows themselves, because it is the one consequence
+   * that is not visible from this page.
+   */
+  { id: 6, title: 'ช่องติ๊กบนฟอร์มบันทึก OT' },
 ];
 
 const POLICY_FIELDS = [
@@ -6847,6 +6865,104 @@ const POLICY_FIELDS = [
       + 'และหัวหน้าตัดสินคำขอที่ค้างอยู่ไม่ได้ด้วย — เหลือทางเดียวคือฝ่ายบุคคล '
       + `· ใบที่ยื่นย้อนหลังข้ามเดือนจะเลยวันที่ ${value} ตั้งแต่วินาทีที่ยื่น`),
   },
+  {
+    section: 6,
+    key: 'flatDailyPositionMode',
+    label: 'ช่องเหมารายวัน แสดงกับตำแหน่งใด',
+    options: [
+      ['only', 'เฉพาะตำแหน่งที่เลือกไว้ (ค่าเริ่มต้น)'],
+      ['except', 'ทุกตำแหน่ง ยกเว้นที่เลือกไว้'],
+      ['all', 'ทุกตำแหน่ง'],
+    ],
+    hint: 'ช่องติ๊ก “เหมารายวัน (นับ 8 ชม. ต่อวัน)” บนฟอร์มบันทึก OT '
+      + 'จะแสดงกับตำแหน่งไหนบ้าง — ใช้ทั้งฟอร์มที่พนักงานยื่นเอง ฟอร์มที่หัวหน้ายื่นแทน '
+      + 'และกล่องแก้ไขชั่วโมงของฝ่ายบุคคลในหน้ารออนุมัติ OT',
+    optionHints: {
+      only: 'ตำแหน่งที่จ้างแบบเหมารายวันเท่านั้นที่เห็นช่องนี้ — ตั้งต้นคือ เจ้าหน้าที่บริการ ตามที่ฝ่ายบุคคลระบุไว้ 08/09/2569',
+      except: 'ทุกตำแหน่งเห็นช่องนี้ ยกเว้นตำแหน่งที่เลือกไว้ในข้อถัดไป',
+      all: 'ทุกคนเห็นช่องนี้ — รายการที่ตำแหน่งไม่ได้จ้างเหมารายวันก็ติ๊กได้ และจะถูกนับเป็น 8 ชม. เหมือนกัน',
+    },
+    /**
+     * ON 'all' ONLY, and it is a warning rather than a refusal because a
+     * company that pays everybody by the day is entitled to say so. What it
+     * names is the part that is not visible from this page: the tick is worth
+     * eight hours whatever the person actually worked.
+     */
+    warn: (value) => (value === 'all'
+      ? '⚠️ ทุกตำแหน่งจะเห็นช่องเหมารายวัน — ใบที่ติ๊กช่องนี้นับ 8 ชม. เสมอ '
+        + 'ไม่ว่าจะอยู่ถึงกี่โมง และเวลาเริ่ม–สิ้นสุดจะถูกล็อกไว้ที่ 08:00–17:00'
+      : ''),
+  },
+  {
+    section: 6,
+    key: 'flatDailyPositions', positions: true,
+    label: 'ตำแหน่งของช่องเหมารายวัน',
+    hint: 'เลือกได้หลายตำแหน่ง · รายชื่อมาจากตำแหน่งที่มีอยู่จริงในทะเบียนพนักงาน '
+      + 'จึงไม่มีตำแหน่งที่พิมพ์ผิดให้เลือก · ตำแหน่งที่ยังถูกเลือกไว้แต่ไม่มีพนักงานคนไหนถืออยู่แล้ว '
+      + 'จะยังอยู่ในรายการและติ๊กค้างไว้ ไม่หายไปเงียบ ๆ เพราะคนลาออก',
+  },
+  {
+    section: 6,
+    key: 'flatDailyDayScope',
+    label: 'ช่องเหมารายวัน แสดงในวันแบบใด',
+    options: [
+      ['offDays', 'เฉพาะวันหยุด — เสาร์อาทิตย์และวันหยุดบริษัทตามประกาศ (ค่าเริ่มต้น)'],
+      ['workDays', 'เฉพาะวันทำงาน'],
+      ['all', 'ทุกวัน'],
+    ],
+    hint: 'วันหยุดในข้อนี้อ่านจากปฏิทินวันหยุดบริษัทและวันเสาร์อาทิตย์ตามที่ตั้งไว้ในระบบ '
+      + '· ไม่นับสวัสดิการวันเกิด เพราะเป็นวันหยุดของคนคนเดียว และหน้าจอไม่ได้ถือวันเกิดของใครไว้',
+    optionHints: {
+      offDays: 'วันที่ทั้งบริษัทหยุด แล้วมีคนถูกเรียกมาทำงานทั้งวัน — ตามที่ฝ่ายบุคคลระบุไว้ 16/09/2569',
+      workDays: 'วันทำงานปกติเท่านั้น',
+      all: 'ไม่จำกัดวัน — วันทำงานปกติก็ติ๊กเหมารายวันได้',
+    },
+    warn: (value) => (value === 'all'
+      ? '⚠️ วันทำงานปกติจะติ๊กเหมารายวันได้ด้วย — เย็นวันพุธที่อยู่ต่อ 3 ชม. จะกลายเป็น 8 ชม. ได้'
+      : ''),
+  },
+  {
+    section: 6,
+    key: 'noBreakPositionMode',
+    label: 'ช่องไม่พักเที่ยง แสดงกับตำแหน่งใด',
+    options: [
+      ['except', 'ทุกตำแหน่ง ยกเว้นที่เลือกไว้ (ค่าเริ่มต้น)'],
+      ['only', 'เฉพาะตำแหน่งที่เลือกไว้'],
+      ['all', 'ทุกตำแหน่ง'],
+    ],
+    hint: 'ช่องติ๊ก “ไม่พักเที่ยง” บนฟอร์มบันทึก OT จะแสดงกับตำแหน่งไหนบ้าง '
+      + '· ติ๊กแล้วระบบจะไม่หักชั่วโมงพักกลางวันออกจากใบนั้น',
+    optionHints: {
+      except: 'ตั้งต้นคือยกเว้น เจ้าหน้าที่บริการ ตามที่ฝ่ายบุคคลระบุไว้ 16/09/2569 — วันของตำแหน่งนี้ถูกจ้างทั้งวันอยู่แล้ว จึงไม่มีคำถามเรื่องชั่วโมงพัก',
+      only: 'เฉพาะตำแหน่งที่เลือกไว้ในข้อถัดไปเท่านั้นที่เห็นช่องนี้',
+      all: 'ทุกคนเห็นช่องนี้',
+    },
+  },
+  {
+    section: 6,
+    key: 'noBreakPositions', positions: true,
+    label: 'ตำแหน่งของช่องไม่พักเที่ยง',
+    hint: 'เลือกได้หลายตำแหน่ง · รายชื่อมาจากตำแหน่งที่มีอยู่จริงในทะเบียนพนักงาน '
+      + 'จึงไม่มีตำแหน่งที่พิมพ์ผิดให้เลือก · ตำแหน่งที่ยังถูกเลือกไว้แต่ไม่มีพนักงานคนไหนถืออยู่แล้ว '
+      + 'จะยังอยู่ในรายการและติ๊กค้างไว้ ไม่หายไปเงียบ ๆ เพราะคนลาออก',
+  },
+  {
+    section: 6,
+    key: 'noBreakDayScope',
+    label: 'ช่องไม่พักเที่ยง แสดงในวันแบบใด',
+    options: [
+      ['offDays', 'เฉพาะวันหยุด — เสาร์อาทิตย์และวันหยุดบริษัทตามประกาศ (ค่าเริ่มต้น)'],
+      ['workDays', 'เฉพาะวันทำงาน'],
+      ['all', 'ทุกวัน'],
+    ],
+    hint: 'บนวันทำงานปกติ ช่องนี้เป็นคำถามเกี่ยวกับชั่วโมงที่ไม่มีใครทำงานคร่อมอยู่ '
+      + '— เย็นวันอังคาร 17:00–20:00 ไม่ผ่านเที่ยง ติ๊กแล้วไม่มีอะไรขยับ',
+    optionHints: {
+      offDays: 'วันที่ทั้งบริษัทหยุด ซึ่งเป็นวันเดียวที่คนทำงานคร่อมเที่ยงจริง — ตามที่ฝ่ายบุคคลระบุไว้ 08/09/2569',
+      workDays: 'วันทำงานปกติเท่านั้น',
+      all: 'ไม่จำกัดวัน',
+    },
+  },
 ];
 
 /**
@@ -7037,6 +7153,22 @@ function Policy({ user }) {
    * while it is being read.
    */
   const [pending, setPending] = useState(null);
+  /**
+   * ตำแหน่งที่มีอยู่จริงในทะเบียน — the vocabulary the two ตำแหน่ง rows choose from.
+   *
+   * OFF THE ROSTER AND NOT TYPED IN, which is the answer to the only real risk
+   * these two rows carry: a ตำแหน่ง is matched WHOLE, so `เจ้าหน้าที่บริการ ` with
+   * a trailing space is a rule that silently matches nobody, and nothing on this
+   * page would say so. A list has no typos in it.
+   *
+   * `null` UNTIL IT ARRIVES, and the control is disabled while it is — a picker
+   * that opens on an empty list looks like a rule with nothing to choose.
+   *
+   * WHAT IT COSTS: one `/employees?all=1` per visit to this tab, and only when
+   * a ตำแหน่ง row is on the page. The whole register is 164 rows and this screen
+   * already fetches it twice over in its other sections.
+   */
+  const [positions, setPositions] = useState(null);
 
   async function load() {
     try {
@@ -7054,6 +7186,32 @@ function Policy({ user }) {
       setUnversioned(history.unversionedEntryCount || 0);
       setLive(history.live || null);
     } catch (err) { setError(err.message); }
+  }
+
+  /**
+   * ตำแหน่งทั้งหมดที่มีคนถืออยู่ — deduplicated, sorted, counted.
+   *
+   * A FAILED FETCH IS NOT AN ERROR ON THIS PAGE. Every other row still works,
+   * and the two that do not say so themselves by being disabled — putting a red
+   * banner over นโยบายการคำนวณ because a list of job titles did not arrive
+   * would be the page reporting a fault in rules that are fine.
+   *
+   * Sorted with `localeCompare` in Thai so ก comes before ข rather than by code
+   * point, which puts English titles in a block of their own at the end — the
+   * order ทะเบียนพนักงาน's own ตำแหน่ง filter already uses.
+   */
+  async function loadPositions() {
+    try {
+      const res = await api.get('/employees?all=1');
+      const count = new Map();
+      for (const e of res.employees || []) {
+        const name = String(e.position ?? '').trim();
+        if (name) count.set(name, (count.get(name) || 0) + 1);
+      }
+      setPositions([...count.entries()]
+        .map(([value, n]) => ({ value, label: value, count: n }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'th')));
+    } catch { setPositions([]); }
   }
 
   /**
@@ -7336,6 +7494,46 @@ function Policy({ user }) {
                       reason it matters is unchanged: store "1" where the policy
                       stores 1 and `canonicalPolicy` reads a changed answer,
                       minting a version on every save that changed nothing. */}
+                  {/* ── A ROW WHOSE ANSWER IS A LIST ────────────────────────
+                      `PickMany` (components/common.jsx) rather than a second
+                      dropdown: `flatDailyPositions` and `noBreakPositions` are
+                      sets out of the roster, not one value out of a fixed
+                      vocabulary.
+
+                      IT REACHES THE SAME `pending` AND THE SAME DIALOG as every
+                      other row, which is the whole reason it commits on CLOSE
+                      rather than on each tick — changing a control on this page
+                      appends a policy version that can never be removed, so one
+                      dialog per ตำแหน่ง ticked would be nine dialogs to write a
+                      list of nine. See the note over `PickMany`.
+
+                      DISABLED UNTIL THE ROSTER ARRIVES. A picker that opens on
+                      an empty list reads as a rule with nothing to choose. */}
+                  {f.positions ? (
+                    <PickMany
+                      label={f.label}
+                      hideLabel
+                      disabled={!canEdit || busy || positions == null}
+                      values={Array.isArray(shown) ? shown : []}
+                      options={positions || []}
+                      onCommit={(next) => setPending({ field: f, value: next })}
+                      placeholder="ยังไม่ได้เลือกตำแหน่ง"
+                      /* THE NAMES THEMSELVES UP TO THREE, THEN A COUNT. A box
+                         holding nine Thai job titles wraps to four lines in a
+                         column that is half a row wide, and what a reader needs
+                         off the closed control is which rule is in force —
+                         ค่าที่ใช้อยู่ in the left column carries the full list. */
+                      summary={(rows2) => (rows2.length <= 3
+                        ? rows2.map((r) => r.label).join(' · ')
+                        : `${rows2.length} ตำแหน่ง`)}
+                      /* The register holds forty-odd job titles — past the
+                         point where a list is read rather than scrolled. Same
+                         threshold ทะเบียนพนักงาน's own ตำแหน่ง picker crossed. */
+                      searchable={(positions || []).length > 12}
+                      searchPlaceholder="พิมพ์ชื่อตำแหน่ง…"
+                      emptyLabel={positions == null ? 'กำลังโหลดตำแหน่ง…' : 'ไม่พบตำแหน่งในทะเบียน'}
+                    />
+                  ) : (
                   <PickOne
                     label={f.label}
                     hideLabel
@@ -7348,6 +7546,7 @@ function Policy({ user }) {
                     onChange={(v) => setPending({ field: f, value: coerce(f, v) })}
                     options={f.options.map(([v, l]) => ({ value: String(v), label: l }))}
                   />
+                  )}
                   {/* Against the control rather than against the question: it is
                       about the option that is selected, and it appears as the
                       selection is made. ConfirmPolicyChange carries the same
@@ -7413,8 +7612,25 @@ function Policy({ user }) {
   );
 }
 
-/** What an option is called, for a value the dropdown holds. */
+/**
+ * What an option is called, for a value the control holds.
+ *
+ * A ROW WITHOUT `options` IS A LIST OF ตำแหน่ง — `positions: true`, the two rows
+ * added on 2026-09-16. Its value is an array and there is no fixed vocabulary to
+ * look it up in, so the answer is the names themselves, in the order they were
+ * chosen. This is read by three things that must agree: ค่าที่ใช้อยู่ under the
+ * question, the closed control, and the ยืนยันการเปลี่ยนกฎ dialog's `เก่า → ใหม่`.
+ */
 function optionLabel(field, value) {
+  if (!field.options) {
+    const list = Array.isArray(value) ? value : [];
+    // "ไม่ได้เลือกไว้" AND NOT AN EMPTY STRING: `PolicyReading` draws nothing on
+    // a falsy label, and a row whose answer is "none" would then be the one row
+    // on the page with no ค่าที่ใช้อยู่ line — which reads as a page fault
+    // rather than as an answer. Under 'only' it is also the answer that turns
+    // the tick off for everybody, so it has to be legible.
+    return list.length ? list.join(' · ') : 'ไม่ได้เลือกไว้';
+  }
   const found = field.options.find(([v]) => String(v) === String(value));
   return found ? found[1] : String(value);
 }

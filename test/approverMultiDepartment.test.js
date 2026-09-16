@@ -602,8 +602,13 @@ test('the list is every department, each with a tick-box', () => {
   // phone bar): those sit beside 15px labels in 46px rows and this one beside
   // a 14px name in a row of 32. The tick is sized off the box, not off the
   // text — 10.5 in an inside of 13 after the two 1.5px borders.
-  assert.match(css, /\.pick-menu\.dept-menu li \.tick \{\s*\n\s*flex: none; width: 16px; height: 16px;[\s\S]*?border: 1\.5px solid var\(--input-line\)[\s\S]*?font-size: 10\.5px;/);
-  assert.match(css, /\.pick-menu\.dept-menu li \.tick\.on \{[\s\S]*?background: var\(--green\)/);
+  // ONE RULE, TWO PANELS SINCE 2026-09-16. `PickMany` in components/common.jsx
+  // draws the same box on ตั้งค่าระบบ, and it was written into THIS selector
+  // rather than beside it — a tick box that is 16px here and 15px there is the
+  // drift the shared kit exists to prevent. So the selector may carry a second
+  // name; the numbers are what this pins.
+  assert.match(css, /\.pick-menu\.dept-menu li \.tick[,\s\S]{0,80}?\{\s*\n\s*flex: none; width: 16px; height: 16px;[\s\S]*?border: 1\.5px solid var\(--input-line\)[\s\S]*?font-size: 10\.5px;/);
+  assert.match(css, /\.pick-menu\.dept-menu li \.tick\.on[,\s\S]{0,80}?\{[\s\S]*?background: var\(--green\)/);
 
   // IT IS NOT CALLED `box` ANY MORE, and that is the fix rather than a
   // tidy-up. `.box` is this app's alert panel — padding 13px 15px, margin

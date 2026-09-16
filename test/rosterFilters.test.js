@@ -351,7 +351,9 @@ test('พิมพ์ในแผงแล้วปุ่มไม่ปิด�
   assert.match(common, /onBlur=\{\(\) => \{ if \(!searchable\) setOpen\(false\); \}\}/);
   // Cleared on the way out AND on the way in: a query left behind is a list
   // that opens already narrowed by something nobody can see a reason for.
-  const pickOne = common.slice(common.indexOf('export function PickOne('), common.indexOf('พิมพ์ / ส่งออก — ONE BUTTON'));
+  // จบที่ `PickMany` ซึ่งมาต่อท้ายตั้งแต่ 2026-09-16 — สองคอมโพเนนต์ใช้แผงเดียวกัน
+  // และเคลียร์คำค้นด้วยเหตุผลเดียวกัน แต่ข้อนี้นับของ PickOne เท่านั้น
+  const pickOne = common.slice(common.indexOf('export function PickOne('), common.indexOf('export function PickMany('));
   assert.equal((pickOne.match(/setQuery\(''\)/g) || []).length, 5);
   // No type-ahead where there is a box to type in — one behaviour, not two.
   assert.match(common, /if \(!searchable && e\.key\.length === 1/);

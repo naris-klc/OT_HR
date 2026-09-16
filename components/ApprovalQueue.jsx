@@ -3461,6 +3461,7 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
     workDate: entry.workDate,
     holidays,
     weekendDays: policy.weekendDays,
+    policy,
   });
   useEffect(() => {
     setForm((f) => applyTickClearing(f, clearing));
@@ -3555,6 +3556,7 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
     workDate: entry.workDate,
     holidays,
     weekendDays: policy.weekendDays,
+    policy,
   });
   const mayTickFlatDaily = mayTick.flatDaily && mayCorrectEntries(user);
   const mayTickNoBreak = mayTick.noBreak;

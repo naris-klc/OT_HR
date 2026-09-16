@@ -620,6 +620,7 @@ export default function OtForm({
     workDate: form.workDate,
     holidays,
     weekendDays: policy.weekendDays,
+    policy,
   });
   const mayTickFlatDaily = mayTick.flatDaily;
   const mayTickNoBreak = mayTick.noBreak;
@@ -646,6 +647,7 @@ export default function OtForm({
     workDate: form.workDate,
     holidays,
     weekendDays: policy.weekendDays,
+    policy,
   });
   useEffect(() => {
     setForm((f) => applyTickClearing(f, clearing));
@@ -1364,9 +1366,12 @@ export default function OtForm({
             day; for everybody else the box was a control with no correct use
             sitting beside two that have one. An ordinary Wednesday is not a day
             anybody is hired whole for, which is the half that was missing until
-            somebody reported the box on 16/09. The list is `FLAT_DAILY_POSITIONS`
-            in lib/entries.js, the rule is `ticksAllowed` beside it, and `mayTick`
-            above says whose ตำแหน่ง is read in each of the three modes. */}
+            somebody reported the box on 16/09. BOTH HALVES ARE SETTABLE SINCE
+            2026-09-16 — `flatDailyPositionMode` · `flatDailyPositions` ·
+            `flatDailyDayScope` on ตั้งค่าระบบ → นโยบายการคำนวณ — and what is
+            written above is the shipped answer, not the only one. The rule is
+            `ticksAllowed` in lib/entries.js and `mayTick` above says whose
+            ตำแหน่ง is read in each of the three modes. */}
         {mayTickFlatDaily && (
           <label className="check">
             <input
