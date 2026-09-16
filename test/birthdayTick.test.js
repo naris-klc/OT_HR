@@ -233,7 +233,12 @@ test('ฟอร์มบอกเองว่าวันนั้นเป็�
 /** และพรีวิวไม่ตอบสนามที่ไม่มีใครถามแล้ว. */
 test('พรีวิวไม่ส่ง birthdayRefusal กลับมาอีก', () => {
   const preview = read('app/api/entries/preview/route.js');
-  assert.match(preview, /return json\(\{\s*\r?\n\s*result, cap, routing, weekdayRefusal, conflict,\s*\r?\n\s*\}\);/);
+  // เจตนา ไม่ใช่รายชื่อฟิลด์ตายตัว: พรีวิวเพิ่มฟิลด์ใหม่ได้ (coreHoursRefusal มา
+  // ทีหลัง) แต่ birthdayRefusal ต้องไม่กลับเข้ามา · ดูเฉพาะสิ่งที่ตอบกลับ ไม่ใช่
+  // ทั้งไฟล์ ซึ่งยังมีคอมเมนต์เล่าว่าฟิลด์นี้เคยมีอยู่
+  const returned = /return json\(\{([\s\S]*?)\}\);/.exec(preview);
+  assert.ok(returned, 'พรีวิวต้องตอบด้วย json({...})');
+  assert.doesNotMatch(returned[1], /birthdayRefusal/);
 
   const form = read('components/OtForm.jsx');
   assert.ok(!/setBirthdayRefusal\(/.test(form));

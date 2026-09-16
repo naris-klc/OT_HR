@@ -9,6 +9,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
+  coreHoursRefusal,
   capFor, takeCapped, submissionWindowRefusal, entryCompany,
   zeroOtHoursAllowed, byEmployeeThenLatest, mayCorrectEntries,
 } from '@/lib/entries.js';
@@ -435,6 +436,23 @@ export const POST = route(async (req) => {
   if (outsideWindow) return fail(outsideWindow.error, outsideWindow.status);
 
   const result = await compute(session, ctx);
+
+  /**
+   * วันทำงานปกติ ห้ามระบุเวลาในช่วง 08:00–16:59 — HR, 2026-09-16.
+   *
+   * BEFORE THE 0-HOUR RULE, because it is the more exact answer to the same
+   * mistake and the two overlap: a ใบ filed 08:00–17:00 on a Tuesday computes
+   * to nought AND has core-hours minutes in it, and "ไม่เหลือชั่วโมง OT" sends
+   * somebody looking for what was deducted instead of naming the window they
+   * may not use. The overlap — 15:00–19:00 — reaches only this one.
+   *
+   * 400: the request is well formed and it is the TIMES that are refused, which
+   * is the same shape of answer the nought below gives. (`weekdayOtRefusal`
+   * further down is a 409 because nothing about those times is wrong — it is
+   * the department that has no such column.)
+   */
+  const coreHours = coreHoursRefusal(result, ctx.policy);
+  if (coreHours) return fail(coreHours, 400, { warnings: result.warnings });
 
   // Refused, not stored as a nought — see `noOtHoursMessage`, which is also
   // where the sentence lives, so all four write paths say the same thing.

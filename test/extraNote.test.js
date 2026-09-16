@@ -95,7 +95,10 @@ test('เก็บในฐานข้อมูล เพดานเท่า�
 
 test('ทั้งสองเส้นทางเขียนวัดความยาวเอง ไม่เชื่อ maxlength ของเบราว์เซอร์', () => {
   assert.match(post, /normaliseExtraNote\(payload\.extraNote\)/);
-  assert.match(post, /\n    extraNote,\n/, 'POST ไม่ได้เก็บค่าลงใบใหม่');
+  // `\r?\n` ทั้งสองข้าง: autocrlf=true ทำให้ไฟล์ที่เช็คเอาต์ใหม่เป็น CRLF เทสต์ที่
+  // ผูกกับ `\n` ตรง ๆ จึงผ่านในทรีที่เขียนไฟล์นั้นเอง แล้วตกในทรีอื่น — เจอตอน
+  // merge dev-corehrs 2026-09-16
+  assert.match(post, /\r?\n    extraNote,\r?\n/, 'POST ไม่ได้เก็บค่าลงใบใหม่');
   assert.match(patch, /normaliseExtraNote\(payload\.extraNote\)/);
   /* THE SUBSET GUARD. `QuickEdit` on the review screen posts the times alone;
      an absent key there must leave a stored note where it is, and an empty

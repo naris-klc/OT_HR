@@ -3652,8 +3652,19 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
    * field.
    */
   const weekdayRefusal = preview?.weekdayRefusal || null;
-  /** A 409 waiting to happen, so บันทึก goes quiet on it. */
-  const refused = Boolean(weekdayRefusal);
+  /**
+   * วันทำงานปกติ ระบุเวลาในช่วง 08:00–16:59 ไม่ได้ — HR, 2026-09-16 — off the same
+   * preview and from the same function PATCH refuses with (`coreHoursRefusal`
+   * in lib/entries.js).
+   *
+   * THIS PANEL IS WHERE A CORRECTION CAN WALK INTO IT: dragging a row onto an
+   * ordinary Tuesday, or moving เวลาเริ่ม back from 17:00 to 16:00, both put
+   * minutes in a window the write path no longer takes. ฝ่ายบุคคล is not exempt
+   * — the rule is about what the day IS, not about who is typing.
+   */
+  const coreHoursRefusal = preview?.coreHoursRefusal || null;
+  /** A refusal waiting to happen, so บันทึก goes quiet on it. */
+  const refused = Boolean(weekdayRefusal) || Boolean(coreHoursRefusal);
 
   /*
    * ONE PLACE THAT SAYS WHAT IS WRONG.
@@ -3674,6 +3685,8 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
    */
   const problems = [
     err || null,
+    // Before the department rule, the order the filing form lists them in.
+    coreHoursRefusal,
     weekdayRefusal,
     !note.trim() ? 'กรุณาระบุเหตุผลการแก้ไข' : null,
   ].filter(Boolean);

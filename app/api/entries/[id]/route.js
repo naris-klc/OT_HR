@@ -6,7 +6,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, pickSession, stampCap, editPermission, sameSession,
-  descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal,
+  coreHoursRefusal, descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal,
   zeroOtHoursAllowed,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
@@ -98,6 +98,22 @@ export const PATCH = route(async (req, { params }) => {
   }
 
   const result = await compute(session, ctx);
+  /**
+   * วันทำงานปกติ ห้ามระบุเวลาในช่วง 08:00–16:59 — the submit path's rule and its
+   * place in the order, for the reason the two refusals below are also made
+   * twice: a correction that moves a time, or moves the date onto an ordinary
+   * Tuesday, walks into it exactly as a new filing does. ฝ่ายบุคคล is not
+   * exempt — the rule is about what the day IS, not about who is typing.
+   *
+   * ⚠ A ROW FILED BEFORE THIS RULE CANNOT BE SAVED UNTIL ITS TIMES ARE LEGAL,
+   * description-only corrections included: this runs on the computed session,
+   * ahead of the description. That is the cost of holding the rule on every
+   * write path, and it is the reason the REPLAY is not one of them — nothing
+   * re-prices a stored row into a refusal by itself.
+   */
+  const coreHours = coreHoursRefusal(result, ctx.policy);
+  if (coreHours) return fail(coreHours, 400, { warnings: result.warnings });
+
   // Same refusal and the same sentence as the submit path — an edit that leaves
   // no OT is the same mistake, arriving one screen later. And the same
   // exemption: an edit that TICKS เหมารายวัน empties the rate columns on
