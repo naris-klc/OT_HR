@@ -15,7 +15,7 @@ import {
 import {
   MAX_LIST_LIMIT, isProxyFiled,
   maySignFirstStep, isOwnRequest, FLAT_DAY_TIMES, isBirthdayWelfare,
-  humanHistory, isFlatDailyPosition, isCompanyOffDay, mayCorrectEntries,
+  humanHistory, ticksAllowed, tickClearing, applyTickClearing, mayCorrectEntries,
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
@@ -3439,12 +3439,46 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
   const [saving, setSaving] = useState(false);
 
   /**
+   * ปลดติ๊กที่กฎไม่ให้ติ๊กแล้ว — ไม่บอกอะไร. HR, 2026-09-16.
+   *
+   * WHAT IT REACHES on this panel is a row filed before the rules changed, or
+   * one filed for somebody whose ตำแหน่ง has moved since — a flag priced at
+   * eight hours with no box beside it any more. It comes off, and the figures
+   * move with it the moment a correction is saved.
+   *
+   * IT IS COMPUTED FROM THE REQUEST ONLY — ตำแหน่ง and วันที่ทำงาน — and
+   * deliberately NOT from `mayCorrectEntries`. A หัวหน้า opening this panel
+   * sees no เหมารายวัน box because of who they are, and that must never be a
+   * reason to strip the flag off somebody's row.
+   *
+   * `tickClearing` AND NOT `!mayTick`: the calendar arrives after this panel
+   * does, and every ประกาศ holiday looks like an ordinary Tuesday until it
+   * does. Clearing on that would take เหมารายวัน off a row filed on 13/10 for
+   * as long as `/holidays` was slow — so an unfetched calendar clears nothing.
+   */
+  const clearing = tickClearing({
+    positions: [entry.employee?.position],
+    workDate: entry.workDate,
+    holidays,
+    weekendDays: policy.weekendDays,
+  });
+  useEffect(() => {
+    setForm((f) => applyTickClearing(f, clearing));
+  }, [clearing.flatDaily, clearing.noBreak]);
+
+  /**
    * AGAINST WHAT THE PANEL OPENED ON, not against the stored row — see
    * `asOpened`. The two differ only on a เหมารายวัน row filed before the times
    * were locked, and on that row the difference is a correction nobody has
    * asked for yet.
+   *
+   * CLEARED THE SAME WAY THE FORM IS, and that is what keeps this panel from
+   * opening already dirty: a tick the rules withdraw is off on both sides of
+   * the comparison, so nothing reads as an edit until somebody makes one. What
+   * it costs is that the withdrawal alone is not saveable — the flag goes when
+   * the next real correction does, and until then the stored row keeps it.
    */
-  const opened = asOpened(entry);
+  const opened = applyTickClearing(asOpened(entry), clearing);
   const moved = form.startTime !== opened.startTime
     || form.endTime !== opened.endTime
     || form.noBreakTaken !== opened.noBreakTaken
@@ -3489,48 +3523,41 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
   }, [holidayYear]);
 
   /**
-   * ช่องติ๊กเหมารายวันแสดงเฉพาะเจ้าหน้าที่บริการ — HR, 2026-09-08 — และเห็นได้
-   * เฉพาะฝ่ายบุคคลกับผู้ดูแลระบบ — HR, 2026-09-10.
+   * ช่องติ๊กทั้งสองบนพาเนลนี้ — กฎเดียวกับฟอร์มยื่น, `ticksAllowed` ใน
+   * lib/entries.js: เหมารายวัน เฉพาะเจ้าหน้าที่บริการและเฉพาะวันหยุด ·
+   * ไม่พักเที่ยง เฉพาะวันหยุดและไม่ใช่ตำแหน่งนั้น — HR, 2026-09-08 และ
+   * 2026-09-16.
    *
-   * TWO CONDITIONS, AND THEY ANSWER TWO DIFFERENT QUESTIONS. The ตำแหน่ง is
-   * the one the filing form already asks (`isFlatDailyPosition`, whose list
-   * lives in lib/entries.js) and it is asked of THE PERSON THE ROW IS FOR:
-   * only a เจ้าหน้าที่บริการ is sold by the day, and that is a fact about the
-   * request, not about who opened it. The บทบาท is asked of THE READER, and
-   * it is `mayCorrectEntries` — the same predicate `editPermission` refuses
-   * the save with, so a หัวหน้า is not shown a tick the server answers 403 to.
+   * ASKED OF THE PERSON THE ROW IS FOR, not of who opened it: whether a day was
+   * bought whole is a fact about the request. `entry.workDate` AND NOT THE
+   * SHIFT'S SECOND DATE — both boxes are about the day the request is filed
+   * under.
    *
-   * AND IT IS SHOWN REGARDLESS WHEN IT IS ALREADY TICKED, exactly as the
-   * filing form shows it (`mayTickFlatDaily` in OtForm). A row filed before
-   * these rules — or one filed for somebody whose ตำแหน่ง has since changed —
-   * carries a flag priced at eight hours, and hiding the box would leave that
-   * flag with no control on any screen able to take it off. The rule withholds
-   * a NEW claim; it never swallows one already made.
+   * THE วันเกิด EXCLUSION IS STRUCTURAL. The rule is handed the company
+   * calendar and `weekendDays` and nothing else — no birth date reaches this
+   * screen (`publicEmployee`), so a สวัสดิการวันเกิด cannot register as a
+   * company holiday here even by accident.
+   *
+   * `mayCorrectEntries` IS A THIRD CONDITION ON THE เหมารายวัน BOX AND IT IS
+   * NOT THE SAME KIND — HR, 2026-09-10. The two above are about the request;
+   * this one is about THE READER, and it is the predicate `editPermission`
+   * refuses the save with, so a หัวหน้า is not shown a tick the server answers
+   * 403 to. It is deliberately kept out of `clearing` below: a box hidden
+   * because of who is looking is not a reason to throw away somebody else's
+   * answer.
+   *
+   * ⚠ NEITHER BOX IS SHOWN ANY MORE JUST BECAUSE IT IS ALREADY TICKED — that
+   * went on 2026-09-16, here and on the filing form together. The flag is
+   * cleared instead; see `clearing`.
    */
-  const mayTickFlatDaily = form.flatDaily
-    || (mayCorrectEntries(user) && isFlatDailyPosition(entry.employee?.position));
-
-  /**
-   * ช่องติ๊กไม่พักเที่ยง โชว์เฉพาะวันหยุดเสาร์อาทิตย์และวันหยุดของบริษัท
-   * ไม่รวมวันเกิด — HR, 2026-09-08, now on this panel as well as on the form.
-   *
-   * `entry.workDate` AND NOT THE SHIFT'S SECOND DATE. The box is about the
-   * hour at noon and that noon belongs to the day the request is filed under;
-   * an overnight shift crosses a second date whose kind HR did not name.
-   *
-   * THE วันเกิด EXCLUSION IS STRUCTURAL. `isCompanyOffDay` is handed the
-   * company calendar and `weekendDays` and nothing else — no birth date
-   * reaches this screen (`publicEmployee`), so a สวัสดิการวันเกิด cannot
-   * register as a company holiday here even by accident.
-   *
-   * ALREADY TICKED SHOWS THE BOX, for the reason above it: a row filed on a
-   * Saturday and since corrected onto a Tuesday would otherwise sit here with
-   * an hour not deducted and nothing on the screen able to put it back.
-   */
-  const mayTickNoBreak = form.noBreakTaken
-    || isCompanyOffDay(entry.workDate, {
-      holidays: holidays || [], weekendDays: policy.weekendDays,
-    });
+  const mayTick = ticksAllowed({
+    positions: [entry.employee?.position],
+    workDate: entry.workDate,
+    holidays,
+    weekendDays: policy.weekendDays,
+  });
+  const mayTickFlatDaily = mayTick.flatDaily && mayCorrectEntries(user);
+  const mayTickNoBreak = mayTick.noBreak;
 
   useEffect(() => { onDirty?.(moved || note.trim().length > 0); }, [moved, note]);
 

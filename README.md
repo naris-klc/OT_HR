@@ -4445,13 +4445,22 @@ meant refusing the request and having it filed again.
 > told which times the row still carries, and nothing is written unless they
 > save. See `QuickEdit` in [`components/ApprovalQueue.jsx`](components/ApprovalQueue.jsx).
 
-#### ช่องติ๊กเหมารายวันแสดงเฉพาะเจ้าหน้าที่บริการ
+#### ช่องติ๊กเหมารายวัน — เฉพาะเจ้าหน้าที่บริการ และเฉพาะวันหยุด
 
-**HR, 2026-09-08:** *ช่องติ๊กเหมารายวันแสดงเฉพาะเจ้าหน้าที่บริการ*. Nine people on
-the live roster hold that ตำแหน่ง and they are the only ones sold by the day; for
-everybody else the box was a control with no correct use, sitting beside two that
-have one. The list is `FLAT_DAILY_POSITIONS` in [`lib/entries.js`](lib/entries.js)
-and `isFlatDailyPosition` is the predicate the form draws behind.
+**HR, 2026-09-08:** *ช่องติ๊กเหมารายวันแสดงเฉพาะเจ้าหน้าที่บริการ*, and **HR,
+2026-09-16:** *ตัวเลือก เหมารายวัน … แสดงเฉพาะวันหยุดเสาร์-อาทิตย์ และวันหยุด
+บริษัทที่กำหนด*. Nine people on the live roster hold that ตำแหน่ง and they are the
+only ones sold by the day; for everybody else the box was a control with no
+correct use, sitting beside one that has one. The list is `FLAT_DAILY_POSITIONS`
+in [`lib/entries.js`](lib/entries.js), and `ticksAllowed` beside it is the
+predicate BOTH screens draw behind — one function, because the pair had already
+drifted once: the ตำแหน่ง half reached only this box and the calendar half only
+ไม่พักเที่ยง.
+
+*(The second sentence was reported from the screen: a เจ้าหน้าที่บริการ filing for
+วันพุธ 16/09/2569 was offered เหมารายวัน on an ordinary working day. It read
+"เฉพาะเจ้าหน้าที่บริการ" alone until that day — a day hired whole is a day off
+that somebody came in on, and the box said nothing about which day it was.)*
 
 **A ตำแหน่ง and not a แผนก, matched whole.** `หัวหน้าแผนกบริการ` is on the same
 team and is deliberately not offered the box: the rule HR gave names a job, not a
@@ -4471,11 +4480,24 @@ seven.
 **It is a rule about what is DRAWN, not about what is accepted.** The write path is
 untouched — `flatDaily` is still an entered field POST /api/entries takes from
 anybody, and every row already carrying it is read, printed and priced exactly as
-before. Which is why **the box is shown anyway when it is already ticked**,
-whatever the ตำแหน่ง says: a request filed before this rule, or one ฝ่ายบุคคล
-ticked from แก้ไขชั่วโมง, would otherwise open here with eight hours priced onto it
-and no control on the screen able to take the flag off. The rule withholds a new
-claim; it never swallows a stored one.
+before.
+
+**A tick the rules no longer allow is CLEARED, silently — 2026-09-16.** It read
+*"the box is shown anyway when it is already ticked, whatever the ตำแหน่ง says …
+the rule withholds a new claim; it never swallows a stored one"* until that day.
+HR was asked which of the two they wanted and chose the other one: opening such a
+row takes the flag off, with nothing said about it, and the figures move with it
+the moment any correction to that row is saved — เหมารายวัน is eight hours, and
+what replaces it is the clock. Both screens do it (`tickClearing` and
+`applyTickClearing` in [`lib/entries.js`](lib/entries.js)).
+
+**What is NOT cleared, and it is the one subtlety in the rule.** A calendar that
+has not arrived hides a box but must clear nothing: every ประกาศ holiday looks
+like an ordinary Tuesday until `/holidays` answers, so clearing on that would
+strip เหมารายวัน off a row filed on 13/10 for as long as the network was slow. The
+same holds for a ตำแหน่ง the screen does not have yet — บันทึก OT แทนพนักงาน maps
+ticked ids through a ลูกทีม list that arrives a moment later. Unknown clears
+nothing; it only withholds the box.
 
 **And `แก้ไขชั่วโมง` draws the same rule since 2026-09-10, with a second half on
 top of it.** HR: *เหมารายวันเห็นเฉพาะตำแหน่งเจ้าหน้าที่บริการ HR และ admin*. The
@@ -4483,16 +4505,29 @@ correction panel on รออนุมัติ OT asks the ตำแหน่�
 (`entry.employee.position`, populated on every row this queue reads) and
 `mayCorrectEntries` of **the reader** — the same predicate `editPermission`
 refuses the save with, so a หัวหน้า is never shown a tick the server answers 403
-to. Both halves must pass; the already-ticked exception above outranks both, for
-the same reason it outranks the ตำแหน่ง rule on the filing form.
+to. All three must pass — ตำแหน่ง, วัน, บทบาท. *(It read "both halves … the
+already-ticked exception above outranks both" until 2026-09-16, when the day rule
+arrived and the exception went.)*
 
-#### ไม่พักเที่ยง — offered on a day the whole company has off, and on no other
+**The บทบาท half is deliberately kept out of the clearing.** A หัวหน้า opening
+that panel sees no เหมารายวัน box because of **who they are**, and that must never
+be a reason to throw away somebody else's answer — so `tickClearing` is computed
+from the request alone: ตำแหน่ง and วันที่ทำงาน.
+
+#### ไม่พักเที่ยง — offered on a day the whole company has off, and not to a เจ้าหน้าที่บริการ
 
 **HR, 2026-09-08:** *ช่องติ๊กไม่พักเที่ยง โชว์เฉพาะวันหยุดเสาร์อาทิตย์และวันหยุด
 ของบริษัท ไม่รวมวันเกิด*. On an ordinary weekday the box was a question about an
 hour nobody was working through: a 17:00–20:00 evening does not cross noon, so
 ticking it changed nothing, and a control that changes nothing is a control
 somebody eventually ticks anyway.
+
+**And never to a เจ้าหน้าที่บริการ — HR, 2026-09-16:** *แผนก ตำแหน่ง เจ้าหน้าที่
+บริการ ต้องไม่แสดง ตัวเลือก ไม่พักเที่ยง*. Their day is bought whole — eight hours
+however long they stayed — so an hour taken out of the middle of it is not a
+question anybody may answer on their row. The two ticks are therefore exclusive:
+the ตำแหน่ง that is offered เหมารายวัน is exactly the one that is not offered
+this.
 
 `isCompanyOffDay` in [`lib/entries.js`](lib/entries.js) is the predicate — the
 holiday calendar plus the policy’s own `weekendDays`, and nothing else.
@@ -4511,12 +4546,12 @@ preview is withheld until then, and whether a Saturday is a Saturday has nothing
 to do with who is filing. And it **does not flicker**: the calendar is fetched
 once per year (`/holidays?year=`), not once per keystroke in a time box.
 
-**Already ticked, always shown** — the same exception `mayTickFlatDaily` carries,
-and reachable in one sitting here rather than only across a rule change: tick it
-on a Saturday, then move วันที่ทำงาน to the Tuesday. Without the guard the box
-vanishes with the flag still true, and an hour goes undeducted with nothing on
-the screen able to put it back. Unticking it on that Tuesday is what makes the
-box go.
+**Already ticked is cleared, not shown — 2026-09-16.** It read *"Already ticked,
+always shown … without the guard the box vanishes with the flag still true, and
+an hour goes undeducted with nothing on the screen able to put it back"* until
+that day; the fear was right and HR answered it the other way round — the flag
+goes with the box. Reachable in one sitting: tick it on a Saturday, then move
+วันที่ทำงาน to the Tuesday, and the tick comes off with the box.
 
 **Nothing here decides a figure.** `noBreakTaken` is still an entered field the
 write path takes from anybody and the engine still deducts the lunch hour from
@@ -4535,9 +4570,10 @@ there was a second date to rule out.)* The calendar is fetched when the panel op
 loaded with every รายละเอียด would be a request per row read.
 
 **And the strip itself goes when both are withheld**, which an ordinary Tuesday
-reaches on either screen: no เหมารายวัน (no ตำแหน่ง to read) and no ไม่พักเที่ยง
-(a working day) leaves a 14px tinted band with nothing in it, which is a gap the
-reader has to account for. *(It read "when all three are withheld" while วันเกิด
+reaches on either screen — and since 2026-09-16 it is EVERY ordinary Tuesday,
+for everybody: neither box belongs on a working day, so the commonest filing
+there is now draws no strip at all. A 14px tinted band with nothing in it is a
+gap the reader has to account for. *(It read "when all three are withheld" while วันเกิด
 was the third, and the guard carried a `!proxy` term that meant "the strip has
 something in it" only while that box existed — `5d8821e` took the box out on
 2026-09-09 and the term went with it. `แก้ไขชั่วโมง` took the same guard on
@@ -12574,6 +12610,30 @@ role UIs. *(It read "the four role UIs" until 2026-09-03 — there are seven
 build แล้ว
 
 **Verified**
+
+- **ช่องติ๊กสองช่องบนฟอร์ม OT แยกขาดจากกัน — เหมารายวัน เฉพาะเจ้าหน้าที่บริการและ
+  เฉพาะวันหยุด · ไม่พักเที่ยง ทุกตำแหน่งยกเว้นเจ้าหน้าที่บริการ** — 2026-09-16 ·
+  แจ้งมาพร้อมภาพหน้าจอ: **เจ้าหน้าที่บริการยื่นวันพุธ 16/09/2569 แล้วยังเห็นช่อง
+  เหมารายวัน** · สั่งมาว่า *ตำแหน่ง เจ้าหน้าที่บริการ ต้องไม่แสดง ตัวเลือก ไม่พักเที่ยง
+  และตัวเลือก เหมารายวัน ต้องแสดงเฉพาะตำแหน่งนี้เท่านั้น และแสดงเฉพาะวันหยุด
+  เสาร์-อาทิตย์ และวันหยุดบริษัทที่กำหนด*
+  · **วันที่ถูกจ้างทั้งวัน ไม่มีคำถามเรื่องชั่วโมงพักอยู่ในนั้น** — กฎสองข้อจึงตัดกันพอดี
+  ตำแหน่งที่ได้ช่องหนึ่งคือตำแหน่งที่ไม่ได้อีกช่อง
+  · **กฎเดิมถูกเขียนแยกกันสองจอ และเพี้ยนไปแล้วจริง ๆ** — ครึ่งที่เป็นตำแหน่งไปถึงแค่
+  ช่องเหมารายวัน ครึ่งที่เป็นปฏิทินไปถึงแค่ช่องไม่พักเที่ยง · รวมเป็น `ticksAllowed`
+  ที่ ฟอร์มยื่น กับ แก้ไขชั่วโมง อ่านร่วมกัน (`lib/entries.js`)
+  · **ติ๊กที่กฎไม่ให้ติ๊กแล้ว ถูกปลดเงียบ ๆ** ไม่ใช่โชว์ช่องไว้ให้ปลดเอง — ถามแล้วและ
+  เลือกทางนี้ · **ราคาของมันพูดตรง ๆ**: ใบเหมารายวันที่ยื่นไว้ก่อนกฎใหม่ เสีย flag
+  ที่คิด 8 ชม. ทันทีที่มีใครกดบันทึกการแก้ไขใบนั้น และตัวเลขเปลี่ยนเป็นเวลาจริง
+  · **ยกเว้นตอนที่ยังไม่รู้** — ปฏิทินยังไม่มา หรือตำแหน่งยังโหลดไม่ถึงจอ: ช่องถูกซ่อน
+  แต่**ห้ามปลดค่า** (`tickClearing`) ไม่งั้นใบของวันหยุดบริษัทเสียค่าไปเพราะเน็ตช้า
+  · **บทบาทของคนอ่านไม่อยู่ในสูตรการปลด** — หัวหน้าเปิดแผงแก้ไขชั่วโมงแล้วไม่เห็น
+  ช่องเพราะ `mayCorrectEntries` ซึ่งต้องไม่กลายเป็นการล้างค่าของคนอื่น
+  · ✅ **เทสต์ 2795/2795 ผ่าน** — `otFormChecks` `quickEditChecks` `flatDaily`
+  `birthdayTick` เขียนใหม่ตามกฎใหม่ ไม่ได้ลบทิ้ง · ✅ build ผ่านบน distDir แยก
+  (`:3000` ไม่ถูกแตะ) · ❓ **ยังไม่ได้เดินด้วยตาบนแอปจริง**
+  · **ระยะถัดไปที่ยังไม่ทำ: ย้ายกฎนี้ขึ้นหน้าตั้งค่า** ให้เปลี่ยนตำแหน่ง/เงื่อนไขวันได้
+  โดยไม่ต้องแก้โค้ด — แผนอยู่ที่ [docs/plan-tick-visibility-policy.md](docs/plan-tick-visibility-policy.md)
 
 - **ป้ายในคอลัมน์ `รายการ` ได้คำว่า `รอ` — และ 40px ที่มันกินถูกจ่ายจากคอลัมน์
   ที่วัดแล้วว่ามีเหลือ** — 2026-09-11 รอบสาม · ขอมาว่า *แก้ไขคำเป็น `รอหัวหน้า 1`

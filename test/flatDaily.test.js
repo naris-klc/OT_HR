@@ -897,7 +897,9 @@ test('หน้ารออนุมัติ — แก้ไขชั่วโ
   // such row opens dirty and arms the "unsaved changes" prompt on a pop-up
   // somebody opened to read.
   assert.match(edit, /\.\.\.\(entry\.flatDaily \? \{ \.\.\.FLAT_DAY_TIMES \} : null\)/);
-  assert.match(edit, /const opened = asOpened\(entry\)/);
+  // ผ่าน `applyTickClearing` ตั้งแต่ 2026-09-16 — ติ๊กที่กฎไม่ให้ติ๊กแล้วถูกปลด
+  // ทั้งในฟอร์มและในค่าที่ใช้เทียบ ไม่อย่างนั้นแผงจะเปิดมาแบบถูกแก้ไปแล้ว.
+  assert.match(edit, /const opened = applyTickClearing\(asOpened\(entry\), clearing\)/);
   assert.match(edit, /const moved = form\.startTime !== opened\.startTime/);
   // …and the reviewer is told which times the stored row still carries.
   assert.match(edit, /ใบนี้บันทึกไว้ \$\{entry\.startTime\}–\$\{entry\.endTime\} น\./);

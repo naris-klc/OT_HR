@@ -150,7 +150,7 @@ test('หน้ารออนุมัติ — ช่องติ๊กวั
   // beside the ตำแหน่ง rule the filing form already drew. Whether a day was hired
   // whole is not a private fact about the person; who may CLAIM it is a rule.
   assert.match(edit, /checked=\{form\.flatDaily\}/);
-  assert.match(edit, /mayCorrectEntries\(user\) && isFlatDailyPosition\(entry\.employee\?\.position\)/);
+  assert.match(edit, /const mayTickFlatDaily = mayTick\.flatDaily && mayCorrectEntries\(user\);/);
 });
 
 // ── what decides instead ────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS, normaliseDescription } from '@/src/config/policy.js';
 import {
   submissionWindow, zeroOtHoursAllowed,
-  isFlatDailyPosition, isCompanyOffDay,
+  ticksAllowed, tickClearing, applyTickClearing,
   cancelCutoffHrNote, isPastCancelCutoff,
   FLAT_DAY_TIMES,
 } from '@/lib/entries.js';
@@ -133,12 +133,13 @@ const blank = () => ({
  *     stores with no OT hours on it; see `zeroOtHoursAllowed` in lib/entries.js
  *     for why that is an answer and not the blank row the write paths refuse.
  *
- * `position` IS THE ตำแหน่ง OF THE PERSON THE REQUEST IS FOR, and it decides one
- * thing only: whether the เหมารายวัน tick is drawn (`isFlatDailyPosition`). It
- * comes from the caller because this form does not fetch the person — the
- * employee's own screen holds `user`, ฝ่ายบุคคล's holds the roster row it opened.
- * In `mode="proxy"` it is ignored and the ticked ลูกทีม answer instead; see
- * `mayTickFlatDaily` below.
+ * `position` IS THE ตำแหน่ง OF THE PERSON THE REQUEST IS FOR, and since
+ * 2026-09-16 it decides BOTH ticks and not one: a เจ้าหน้าที่บริการ is the only
+ * ตำแหน่ง offered เหมารายวัน and the only one NOT offered ไม่พักเที่ยง — the day
+ * is bought whole, so the hour at noon is not theirs to claim. It comes from the
+ * caller because this form does not fetch the person — the employee's own screen
+ * holds `user`, ฝ่ายบุคคล's holds the roster row it opened. In `mode="proxy"` it
+ * is ignored and the ticked ลูกทีม answered instead; see `mayTick` below.
  */
 export default function OtForm({
   entry, template, onSaved, onCancel, onCancelEntry,
@@ -260,9 +261,10 @@ export default function OtForm({
   const [noteOpen, setNoteOpen] = useState(false);
 
   /**
-   * ปฏิทินวันหยุดบริษัทของปีที่เลือกอยู่ — read by ONE control, the ไม่พักเที่ยง
-   * box, through `isCompanyOffDay` (lib/entries.js). Fetched below, once the
-   * form state that names the year exists.
+   * ปฏิทินวันหยุดบริษัทของปีที่เลือกอยู่ — read by BOTH ticks since 2026-09-16,
+   * through `ticksAllowed` (lib/entries.js): neither เหมารายวัน nor ไม่พักเที่ยง
+   * belongs on an ordinary working day. Fetched below, once the form state that
+   * names the year exists.
    *
    * `null` WHILE LOADING AND AFTER A FAILURE, and the box is then drawn as
    * though the day did not qualify. That is the safe way to be wrong: a control
@@ -523,30 +525,14 @@ export default function OtForm({
   const setEnd = (v) => setForm((f) => ({ ...f, endTime: v }));
 
   /**
-   * ช่องติ๊กเหมารายวันแสดงเฉพาะเจ้าหน้าที่บริการ — HR, 2026-09-08.
-   *
    * WHOSE ตำแหน่ง IS ASKED depends on who the request is for, which is the same
    * question `forWhom` answers for the preview: this person's own on their form
    * and on ฝ่ายบุคคล's correction of their row (`position`), and the ticked
    * ลูกทีม on บันทึก OT แทนพนักงาน.
-   *
-   * `every` AND NOT `some`, and a ticked list is required. A batch is filed as
-   * one set of times and one set of ticks for everybody in it — so a box shown
-   * because one name in eight is a เจ้าหน้าที่บริการ is a box that writes
-   * เหมารายวัน onto the other seven. Nothing ticked shows nothing, which is the
-   * same state the preview and the ceiling are already in.
-   *
-   * AND IT IS SHOWN REGARDLESS WHEN IT IS ALREADY TICKED. A request filed
-   * before this rule, or one ฝ่ายบุคคล ticked from รออนุมัติ OT, opens on this
-   * form with `flatDaily` true; hiding the box there would leave a flag priced
-   * at eight hours with no control on the screen able to take it off. The rule
-   * withholds a NEW claim, it does not swallow a stored one.
    */
-  const flatDailyPositions = proxy
+  const ticketPositions = proxy
     ? targets.map((id) => team.find((e) => String(e._id) === String(id))?.position)
     : [position];
-  const mayTickFlatDaily = form.flatDaily
-    || (flatDailyPositions.length > 0 && flatDailyPositions.every(isFlatDailyPosition));
 
   /**
    * ปฏิทินของปีที่ วันที่ทำงาน อยู่ — one request per YEAR, not per date.
@@ -570,29 +556,63 @@ export default function OtForm({
   }, [holidayYear]);
 
   /**
-   * ช่องติ๊กไม่พักเที่ยง โชว์เฉพาะวันหยุดเสาร์อาทิตย์และวันหยุดของบริษัท
-   * ไม่รวมวันเกิด — HR, 2026-09-08.
+   * ช่องติ๊กทั้งสอง — เหมารายวัน เฉพาะเจ้าหน้าที่บริการและเฉพาะวันหยุด ·
+   * ไม่พักเที่ยง เฉพาะวันหยุดและไม่ใช่ตำแหน่งนั้น — HR, 2026-09-16.
    *
-   * IT IS THE WORKDATE'S BECAUSE THERE IS NO OTHER DATE. The box is about the
-   * hour at noon, and the noon it is about belongs to the day the request is
-   * filed under — which since 2026-09-10 is the only day a request touches.
-   * The paragraph this replaces had to argue the point, because an overnight
-   * shift crossed a second date whose kind was not what HR named.
+   * THE RULE ITSELF IS `ticksAllowed` IN lib/entries.js, which แก้ไขชั่วโมง on
+   * the queue asks too. What is left here is whose ตำแหน่ง and which date go
+   * into it.
    *
-   * THE EXCLUSION IS STRUCTURAL, NOT AN `if`. `isCompanyOffDay` is handed the
-   * company calendar and `weekendDays` and nothing else — no birth date reaches
-   * this screen (`publicEmployee`), so a birthday holiday cannot register as
-   * one here even by accident. See the function's own note in lib/entries.js.
+   * IT IS THE WORKDATE'S BECAUSE THERE IS NO OTHER DATE. Both boxes are about
+   * the day the request is filed under — which since 2026-09-10 is the only day
+   * a request touches.
    *
-   * AND IT IS SHOWN REGARDLESS WHEN IT IS ALREADY TICKED, exactly as
-   * `mayTickFlatDaily` above is. A row filed before this rule — or one filed on
-   * a Saturday and then moved to a Tuesday in the same sitting — would
-   * otherwise sit there with an hour not deducted and no control on the screen
-   * able to put it back. The rule withholds a NEW claim; it never swallows one
-   * that is already made.
+   * THE วันเกิด EXCLUSION IS STRUCTURAL, NOT AN `if`. `isCompanyOffDay` is
+   * handed the company calendar and `weekendDays` and nothing else — no birth
+   * date reaches this screen (`publicEmployee`), so a birthday holiday cannot
+   * register as a company one here even by accident.
+   *
+   * ⚠ NEITHER BOX IS SHOWN ANY MORE JUST BECAUSE IT IS ALREADY TICKED, and that
+   * changed on 2026-09-16. Both used to be, so that a flag priced at eight
+   * hours could never sit on a row with no control able to take it off. HR
+   * chose the other answer: the tick is cleared instead, and with nothing said
+   * about it — see the effect below.
    */
-  const mayTickNoBreak = form.noBreakTaken
-    || isCompanyOffDay(form.workDate, { holidays: holidays || [], weekendDays: policy.weekendDays });
+  const mayTick = ticksAllowed({
+    positions: ticketPositions,
+    workDate: form.workDate,
+    holidays,
+    weekendDays: policy.weekendDays,
+  });
+  const mayTickFlatDaily = mayTick.flatDaily;
+  const mayTickNoBreak = mayTick.noBreak;
+
+  /**
+   * ปลดติ๊กที่กฎไม่ให้ติ๊กแล้ว — ไม่บอกอะไร. HR, 2026-09-16.
+   *
+   * WHAT IT REACHES is a row opened from `entry` or `template` carrying a tick
+   * the rules no longer allow, and a date moved onto an ordinary Tuesday while
+   * the form is open. Both end with a flag and no box, and the flag is what
+   * POST would store.
+   *
+   * WHY IT IS AN EFFECT AND NOT PART OF `tickDay`: nothing on this form pressed
+   * anything. The date moved, or the form opened on somebody else's stored row
+   * — so the correction belongs where the state settles, not on a handler.
+   *
+   * `tickClearing` AND NOT `!mayTick`, which is the one subtlety here: a
+   * calendar that has not arrived hides both boxes but must clear neither, or a
+   * เหมารายวัน row filed on a ประกาศ holiday would lose its flag to a slow
+   * `/holidays`. See the function's own note.
+   */
+  const clearing = tickClearing({
+    positions: ticketPositions,
+    workDate: form.workDate,
+    holidays,
+    weekendDays: policy.weekendDays,
+  });
+  useEffect(() => {
+    setForm((f) => applyTickClearing(f, clearing));
+  }, [clearing.flatDaily, clearing.noBreak]);
 
   // Debounced live preview. Every keystroke in a time field would otherwise
   // hit the engine.
@@ -1300,12 +1320,14 @@ export default function OtForm({
           which is the invariant this guard actually wants. */}
       {(mayTickFlatDaily || mayTickNoBreak) && (
       <div className="row form-checks" style={{ marginTop: 14 }}>
-        {/* ONLY เจ้าหน้าที่บริการ ARE ASKED THIS — HR, 2026-09-08. They are the
-            ตำแหน่ง sold by the day; for everybody else the box was a control
-            with no correct use sitting beside two that have one. The list is
-            `FLAT_DAILY_POSITIONS` in lib/entries.js and `mayTickFlatDaily`
-            above says whose ตำแหน่ง is read in each of the three modes — and why
-            an already-ticked box is drawn whatever the ตำแหน่ง says. */}
+        {/* ONLY เจ้าหน้าที่บริการ, AND ONLY ON A DAY OFF — HR, 2026-09-08 for the
+            ตำแหน่ง and 2026-09-16 for the day. They are the ตำแหน่ง sold by the
+            day; for everybody else the box was a control with no correct use
+            sitting beside two that have one. An ordinary Wednesday is not a day
+            anybody is hired whole for, which is the half that was missing until
+            somebody reported the box on 16/09. The list is `FLAT_DAILY_POSITIONS`
+            in lib/entries.js, the rule is `ticksAllowed` beside it, and `mayTick`
+            above says whose ตำแหน่ง is read in each of the three modes. */}
         {mayTickFlatDaily && (
           <label className="check">
             <input
@@ -1325,9 +1347,11 @@ export default function OtForm({
         )}
         {/* ONLY ON A DAY THE WHOLE COMPANY HAS OFF — เสาร์อาทิตย์ หรือวันหยุด
             ตามประกาศ — and deliberately NOT on a สวัสดิการวันเกิด, which is a
-            holiday for one person. HR, 2026-09-08. `mayTickNoBreak` above says
-            why the answer comes off the calendar rather than off the preview,
-            and why an already-ticked box is drawn whatever the date says. */}
+            holiday for one person. HR, 2026-09-08. AND NOT FOR A
+            เจ้าหน้าที่บริการ at all — HR, 2026-09-16: their day is bought whole,
+            so an hour taken out of the middle of it is not a question. `mayTick`
+            above says why the answer comes off the calendar rather than off the
+            preview. */}
         {mayTickNoBreak && (
           <label className="check">
             <input type="checkbox" checked={form.noBreakTaken} onChange={(e) => set('noBreakTaken', e.target.checked)} />
