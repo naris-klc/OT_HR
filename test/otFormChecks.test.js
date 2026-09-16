@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 
 import {
   isFlatDailyPosition, FLAT_DAILY_POSITIONS, isCompanyOffDay,
+  ticksAllowed, tickClearing, applyTickClearing,
   FLAT_DAY_TIMES,
 } from '../lib/entries.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
@@ -143,17 +144,12 @@ test('isFlatDailyPosition — ตรงตัวเท่านั้น', () =>
 });
 
 test('ฟอร์มถามตำแหน่งของ “คนที่ใบนี้เป็นของเขา” ไม่ใช่ของคนที่กำลังกรอก', () => {
-  assert.match(form, /isFlatDailyPosition/);
+  assert.match(form, /const mayTick = ticksAllowed\(\{/);
   assert.match(block, /\{mayTickFlatDaily && \(\s*<label className="check">/);
 
   // บันทึกแทนพนักงาน reads the ticked ลูกทีม, not the หัวหน้า filling the form.
-  assert.match(form, /const flatDailyPositions = proxy\s*\r?\n?\s*\? targets\.map\(/);
-  // `every`, and a ticked list is required: a batch carries ONE set of ticks for
-  // everybody in it, so a box shown because one name in eight qualifies is a box
-  // that writes เหมารายวัน onto the other seven. `[].every()` is `true`, which
-  // is why the length guard is beside it.
-  assert.match(form, /flatDailyPositions\.length > 0 && flatDailyPositions\.every\(isFlatDailyPosition\)/);
-  assert.ok(!/flatDailyPositions\.some\(/.test(form), 'ติ๊กคนเดียวในแปดคนไม่ควรเปิดช่องให้ทั้งชุด');
+  assert.match(form, /const ticketPositions = proxy\s*\r?\n?\s*\? targets\.map\(/);
+  assert.match(form, /positions: ticketPositions,/);
 
   // …and the two screens that know the person hand their ตำแหน่ง in.
   assert.match(read('components/EmployeeView.jsx'), /position=\{user\.position\}/);
@@ -161,20 +157,124 @@ test('ฟอร์มถามตำแหน่งของ “คนที่�
 });
 
 /**
- * ช่องที่ติ๊กไว้แล้วต้องเห็นเสมอ — the exception that makes the rule safe to
- * ship over a live database.
+ * กฎของทั้งสองช่องอยู่ที่เดียว และเป็นกฎเดียวกันทั้งสองจอ — HR, 2026-09-16.
  *
- * `flatDaily` is a stored field. Rows carrying it were filed before this rule
- * existed, and ฝ่ายบุคคล can still tick it from แก้ไขชั่วโมง on รออนุมัติ OT
- * (that panel has its own box and no ตำแหน่ง rule). Open one of those on this
- * form with the box hidden and the flag is unreachable: eight hours priced onto
- * a request that nothing on the screen admits is a flat day. So the gate
- * withholds a NEW claim and never swallows a stored one.
+ * `every`, and a ticked list is required: a batch carries ONE set of ticks for
+ * everybody in it, so a box shown because one name in eight qualifies is a box
+ * that writes เหมารายวัน onto the other seven. `[].every()` is `true`, which is
+ * why the length guard sits inside `ticksAllowed`.
  */
-test('ใบที่ติ๊กเหมาไว้แล้ว เปิดมาต้องเห็นช่องติ๊กเสมอ ไม่ว่าตำแหน่งอะไร', () => {
-  assert.match(form, /const mayTickFlatDaily = form\.flatDaily\s*\r?\n?\s*\|\|/);
-  // The write path is untouched by all of this — the rule is about what is
-  // DRAWN. `flatDaily` is still an entered field the server takes from anybody.
+test('ticksAllowed — ตำแหน่งและวัน ต้องผ่านทั้งคู่', () => {
+  const weekendDays = DEFAULT_POLICY.weekendDays;
+  const holidays = [{ date: '2026-08-12', name: 'วันแม่แห่งชาติ' }];
+  const on = (positions, workDate) => ticksAllowed({
+    positions, workDate, holidays, weekendDays,
+  });
+
+  // เจ้าหน้าที่บริการ · เสาร์ — เหมารายวันได้ ไม่พักเที่ยงไม่ได้ (วันถูกซื้อทั้งวัน)
+  assert.deepEqual(on(['เจ้าหน้าที่บริการ'], '2026-08-08'), { flatDaily: true, noBreak: false });
+  // เจ้าหน้าที่บริการ · วันหยุดบริษัทกลางสัปดาห์ — เหมือนกัน
+  assert.deepEqual(on(['เจ้าหน้าที่บริการ'], '2026-08-12'), { flatDaily: true, noBreak: false });
+  // เจ้าหน้าที่บริการ · วันจันทร์ — ไม่มีช่องไหนเลย นี่คือบั๊กที่ถูกรายงาน 16/09
+  assert.deepEqual(on(['เจ้าหน้าที่บริการ'], '2026-08-10'), { flatDaily: false, noBreak: false });
+  // ตำแหน่งอื่น · เสาร์ — ไม่พักเที่ยงได้ เหมารายวันไม่ได้
+  assert.deepEqual(on(['พนักงานผลิต1'], '2026-08-08'), { flatDaily: false, noBreak: true });
+  // ตำแหน่งอื่น · วันจันทร์ — ไม่มีช่องไหนเลย
+  assert.deepEqual(on(['พนักงานผลิต1'], '2026-08-10'), { flatDaily: false, noBreak: false });
+
+  // ยื่นแทนหลายคน: ต้องเข้าเงื่อนไขทุกคน — ชุดผสมไม่ได้ช่องไหนเลย เพราะติ๊กเดียว
+  // เขียนลงทุกชื่อในใบ.
+  assert.deepEqual(
+    on(['เจ้าหน้าที่บริการ', 'เจ้าหน้าที่บริการ'], '2026-08-08'),
+    { flatDaily: true, noBreak: false },
+  );
+  assert.deepEqual(
+    on(['เจ้าหน้าที่บริการ', 'พนักงานผลิต1'], '2026-08-08'),
+    { flatDaily: false, noBreak: false },
+  );
+  // ยังไม่ได้ติ๊กใคร — ไม่มีช่องไหนเลย เหมือน preview และเพดานที่ยังว่างอยู่
+  assert.deepEqual(on([], '2026-08-08'), { flatDaily: false, noBreak: false });
+
+  // ปฏิทินยังไม่มา — วันหยุดประกาศอ่านไม่ได้ ช่องจึงหาย แต่เสาร์ยังเป็นเสาร์
+  assert.equal(ticksAllowed({
+    positions: ['พนักงานผลิต1'], workDate: '2026-08-12', holidays: null, weekendDays,
+  }).noBreak, false);
+  assert.equal(ticksAllowed({
+    positions: ['พนักงานผลิต1'], workDate: '2026-08-08', holidays: null, weekendDays,
+  }).noBreak, true);
+});
+
+/**
+ * ปฏิทินที่ยังไม่มา ซ่อนช่องได้ แต่ห้ามปลดค่าที่ติ๊กไว้ — the one difference
+ * between `tickClearing` and `!ticksAllowed`, and the whole reason they are two
+ * functions.
+ *
+ * ปลดตอนปฏิทินยังไม่มา = ใบเหมารายวันที่ยื่นไว้ในวันหยุดบริษัท (เช่น 13/10) เสีย
+ * ค่าไปเพราะเน็ตช้า และซ่อมทีหลังไม่ได้ เพราะคนกดบันทึกไปแล้ว.
+ */
+test('tickClearing — ไม่รู้ปฏิทิน ไม่ปลดค่า', () => {
+  const weekendDays = DEFAULT_POLICY.weekendDays;
+  const unfetched = (positions, workDate) => tickClearing({
+    positions, workDate, holidays: null, weekendDays,
+  });
+
+  // วันหยุดบริษัทกลางสัปดาห์ ยังไม่มีปฏิทิน: ช่องถูกซ่อน แต่ค่าที่ติ๊กไว้ต้องอยู่ต่อ
+  assert.equal(unfetched(['เจ้าหน้าที่บริการ'], '2026-08-12').flatDaily, false);
+  assert.equal(unfetched(['พนักงานผลิต1'], '2026-08-12').noBreak, false);
+
+  // ส่วนครึ่งที่เป็นเรื่องตำแหน่ง ไม่ต้องใช้ปฏิทิน — ตอบได้ทันทีทั้งสองทาง
+  assert.equal(unfetched(['พนักงานผลิต1'], '2026-08-12').flatDaily, true, 'ตำแหน่งไม่ใช่ ปลดได้เลย');
+  assert.equal(unfetched(['เจ้าหน้าที่บริการ'], '2026-08-12').noBreak, true, 'ตำแหน่งนี้ไม่มีสิทธิ์ช่องนี้');
+
+  // รู้ปฏิทินแล้ว — ปลดตามกฎเต็ม
+  const holidays = [{ date: '2026-08-12', name: 'วันแม่แห่งชาติ' }];
+  const known = (positions, workDate) => tickClearing({
+    positions, workDate, holidays, weekendDays,
+  });
+  assert.equal(known(['เจ้าหน้าที่บริการ'], '2026-08-12').flatDaily, false, 'วันหยุดบริษัท เก็บไว้');
+  assert.equal(known(['เจ้าหน้าที่บริการ'], '2026-08-10').flatDaily, true, 'วันจันทร์ ปลดทิ้ง');
+  assert.equal(known(['พนักงานผลิต1'], '2026-08-08').noBreak, false, 'เสาร์ เก็บไว้');
+  assert.equal(known(['พนักงานผลิต1'], '2026-08-10').noBreak, true, 'วันจันทร์ ปลดทิ้ง');
+});
+
+/**
+ * ไม่มีอะไรให้ปลด ต้องได้ออบเจ็กต์เดิมกลับมา — ทั้งสองจอเรียกฟังก์ชันนี้ใน
+ * `setForm` และจอหนึ่งเอาผลไปเทียบว่า “มีการแก้ไขหรือยัง”. ออบเจ็กต์ใหม่ทุกรอบ =
+ * เรนเดอร์วน และแผงที่เพิ่งเปิดก็บอกว่าถูกแก้ไปแล้วทั้งที่ยังไม่มีใครแตะ.
+ */
+test('applyTickClearing — ไม่มีอะไรให้ปลด ต้องคืนของเดิม', () => {
+  const form2 = { flatDaily: true, noBreakTaken: false, startTime: '08:00' };
+  assert.equal(applyTickClearing(form2, { flatDaily: false, noBreak: false }), form2);
+  assert.equal(applyTickClearing(form2, { flatDaily: false, noBreak: true }), form2, 'ค่าที่ไม่ได้ติ๊กอยู่แล้ว');
+
+  const cleared = applyTickClearing(form2, { flatDaily: true, noBreak: false });
+  assert.notEqual(cleared, form2);
+  assert.equal(cleared.flatDaily, false);
+  // เวลาที่ล็อกไว้ไม่ถูกคืนค่า — เหมือนการปลดติ๊กด้วยมือ ซึ่งก็ไม่คืนเช่นกัน
+  assert.equal(cleared.startTime, '08:00');
+});
+
+/**
+ * ติ๊กที่กฎไม่ให้ติ๊กแล้ว ถูกปลดทิ้ง ไม่ใช่โชว์ช่องไว้ให้ปลดเอง — HR, 2026-09-16.
+ *
+ * IT WAS THE OTHER WAY UNTIL THAT DAY, on both screens: a box already ticked was
+ * drawn whatever the rules said, so that a stored flag could never sit on a row
+ * with no control able to reach it. HR was asked which of the two they wanted
+ * and chose this one — the tick comes off, with nothing said about it.
+ *
+ * WHAT IT COSTS, and it is worth a line because the screen no longer says it: a
+ * เหมารายวัน row filed before the rules changed loses a flag priced at eight
+ * hours the moment somebody saves any correction to it, and what replaces the
+ * figure is the clock. The write path is untouched either way — `flatDaily` is
+ * still an entered field the server takes from anybody.
+ */
+test('ติ๊กที่กฎไม่ให้ติ๊กแล้ว ต้องถูกปลด ไม่ใช่โชว์ช่องไว้', () => {
+  assert.ok(!/const mayTickFlatDaily = form\.flatDaily/.test(form), 'ยังโชว์ช่องเพราะติ๊กไว้แล้ว');
+  assert.ok(!/const mayTickNoBreak = form\.noBreakTaken/.test(form), 'ยังโชว์ช่องเพราะติ๊กไว้แล้ว');
+  assert.match(form, /const clearing = tickClearing\(\{/);
+  assert.match(form, /setForm\(\(f\) => applyTickClearing\(f, clearing\)\);/);
+  assert.match(form, /\}, \[clearing\.flatDaily, clearing\.noBreak\]\);/);
+
   assert.match(read('src/models/OtEntry.js'), /flatDaily: \{ type: Boolean, default: false \}/);
 });
 
@@ -237,16 +337,17 @@ test('isCompanyOffDay — ค่าที่อ่านไม่ได้ ต�
 });
 
 test('ฟอร์มวาดช่องไม่พักเที่ยงจากปฏิทิน ไม่ได้ถามจาก preview', () => {
-  assert.ok(form.includes('const mayTickNoBreak = form.noBreakTaken'));
-  assert.ok(form.includes(
-    'isCompanyOffDay(form.workDate, { holidays: holidays || [], weekendDays: policy.weekendDays })',
-  ));
+  assert.match(form, /const mayTickNoBreak = mayTick\.noBreak;/);
+  assert.match(
+    form,
+    /const mayTick = ticksAllowed\(\{\s*\r?\n?\s*positions: ticketPositions,\s*\r?\n?\s*workDate: form\.workDate,\s*\r?\n?\s*holidays,\s*\r?\n?\s*weekendDays: policy\.weekendDays,/,
+  );
   assert.match(block, /\{mayTickNoBreak && \(\s*<label className="check">/);
 
   // อ่านจากปฏิทิน ไม่ใช่จาก preview — preview ต้องมีคน และหน้าบันทึกแทนยังไม่มี
   // คนติ๊กจนกว่าจะติ๊ก ส่วนวันเสาร์เป็นวันเสาร์ไม่ว่าใครยื่น.
-  const decl = form.slice(form.indexOf('const mayTickNoBreak'));
-  assert.ok(!/preview/.test(decl.slice(0, decl.indexOf(';'))), 'ช่องไม่พักเที่ยงไปผูกกับ preview แล้ว');
+  const decl = form.slice(form.indexOf('const mayTick = ticksAllowed'));
+  assert.ok(!/preview/.test(decl.slice(0, decl.indexOf('});'))), 'ช่องไม่พักเที่ยงไปผูกกับ preview แล้ว');
   // ปฏิทินถูกดึงปีละครั้ง ไม่ใช่ทุกครั้งที่วันที่เปลี่ยน.
   assert.ok(form.includes("const holidayYear = Number(String(form.workDate || today()).slice(0, 4))"));
   assert.ok(form.includes('api.get(`/holidays?year=${holidayYear}`)'));
@@ -257,17 +358,27 @@ test('ฟอร์มวาดช่องไม่พักเที่ยง�
 });
 
 /**
- * ช่องที่ติ๊กไว้แล้วต้องเห็นเสมอ — the same exception `mayTickFlatDaily` carries,
- * and reachable in one sitting here rather than only across a policy change:
- * tick ไม่พักเที่ยง on a Saturday, then move วันที่ทำงาน to the Tuesday. Without
- * the guard the box vanishes with the flag still true, and an hour goes
- * undeducted with no control on the screen able to put it back.
+ * ติ๊กไม่พักเที่ยงในวันเสาร์ แล้วย้ายวันที่ไปวันอังคาร — the one way to reach the
+ * clearing rule in a single sitting, and the reason it hangs off the date rather
+ * than running once when a stored row is opened.
+ *
+ * ช่องหายไปพร้อมกับค่าที่ติ๊กไว้ ไม่ใช่ช่องหายแล้วค่าค้าง — the second is an hour
+ * quietly not deducted, on a day HR said the question does not apply to.
  */
-test('ติ๊กไม่พักเที่ยงไว้แล้วย้ายวันที่ ช่องต้องไม่หาย', () => {
-  const decl = form.slice(form.indexOf('const mayTickNoBreak'));
-  const head = decl.slice(0, decl.indexOf(';'));
-  assert.ok(head.startsWith('const mayTickNoBreak = form.noBreakTaken'), head.slice(0, 80));
-  assert.ok(head.includes('||'), 'ไม่มีข้อยกเว้นสำหรับช่องที่ติ๊กไว้แล้ว');
+test('ติ๊กไม่พักเที่ยงไว้แล้วย้ายวันที่ ค่าต้องถูกปลดตาม', () => {
+  const weekendDays = DEFAULT_POLICY.weekendDays;
+  const opts = { positions: ['พนักงานผลิต1'], holidays: [], weekendDays };
+  const sat = { ...opts, workDate: '2026-08-08' };
+  const tue = { ...opts, workDate: '2026-08-11' };
+
+  assert.equal(ticksAllowed(sat).noBreak, true);
+  assert.equal(tickClearing(sat).noBreak, false, 'วันเสาร์ ค่าต้องอยู่');
+  assert.equal(ticksAllowed(tue).noBreak, false);
+  assert.equal(tickClearing(tue).noBreak, true, 'ย้ายไปวันอังคารแล้วค่าต้องถูกปลด');
+  assert.deepEqual(
+    applyTickClearing({ noBreakTaken: true, flatDaily: false }, tickClearing(tue)),
+    { noBreakTaken: false, flatDaily: false },
+  );
 });
 
 /**
