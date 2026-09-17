@@ -82,3 +82,11 @@ next-env.d.ts
 # A token in the history is a working credential in the history, and these
 # are throwaway by construction: nothing here is meant to be read twice.
 .tmp-edits/
+
+# Prototypes for UX/UI approval. AGENTS.md §จอใหม่ไม่ได้เริ่มจากศูนย์ says the
+# user decides the design BEFORE the first line of JSX; this folder is where
+# that decision gets something to look at. Ignored because a mockup is a
+# throwaway draft of a screen that already exists in `app/` — tracked, it
+# becomes a second copy of the UI that nobody keeps in sync, and the reader who
+# finds it later cannot tell the rejected draft from the shipped screen.
+mockups/

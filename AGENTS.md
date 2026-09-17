@@ -304,7 +304,13 @@ it already has a settled look that a guess quietly forks.
    words — the layout, the states, what each control does — and wait for the
    answer. "I'll build it and you can tell me what to change" is not agreement,
    and neither is a draft in code offered as a question.
-3. **Never take silence, a shrug, or a related answer as approval** for a
+3. **Show it before you build it — the prototype goes in `mockups/`.** Asked
+   for on 2026-09-17. Words describe a layout; they do not settle it. Build the
+   screen as a throwaway page in `mockups/` first, let the user open it, and
+   wait for the yes on the thing they actually saw. The folder is git-ignored
+   (`.gitignore`) precisely so a rejected draft leaves nothing behind — a mockup
+   kept in the tree becomes a second copy of a screen that nobody keeps in sync.
+4. **Never take silence, a shrug, or a related answer as approval** for a
    decision the user has not actually made.
 
 ### Inherit before you invent
