@@ -218,7 +218,16 @@ test('เหตุผลถูกบันทึกลงประวัติ�
 
 test('ปุ่มยืนยันในกล่องกดไม่ได้จนกว่าจะพิมพ์เหตุผล และมีช่องเดียว', () => {
   const queue = strip(read('components/ApprovalQueue.jsx'));
-  assert.match(queue, /const mustExplain = needsReason \|\| overCeiling;/);
+  /**
+   * ONE RULE AGAIN SINCE 2026-09-18. It read `needsReason || overCeiling`: the
+   * first was an administrator signing a first step nobody else could, on the
+   * ใบที่ไม่มีหัวหน้าเซ็นได้ tab. That tab is gone and the rows it held are
+   * moved to the ฝ่ายบุคคล step by the server, so the ceiling is the only rule
+   * left that demands a sentence — see docs/plan-merge-approval-queues.md.
+   * The SHAPE the two rules forced is what this case guards, and it is
+   * unchanged: one box, one `ready`, one string to the server.
+   */
+  assert.match(queue, /const mustExplain = overCeiling;/);
   assert.match(queue, /const ready = !mustExplain \|\| why\.trim\(\)\.length > 0;/);
   assert.match(queue, /disabled=\{busy \|\| !ready\}/);
   assert.match(queue, /onClick=\{\(\) => onConfirm\(mustExplain \? why\.trim\(\) : null\)\}/);
@@ -248,7 +257,7 @@ test('ทางเข้าอนุมัติทุกทางผ่าน�
    * 400 จากกฎใหม่ — และกล่องแดงไม่ใช่วิธีที่ดีในการบอกคนว่าต้องพิมพ์เหตุผล
    */
   const queue = strip(read('components/ApprovalQueue.jsx'));
-  assert.match(queue, /if \(needsReason \|\| needsOverCeilingReason\(e\)\) setConfirming\(\[e\]\);/);
+  assert.match(queue, /if \(needsOverCeilingReason\(e\)\) setConfirming\(\[e\]\);/);
   assert.match(queue, /else approve\(\[e\]\);/);
 });
 
@@ -305,8 +314,8 @@ test('แผ่นยืนยันเตือนเรื่องเพด�
   );
   assert.equal(
     (confirmModal.match(/<Alert kind="warn"/g) || []).length,
-    2,
-    'เหลือสองกล่อง: เพดานหนึ่ง และ "ไม่มีหัวหน้าเซ็นได้" อีกหนึ่ง ซึ่งเป็นคนละกฎ',
+    1,
+    'เหลือกล่องเดียว — กล่อง "ไม่มีหัวหน้าเซ็นได้" ไปพร้อมกับแท็บของมันเมื่อ 2026-09-18',
   );
   assert.doesNotMatch(
     confirmModal,

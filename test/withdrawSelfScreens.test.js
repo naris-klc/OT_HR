@@ -87,7 +87,11 @@ test('the approval queue has one pile again, and no batch button for the other',
 /** …and the nav badge counts one pile, with no overlap to subtract. */
 test('the nav badge no longer adds open withdrawals to the queue count', () => {
   const app = bare('components/App.jsx');
-  assert.match(app, /const queueBadge = \(ownPending\) => ownPending;/);
+  // It read `(ownPending) => ownPending` until 2026-09-18, when รออนุมัติแทน
+  // was folded into รออนุมัติ OT and its pile came with it. What this case is
+  // about is unchanged: no term for คำขอถอนใบ, which nobody waits on any more.
+  assert.match(app, /const queueBadge = \(ownPending, handed = 0\) => ownPending \+ handed;/);
+  assert.doesNotMatch(app, /withdraw/i);
   assert.ok(!/withdrawalOpen/.test(app), 'the count is back on the badge');
 });
 

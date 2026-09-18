@@ -225,12 +225,25 @@ test('the ฝ่ายบุคคล block builds five tabs and ผู้ดู
   assert.match(builder, /if \(user\.role === 'admin'\) tabs\.push\(\{ key: 'logs', label: 'บันทึกประวัติระบบ', icon: 'shield', group: 'system', bar: 'more' \}\);/);
 });
 
-test('the two conditional tabs are gated on the data, not on the role alone', () => {
-  // "ฝ่ายบุคคล has five" is a steady state, not a maximum. Both of these are
-  // hr/admin-only AND keyed on something being true of the month.
-  assert.match(builder, /\['hr', 'admin'\]\.includes\(user\.role\) && counts\.delegatedTeams > 0/);
-  assert.match(builder, /user\.role === 'admin' && counts\.unsignedPending > 0/);
-  assert.ok(at('delegated') < at('confirm'), 'รออนุมัติแทน left its place ahead of the queue');
+/**
+ * ── AND THERE ARE NO CONDITIONAL TABS ANY MORE — 2026-09-18 ────────────────
+ *
+ * Two used to come and go on the data rather than on a บทบาท: รออนุมัติแทน
+ * while any team was covered, and ไม่มีหัวหน้าเซ็น while any ใบ was stuck. Both
+ * are folded into รออนุมัติ OT, so "ฝ่ายบุคคล has five" is now a maximum as well
+ * as a steady state, and every tab in the bar is decided by the บทบาท alone.
+ *
+ * The work did not go anywhere: a covered team's rows are signed from
+ * รออนุมัติ OT wearing the green ป้าย, and its pile is added to that tab's badge
+ * (`queueBadge`). The stuck rows are repaired rather than listed — see
+ * lib/unsignableRepair.js and docs/plan-merge-approval-queues.md.
+ */
+test('no tab comes and goes on the data any more', () => {
+  assert.ok(!builder.includes("key: 'delegated'"), 'รออนุมัติแทน กลับมาเป็นแท็บอีกแล้ว');
+  assert.ok(!builder.includes("key: 'unsigned'"), 'ไม่มีหัวหน้าเซ็น กลับมาเป็นแท็บอีกแล้ว');
+  assert.ok(!builder.includes('counts.unsignedPending'), 'ยังนับกองที่ไม่มีจอแล้ว');
+  // The pile the covered tab used to carry is inside the one badge instead.
+  assert.match(builder, /badge: queueBadge\(counts\.pendingHr, counts\.pendingMgrDelegated\)/);
 });
 
 // ── พนักงาน · the pair that used to sit at opposite ends ───────────────────

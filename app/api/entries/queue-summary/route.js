@@ -3,9 +3,9 @@ import Employee from '@/src/models/Employee.js';
 import { route, json } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
-import { nobodyCanSign } from '@/lib/delegation.js';
-import { DECIDE_POPULATE, approvalDepartments, entryCompany } from '@/lib/entries.js';
-import { ROLES, SIGNER_ROLES, isSigner, mayApproveRole } from '@/lib/roles.js';
+import { signerPool, routeUnsignableToHr } from '@/lib/unsignableRepair.js';
+import { DECIDE_POPULATE, approvalDepartments } from '@/lib/entries.js';
+import { ROLES, isSigner, mayApproveRole } from '@/lib/roles.js';
 
 /** Queue counts for the manager's daily review and HR's monthly review (§2). */
 export const GET = route(async (req) => {
@@ -48,7 +48,7 @@ export const GET = route(async (req) => {
    * one. See `visibleEmployeeClause` for the reading half.
    */
 
-  const [
+  let [
     pendingMgr, pendingHr, delegated,
   ] = await Promise.all([
     OtEntry.countDocuments({ ...scope, ...signable, status: 'pending_mgr' }),
@@ -88,47 +88,48 @@ export const GET = route(async (req) => {
   ]);
 
   /**
-   * ใบที่ไม่มีใครเซ็นได้ — the count behind รออนุมัติแทนหัวหน้า.
+   * ── ใบที่ไม่มีใครเซ็นได้ WAS COUNTED HERE UNTIL 2026-09-18 ────────────────
    *
-   * ผู้ดูแลระบบ only, and skipped entirely for everybody else: it is the only
-   * role that can act on such a row, and this costs a roster read plus a pass
-   * over the pending list, which is not a price to pay on every poll for a
-   * number nobody would be shown.
+   * `unsignedPending` drove the ผู้ดูแลระบบ-only tab ไม่มีหัวหน้าเซ็น, which
+   * appeared when it was above zero and vanished when the fault was repaired.
    *
-   * Not a `countDocuments`, and it cannot be one: whether a row is stuck depends
-   * on the roster and on the owner's payroll, not on anything stored on the
-   * entry. So it runs the same predicate the LIST runs — a badge and the screen
-   * it opens have to be one computation, and this one has the additional
-   * property that a wrong badge would send an administrator looking for a
-   * request that is not stuck.
+   * **The fault repairs itself now.** A ใบ waiting at a first step nobody can
+   * sign is moved up to the ฝ่ายบุคคล step the next time either this summary or
+   * the queue itself is read (`routeUnsignableToHr`), so there is no standing
+   * population to count and no tab to send anybody to — the row is in รออนุมัติ
+   * OT wearing the green ป้าย, which is where HR asked for it to be.
    *
-   * Not fatal: a badge is worth less than the numbers it sits next to.
+   * ── AND THE REPAIR RUNS HERE, NOT ONLY ON THE QUEUE ──────────────────────
+   *
+   * Because the badge and the screen have to agree: a row still sitting at
+   * `pending_mgr` is outside `pendingHr` and outside `signable` alike, so the
+   * number beside ฝ่ายบุคคล's tab would say 47 while the queue they open shows
+   * 48 rows they can press. This poll is also the thing that notices on the day
+   * a หัวหน้า is deactivated, without anybody opening anything.
+   *
+   * ฝ่ายบุคคล AND ผู้ดูแลระบบ, where the old count was ผู้ดูแลระบบ only: the
+   * rows land on ฝ่ายบุคคล's desk now, so their badge is the one that would be
+   * wrong. It costs one populated read of the `pending_mgr` pile plus a roster
+   * read, and only while such a pile exists.
    */
-  let unsigned = 0;
-  if (user.role === 'admin') {
+  if (['hr', 'admin'].includes(user.role)) {
     try {
-      const [waiting, managers] = await Promise.all([
+      const [waiting, signers] = await Promise.all([
         OtEntry.find({ status: 'pending_mgr' }).populate(DECIDE_POPULATE).lean(),
-        Employee.find({ role: { $in: SIGNER_ROLES }, active: true })
-          .select('code name role department company approvesCompany approvesDepartments').lean(),
+        signerPool(),
       ]);
-      unsigned = waiting.filter((e) => nobodyCanSign(e, managers, entryCompany(e))).length;
-    } catch { unsigned = 0; }
+      const moved = await routeUnsignableToHr(waiting, signers);
+      if (moved.size) pendingHr += moved.size;
+    } catch {
+      // A repair that cannot run must not take the badge down with it: the
+      // numbers beside it are ordinary counts and are still right.
+    }
   }
 
   return json({
     pendingMgr,
     pendingHr,
     pendingMgrDelegated: delegated,
-    /**
-     * How many requests are waiting on a หัวหน้า that no หัวหน้า can sign.
-     *
-     * Zero for every role but ผู้ดูแลระบบ — see above. Unlike `delegatedTeams`
-     * below, the tab this drives DOES vanish at zero, and deliberately: a
-     * covered queue is a standing responsibility, and this is a fault. A fault
-     * that has been repaired should stop being on screen.
-     */
-    unsignedPending: unsigned,
     /**
      * How many teams are being covered — which is what decides whether the
      * screen exists, not the count above it. A covered queue that happens to be

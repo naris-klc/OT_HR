@@ -507,9 +507,17 @@ test('จอว่างมีหัวข้อเดียวกันทุ�
   assert.ok(at > 0, 'QueueCleared หายไป');
   const fn = code.slice(at, code.indexOf('\n}', at));
   assert.ok(fn.includes('<strong>ยังไม่มีใบ OT ที่รออนุมัติ</strong>'), 'หัวข้อจอว่างไม่ตรงกันทุกบทบาท');
-  for (const mode of ['hr:', 'delegated:', 'unsigned:', 'signer:']) {
+  /**
+      * TWO MODES, AND THEY WERE FOUR until 2026-09-18 — `delegated:` and
+      * `unsigned:` were the two extra approval tabs, whose lists were narrower
+      * than ฝ่ายบุคคล's and so needed sentences of their own. Both are merged
+      * into this queue, whose scope is the whole company, so `hr:` answers for
+      * them. See QueueCleared.
+      */
+  for (const mode of ['hr:', 'signer:']) {
     assert.ok(fn.includes(mode), `ขาดขอบเขตของโหมด ${mode}`);
   }
+  assert.ok(!fn.includes('delegated:') && !fn.includes('unsigned:'), 'โหมดที่ไม่มีจอแล้วยังอยู่');
   assert.ok(fn.includes('ค้นจาก ${covers} แผนกที่คุณดูแล'), 'ไม่ได้บอกจำนวนแผนกที่ค้นจริง');
   assert.ok(fn.includes('ค้นจากทุกแผนกทั้งบริษัท'), 'ขอบเขตของ ฝ่ายบุคคล ไม่ถูกบอก');
   // The ✓ panel is still its own state — "you just finished" is not the same
@@ -517,7 +525,7 @@ test('จอว่างมีหัวข้อเดียวกันทุ�
   assert.ok(fn.includes('เคลียร์คิวครบทุกรายการแล้ว'), 'แผง ✓ หายไปพร้อมกับการรื้อ');
   // The mode is worked out at the call site, where the props that decide it
   // live, rather than re-derived from `stage` inside the panel.
-  assert.match(code, /mode=\{delegatedOnly \? 'delegated' : unsignedOnly \? 'unsigned' : isHr \? 'hr' : 'signer'\}/);
+  assert.match(code, /mode=\{isHr \? 'hr' : 'signer'\}/);
 });
 
 /** And the head still carries a figure — `0 รายการ` rather than nothing. */

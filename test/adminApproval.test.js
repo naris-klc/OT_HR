@@ -402,27 +402,64 @@ test('an empty roster is stuck rather than throwing', () => {
 // 7 · the screen asks the same questions
 // ════════════════════════════════════════════════════════════════════════════
 
-test('the stuck queue is ผู้ดูแลระบบ’s and asks the server for that list', () => {
+/**
+ * ── THE STUCK QUEUE HAS NO SCREEN SINCE 2026-09-18, AND NO ROWS ────────────
+ *
+ * These two cases pinned the tab ใบที่ไม่มีหัวหน้าเซ็นได้: `scope=unsigned` on
+ * the list route, the ผู้ดูแลระบบ-only tab in components/App.jsx, and a badge
+ * counted by the same predicate as the list so the two could not disagree.
+ *
+ * HR asked for one approval queue, so the stuck rows are REPAIRED rather than
+ * listed: the server moves a ใบ nobody can sign up to the ฝ่ายบุคคล step, where
+ * a ใบ filed today in that department already lands. What the pair below guards
+ * now is that the repair happens in both places a number is taken from — the
+ * list and the badge — because that is the property the old pair was protecting:
+ * a count and the screen it opens must be one computation.
+ */
+test('the stuck rows are repaired where the list is read, not listed apart', () => {
   const route = read('app/api/entries/route.js');
-  assert.match(route, /scope === 'unsigned' && user\.role === 'admin'/);
-  assert.match(route, /nobodyCanSign\(e, managers, entryCompany\(e\)\)/);
+  assert.match(route, /standin === 'check'/);
+  assert.match(route, /await routeUnsignableToHr\(entries, signers\)/);
+  // The scope that fed the old tab is gone, and so is the tab.
+  assert.doesNotMatch(route, /scope === 'unsigned'/);
 
   const app = read('components/App.jsx');
-  assert.match(app, /user\.role === 'admin' && counts\.unsignedPending > 0/);
-  assert.match(app, /tab === 'unsigned' && <ApprovalQueue user=\{user\} stage="pending_mgr" unsignedOnly/);
+  assert.doesNotMatch(app, /counts\.unsignedPending/);
+  assert.doesNotMatch(app, /tab === 'unsigned'/);
+  assert.doesNotMatch(app, /tab === 'delegated'/);
 });
 
-test('the badge and the list are one computation', () => {
-  // A badge counted by a different rule than the list it opens is a badge that
-  // sends an administrator looking for a request that is not stuck.
+test('the badge is repaired by the same function the queue runs', () => {
   const summary = read('app/api/entries/queue-summary/route.js');
-  assert.match(summary, /nobodyCanSign\(e, managers, entryCompany\(e\)\)/);
-  assert.match(summary, /if \(user\.role === 'admin'\)/);
+  assert.match(summary, /routeUnsignableToHr\(waiting, signers\)/);
+  // ฝ่ายบุคคล as well as ผู้ดูแลระบบ: the rows land on HR's desk now, so theirs
+  // is the badge that would be short.
+  assert.match(summary, /\['hr', 'admin'\]\.includes\(user\.role\)/);
+  // And a repair that fails must not take the ordinary counts down with it.
+  assert.match(summary, /} catch \{/);
 });
 
-test('the reason box is compulsory on that queue and nowhere else', () => {
+test('the override rule itself is untouched — only its screen is gone', () => {
+  // ผู้ดูแลระบบ may still sign a first step, the server still demands a reason
+  // for it, and the trail still has a field to record it. Nothing on any screen
+  // reaches any of the three today; deleting them would mean rebuilding the rule
+  // the day somebody meets a row the repair cannot help.
+  assert.equal(mayOverrideManagerStep({ role: 'admin' }), true);
+  assert.equal(typeof OVERRIDE_NOTE_REQUIRED, 'string');
+  const model = read('src/models/OtEntry.js');
+  assert.match(model, /adminOverride/);
+});
+
+test('the reason box is compulsory for a ceiling, and for nothing else', () => {
   const queue = read('components/ApprovalQueue.jsx');
-  assert.match(queue, /const needsReason = unsignedOnly/);
+  /**
+   * `const needsReason = unsignedOnly` stood here — the administrator signing a
+   * first step nobody else could. No row reaches this dialog needing that any
+   * more (see above), so the screen must not ask for it: a screen that demands
+   * a reason the server would not is the failure this case has always guarded,
+   * pointing the other way.
+   */
+  assert.doesNotMatch(queue, /const needsReason =/);
   assert.match(queue, /disabled=\{busy \|\| !ready\}/);
   /**
    * It read `const ready = !needsReason || why.trim().length > 0` until
@@ -433,15 +470,15 @@ test('the reason box is compulsory on that queue and nowhere else', () => {
    * or. What this case still guards is unchanged and is the line below it: the
    * screen may not demand a reason the server would not.
    */
-  assert.match(queue, /const mustExplain = needsReason \|\| overCeiling;/);
+  assert.match(queue, /const mustExplain = overCeiling;/);
   assert.match(queue, /const ready = !mustExplain \|\| why\.trim\(\)\.length > 0/);
   // And the second rule is read off the ROWS, never off the queue's mode — a
   // screen-wide flag would demand a reason for entries that are under their
   // ceiling and get a 200 from a server that asked for nothing.
   assert.match(queue, /const capReason = \(list = \[\]\) => list\.some\(\(e\) => needsOverCeilingReason\(e\)\);/);
-  // The screen must not demand more than the route: an administrator signing
-  // from รออนุมัติแทน on a real delegation is not overriding anything, and the
-  // server asks them for nothing.
+  // The screen must not demand more than the route: ฝ่ายบุคคล signing a covered
+  // team's row on a real delegation is not overriding anything, and the server
+  // asks them for nothing.
   assert.doesNotMatch(queue, /needsReason = .*role === 'admin'/);
 });
 
@@ -452,7 +489,18 @@ test('the reason is never pre-filled', () => {
   assert.match(queue, /const \[why, setWhy\] = useState\(''\)/);
 });
 
-test('the screen warns that the second signature will have to be somebody else', () => {
+/**
+ * §6 IS STILL SAID ON THE SCREEN, AND NOW IT IS SAID WHERE IT BITES.
+ *
+ * The sentence *"คุณจะเซ็นขั้นนั้นของใบเดียวกันไม่ได้"* lived in the confirm
+ * dialog of the ใบที่ไม่มีหัวหน้าเซ็นได้ tab, warning an administrator that
+ * signing the first step cost them the second. Nobody signs a first step by
+ * override any more, so that dialog does not exist — but the rule it warned
+ * about is unchanged, and `SIGNED_MGR_NOTE` is what says so on the row and in
+ * the pop-up of whoever DID sign the first step, whatever put them there.
+ */
+test('§6 is spelled out to whoever signed the first step', () => {
   const queue = read('components/ApprovalQueue.jsx');
-  assert.match(queue, /คุณจะเซ็นขั้นนั้นของใบเดียวกันไม่ได้/);
+  assert.match(queue, /SIGNED_MGR_NOTE/);
+  assert.match(queue, /ใบหนึ่งต้องผ่านผู้เซ็นสองคน/);
 });
