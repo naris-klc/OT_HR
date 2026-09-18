@@ -6420,6 +6420,25 @@ td > .approver-line { margin-top: 5px; }
 .chip.st-approved { background: var(--green-bg); color: var(--green-dark); }
 .chip.st-rejected { background: var(--danger-bg); color: var(--danger-ink); }
 .chip.st-cancelled { background: var(--line-softer); color: var(--muted-2); }
+
+/* ── TWO CHIPS THAT ARE NOT A STATUS, WEARING THE SAME GREY AS ยกเลิก ────────
+   `ended` is `CancelledMark` — WHO closed a cancelled row, beside the
+   `st-cancelled` chip that says only THAT it is closed. `locked` is the
+   หมดเวลาแก้ไข chip on the employee's own row, once `cancelCutoffDay` has
+   passed for that งวด.
+
+   ASKED FOR IN THOSE WORDS on 2026-09-18: *หมดเวลาแก้ไข ให้เป็นป้ายสีเทา
+   เหมือนป้ายสถานะยกเลิก*. Both read as "nothing to do here", which is the same
+   thing grey says three lines up, so the same two tokens are the right answer
+   and a third grey would be a third grey to keep in step.
+
+   THEIR OWN CLASSES RATHER THAN `.chip.st-cancelled`, though the declarations
+   are identical today — the reason `.chip.scan-off` is not `.chip.edited`. An
+   `st-` class means THE STATUS OF THE ใบ, and the row wearing `locked` is
+   `approved`: borrow the name and the day somebody restyles ยกเลิก these two
+   follow it somewhere neither belongs. */
+.chip.ended { background: var(--line-softer); color: var(--muted-2); }
+.chip.locked { background: var(--line-softer); color: var(--muted-2); }
 /* ── การใช้สิทธิ์พิเศษ — THREE LEVELS, NOT SIX COLOURS ─────────────────────────
    Six kinds of privileged exception share one column on บันทึกระบบ. A palette
    with one entry per kind would be a legend to memorise; what the eye needs

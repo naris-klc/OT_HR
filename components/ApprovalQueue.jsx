@@ -32,7 +32,6 @@ import {
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
-import WithdrawalRequests from './WithdrawalRequests.jsx';
 import { PickTime } from './PickTime.jsx';
 import { usePolicy } from './policyContext.jsx';
 import OtForm from './OtForm.jsx';
@@ -483,57 +482,31 @@ export default function ApprovalQueue({
   const [filing, setFiling] = useState(false);
 
   /**
-   * ── TWO PILES, ONE CARD — 2026-09-15 ──────────────────────────────────────
+   * ── THE SECOND PILE STOOD HERE FROM 2026-09-15 TO 2026-09-18 ──────────────
    *
-   * คำขอถอนใบที่อนุมัติแล้ว was a panel of its own sitting ABOVE this card.
-   * Asked that day — *"ถ้าเอาไปแสดงรวมกับตาราง รออนุมัติ ได้หรือไม่"* — and the
-   * answer is a segmented control in this card's head rather than one list with
-   * both kinds of row in it: the tick boxes, the batch bar and the cap columns
-   * all belong to signatures, and every one of them would have had to learn to
-   * skip a request to take hours back off the books. Two tables that are never
-   * on screen together need none of that.
+   * คำขอถอนใบที่อนุมัติแล้ว was a `.queue-tabs` segmented control in this
+   * card's head, switching the whole panel between the signing queue and a list
+   * of open withdrawal requests owned by `components/WithdrawalRequests.jsx`.
+   * Four pieces of state ran it — the selected pile, the open count that drew
+   * the chip, the count the batch button could act on, and a signal that opened
+   * that component's dialog — plus `อนุมัติให้ถอนทั้งหมด` in the head.
    *
-   * IT OPENS ON `queue`, ALWAYS, AND NOT ON WHICHEVER PILE HAS SOMETHING IN IT.
-   * Asked for in those words. The alternative — landing on คำขอถอน when the
-   * queue is empty — is the mistake `queueBadge` in components/App.jsx already
-   * had to undo once: a screen that answers a question differently depending on
-   * what is in it is a screen whose reader cannot tell "nothing here" from "you
-   * were taken somewhere else".
+   * **All of it is gone, and so is the file.** Withdrawing is the employee's
+   * own press and lands on `cancelled` immediately (lib/withdrawal.js), so
+   * there are no open requests to list and nothing for anybody to answer. The
+   * user's own reading is what settled the second half — *มันก็แสดงในรายการ
+   * ประวัติแต่ละคนอยู่แล้ว ว่ารายการไหนถูกถอน*: a withdrawn row is a
+   * `cancelled` row and both monthly screens already carry those, so the list
+   * would have been a third place to read what two places already show.
    *
-   * `wOpen` IS WHAT THE CHIP COUNTS AND `wBatch` IS WHAT THE BUTTON ACTS ON,
-   * reported up from WithdrawalRequests, which still owns the list, the fetch
-   * and the writes. Two plain numbers into two setters, so React's bail-out on
-   * an unchanged value is what keeps the report from looping.
+   * What those screens did NOT show is WHO closed the row, and that is
+   * `CancelledMark` in components/common.jsx — a chip beside the status, not a
+   * screen.
+   *
+   * The card's head below is therefore the head it was before 2026-09-15, down
+   * to the declaration. `.queue-tabs` stays in app/styles.css, unused again, as
+   * it was between วันเกิดรอตรวจ and this.
    */
-  const [pile, setPile] = useState('queue');
-  const [wOpen, setWOpen] = useState(0);
-  const [wBatch, setWBatch] = useState(0);
-  const onWithdrawCount = useCallback((open, batch) => {
-    setWOpen(open);
-    setWBatch(batch);
-  }, []);
-  /** A press of อนุมัติให้ถอนทั้งหมด, which opens a dialog that lives down
-      there. A counter rather than a boolean — see the effect that reads it. */
-  const [batchSignal, setBatchSignal] = useState(0);
-  /**
-   * The last request answered takes the chip with it, so the pile it named has
-   * to hand the screen back. Without this the card would be left showing an
-   * empty panel with no control on it to leave by.
-   */
-  useEffect(() => { if (wOpen === 0) setPile('queue'); }, [wOpen]);
-  /**
-   * NO SECOND PILE, NO SEGMENTED CONTROL — and the card's head is then exactly
-   * the head it was before any of this, down to the declaration.
-   *
-   * Two reasons, and the app has paid for both already. WithdrawalRequests
-   * returned `null` on an empty list because a permanent empty panel for a
-   * thing that happens a few times a month becomes furniture a reader learns to
-   * look past; and `components/QueueTabs.jsx` was DELETED on 2026-09-03 rather
-   * than left as a tab bar with one tab in it. A chip reading `คำขอถอน 0` every
-   * day of the month is both of those mistakes at once.
-   */
-  const hasWithdraw = !delegatedOnly && wOpen > 0;
-  const onWithdraw = hasWithdraw && pile === 'withdraw';
 
   // ── selection ─────────────────────────────────────────────────────────────
   const [selected, setSelected] = useState(() => new Set());
@@ -1137,104 +1110,43 @@ export default function ApprovalQueue({
     <div className="card flush">
       <div className="card-head">
         <div>
-          {hasWithdraw ? (
-            /* ── THE HEADING IS THE SWITCH ────────────────────────────────────
-               `.queue-tabs` is the segmented control this screen already owned
-               — written for ใบรอยืนยัน beside วันเกิดรอตรวจ, left in
-               app/styles.css when that second pile went, and used again here
-               rather than written again. The comment at the top of that block
-               says why a segmented control and not underlined tabs: these
-               switch what the whole panel is, and the sidebar owns the
-               underline idiom for navigation.
+          <div className="t">
+            {/* 'รออนุมัติ' since 2026-08-31; it read 'รอหัวหน้าอนุมัติ' until
+                then. A หัวหน้า reading their own queue is the one person who
+                does not need telling whose signature is missing — it is
+                theirs — and the seven characters it saves are what let the
+                count and the button share this line on a phone. */}
+            {/* `.t-name` IS THE HALF THAT MAY BE ELIDED. On a phone this line
+                is a flex row — the name, then the count — and the button
+                beside it never shrinks, so at 320px something has to give.
+                Wrapping the name marks it as the part that gives: an ellipsis
+                on `รออนุมัติ` still reads, whereas one on `· 2 รายการ` would
+                eat the only figure on the line. See `.card-head:has(...)` in
+                app/styles.css. */}
+            <span className="t-name">{queueName}</span>
+            {/* THE SAME COUNT AS THE CHIP BELOW, and only one of the two is
+                ever on screen — this one under 860px, the chip above it. Two
+                renderings rather than one moved, for the reason the chip's own
+                comment gives: on a desktop the count belongs to the button
+                beside it, and pulling it into the heading would leave that
+                button reading as part of the title.
 
-               THE COUNT ON EACH CHIP IS THAT PILE'S OWN, and the nav badge in
-               components/App.jsx is their SUM — which is the arrangement
-               `.queue-tabs .count`'s comment describes and which came back with
-               this. The badge answers *is there anything for me over there*;
-               these answer *which pile*.
+                On a phone there is no button next to it. `.card-head` wraps at
+                that width, so the right-hand group drops onto a line of its
+                own, and for ฝ่ายบุคคล — who have no บันทึกแทน button — that
+                line is a lone grey pill taking a row of a 375px screen to say
+                "1". Here it costs nothing.
 
-               `mine.length` AND NOT `countLabel`. The chip has room for a
-               figure, not for `3 / 12 รายการ · รอหัวหน้า 3` — and putting a
-               DIFFERENT number where the fuller one used to be would be the one
-               thing this screen has been careful about twice: one queue quoting
-               two figures. So the chip carries the pile (what is waiting for
-               this reader's signature, the same reading the nav badge has) and
-               `countLabel` says the rest of it, whole, on the line below.
+                BOTH ARE WITHHELD WHEN THE SEGMENTED CONTROL IS UP, and the
+                figure moves into the hint below instead — see there. This
+                branch is the head exactly as it stood before 2026-09-15, for
+                the days nobody has asked to withdraw anything, which is most
+                of them.
 
-               Withheld until the list has arrived. A `0` on a chip is a claim
-               about an answer that has not come back yet. */
-            <div className="queue-tabs" role="tablist" aria-label="สองกองบนหน้านี้">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={!onWithdraw}
-                className={onWithdraw ? undefined : 'active'}
-                onClick={() => setPile('queue')}
-              >
-                {queueName}
-                {entries && <span className="count">{mine.length}</span>}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={onWithdraw}
-                className={onWithdraw ? 'active' : undefined}
-                onClick={() => setPile('withdraw')}
-              >
-                คำขอถอนใบ
-                <span className="count">{wOpen}</span>
-              </button>
-            </div>
-          ) : (
-            <div className="t">
-              {/* 'รออนุมัติ' since 2026-08-31; it read 'รอหัวหน้าอนุมัติ' until
-                  then. A หัวหน้า reading their own queue is the one person who
-                  does not need telling whose signature is missing — it is
-                  theirs — and the seven characters it saves are what let the
-                  count and the button share this line on a phone. */}
-              {/* `.t-name` IS THE HALF THAT MAY BE ELIDED. On a phone this line
-                  is a flex row — the name, then the count — and the button
-                  beside it never shrinks, so at 320px something has to give.
-                  Wrapping the name marks it as the part that gives: an ellipsis
-                  on `รออนุมัติ` still reads, whereas one on `· 2 รายการ` would
-                  eat the only figure on the line. See `.card-head:has(...)` in
-                  app/styles.css. */}
-              <span className="t-name">{queueName}</span>
-              {/* THE SAME COUNT AS THE CHIP BELOW, and only one of the two is
-                  ever on screen — this one under 860px, the chip above it. Two
-                  renderings rather than one moved, for the reason the chip's own
-                  comment gives: on a desktop the count belongs to the button
-                  beside it, and pulling it into the heading would leave that
-                  button reading as part of the title.
-
-                  On a phone there is no button next to it. `.card-head` wraps at
-                  that width, so the right-hand group drops onto a line of its
-                  own, and for ฝ่ายบุคคล — who have no บันทึกแทน button — that
-                  line is a lone grey pill taking a row of a 375px screen to say
-                  "1". Here it costs nothing.
-
-                  BOTH ARE WITHHELD WHEN THE SEGMENTED CONTROL IS UP, and the
-                  figure moves into the hint below instead — see there. This
-                  branch is the head exactly as it stood before 2026-09-15, for
-                  the days nobody has asked to withdraw anything, which is most
-                  of them.
-
-                  `countLabel` is computed once so the two can never disagree. */}
-              {countLabel && <span className="t-count">{' · '}{countLabel}</span>}
-            </div>
-          )}
+                `countLabel` is computed once so the two can never disagree. */}
+            {countLabel && <span className="t-count">{' · '}{countLabel}</span>}
+          </div>
           <div className="hint" style={{ margin: '3px 0 0' }}>
-            {onWithdraw ? (
-              /* The panel's own heading used to say this above its list. It is
-                 the hint of the card now, and it is worth the line: these rows
-                 are `approved` — the hours are IN the month's totals and stay
-                 there until somebody grants the request, which is the opposite
-                 of what a queue of things waiting for a signature means. */
-              <>
-                พนักงานขอถอนรายการที่มีผู้อนุมัติไปแล้ว · รายการเหล่านี้
-                <strong>ยังมีผลและยังถูกนับอยู่</strong>จนกว่าจะอนุมัติให้ถอน
-              </>
-            ) : (
               <>
                 {delegatedOnly
                   ? 'คิวของหัวหน้างานที่คุณรับช่วงมา · การอนุมัติจะบันทึกว่าทำแทนเจ้าของคิว'
@@ -1293,15 +1205,7 @@ export default function ApprovalQueue({
                         </span>
                       </>
                     )}
-                {/* AND THE COUNT, WHOLE, WHEN THE CHIPS HAVE TAKEN ITS TWO
-                    USUAL PLACES. `3 / 12 รายการ` while a filter is narrowing the
-                    list is the fact a reader needs to tell an empty queue from a
-                    hidden one, and it does not fit on a chip. Drawn here only in
-                    that case, so the ordinary head keeps the arrangement its own
-                    comments argue for. */}
-                {hasWithdraw && countLabel && ` · ${countLabel}`}
               </>
-            )}
           </div>
         </div>
         {/* Count and action as one right-hand group, the same shape every other
@@ -1310,36 +1214,17 @@ export default function ApprovalQueue({
             heading rather than to the card. The count sits inside the group
             because it is what the button acts on.
 
-            ONE BUTTON AT A TIME, AND IT BELONGS TO THE PILE ON SCREEN.
-            + บันทึก OT แทนพนักงาน files into the queue; อนุมัติให้ถอนทั้งหมด
-            answers the other pile. Drawing both would put two controls that act
-            on two different lists at the same corner of one card — which is the
-            objection to merging the lists, in miniature.
-
-            THE BATCH BUTTON IS STILL WITHHELD ABOVE ONE REQUEST. On a single
-            one it would be a second button doing exactly what the button on the
-            row does, phrased as if it did more; and `wBatch` rather than `wOpen`
-            because a "ทั้งหมด" that clears only the rows this reader may decide
-            is a button that lies twice. Both arguments are the ones at the head
-            of components/WithdrawalRequests.jsx — the press just starts here
-            now, and the dialog it opens is still that component's. */}
+            `อนุมัติให้ถอนทั้งหมด` SHARED THIS CORNER UNTIL 2026-09-18, drawn
+            when the other pile was on screen and withheld above one request —
+            on a single one it would have been a second button doing exactly
+            what the button on the row did, phrased as if it did more. Nobody
+            answers a withdrawal now, so there is one button here again. */}
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-          {!hasWithdraw && countLabel && <span className="chip muted">{countLabel}</span>}
-          {onWithdraw ? (
-            wBatch > 1 && (
-              <button
-                className="btn ghost warn sm withdraw-batch"
-                onClick={() => setBatchSignal((n) => n + 1)}
-              >
-                อนุมัติให้ถอนทั้งหมด
-              </button>
-            )
-          ) : (
-            !isHr && !delegatedOnly && isSigner(user.role) && (
-              <button className="btn ghost sm" onClick={() => setFiling(true)}>
-                + บันทึก OT แทนพนักงาน
-              </button>
-            )
+          {countLabel && <span className="chip muted">{countLabel}</span>}
+          {!isHr && !delegatedOnly && isSigner(user.role) && (
+            <button className="btn ghost sm" onClick={() => setFiling(true)}>
+              + บันทึก OT แทนพนักงาน
+            </button>
           )}
         </div>
       </div>
@@ -1347,46 +1232,11 @@ export default function ApprovalQueue({
       {/* Directly under the heading, in the same gutter the error alerts below
           use — it is about the rules every figure on this card was computed
           under, so it is read before the rows and not alongside one of them.
-          Renders nothing unless the rules have drifted.
-
-          IT IS THE ONE BANNER BOTH PILES GET, and so it sits above the switch
-          rather than inside either branch. คำขอถอนใบ prints hours too, and a
-          reader granting one is taking exactly those hours off the books; a
-          drift notice that appeared on one chip and not the other would be a
-          warning that can be stepped around by pressing a chip. */}
+          Renders nothing unless the rules have drifted. */}
       <div style={{ padding: '0 18px' }}>
         <PolicyDriftBanner user={user} onOpenPolicy={onOpenPolicy} />
       </div>
 
-      {/* ── THE SECOND PILE ──────────────────────────────────────────────────
-          Mounted whatever the chip says, and drawing only when it is the one
-          selected. The chip that reaches it is built from the count this
-          reports, so a component that counted only while it was being looked at
-          could never be the thing that says to look.
-
-          `!delegatedOnly` is not about who may answer a request — the server
-          decides that, and a stand-in may — but about not drawing the same pile
-          twice for somebody who has both tabs open. The list it fetches is
-          already scoped to what this person can see. It is also what keeps
-          `hasWithdraw` false on that tab, so the head there never grows chips. */}
-      {!delegatedOnly && (
-        <WithdrawalRequests
-          user={user}
-          active={onWithdraw}
-          onCount={onWithdrawCount}
-          batchSignal={batchSignal}
-          onChanged={() => onChanged?.(stage, 0)}
-        />
-      )}
-
-      {/* ── AND THE QUEUE ITSELF, WHICH IS EVERYTHING ELSE ON THIS CARD ───────
-          The filter bar, the batch bar, the table and the pager are all about
-          rows waiting for a signature. None of them means anything on a request
-          to take hours back off the books — which is the whole reason these are
-          two tables and not one list — so they are not drawn on the other chip
-          rather than being taught to ignore it. */}
-      {!onWithdraw && (
-      <>
       {/*
         Standing in for somebody, said once at the top with the dates on it.
         A stand-in whose window shut yesterday and a stand-in who never had one
@@ -2483,8 +2333,6 @@ export default function ApprovalQueue({
           )
         )}
         </>
-      )}
-      </>
       )}
 
       {confirming && (

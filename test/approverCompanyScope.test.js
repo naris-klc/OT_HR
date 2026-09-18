@@ -11,7 +11,6 @@ import {
   approvalPermission, delegatedClaims, delegatedDepartments, departmentClaim,
 } from '../lib/delegation.js';
 import { initialStatus, proxyPermission } from '../lib/proxyFiling.js';
-import { withdrawDecisionPermission } from '../lib/withdrawal.js';
 import { signingScope } from '../lib/employees.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -391,22 +390,13 @@ test('and a filing they could not have signed does not skip the หัวหน�
   );
 });
 
-// ── ขอถอนใบที่อนุมัติแล้ว ───────────────────────────────────────────────────
-
-test('answering a ขอถอน follows the same scope as approving it did', () => {
-  const asked = (employee) => ({
-    _id: 'x',
-    employee,
-    department: PROD,
-    status: 'approved',
-    managerDecision: { by: 'mgr-pm', at: new Date('2026-08-10T02:00:00Z') },
-    withdrawal: { state: 'requested', requestedBy: employee._id },
-  });
-
-  assert.equal(withdrawDecisionPermission({
-    user: PM_ONLY, entry: asked(PM_WORKER), today: '2026-08-17',
-  }).ok, true);
-  assert.equal(withdrawDecisionPermission({
-    user: PM_ONLY, entry: asked(THT_WORKER), today: '2026-08-17',
-  }).ok, false);
-});
+// ── ⚠ ขอถอนใบที่อนุมัติแล้ว เคยมีเทสต์ท้ายไฟล์นี้ ──────────────────────────
+//
+// `answering a ขอถอน follows the same scope as approving it did` พิสูจน์ว่า
+// `withdrawDecisionPermission` แยกบริษัทเหมือนกับตอนอนุมัติ — หัวหน้าของ
+// payroll หนึ่งตัดสินคำขอของอีก payroll ไม่ได้
+//
+// **ไม่มีการตัดสินแล้วตั้งแต่ 18/09/2569** ถอนใบเป็นการกดของเจ้าของใบเอง และกฎ
+// ที่เหลือ (`withdrawEligibility`) ถามแค่ว่าเป็นใบของคนกดหรือไม่ ซึ่งไม่ใช่
+// คำถามเรื่องขอบเขตบริษัทเลย — ไม่มีอะไรให้ไฟล์นี้พิสูจน์อีก ดู
+// lib/withdrawal.js

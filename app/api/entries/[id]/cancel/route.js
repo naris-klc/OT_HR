@@ -2,7 +2,6 @@ import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { POPULATE, cancelPermission } from '@/lib/entries.js';
-import { hasOpenWithdrawal, withdrawalDecision } from '@/lib/withdrawal.js';
 import Setting from '@/src/models/Setting.js';
 
 /**
@@ -49,27 +48,21 @@ export const POST = route(async (req, { params }) => {
   entry.status = 'cancelled';
 
   /**
-   * ── AND AN OPEN คำขอถอน IS ANSWERED BY THE SAME PRESS ────────────────────
+   * ── A BRANCH FOR OPEN คำขอถอน STOOD HERE UNTIL 2026-09-18 ────────────────
    *
-   * Only ฝ่ายบุคคล can reach this: a request is open only after the first
-   * signature, and past that the employee's own branch refuses. Left alone, the
-   * subdocument would sit at `requested` on a row that is already `cancelled` —
-   * `withdrawalOpen` in app/api/entries/queue-summary/route.js would keep
-   * counting it on the nav badge and inside คำขอถอนใบ, and `periodItems`
-   * (lib/periodStatus.js) would keep calling that month unfinished, for a
-   * question that can no longer be answered by anybody.
+   * It closed the subdocument as `granted` when ฝ่ายบุคคล cancelled a row that
+   * had a request waiting on it, so that `withdrawalOpen` on the nav badge and
+   * `periodItems` on the ตรวจสอบรายเดือน card did not keep counting a question
+   * nobody could answer any more.
    *
-   * `granted` because that is what happened to the employee's request: the
-   * entry they wanted off the books is off them. The same helper the decide
-   * route uses, so the record has the same shape however it was reached, and
-   * the reason typed here is the `decisionNote` — one sentence, not two.
+   * **Every one of those three things is gone.** Withdrawing is now the
+   * employee's own press and lands on `cancelled` immediately
+   * (app/api/entries/[id]/withdraw/route.js), so no entry reaches this route
+   * with a `requested` subdocument on it — and `withdrawalOpen` and the
+   * `openWithdrawals` line are not there to be misled. Rows still carrying
+   * `requested` in an un-migrated database are `cancelled` already; see
+   * scripts/migrate-withdraw-granted.js.
    */
-  if (hasOpenWithdrawal(entry)) {
-    entry.withdrawal = withdrawalDecision(entry.withdrawal.toObject(), user, {
-      granted: true,
-      note: payload?.note,
-    });
-  }
 
   // Same outcome, two different events: the employee withdrawing their own
   // request, and ฝ่ายบุคคล ending one on everybody's behalf. The action comes

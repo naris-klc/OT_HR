@@ -34,12 +34,18 @@ test('เดือนก่อนหน้ายังมีใบค้าง�
   assert.match(last.outstanding[0].short, /3 ใบ/);
 });
 
-test('คำขอถอนใบค้างพิจารณาในเดือนก่อน ก็เตือนเหมือนกัน', () => {
-  // The entry is `approved`, so it is invisible to the pending count — and the
-  // row on last month's sheet may still be about to come off it.
-  const last = previousMonthOutstanding(prev(9, { openWithdrawals: 1 }));
-  assert.deepEqual(last.outstanding.map((i) => i.kind), ['openWithdrawals']);
-});
+/**
+ * ── ⚠ คำขอถอนใบค้างพิจารณาในเดือนก่อน ก็เตือนเหมือนกัน — GONE 2026-09-18 ────
+ *
+ * It was the second thing this reminder could be about: an `approved` entry
+ * invisible to the pending count, whose row on last month's sheet might still
+ * be about to come off it.
+ *
+ * **Withdrawing no longer waits for anybody**, so no month can carry one — and
+ * this line is the one that could not clear itself, which is why the whole
+ * feature was rewritten. See lib/periodStatus.js and test/periodStatus.test.js,
+ * where the same note is kept beside the item that produced it.
+ */
 
 test('เดือนก่อนหน้าเคลียร์หมดแล้ว — เงียบ', () => {
   // THE CHANGE, AND THE WHOLE OF IT. This month would have nagged under the old

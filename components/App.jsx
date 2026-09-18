@@ -1300,8 +1300,8 @@ function Shell({ session, onRefresh, onLogout }) {
    * รออนุมัติ and รอ HR ยืนยัน held two piles of work until 2026-09-03 — requests
    * waiting for a signature, and birthdays waiting for somebody to check the
    * scan record — and the badge was the sum. The second pile no longer exists
-   * (`birthdayPending` and its tab went with ฝ่ายบุคคล's birthday work), so what
-   * is left is the requests and the open withdrawal asks below. It is still
+   * (`birthdayPending` and its tab went with ฝ่ายบุคคล's birthday work), and so
+   * did the third (below), so what is left is the requests. It is still
    * counted the same way in `.sidebar` and `.mobile-nav` — those render the same
    * `tabs` array and never appear together, so two rules would agree on every
    * device and disagree the moment a window is dragged across 860px.
@@ -1323,31 +1323,29 @@ function Shell({ session, onRefresh, onLogout }) {
    * pile", which is a question about the tabs. A badge that answered the second
    * one had to stop answering the first.
    *
-   * ── AND A SECOND PILE FROM 2026-09-03: คำขอถอนใบที่อนุมัติแล้ว ─────────────
+   * ── A THIRD PILE RAN FROM 2026-09-03 TO 2026-09-18: คำขอถอนใบที่อนุมัติแล้ว
    *
-   * The card at the top of both these screens, and it was in nobody's count.
-   * With no ใบ waiting, an employee could ask for
-   * an approved entry to be withdrawn and the nav would carry no badge at all —
+   * It was added because with no ใบ waiting, an employee could ask for an
+   * approved entry to be withdrawn and the nav would carry no badge at all —
    * the one state where the badge's own question, *is there anything for me
    * over there*, was being answered wrongly rather than coarsely.
    *
-   * `overlap` IS THE WHOLE OF WHY THIS TAKES AN ARGUMENT. An open request sits
-   * on an entry that is `approved` or `pending_hr`, so on ฝ่ายบุคคล's screen the
-   * `pending_hr` ones are already inside `counts.pendingHr` — the same entry,
-   * the same person, the same screen. Added whole, the badge would count them
-   * twice, and only on the days somebody happens to ask about an unconfirmed
-   * ใบ, which is the kind of wrong that gets explained away rather than found.
-   * A หัวหน้า's pile is `pendingMgr`, which no open request can be in, so they
-   * pass nothing and nothing is taken off.
+   * **It is gone because nobody is waiting for an answer any more.** ถอนใบ is
+   * the employee's own press and the row is `cancelled` when it returns
+   * (lib/withdrawal.js), so there is nothing over there to be sent to.
    *
-   * NO CHIP GOES WITH IT, and the difference is what a chip is for. A chip
-   * tells you what is behind a tab you cannot see — that is what วันเกิดรอตรวจ
-   * had one for. This pile is a CARD at the top of the tab the badge already
-   * lands you on, with its own count in its own heading. It cannot be missed
-   * once you are there; the badge exists to get you there.
+   * The `overlap` argument went with it, and it is worth recording what it was
+   * for: an open request sat on an entry that was `approved` or `pending_hr`,
+   * so on ฝ่ายบุคคล's screen the `pending_hr` ones were already inside
+   * `counts.pendingHr` — the same entry, the same person, the same screen.
+   * Added whole, the badge counted them twice, and only on the days somebody
+   * happened to ask about an unconfirmed ใบ, which is the kind of wrong that
+   * gets explained away rather than found.
+   *
+   * With one pile left this is the identity function, and it is kept as a name so
+   * that the two tabs below go on quoting one rule rather than two literals.
    */
-  const queueBadge = (ownPending, overlap = 0) => ownPending
-    + Math.max(0, (counts.withdrawalOpen || 0) - overlap);
+  const queueBadge = (ownPending) => ownPending;
 
   /**
    * ── THE MENU, ONE BLOCK PER ROLE ──────────────────────────────────────────
@@ -1602,9 +1600,7 @@ function Shell({ session, onRefresh, onLogout }) {
       icon: 'check',
       group: 'work',
       bar: 'queue',
-      // The overlap is theirs alone: an open withdrawal request on a
-      // `pending_hr` entry is already inside `pendingHr`. See `queueBadge`.
-      badge: queueBadge(counts.pendingHr, counts.withdrawalOpenPendingHr),
+      badge: queueBadge(counts.pendingHr),
     });
     tabs.push({ key: 'monthly', label: 'ตรวจสอบประจำเดือน', icon: 'calendar', group: 'work', bar: 'reports' });
     // Closing the month, not checking it — hence its own tab next to the

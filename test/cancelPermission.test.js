@@ -43,7 +43,14 @@ test('the first approval ends it — pending_hr is out of the employee’s hands
   const result = cancelPermission(employee, entry({ status: 'pending_hr' }));
   assert.equal(result.ok, false);
   assert.equal(result.status, 409);
-  assert.match(result.error, /ฝ่ายบุคคล/, 'the message has to say where to go instead');
+  // ⚠ IT ASSERTED /ฝ่ายบุคคล/ UNTIL 2026-09-18, and "where to go instead" was a
+  // PERSON: the employee filed a คำขอถอน and a signer or HR answered it. Nobody
+  // answers now — ถอนใบ is the owner's own press — so the message names the
+  // BUTTON, which is on the same screen. Pinned as the button rather than as
+  // "some word", because a refusal pointing at a control that is not there is
+  // the failure both halves of this rule exist to avoid; see the matching test
+  // in test/withdrawal.test.js.
+  assert.match(result.error, /กด “ถอนใบ”/, 'the message has to name the press that works');
 });
 
 /**

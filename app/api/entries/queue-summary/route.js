@@ -49,7 +49,7 @@ export const GET = route(async (req) => {
    */
 
   const [
-    pendingMgr, pendingHr, delegated, withdrawalOpen, withdrawalOpenPending,
+    pendingMgr, pendingHr, delegated,
   ] = await Promise.all([
     OtEntry.countDocuments({ ...scope, ...signable, status: 'pending_mgr' }),
     OtEntry.countDocuments({ ...scope, status: 'pending_hr' }),
@@ -66,44 +66,25 @@ export const GET = route(async (req) => {
       ? OtEntry.countDocuments({ ...coveredScope, status: 'pending_mgr' })
       : 0,
     /**
-     * ── คำขอถอนใบที่อนุมัติแล้ว — THE SECOND PILE ON THAT SCREEN ─────────────
+     * ── คำขอถอนใบที่อนุมัติแล้ว WAS THE SECOND PILE, UNTIL 2026-09-18 ────────
      *
-     * The card at the top of รออนุมัติ OT (and of รายการรออนุมัติ). It was on
-     * the screen and in nobody's count until 2026-09-03: with no ใบ waiting, an
-     * employee could ask for an approved entry to be withdrawn and the nav would
-     * show no badge at all. Nothing anywhere said to go and look.
+     * Two counts stood here: every open request in scope, and how many of them
+     * `pendingHr` was already counting — both, rather than one pre-subtracted
+     * number, so the client could take the overlap off whichever pile its own
+     * badge was built on.
      *
-     * It was the THIRD pile for a few hours on the same day. วันเกิดรอตรวจ was
+     * **There is no pile.** ถอนใบ is the employee's own press and the row is
+     * `cancelled` before the response returns, so nothing accumulates and there
+     * is nothing for a badge to send anybody to look at. The subtraction in
+     * `queueBadge` (components/App.jsx) went with them, and so did the
+     * คำขอถอนใบ tab those rows were listed on.
+     *
+     * It was the THIRD pile for a few hours on 2026-09-03. วันเกิดรอตรวจ was
      * the second and was counted here by running the queue loader itself — an
      * unanswered birthday being the absence of two documents rather than
-     * anything a `countDocuments` could find. Both the queue and the loader were
-     * withdrawn later that day; nothing replaced the count, because there is no
-     * longer a pile to count.
-     *
-     * THE SAME FILTER THE CARD'S OWN LIST USES — `withdrawal=open` on
-     * app/api/entries, which is `withdrawal.state: 'requested'` inside the
-     * caller's ordinary scope. Written out again here rather than shared,
-     * because it is two words; what must not drift is the SCOPE, and both read
-     * `resolveScope`'s `scope`.
+     * anything a `countDocuments` could find. Both the queue and the loader
+     * were withdrawn later that day, and nothing replaced that count either.
      */
-    OtEntry.countDocuments({ ...scope, 'withdrawal.state': 'requested' }),
-    /**
-     * …AND HOW MANY OF THOSE `pendingHr` HAS ALREADY COUNTED.
-     *
-     * A request can be asked from the first signature onwards, so an open one
-     * sits on an entry that is either `approved` or `pending_hr`
-     * (`OPEN_STATUSES` in lib/withdrawal.js). The `pending_hr` ones are inside
-     * the `pendingHr` figure above — the same entry, waiting for the same
-     * person, on the same screen — so a badge that added the two piles whole
-     * would count them twice, and would do it only sometimes, which is worse
-     * than doing it always.
-     *
-     * Subtracted by the CLIENT rather than folded in here, because the answer
-     * depends on which pile that reader's badge is built on: a หัวหน้า's is
-     * `pendingMgr`, which no open request can ever be in, so for them there is
-     * nothing to subtract. See `queueBadge` in components/App.jsx.
-     */
-    OtEntry.countDocuments({ ...scope, 'withdrawal.state': 'requested', status: 'pending_hr' }),
   ]);
 
   /**
@@ -148,16 +129,6 @@ export const GET = route(async (req) => {
      * that has been repaired should stop being on screen.
      */
     unsignedPending: unsigned,
-    /**
-     * คำขอถอนใบ — every open one in scope, which is what the card at the top of
-     * the screen lists, and how many of them `pendingHr` is already counting.
-     *
-     * Both, rather than one pre-subtracted number, so the caller can take the
-     * overlap off the pile their own badge is built on — see the note beside
-     * the queries and `queueBadge` in components/App.jsx.
-     */
-    withdrawalOpen,
-    withdrawalOpenPendingHr: withdrawalOpenPending,
     /**
      * How many teams are being covered — which is what decides whether the
      * screen exists, not the count above it. A covered queue that happens to be

@@ -13,24 +13,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  cancelCutoffHrNote,
   cancelCutoffLead,
-  cancelCutoffQueueNote,
   cancelCutoffRefusal,
-  cancelCutoffShortNote,
   cancelDeadline,
   cancelPermission,
   editPermission,
   isPastCancelCutoff,
 } from '../lib/entries.js';
-import { withdrawDecisionPermission, withdrawEligibility } from '../lib/withdrawal.js';
+import { withdrawEligibility } from '../lib/withdrawal.js';
 
-// `company` on the employee document, not a bare id: `withdrawDecisionPermission`
-// resolves which payroll a row belongs to before deciding whose row it is, and
-// `entryCompany` refuses to guess. Same fixture shape as test/withdrawal.test.js.
+// `company` on the employee document, not a bare id — the same fixture shape as
+// test/withdrawal.test.js. It mattered while `withdrawDecisionPermission`
+// resolved which payroll a row belonged to before deciding whose row it was;
+// that rule went on 2026-09-18 and the shape is kept so the two files stay
+// readable side by side.
 const EMP = { _id: 'e1', name: 'สมชาย', role: 'employee', department: 'd1', company: 'primus' };
 const HR = { _id: 'h1', name: 'ฝ่ายบุคคล', role: 'hr' };
 const ADMIN = { _id: 'a1', name: 'ผู้ดูแล', role: 'admin' };
-const BOSS = { _id: 'm1', name: 'หัวหน้าเอ', role: 'supervisor', department: 'd1' };
 
 const D3 = { cancelCutoffDay: 3 };
 
@@ -44,15 +44,10 @@ const entry = (over = {}) => ({
   ...over,
 });
 
-/** …and the same one after a signature, which is the ขอถอนใบ side of the line. */
+/** …and the same one after a signature, which is the ถอนใบ side of the line. */
 const signed = (over = {}) => entry({
   status: 'approved',
   managerDecision: { by: 'm1', at: new Date('2026-08-21T02:00:00Z') },
-  ...over,
-});
-
-const withOpenRequest = (over = {}) => signed({
-  withdrawal: { state: 'requested', requestedBy: 'e1', requestedAt: new Date('2026-09-02') },
   ...over,
 });
 
@@ -193,7 +188,7 @@ test('แก้ไข by the employee is refused after the cutoff', () => {
   assert.equal(no.status, 409);
 });
 
-test('ขอถอนใบ is refused after the cutoff', () => {
+test('ถอนใบ is refused after the cutoff', () => {
   assert.equal(withdrawEligibility(EMP, signed(), { policy: D3, on: '2026-09-03' }).ok, true);
   const no = withdrawEligibility(EMP, signed(), { policy: D3, on: '2026-09-04' });
   assert.equal(no.ok, false);
@@ -201,63 +196,30 @@ test('ขอถอนใบ is refused after the cutoff', () => {
 });
 
 /**
- * MEASURED AT TODAY, NOT AT `requestedAt`. Asked in time, answered late: the
- * หัวหน้า is out and only ฝ่ายบุคคล is left. This is the "ทั้งหมด" the user
- * confirmed twice, and its cost is §13 of the plan.
+ * ── ⚠ FIVE TESTS ABOUT DECIDING A ขอถอน STOOD HERE UNTIL 2026-09-18 ─────────
+ *
+ * They were the most consequential ones in this file, and it is worth recording
+ * what they proved, because **the behaviour they pinned is the reason this
+ * whole feature was rewritten**:
+ *
+ *   `a withdrawal asked in time but decided late is closed to the หัวหน้า` —
+ *   the wall was MEASURED AT TODAY, not at `requestedAt`. Asked in time,
+ *   answered late, and the signer was out for good with only ฝ่ายบุคคล left.
+ *   That is the "ทั้งหมด" the user confirmed twice, and its cost was §13 of
+ *   docs/plan-cancel-cutoff-day.md: requests that piled up where nobody but HR
+ *   could clear them, and a `periodItems` line that could not clear itself.
+ *
+ *   `HR deciding a closed period without a reason is 400, both verbs` and
+ *   `inside the period, no reason is required of HR — no new gate` — the other
+ *   half of the same bill, added on 2026-09-14 so that HR answering a request
+ *   the signer could not reach at least recorded why.
+ *
+ * **The bill is not being paid any more: the wait was removed instead.** ถอนใบ
+ * is one press by the owner of the entry, so there is no ตัดสิน to be late for,
+ * no reason for HR to give, and no pile. The wall itself is unchanged and is
+ * still tested — above, on `withdrawEligibility`, which is now the only thing
+ * standing between an `approved` row and its removal.
  */
-test('a withdrawal asked in time but decided late is closed to the หัวหน้า', () => {
-  const row = withOpenRequest();
-  const args = { user: BOSS, entry: row, delegations: [], policy: D3 };
-  assert.equal(withdrawDecisionPermission({ ...args, today: '2026-09-03' }).ok, true);
-  for (const verb of ['อนุมัติ', 'ไม่อนุมัติ']) {
-    const no = withdrawDecisionPermission({ ...args, today: '2026-09-20', verb });
-    assert.equal(no.ok, false);
-    assert.equal(no.status, 409);
-    assert.match(no.error, new RegExp(`${verb}คำขอถอนได้เฉพาะฝ่ายบุคคล`));
-  }
-});
-
-test('somebody outside the department still gets 403, not the wall', () => {
-  const other = { _id: 'm9', role: 'manager', department: 'บัญชี', company: 'prod1' };
-  const no = withdrawDecisionPermission({
-    user: other, entry: withOpenRequest(), delegations: [], today: '2026-08-25', policy: D3,
-  });
-  assert.equal(no.status, 403);
-});
-
-// ── HR's reason, past the cutoff only ───────────────────────────────────────
-
-/**
- * Deciding a withdrawal is one of the presses this app never required a reason
- * for. Past the cutoff it now does, for HR, at the SERVER — the user asked for
- * it on 2026-09-14 after being shown that nothing anywhere recorded why HR had
- * answered a request the signer no longer could.
- */
-test('HR deciding a closed period without a reason is 400, both verbs', () => {
-  const row = withOpenRequest();
-  for (const verb of ['อนุมัติ', 'ไม่อนุมัติ']) {
-    for (const note of [undefined, '', '   ']) {
-      const no = withdrawDecisionPermission({
-        user: HR, entry: row, today: '2026-09-20', policy: D3, verb, note,
-      });
-      assert.equal(no.ok, false, `verb ${verb}, note ${JSON.stringify(note)}`);
-      assert.equal(no.status, 400);
-      assert.match(no.error, /เหตุผล/);
-    }
-    const yes = withdrawDecisionPermission({
-      user: HR, entry: row, today: '2026-09-20', policy: D3, verb, note: 'พนักงานแจ้งย้อนหลัง',
-    });
-    assert.equal(yes.ok, true);
-  }
-});
-
-/** An open period is decided exactly as it was before this key existed. */
-test('inside the period, no reason is required of HR — no new gate', () => {
-  const ok = withdrawDecisionPermission({
-    user: HR, entry: withOpenRequest(), today: '2026-09-02', policy: D3,
-  });
-  assert.equal(ok.ok, true);
-});
 
 // ── the order inside editPermission ─────────────────────────────────────────
 
@@ -298,13 +260,14 @@ test('an approved entry past the cutoff is not sent to the ขอถอนใบ
  * asks the wall separately to decide whether to draw the sentence in its place.
  */
 test('no policy argument reproduces the pre-cutoff answer on all three', () => {
-  const on = '2030-01-01';
+  // ⚠ IT WAS FOUR RULES, and `withdrawDecisionPermission` was the fourth —
+  // 2026-09-18. The property is the same for the three that are left: the
+  // trailing options object defaults to NO cutoff, which is what lets a screen
+  // ask the counterfactual "would there have been a button here at all" without
+  // a second copy of the rule. See `wouldOffer` in components/EmployeeView.jsx.
   assert.equal(editPermission(EMP, entry(), '').ok, true);
   assert.equal(cancelPermission(EMP, entry()).ok, true);
   assert.equal(withdrawEligibility(EMP, signed()).ok, true);
-  assert.equal(withdrawDecisionPermission({
-    user: BOSS, entry: withOpenRequest(), delegations: [], today: on,
-  }).ok, true);
   assert.equal(cancelDeadline(entry(), {}), null);
 });
 
@@ -325,53 +288,29 @@ test('the lead carries the งวด and the deadline, in the app date shape', (
 });
 
 test('every sentence the wall produces starts from that one lead', () => {
+  // TWO TAILS SINCE 2026-09-18, and it was three: `cancelCutoffQueueNote` was
+  // the หัวหน้า's, on a screen that no longer exists. What is left is the
+  // employee's refusal and HR's note, and both still begin at the same lead.
   const lead = cancelCutoffLead(signed(), D3);
   const employee = cancelCutoffRefusal(EMP, signed(), D3, '2026-09-20').error;
-  const decide = withdrawDecisionPermission({
-    user: BOSS, entry: withOpenRequest(), delegations: [], today: '2026-09-20', policy: D3,
-  }).error;
-  for (const line of [employee, decide]) assert.ok(line.startsWith(lead), line);
+  const hr = cancelCutoffHrNote(signed(), D3);
+  for (const line of [employee, hr]) assert.ok(line.startsWith(lead), line);
 });
 
 /**
- * ── AND ONE ONE-LINE FORM, FOR THE ROW — 2026-09-16 ─────────────────────────
+ * ── ⚠ ONE-LINE FORM, FOR THE ROW — 2026-09-16 TO 2026-09-18 ────────────────
  *
- * Asked for with *ไม่อยากให้ความสูงเกิน 2 แถว* on คำขอถอนใบ. The whole sentence
- * takes two lines of its own in that cell, under a reason that has already
- * taken two, and it was the biggest single thing making the row four deep.
+ * `cancelCutoffShortNote` said the wall's fact in one line — `งวดปิด
+ * 03/09/2569 — เฉพาะฝ่ายบุคคล` — asked for with *ไม่อยากให้ความสูงเกิน 2 แถว*
+ * on คำขอถอนใบ, where the whole sentence took two lines of its own in a 300px
+ * cell under a reason that had already taken two. Two tests pinned it: that it
+ * kept the date and whose decision it was, and that it stayed strictly less
+ * than the queue's own sentence rather than forking into a second wording.
  *
- * WHAT IS DROPPED IS RECOVERABLE FROM WHERE THE READER ALREADY IS: the งวด,
- * because the row's own วันที่ column says which month the ใบ is in, and
- * `ซึ่งผ่านไปแล้ว`, because a deadline printed as the reason two buttons are
- * grey is a deadline that has passed. WHAT IS KEPT is the date — the only fact
- * in the sentence a reader cannot work out for themselves — and whose decision
- * it now is. The whole sentence is still the row's tooltip and still opens the
- * detail box behind it.
+ * Both it and `cancelCutoffQueueNote` went with that table. The remaining
+ * short form is the one below, which is a different thing: four words for a
+ * button cell, not a cut of the sentence.
  */
-test('the one-line form keeps the date and whose decision it is', () => {
-  const short = cancelCutoffShortNote(entry(), D3);
-  assert.equal(short, 'งวดปิด 03/09/2569 — เฉพาะฝ่ายบุคคล');
-  // The same date the long sentence prints, out of the same arithmetic — not a
-  // second deadline worked out beside it.
-  assert.ok(cancelCutoffLead(entry(), D3).includes('03/09/2569'));
-  assert.doesNotMatch(short, /2026-09-03/, 'raw ISO must never reach a screen');
-  // No cutoff configured means no sentence at all, exactly as the lead answers.
-  assert.equal(cancelCutoffShortNote(entry(), {}), '');
-});
-
-test('shortening it did not fork the sentence — the long one still says more', () => {
-  // The short form is a CUT of one fact, not a second wording of it. The day it
-  // stops being strictly less than the queue's own sentence is the day there
-  // are two sentences to keep in step, which is the failure §8.4 exists for.
-  const long = cancelCutoffQueueNote(entry(), D3);
-  const short = cancelCutoffShortNote(entry(), D3);
-  assert.match(long, /งวด สิงหาคม 2569/);
-  assert.match(long, /ซึ่งผ่านไปแล้ว/);
-  assert.ok(long.includes('03/09/2569') && short.includes('03/09/2569'));
-  assert.ok(long.includes('ฝ่ายบุคคล') && short.includes('ฝ่ายบุคคล'));
-  assert.ok(long.length > short.length);
-});
-
 test('the short form is the four words the button cell has room for', () => {
   assert.equal(cancelCutoffRefusal(EMP, entry(), D3, '2026-09-20').short, 'หมดเวลาแก้ไข');
 });

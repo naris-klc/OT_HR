@@ -182,20 +182,25 @@ const historySchema = new mongoose.Schema(
       // already do are still in the database and still have to load, which is
       // why the value stays in this enum and `isHrVerifiedBirthday` still reads
       // it.
-      // 'withdraw_request' is the employee ASKING for a signed entry to be
-      // taken back, and it is the only action in this list that changes no
-      // status — the entry stays approved and keeps counting until somebody
-      // answers. Its two answers are 'withdraw_grant', which ends at
-      // 'cancelled', and 'withdraw_refuse', which ends where it started. Three
-      // actions rather than reusing 'cancel' because the trail has to be able
-      // to say who asked as well as who released it; 'cancel' means the
-      // employee withdrew a request nobody had signed, and that is a different
-      // event with one actor instead of two. See lib/withdrawal.js.
+      // 'withdraw' is the employee taking a SIGNED entry of their own back off
+      // the books, and it ends at 'cancelled'. Its own action rather than
+      // 'cancel' because the trail has to say which of the two happened:
+      // 'cancel' is a request nobody had looked at yet, 'withdraw' is hours a
+      // หัวหน้า had signed for, and the person whose name is on that signature
+      // is entitled to tell them apart. Same reasoning as 'hr_cancel' on the
+      // other side of the same endpoint. See lib/withdrawal.js.
+      //
+      // THE THREE ROWS ABOVE IT ARE RETIRED, 2026-09-18, and stay in this enum
+      // for the reason 'submit_hr_verified' does — rows carrying them are in
+      // the database and have to load. 'withdraw_request' was the employee
+      // ASKING, the only action here that changed no status; 'withdraw_grant'
+      // and 'withdraw_refuse' were a signer's two answers to it. No new row can
+      // carry any of the three.
       enum: [
         'submit', 'submit_proxy', 'submit_hr_verified', 'resubmit',
         'approve_mgr', 'reject_mgr', 'approve_hr', 'reject_hr',
         'cancel', 'hr_cancel', 'edit', 'hr_edit', 'recompute',
-        'withdraw_request', 'withdraw_grant', 'withdraw_refuse',
+        'withdraw', 'withdraw_request', 'withdraw_grant', 'withdraw_refuse',
       ],
       required: true,
     },
@@ -651,8 +656,8 @@ const otEntrySchema = new mongoose.Schema(
     overCeilingReason: { type: String, trim: true, maxlength: 200 },
 
     /**
-     * ขอถอนใบที่อนุมัติแล้ว — the employee asking for a signed entry back, and
-     * the answer. Rules in lib/withdrawal.js; this is only the shape.
+     * ถอนใบที่อนุมัติแล้ว — the employee taking a signed entry of their own
+     * back off the books. Rules in lib/withdrawal.js; this is only the shape.
      *
      * On the entry rather than in a collection of its own, matching
      * `capOverride`: there is at most one live request per entry, it is
@@ -662,34 +667,58 @@ const otEntrySchema = new mongoose.Schema(
      * answers, and answers in the one place a person disputing the month is
      * already reading.
      *
-     * NOT a status. `state` here is the request's state; `status` above stays
-     * the entry's, and a granted withdrawal ends at `cancelled` — which is what
-     * every rollup, cap and report already means by "these hours do not count".
+     * NOT a status. `state` here is the withdrawal's; `status` above stays the
+     * entry's, and a withdrawal ends at `cancelled` — which is what every
+     * rollup, cap and report already means by "these hours do not count".
      *
-     * Only the latest request is kept. Asking again after a refusal overwrites
-     * this block, and nothing is lost by that: `history` holds one row per ask
-     * and one per answer, with the reason on each. This field is the shortcut a
-     * list screen needs ("is anything waiting on this row"), the way
-     * `capExceeded` is for the ceilings, and the full account lives where every
-     * other full account lives.
+     * ── HALF OF THIS BLOCK IS HISTORY, SINCE 2026-09-18 ─────────────────────
+     *
+     * It used to hold a REQUEST and an ANSWER: the employee asked, the entry
+     * did not move, and a signer decided at `/entries/:id/withdraw/decide`.
+     * That second act is gone — `withdrawalRecord` writes the four request
+     * fields and `state: 'granted'` in one press, and **deliberately leaves
+     * every `decided*` field empty, because nobody decided.**
+     *
+     * The `decided*` and `onBehalfOf*` fields stay on the schema because rows
+     * written before that date have them filled in truthfully, and a screen
+     * that prints them has to keep working. Any screen reading them must
+     * therefore tolerate both shapes for good.
+     *
+     * Only the latest record is kept, as before. `history` is the account that
+     * cannot be overwritten — one row per event, with the reason on each. This
+     * field is the shortcut a list screen needs, the way `capExceeded` is for
+     * the ceilings.
      */
     withdrawal: {
-      /** 'requested' | 'granted' | 'refused'. Absent means never asked. */
+      /**
+       * 'requested' | 'granted' | 'refused'. Absent means never withdrawn.
+       *
+       * Only `granted` can be written now. The other two are in
+       * `WITHDRAWAL_STATES` so that documents already carrying them still
+       * validate — see the note there.
+       */
       state: { type: String, enum: [...WITHDRAWAL_STATES, null], default: undefined },
 
+      // `requested*` by name and by nothing else: they are who pressed ถอนใบ,
+      // when, and why. Renaming them would rewrite every old row on disk to
+      // gain what this comment gives for free.
       requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
       requestedByName: String,
       requestedAt: Date,
-      /** Why they are asking. Required by the rule — see withdrawRequestPermission. */
+      /** Why they withdrew it. Required by the rule — see `withdrawPermission`. */
       reason: { type: String, trim: true, maxlength: 200 },
 
-      /** The person who pressed the button, never the one they stood in for. */
+      /**
+       * ── WHO ANSWERED, ON ROWS FROM BEFORE 2026-09-18 ONLY ────────────────
+       * Never written now. `decidedBy` was the person who pressed the button,
+       * never the one they stood in for; `onBehalfOf` said whose authority a
+       * ผู้รับช่วง used.
+       */
       decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
       decidedByName: String,
       decidedAt: Date,
       decisionNote: String,
 
-      /** Whose authority, when a ผู้รับช่วง answered. Same trio as everywhere else. */
       onBehalfOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
       onBehalfOfName: String,
       delegationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalDelegation' },
