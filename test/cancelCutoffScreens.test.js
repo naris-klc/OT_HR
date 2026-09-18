@@ -1,5 +1,11 @@
 /**
- * งวดปิดเอง — WHAT THE FOUR SCREENS DO ABOUT IT.
+ * งวดปิดเอง — WHAT THE SCREENS DO ABOUT IT.
+ *
+ * ⚠ IT WAS FOUR SCREENS UNTIL 2026-09-18 and is two. คิวคำขอถอน
+ * (`components/WithdrawalRequests.jsx`) was the third, and the section below
+ * that tested it is kept as a note rather than deleted, because the argument it
+ * recorded — a grey pair of buttons rather than no buttons, and a line every
+ * reader gets — is the one this project keeps having.
  *
  * Source text, not a render: there is no JSX transform under `node --test`, so
  * every component test in this project reads the file. That is exactly why the
@@ -21,16 +27,15 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8').replace(/\r\n/g, '\n');
 const bare = (p) => read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 const EMPLOYEE = 'components/EmployeeView.jsx';
-const QUEUE = 'components/WithdrawalRequests.jsx';
 const FORM = 'components/OtForm.jsx';
-const SCREENS = [EMPLOYEE, QUEUE, FORM];
+const SCREENS = [EMPLOYEE, FORM];
 
 // ── no screen does the arithmetic ───────────────────────────────────────────
 
 /**
- * THE ONE RULE THAT HOLDS ACROSS ALL THREE. `cancelDeadline` and the comparison
- * against `today()` exist once, in lib/entries.js, and the four routes enforce
- * with them. The day a component works out a deadline for itself is the day
+ * THE ONE RULE THAT HOLDS ACROSS BOTH. `cancelDeadline` and the comparison
+ * against `today()` exist once, in lib/entries.js, and the routes enforce with
+ * them. The day a component works out a deadline for itself is the day
  * there are two date rules that can disagree — and the one that disagrees
  * silently is the screen, because the server is the one that gets tested
  * against a database.
@@ -96,15 +101,30 @@ test('all three buttons are withheld past the cutoff, not merely disabled', () =
 });
 
 /**
- * NO NEW CSS, and the class pair is the reason. `.own-note` is already "the
- * sentence that stands where a row has no buttons" and
- * `.row-actions:has(> .own-note)` already knows to wrap the cell for it. The
- * rule that hides it above 861px is scoped to `.queue-table`; this table is
- * `.stack-table`, so it reads at every width.
+ * ⚠ IT WAS `.cell-sub own-note` — QUIET GREY TEXT — UNTIL 2026-09-18, on the
+ * reasoning that a sentence is not a control and should not look like one. The
+ * user asked for a chip in those words: *ข้อความ หมดเวลาแก้ไข ให้ใช้เป็นป้าย
+ * สีเทา เหมือนป้ายสถานะยกเลิก* — standing in a row of pill-shaped buttons, loose
+ * text read as a rendering fault rather than as the row's answer.
+ *
+ * `own-note` IS STILL IN THE LIST and that is the half this test guards: it is
+ * the 190px cap and the thing `.row-actions:has(> .own-note)` knows to wrap the
+ * cell for. The rule hiding it above 861px is scoped to `.queue-table`; this
+ * table is `.stack-table`, so it reads at every width.
+ *
+ * `.chip.locked` AND NOT `.chip.st-cancelled`, whose two declarations it
+ * copies. The row is `approved`; an `st-` class means the status of the ใบ, and
+ * a chip wearing a class named after something else follows that something else
+ * the day it is restyled — the reason `.chip.scan-off` is not `.chip.edited`.
  */
-test('the sentence reuses .cell-sub .own-note and adds no class', () => {
-  assert.match(emp, /className="cell-sub own-note"/);
+test('the chip keeps .own-note and takes a class that is not a status', () => {
   const css = read('app/styles.css');
+  assert.match(emp, /className="chip locked own-note"/);
+  assert.ok(!/className="cell-sub own-note"/.test(emp), 'the grey text came back');
+  assert.match(css, /\.chip\.locked \{ background: var\(--line-softer\); color: var\(--muted-2\); \}/);
+  assert.match(css, /\.chip\.st-cancelled \{ background: var\(--line-softer\); color: var\(--muted-2\); \}/);
+  assert.ok(!/chip st-cancelled/.test(bare(EMPLOYEE)), 'a status class on a row that is not cancelled');
+
   assert.match(css, /\.own-note \{ max-width: 190px; \}/);
   assert.match(css, /\.row-actions:has\(> \.own-note\)/);
   assert.match(css, /\.queue-table td\.act-col \.own-note \{ display: none; \}/);
@@ -129,109 +149,30 @@ test('the EntryDetail foot answers exactly what the row answered', () => {
   assert.match(foot, /const mayEdit = !past && awaitingFirstSignature\(e\);/);
   assert.match(foot, /const mayAsk = !past && withdrawEligibility\(user, e\)\.ok;/);
   assert.match(foot, /\{past && wouldOffer && \(/);
-  assert.match(foot, /className="cell-sub own-note"/);
+  // The same chip as the row, out of the same two classes — a reader who met it
+  // on the row must meet the same thing when they open the row.
+  assert.match(foot, /className="chip locked own-note"/);
 });
 
-// ── คิวคำขอถอน: a grey pair, and a line everybody reads ────────────────────
-
-const queue = read(QUEUE);
-
-/**
- * A GREY PAIR AND NOT A SENTENCE, which is the opposite of the employee screen
- * and follows from the same three-tier rule: a disabled button is the shape of
- * a decision that STILL EXISTS and is not this reader's. ฝ่ายบุคคล presses
- * exactly these two. Nobody presses an employee's ยกเลิก.
- */
-test('the two buttons are drawn and dead, never removed', () => {
-  assert.match(queue, /const locked = \(e\) => past\(e\) && !mayPass;/);
-  assert.match(queue, /disabled=\{busy \|\| locked\(e\)\}/);
-  // Both of them, not one.
-  assert.equal((queue.match(/disabled=\{busy \|\| locked\(e\)\}/g) || []).length, 2);
-  // The row is still fetched and still drawn — somebody who asked must not
-  // disappear from their หัวหน้า's screen without a word. Nothing filters the
-  // card list; `batch` narrows only what the BATCH button acts on.
-  assert.match(queue, /\{rows\.map\(\(e, i\) =>/);
-  assert.ok(!/rows\.filter[\s\S]{0,40}\.map\(\(e, i\)/.test(bare(QUEUE)));
-});
-
-/**
- * DRAWN FOR EVERY READER, not only for the one whose buttons are grey. On a
- * หัวหน้า's screen it explains the grey pair; on ฝ่ายบุคคล's, whose buttons
- * work, it IS the warning strip §8.6 asked for — one sentence doing both jobs
- * rather than the same fact written in two places.
- */
-test('the reason line is gated on past(e), not on locked(e)', () => {
-  // A `.cell-note` under the reason since 2026-09-15, where it was a `.hint`
-  // at the foot of the card's prose. Same place in the reading order and the
-  // same gate: under what is being decided, never beside the buttons.
-  assert.match(queue, /\{past\(e\) && <div className="cell-note">/);
-  // ⚠ THE CELL CARRIED `cancelCutoffQueueNote` UNTIL 2026-09-16 and carries the
-  // one-line form now: the whole sentence was two lines of its own in a row the
-  // user asked to be no more than two (*ไม่อยากให้ความสูงเกิน 2 แถว*). The GATE
-  // is what this test is about and it has not moved — `past(e)`, so ฝ่ายบุคคล,
-  // whose buttons still work, get the warning as well.
-  assert.match(queue, /cancelCutoffShortNote\(e, policy\)/);
-  // AND THE WHOLE SENTENCE IS STILL ONE PRESS AWAY, for both readers: the row's
-  // own tooltip, and the head of the box the row opens. Shortening a warning is
-  // only allowed where the long form is still reachable from the same row.
-  assert.match(queue, /title=\{locked\(e\) \? cancelCutoffQueueNote\(e, policy\) : undefined\}/);
-  assert.match(queue, /\{past && <Alert kind="warn">\{cancelCutoffQueueNote\(e, policy\)\}<\/Alert>\}/);
-});
-
-/** It asks the rule and the app's one spelling of who is exempt. */
-test('the queue asks mayCorrectEntries rather than listing roles', () => {
-  assert.match(queue, /const mayPass = mayCorrectEntries\(user\);/);
-  assert.ok(!/'hr', 'admin'|"hr", "admin"/.test(bare(QUEUE)), 'a second role list appeared');
-});
-
-/**
- * อนุมัติให้ถอนทั้งหมด PROMISES WHAT IT CAN DELIVER. Counted off `batch` —
- * the open requests this reader can actually decide — because a button headed
- * ทั้งหมด that clears part of the list lies twice: in its name, and again in
- * the failure list the server hands back for the rest.
- */
-test('the batch button, its dialog and its loop all use batch', () => {
-  assert.match(queue, /const batch = \(rows \|\| \[\]\)\.filter\(\(e\) => !locked\(e\)\);/);
-  assert.match(queue, /for \(const e of batch\) \{/);
-  assert.match(queue, /\{batch\.map\(\(e, i\) =>/);
-  assert.match(queue, /const totalHours = batch\.reduce\(/);
-  // THE BUTTON MOVED TO THE CARD'S HEAD ON 2026-09-15 — the head belongs to
-  // ApprovalQueue now that the two piles share one card — and it moved with the
-  // figure it is counted off. `wBatch` is this `batch.length`, reported upward;
-  // reading `wOpen` there would put the old lie back in a new place.
-  assert.match(queue, /const batchCount = batch\.length;/);
-  assert.match(queue, /onCount\?\.\(openCount, batchCount\);/);
-  assert.match(read('components/ApprovalQueue.jsx'), /wBatch > 1 && \(/);
-});
-
-/**
- * PAST THE CUTOFF ฝ่ายบุคคล MUST SAY WHY — and inside an open งวด the dialog is
- * exactly what it was before any of this existed. A gate that appears where it
- * has nothing to guard is a gate people learn to click through.
- */
-test('the reason field appears only past the cutoff, on both HR paths', () => {
-  assert.match(queue, /\{past\(granting\) && \(/);
-  assert.match(queue, /disabled=\{busy \|\| \(past\(granting\) && !grantNote\.trim\(\)\)\}/);
-  assert.match(queue, /\{closed\.length > 0 && \(/);
-  assert.match(queue, /disabled=\{busy \|\| \(closed\.length > 0 && !batchNote\.trim\(\)\)\}/);
-  assert.match(queue, /เหตุผลที่ตัดสินหลังงวดปิด \*/);
-});
-
-/** The note rides only on the rows that need one. */
-test('the batch sends its reason to the closed rows and to nothing else', () => {
-  assert.match(queue, /note: past\(e\) \? batchNote\.trim\(\) \|\| undefined : undefined/);
-});
-
-/**
- * THE REFUSAL DIALOG GAINS NO SECOND FIELD. It has required a reason since
- * before this existed, for its own reason — the employee reads it — and one box
- * asking for two reasons is a box nobody finishes.
- */
-test('ไม่อนุมัติการถอน keeps its one reason field', () => {
-  const refuse = queue.slice(queue.indexOf('{refusing && ('), queue.indexOf('{/* ── THE BATCH'));
-  assert.match(refuse, /past\(refusing\) && <Alert kind="warn">/);
-  assert.equal((refuse.match(/<label>/g) || []).length, 1);
-});
+// ── ⚠ คิวคำขอถอน: a grey pair, and a line everybody reads — GONE 2026-09-18 ─
+//
+// Nine tests stood here against `components/WithdrawalRequests.jsx`, and the
+// argument they pinned is worth keeping even though the screen is not:
+//
+//   A GREY PAIR RATHER THAN NO BUTTONS. Past the cutoff that screen DISABLED
+//   อนุมัติให้ถอน and ไม่อนุมัติ instead of withholding them, which is the
+//   opposite of what รายการของฉัน does one section up — and deliberately. A
+//   disabled control is the shape of a decision that still exists but is not
+//   this reader's, and ฝ่ายบุคคล really would still press those. Nobody presses
+//   ยกเลิก on an employee's behalf, so there the buttons simply go.
+//
+//   AND A LINE EVERY READER GETS, not only the ones who are refused: a หัวหน้า
+//   who cannot act needs to know why, and HR who can needs to know the period
+//   is closed before they do.
+//
+// The screen went with the ตัดสิน press it existed for — ถอนใบ is one act by
+// the owner of the entry now (lib/withdrawal.js). The employee's side of the
+// wall, above, is unchanged and is what the two remaining screens are tested on.
 
 // ── ฟอร์มแก้ไขของ HR: a strip and a dialog ─────────────────────────────────
 
@@ -273,7 +214,7 @@ test('there is a strip on the way in and a dialog before the write', () => {
  * and not a precedent for this.)
  */
 test('no Alert body on these screens repeats the mark Alert draws', () => {
-  for (const f of [QUEUE, FORM, EMPLOYEE]) {
+  for (const f of [FORM, EMPLOYEE]) {
     for (const m of read(f).matchAll(/<Alert[^>]*>([\s\S]*?)<\/Alert>/g)) {
       assert.ok(!m[1].includes('⚠'), `${f} types ⚠️ inside an Alert body`);
     }

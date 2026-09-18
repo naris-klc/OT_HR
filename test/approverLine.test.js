@@ -487,7 +487,10 @@ test('none of the reviewer’s three decisions is on the owner’s pop-up', () =
   has(mine, 'เหตุผลที่ไม่อนุมัติ');
   // What is there instead: the way out, and the three things an owner may do.
   has(mine, '<button className="btn ghost" onClick={onClose}>ปิดหน้าต่าง</button>');
-  has(mine, 'onClick={onAskWithdraw}>ยื่นขอถอนใบ OT</button>');
+  // `ถอนใบ OT` read `ยื่นขอถอนใบ OT` until 2026-09-18 — the extra word carried a
+  // real distinction while this button only ASKED and the reviewer's took the
+  // hours off the books. They do the same thing now, so they say the same thing.
+  has(mine, 'onClick={onAskWithdraw}>ถอนใบ OT</button>');
   has(mine, 'onClick={onCancel}>ยกเลิกคำขอ</button>');
   has(mine, 'onClick={onEdit}>แก้ไข</button>');
 });

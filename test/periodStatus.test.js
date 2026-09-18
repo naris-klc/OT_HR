@@ -73,23 +73,25 @@ test('a request nobody has signed is ตกค้าง — its signature box is
   assert.deepEqual(review, []);
 });
 
-test('a withdrawal request nobody has answered is ตกค้าง too', () => {
-  /**
-   * Its own item and its own sentence rather than folded into `pending`,
-   * because the two are cleared by different people doing different things:
-   * one by working an approval queue, this one by answering a question
-   * somebody asked. A single number covering both would name a total that
-   * matches neither screen.
-   *
-   * The entry itself is `approved`, so it does not show up in `pending` at all
-   * — but the row that IS on the sheet may be about to come off it, which is
-   * exactly what somebody about to print needs told.
-   */
-  const { outstanding } = periodItems({ openWithdrawals: 2 });
-  assert.equal(outstanding.length, 1);
-  assert.equal(outstanding[0].kind, 'openWithdrawals');
-  assert.match(outstanding[0].text, /2 คำขอ/);
-});
+/**
+ * ── ⚠ `a withdrawal request nobody has answered is ตกค้าง too` STOOD HERE ───
+ *
+ * It pinned `openWithdrawals` as an outstanding item with a sentence of its
+ * own rather than folded into `pending`, because the two were cleared by
+ * different people doing different things: one by working an approval queue,
+ * the other by answering a question somebody had asked.
+ *
+ * **It is gone on 2026-09-18 because nothing can be outstanding any more.**
+ * ถอนใบ is one press by the owner of the entry and the row is `cancelled` when
+ * it returns, so a month cannot hold a withdrawal waiting for anybody.
+ *
+ * THE LINE IT TESTED IS THE ONE THIS WHOLE CHANGE WAS ASKED FOR. It carried a
+ * warning in the source — THIS LINE CAN NO LONGER CLEAR ITSELF — because
+ * `cancelCutoffDay` measured the ตัดสิน press at TODAY, so a request left
+ * sitting past the cutoff could only ever be answered by ฝ่ายบุคคล, and until
+ * somebody in HR went and did it this card called a finished month unfinished.
+ * See lib/periodStatus.js, where that note is kept.
+ */
 
 test('an over-cap or below-minimum entry is ควรตรวจ, never ตกค้าง', () => {
   /**
@@ -111,7 +113,7 @@ test('an over-cap or below-minimum entry is ควรตรวจ, never ตก�
 
 test('a month with nothing in either group produces two empty lists', () => {
   // Absent and empty must not be two states the card has to handle.
-  for (const checks of [{}, undefined, { pending: 0, openWithdrawals: 0, capExceeded: 0, belowMinimum: 0 }]) {
+  for (const checks of [{}, undefined, { pending: 0, capExceeded: 0, belowMinimum: 0 }]) {
     const { outstanding, review } = periodItems(checks);
     assert.deepEqual(outstanding, []);
     assert.deepEqual(review, []);
@@ -129,12 +131,29 @@ test('the headline is HR\'s own example sentence', () => {
   assert.equal(s.entries, 11);
 });
 
-test('two things outstanding are joined onto the one line', () => {
+/**
+ * ── ⚠ TWO THINGS OUTSTANDING ARE JOINED, AND TODAY THERE CAN ONLY BE ONE ────
+ *
+ * This asserted the whole joined sentence — `มีใบรออนุมัติค้างอยู่ 4 ใบ และ
+ * มีคำขอถอนใบค้างพิจารณา 2 คำขอ` — and those were the only two kinds this card
+ * ever called ตกค้าง. `openWithdrawals` went on 2026-09-18; `capExceeded` and
+ * `belowMinimum` are ควรตรวจ, not ตกค้าง, so `outstanding` now holds at most one
+ * item and the `และ` cannot be reached through `periodSummary` at all.
+ *
+ * **The join is kept and this test is honest about what it can prove.** It
+ * reads the source for the separator rather than asserting a sentence it cannot
+ * produce — a test that built a fake `outstanding` array and passed it in would
+ * be testing a function this module does not export, and would go on passing if
+ * `periodItems` stopped feeding it. The day a second ตกค้าง kind is added, the
+ * sentence test comes back here.
+ */
+test('one outstanding thing is the whole headline, and the join is still there for a second', () => {
   const s = periodSummary({
     period: '2026-08',
-    checks: { entries: 11, pending: 4, openWithdrawals: 2 },
+    checks: { entries: 11, pending: 4 },
   });
-  assert.equal(s.headline, 'งวด สิงหาคม 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ และ มีคำขอถอนใบค้างพิจารณา 2 คำขอ');
+  assert.equal(s.headline, 'งวด สิงหาคม 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ');
+  assert.match(read('lib/periodStatus.js'), /outstanding\.map\(\(i\) => i\.short\)\.join\(' และ '\)/);
 });
 
 test('a clear month says so, with the number of entries behind it', () => {
@@ -281,7 +300,7 @@ test('an item carries the count and the consequence separately', () => {
 
 test('every item in both groups has all three', () => {
   const { outstanding, review } = periodItems({
-    pending: 1, openWithdrawals: 2, capExceeded: 3, belowMinimum: 4,
+    pending: 1, capExceeded: 3, belowMinimum: 4,
   });
   for (const item of [...outstanding, ...review]) {
     assert.ok(item.short, `${item.kind} has no short`);

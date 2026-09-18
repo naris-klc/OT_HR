@@ -703,12 +703,23 @@ const ACTION_META = {
   // lib/entries.js.
   hr_cancel: { label: 'ฝ่ายบุคคลยกเลิกใบ', tone: 'off' },
   /**
-   * The three rows of ขอถอนใบ. `withdraw_request` is the only action in the
-   * list that changes no status, so its label has to carry that itself — a
-   * reader seeing "ถอนใบ" beside an entry still marked อนุมัติ would otherwise
-   * conclude the trail contradicts the row. `tone: 'edit'` and not 'off' for
-   * the same reason: nothing has come off the books yet.
+   * ถอนใบ — the employee taking a signed entry of their own back off the books.
+   * Its own label rather than `cancel`'s, for the reason `hr_cancel` has its
+   * own: naming the wrong act on the one row a reader opens the trail to
+   * understand is the failure these labels exist to prevent. `CancelledMark`
+   * reads this very entry, so the chip on the row and the line in the trail
+   * cannot disagree.
+   *
+   * ── THE THREE BELOW ARE RETIRED, 2026-09-18 ─────────────────────────────
+   * They are the ขอถอนใบ that waited for an answer: the ask, and a signer's two
+   * replies. No new row can carry them and they are kept because rows that do
+   * are in the database — a trail that cannot name its own actions prints
+   * blanks. `withdraw_request` was the only action in this list that changed no
+   * status, which is why its label says so: a reader seeing "ถอนใบ" beside an
+   * entry still marked อนุมัติ would otherwise conclude the trail contradicts
+   * the row.
    */
+  withdraw: { label: 'พนักงานถอนใบ', tone: 'off' },
   withdraw_request: { label: 'พนักงานขอถอนใบ (รอการพิจารณา)', tone: 'edit' },
   withdraw_grant: { label: 'อนุมัติให้ถอนใบ', tone: 'off' },
   withdraw_refuse: { label: 'ไม่อนุมัติให้ถอนใบ — รายการยังมีผล', tone: 'no' },
@@ -778,6 +789,60 @@ export function EditedMark({ entry }) {
   return (
     <span className="chip edited" title="รายการนี้ถูกแก้ไขหลังยื่น — เปิดดูรายละเอียดเพื่อดูค่าก่อนแก้ไข">
       {who}{edits.length > 1 ? ` ${edits.length} ครั้ง` : ''}
+    </span>
+  );
+}
+
+/** The presses that end a live entry, newest-wins. Order is immaterial. */
+const ENDING_ACTIONS = ['withdraw', 'hr_cancel', 'cancel', 'withdraw_grant'];
+
+/**
+ * ใครเป็นคนปิดใบนี้ — a cancelled row saying which of four different things
+ * happened to it.
+ *
+ * `StatusChip` prints ยกเลิก for all of them, which is correct about the hours
+ * and useless about the event. **Four presses land on `cancelled`** and a
+ * reader of ตรวจสอบประจำเดือน or รายงาน OT ประจำทีม has a different question to
+ * ask after each: the employee dropped a request nobody had signed yet
+ * (`cancel`); the employee withdrew one a หัวหน้า HAD signed, which is hours
+ * coming off a sheet somebody put their name to (`withdraw`); ฝ่ายบุคคล ended
+ * it for everybody (`hr_cancel`); or, on rows written before 2026-09-18, a
+ * signer granted a request the employee had filed (`withdraw_grant`).
+ *
+ * **This mark is what a screen of its own would have been.** คำขอถอนใบ was a
+ * tab on the approval queue and it was going to become a ถอนใบแล้ว list; the
+ * user withdrew that on 2026-09-18 — *มันก็แสดงในรายการประวัติแต่ละคนอยู่แล้ว
+ * ว่ารายการไหนถูกถอน* — which was right: cancelled rows are already on both
+ * monthly screens (`closed` in components/HrEntries.jsx). The only thing
+ * genuinely missing was WHO, and a chip beside the row answers it where the
+ * reader already is, instead of on a second screen they have to remember to
+ * open.
+ *
+ * The words come from `ACTION_META`, the same map `EntryHistory` prints the trail
+ * from, so the chip on the row and the line inside it cannot drift apart.
+ *
+ * Grey, like the status chip it sits beside: nothing here needs attention. The
+ * reason rides in the `title` rather than on the row, because a row carrying
+ * somebody's sentence is a row that stops being a table.
+ */
+export function CancelledMark({ entry }) {
+  if (entry?.status !== 'cancelled') return null;
+
+  const last = [...(entry.history || [])]
+    .reverse()
+    .find((h) => ENDING_ACTIONS.includes(h.action));
+  if (!last) return null;
+
+  const label = ACTION_META[last.action]?.label;
+  if (!label) return null;
+
+  // `note` is the reason typed at the press; `withdrawal.reason` is the same
+  // sentence stored on the entry, and is the one an old `withdraw_grant` row
+  // has instead — that press recorded the DECIDER's note, not the asker's.
+  const why = last.note || entry.withdrawal?.reason;
+  return (
+    <span className="chip ended" title={why ? `เหตุผล: ${why}` : 'รายการนี้ถูกปิดแล้ว — เปิดดูประวัติเพื่อดูเหตุผล'}>
+      {label}
     </span>
   );
 }

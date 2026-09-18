@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  Alert, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, Modal, ProxyMark, RateHead,
+  Alert, CancelledMark, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, Modal, ProxyMark,
+  RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
   StatusChip, editsOf, trailOf,
 } from './common.jsx';
@@ -311,9 +312,9 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
    *
    * `Modal` AND NOT `ConfirmDialog`: the confirm button has to stay dead until a
    * reason is typed, and `ConfirmDialog` has no `confirmDisabled` — a prop with
-   * no caller would be dead code, and this box is the same shape
-   * ไม่อนุมัติคำขอถอนใบ in components/WithdrawalRequests.jsx already has for the
-   * same job. Inherited, not designed.
+   * no caller would be dead code. It was inherited from ไม่อนุมัติคำขอถอนใบ in
+   * components/WithdrawalRequests.jsx, which was deleted on 2026-09-18 with the
+   * rest of the คำขอถอน flow; this is now the only box of that shape.
    *
    * ไม่ยกเลิกแล้ว / ยืนยันการยกเลิก, and not ตกลง / ยกเลิก: in a box about
    * cancelling, a button reading ยกเลิก is the question again rather than an
@@ -350,14 +351,11 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
         รายการนี้จะเปลี่ยนเป็น “ยกเลิก” ทันทีและ<strong>แก้กลับไม่ได้</strong> —
         {' '}{hours(cancelling.totals?.otHours)} ชม. จะถูกตัดออกจากเพดานของแผนกและจากรายงานส่งบัญชี
       </Alert>
-      {/* An open คำขอถอน is answered by this same press (see the route), and a
-          reader who does not know that would leave the dialog expecting to go
-          and grant it afterwards. */}
-      {cancelling.withdrawal?.state === 'requested' && (
-        <Alert kind="warn">
-          ใบนี้มีคำขอถอนของพนักงานรออยู่ — การยกเลิกนี้จะถือว่าอนุมัติคำขอนั้นไปด้วย
-        </Alert>
-      )}
+      {/* ใบนี้มีคำขอถอนของพนักงานรออยู่ WAS A SECOND PANEL HERE. It warned that
+          this press also granted the request, because the route did that
+          silently. No entry can be carrying an open request now — ถอนใบ closes
+          the row itself — so the panel would be a warning about a state the
+          system does not produce. */}
       <div className="field">
         <label>เหตุผลการยกเลิก</label>
         <input
@@ -719,6 +717,27 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                             {lastEdit.note ? ` — ${lastEdit.note}` : ''}
                           </div>
                         </div>
+                      )}
+                      {/* ── ใครเป็นคนปิดใบนี้ — 2026-09-18 ──────────────────
+                          `StatusChip` in the column to the right says ยกเลิก
+                          for four different events, and until this date the
+                          two that matter most were told apart on a screen of
+                          their own: คำขอถอนใบ on the approval queue, which was
+                          going to become a ถอนใบแล้ว list.
+
+                          The user read the tree and withdrew it — *มันก็แสดงใน
+                          รายการประวัติแต่ละคนอยู่แล้ว ว่ารายการไหนถูกถอน* —
+                          which is exactly right: `closed` above this loop
+                          already keeps `cancelled` rows in this table, so a
+                          third screen would have been a third place to read
+                          what this one shows. WHO is the only thing that was
+                          missing, and this chip is it.
+
+                          Beside `EditedMark` rather than in the status column:
+                          the marks about what happened to a row live together,
+                          and the status column is one chip wide by design. */}
+                      {e.status === 'cancelled' && (
+                        <div className="entry-mark"><CancelledMark entry={e} /></div>
                       )}
                     </td>
                     {/* กฎที่ใช้ WAS HERE, and it read: "beside the hours rather

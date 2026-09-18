@@ -13,7 +13,7 @@ import {
 import { rosterPermission, codeChangePermission, selfEditPermission } from '../lib/employees.js';
 import { authorizeReplay } from '../lib/policyVersion.js';
 
-import { withdrawRequestPermission } from '../lib/withdrawal.js';
+import { withdrawPermission } from '../lib/withdrawal.js';
 import { OVERRIDE_NOTE_REQUIRED } from '../lib/delegation.js';
 
 /**
@@ -571,10 +571,12 @@ test('the rules that live in a pure module refuse an empty reason, and a blank o
   const entry = { employee: 'e1', status: 'approved', period: '2026-08' };
   const owner = { _id: 'e1', role: 'employee' };
 
-  // ขอถอนใบ — asking for a signed entry back
-  assert.equal(withdrawRequestPermission(owner, entry, '').status, 400);
-  assert.equal(withdrawRequestPermission(owner, entry, '   ').status, 400);
-  assert.equal(withdrawRequestPermission(owner, entry, 'ลงเวลาผิด').ok, true);
+  // ถอนใบ — taking a signed entry of one's own back off the books. It read
+  // `withdrawRequestPermission` and was an ASK until 2026-09-18; the reason is
+  // still required, and for a reason the rule's own test spells out.
+  assert.equal(withdrawPermission(owner, entry, '').status, 400);
+  assert.equal(withdrawPermission(owner, entry, '   ').status, 400);
+  assert.equal(withdrawPermission(owner, entry, 'ลงเวลาผิด').ok, true);
 
   // เปิดงวดที่ปิดแล้ว was the second of these until 2026-08-31 and had the same
   // shape — admin only, refused without a reason. It went with ปิดงวด; see

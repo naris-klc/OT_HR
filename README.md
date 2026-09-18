@@ -1613,8 +1613,9 @@ route ปฏิเสธ — และแผนกที่ **ฝ่ายบุ
 
   **หัวข้อนี้เคยอ่านว่า "ไม่มีกำแพงระดับเดือนแล้ว" เฉย ๆ จนถึง 2026-09-14**
   `cancelCutoffDay` เป็นกำแพงระดับเดือน แต่ไม่ได้อยู่ตรงนี้: มันปิด แก้ไข ·
-  ยกเลิก · ขอถอนใบ · ตัดสินคำขอถอน ให้**พนักงานกับผู้เซ็น** ส่วนการคำนวณใหม่ไม่ใช่
-  หนึ่งในสี่อย่างนั้น และคนสั่งคือผู้ดูแลระบบซึ่งกฎข้อนั้นไม่เคยปฏิเสธ · ย่อหน้า
+  ยกเลิก · ถอนใบ ให้**พนักงาน** ส่วนการคำนวณใหม่ไม่ใช่
+  หนึ่งในสามอย่างนั้น *(เคยเป็นสี่อย่างและรวม `ตัดสินคำขอถอน` ของผู้เซ็นด้วย
+  จนถึง 2026-09-18 ที่การตัดสินถูกถอนออกทั้งขั้น)* และคนสั่งคือผู้ดูแลระบบซึ่งกฎข้อนั้นไม่เคยปฏิเสธ · ย่อหน้า
   ข้างบนจึงยังจริงทุกคำ แค่ประโยคหัวข้อกว้างเกินไปแล้ว
 - **ทุกใบที่ตัวเลขขยับจริงจะเก็บภาพ `before` ไว้** พร้อมบรรทัด `recompute` ที่ถือ
   `BIRTHDATE_REPLAY_NOTE` การแถลงตัวเลขใหม่จึงโผล่ใน ประวัติรายการ ข้าง ๆ การแก้ไข
@@ -2084,7 +2085,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     157 files, run by `npm test`. Six named below as a
+test/                     156 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2097,15 +2098,24 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2836 tests
-across 157 files**, measured 2026-09-16 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2780 tests
+across 156 files**, measured 2026-09-18 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
 (⚠ **COUNT IT IN THE TREE THAT HOLDS `dev`, AFTER THE MERGE.** This line said
 "2804 tests across 155 files" for one afternoon: the figure was true in the
 worktree it was measured in and was four cases short of `dev`, because another
 session had landed work meanwhile. A worktree isolates files; it does not
 isolate this number.
-It read "2824 tests across 156 files … measured 2026-09-16" until
+It read "2836 tests across 157 files … measured 2026-09-16" until
+**ถอนใบเองได้ทันที ไม่ต้องรอใครอนุมัติ** — **and this is the second round where
+the figure goes DOWN because a feature was withdrawn**, 56 cases and a file.
+`queueWithdrawChips` (12) and `withdrawalRowLayout` (33) were deleted with the
+screen they pinned; `withdrawSelfScreens` replaces them with 16, so the file
+count nets −1. The other cases went out of `withdrawal`, `cancelCutoff`,
+`cancelCutoffScreens`, `periodStatus`, `periodReminder`, `hrCancelEntry` and
+`approverCompanyScope`, in each case because the ACT they tested — a signer
+deciding a คำขอถอน — no longer exists.
+Before that it read "2824 tests across 156 files … measured 2026-09-16" until
 **เงื่อนไขช่องติ๊กย้ายขึ้นหน้าตั้งค่า** — `tickPolicy` is file 157. Before that
 it read "2823 tests across 156 files … measured 2026-09-16" until
 รายละเอียดงานที่ทำ became one line instead of a three-line box — no new file,
@@ -2117,7 +2127,7 @@ Before that it read "2791 tests across 154 files … measured 2026-09-16" until
 file 155, and thirteen of the new cases are in it. Before that it read
 "2779 tests across 154 files … measured 2026-09-15" until
 **แถวคำขอถอนใบ สูงไม่เกินสองบรรทัด และกดเปิดรายละเอียดได้** — NO new file, and
-that is the shape of the round: eleven cases went into `withdrawalRowLayout`,
+that is the shape of the round: eleven cases went into withdrawalRowLayout,
 `cancelCutoff`, `cancelCutoffScreens` and `disclosure`, because the change is to
 a row four of them already pin rather than to a screen none of them do. Before
 that it read "2753 tests across 153 files … measured 2026-09-15" until
@@ -6690,100 +6700,154 @@ evidence can be removed proves nothing.
 
 ---
 
-## ขอถอนใบที่อนุมัติแล้ว — asking, not taking
+## ถอนใบที่อนุมัติแล้ว — one press, by the person whose entry it is
 
 `cancelPermission` draws its line at the first signature: before it the request
-is the employee's to withdraw, after it the entry carries a decision made
-against particular hours. That line is right. What was wrong was the sentence on
-the other side of it — **“หัวหน้าอนุมัติแล้ว ยกเลิกเองไม่ได้ — ติดต่อฝ่ายบุคคล”** —
-which sent the rest of the story outside the system.
-
-**And that sentence itself stood until 2026-08-31**, months after the feature
-below replaced what it described: `cancelPermission` went on answering
-ติดต่อฝ่ายบุคคล on a signed entry, so anything that reached the rule rather than
-the screen still sent people back to the phone call. It now names the button —
-กด “ขอถอนใบ” — which makes it the mirror of `withdrawEligibility`'s own
-redirect on the other side of the same line, where a request nobody has signed
-is told to press ยกเลิก instead of asking. Two rules, one line between them, and
-each pointing at the button the other side owns.
+is the employee's to cancel outright, after it this feature takes over. That
+line is right. What was wrong was the sentence on the other side of it —
+**“หัวหน้าอนุมัติแล้ว ยกเลิกเองไม่ได้ — ติดต่อฝ่ายบุคคล”** — which sent the rest
+of the story outside the system.
 
 What happened out there was ฝ่ายบุคคล editing or cancelling the row on the
 employee's say-so, and what the trail recorded was **ฝ่ายบุคคลแก้ไขข้อมูล**. Who
-asked, when, why, and whether the manager who signed ever heard about it were
-all real facts about that entry and none of them was written down. A withdrawal
-that leaves no record of the request is a signed figure coming off the books on
-the authority of a phone call.
+asked, when and why were all real facts about that entry and none of them was
+written down. A withdrawal that leaves no record is a signed figure coming off
+the books on the authority of a phone call.
 
-**Asking and deciding are two acts, by two people.** The employee asks with a
-reason; somebody whose signature is on the entry answers. There is deliberately
-no path where ฝ่ายบุคคล records both halves in one press — that would rebuild the
-hole, because the record of the request would again be somebody's memory of a
-conversation.
+> ### ⚠ IT WAS A REQUEST SOMEBODY ELSE ANSWERED, UNTIL 2026-09-18
+>
+> This section's heading read **“asking, not taking”** and the feature rested on
+> a property stated here in as many words: **asking and deciding are two acts,
+> by two people.** The employee asked with a reason, a signer answered at
+> `POST /entries/:id/withdraw/decide`, and **nothing moved while a request was
+> open** — the entry stayed `approved`, its hours stayed in the month, in the
+> department's cap usage and on F-HR-027. A request that removed the hours on
+> the spot would let one person take back what two signed.
+>
+> **The user withdrew that property**, and the reason is one sentence:
+> *การถอนไม่ใช่การแก้ตัวเลข* — it removes the employee's own hours, nobody gains
+> by it, and it is the wish of the person the entry belongs to.
+>
+> **The bill had already arrived.** `cancelCutoffDay` (2026-09-14) measures the
+> ตัดสิน press at TODAY, so a request filed in time and left sitting past the
+> cutoff could no longer be answered by the หัวหน้า who was going to answer it —
+> ฝ่ายบุคคล became the only way out, and `periodItems` called that month
+> unfinished until somebody in HR went and pressed it. §13 ข้อ 1 of
+> [docs/plan-cancel-cutoff-day.md](docs/plan-cancel-cutoff-day.md) wrote that
+> cost down on the day it was accepted; this is the round that stops paying it,
+> **by removing the wait rather than by loosening the cutoff**.
+>
+> Gone with it: the decide route, the คำขอถอนใบ tab and its list component, the
+> nav-badge count and its overlap subtraction, and the `openWithdrawals` line on
+> สรุปสถานะงวด. The whole argument is
+> [docs/plan-withdraw-without-approval.md](docs/plan-withdraw-without-approval.md).
 
-**Nothing moves while a request is open.** The entry stays `approved`, its hours
-stay in the month, in the department's cap usage and on F-HR-027. A request that
-removed the hours on the spot would let one person take back what two signed.
+**One press.** The employee types a reason, confirms in a box that restates the
+date, the hours coming off and the reason, and the entry is `cancelled` when the
+response returns. The หัวหน้า who signed it is **not notified** — accepted
+knowingly; notification is a thing this system does not have, and the dialog says
+so rather than leaving it to be discovered.
 
-**No new status.** A granted withdrawal ends at `cancelled` — what every rollup,
-cap calculation and report already means by “these hours do not count”. The
-request itself is a subdocument, `OtEntry.withdrawal`, and `history` carries one
-row per ask and one per answer. The same reasoning `refileState` gives for not
-being a status either.
+**No new status.** A withdrawal ends at `cancelled` — what every rollup, cap
+calculation and report already means by “these hours do not count”. The record of
+who withdrew it and why is a subdocument, `OtEntry.withdrawal`, and `history`
+carries one `withdraw` row. The same reasoning `refileState` gives for not being
+a status either.
+
+**Nobody is written into the ผู้ตัดสิน fields, because nobody decided.**
+`decidedBy`, `decidedAt` and `decisionNote` stay empty; putting the withdrawing
+employee's own name there would forge a step that did not happen and make every
+screen printing those fields say a person approved their own removal. The fields
+remain on the schema because rows written before 2026-09-18 have them filled in
+truthfully, and any screen reading them tolerates both shapes for good.
 
 | | who | what it writes |
 |---|---|---|
-| **ขอถอนใบ** | the employee, on their own entry, after the first signature | `withdrawal.state = 'requested'` · `withdraw_request`, status unchanged |
-| **อนุมัติให้ถอน** | the department's หัวหน้า, a ผู้รับช่วง holding their queue, or ฝ่ายบุคคล | `granted` · `withdraw_grant` · status → `cancelled` |
-| **ไม่อนุมัติ** | the same people | `refused` · `withdraw_refuse`, status unchanged |
+| **ถอนใบ** | the employee, on their own entry, after the first signature and before the cutoff | `withdrawal.state = 'granted'` · `withdraw` · status → `cancelled` |
+| **ยกเลิกใบ** | ฝ่ายบุคคล, on any live entry, with a reason — the only way past the cutoff | `hr_cancel` · status → `cancelled` |
 
-Those three name the ACTS. **The two buttons on the row have read `ปฏิเสธ` and
-`อนุมัติ` since 2026-09-16** — they read `ไม่อนุมัติการถอน` and `อนุมัติให้ถอน`
-until then, and the whole words are still each button's `aria-label` and
-tooltip, because the other tab on that card uses `อนุมัติ` for approving the
-overtime, which is the opposite act.
+A reason is **required**, where `cancelPermission` deliberately asks for none:
+removing a request nobody has looked at establishes nothing. That argument used
+to end *“and the person deciding cannot decide without knowing why”*, and there
+is no such person now — it is still required because the record is still READ, by
+the signer whose name is on the row and by anybody asking later why a month came
+out short.
 
-A reason is **required** to ask, where `cancelPermission` deliberately asks for
-none: removing a request nobody has looked at establishes nothing, but this asks
-somebody to take back what they established, and the person deciding cannot
-decide without knowing why. The same line `editPermission` draws for HR
-corrections. A refusal requires one too, for the reason a rejection does — the
-employee reads it, and “ไม่อนุมัติ” alone sends them back to asking in person.
+### What guards it now is the cutoff, and nothing else
 
-Refusing is not final. Circumstances change, and the record of every ask and
-every answer is the check on somebody asking repeatedly — not a lock that leaves
-a phone call as the only way through, which is what this replaced. Contrast
-`resubmittedTo`, which *is* a once-only door.
+Past `cancelCutoffDay` the employee's แก้ไข · ยกเลิก · ถอนใบ are not disabled,
+they are **not drawn at all**, and a grey `หมดเวลาแก้ไข` chip stands where they
+were. ฝ่ายบุคคล with a reason is the only way the row moves.
 
-The rules are pure and live in `lib/withdrawal.js`; `withdrawEligibility` is the
-same predicate the screen offers the button on and the route refuses with, so
-the two cannot drift. Both routes refused a closed month until 2026-08-31 —
-including the *ask*, because a request accepted into a closed month sat in a
-queue where it could never be granted while the employee had been told their
-withdrawal was under way. ปิดงวด was withdrawn, so neither refuses now and a
-signed entry from any month can be asked back.
+**That is also this app's answer to “ฝ่ายบุคคล has already printed the paper”.**
+The user's rule was *ใบที่ HR พิมพ์แล้วต้องแก้ไขอะไรไม่ได้อีก* — and **the system
+cannot know what was printed**: there is no `printedAt`, printing is Ctrl+P in a
+browser, and the F-HR-027 route opens for the employee and the หัวหน้า too, so
+*opening* and *printing* are indistinguishable. Offered a **พิมพ์แล้ว** button for
+HR to press each month, or a write on page-open — which would lock an entry
+because somebody looked at it — the user chose the cutoff instead: day 3 of the
+following month is when HR closes and prints anyway.
 
-Reviewers find them on **คำขอถอนใบที่อนุมัติแล้ว**, above the approval queue,
-fed by `GET /api/entries?withdrawal=open` in whatever scope the caller already
-has. This paragraph ended **"It is not batchable, for the reason rejection is
+> ⚠ **The whole of the protection now hangs on one policy key.** Set
+> `cancelCutoffDay` to ไม่กำหนด in ตั้งค่าระบบ and an employee can withdraw a
+> signed entry from any month there has ever been — where before there was still
+> a second person behind it. The cheapest fix if that becomes a problem is a
+> warning on the policy screen, **not** putting the approval step back.
+
+### Telling four ยกเลิก apart — `CancelledMark`
+
+`StatusChip` prints ยกเลิก for four different events, which is correct about the
+hours and useless about the event: the employee dropped a request nobody had
+signed (`cancel`); the employee withdrew one a หัวหน้า HAD signed (`withdraw`);
+ฝ่ายบุคคล ended it for everybody (`hr_cancel`); or a signer granted a request
+(`withdraw_grant`, rows before 2026-09-18 only).
+
+**This is what a screen of its own would have been.** คำขอถอนใบ was going to
+become a ถอนใบแล้ว list; the user read the tree and withdrew that —
+*มันก็แสดงในรายการประวัติแต่ละคนอยู่แล้ว ว่ารายการไหนถูกถอน* — which is right:
+`cancelled` rows are already on ตรวจสอบประจำเดือน and on รายงาน OT ประจำทีม, so a
+third screen would be a third place to read what two places show. The only thing
+genuinely missing was WHO, and a chip beside the status answers it where the
+reader already is.
+
+Its words come from `ACTION_META`, the map `EntryHistory` prints the trail from,
+so the chip on the row and the line inside it cannot drift apart. Grey, like the
+status chip beside it — `.chip.ended`, and deliberately **not**
+`.chip.st-cancelled` whose two declarations it copies: an `st-` class means the
+status of the ใบ, and borrowing the name is how this follows a restyle of ยกเลิก
+somewhere it does not belong. The same reason `.chip.scan-off` is not
+`.chip.edited`.
+
+### คำขอถอนใบที่อนุมัติแล้ว — the screen that answered them, 2026-09-02 to 2026-09-18
+
+Everything from here to the end of this section is the history of a list that no
+longer exists. It is kept because the arguments in it are ones this project keeps
+having — how a row of free text and figures divides its width, why a batch button
+is shaped the way it is, and when a disabled control beats an absent one.
+
+Reviewers found open requests on **คำขอถอนใบที่อนุมัติแล้ว**, above the approval
+queue and later a chip on it, fed by `GET /api/entries` with a `withdrawal`
+filter in whatever scope the caller already had. That parameter is gone too. The
+card's own paragraph ended **"It is not batchable, for the reason rejection is
 not"** until 2026-09-02, when **อนุมัติให้ถอนทั้งหมด** was asked for and built —
 several requests do land together, and answering ten identical ones a card at a
 time is its own kind of not-reading.
 
-**What the old argument bought is the shape of the button.** It is drawn only
-above two or more; it writes nothing itself; and the box it opens is the
+**What the old argument bought was the shape of the button.** It was drawn only
+above two or more; it wrote nothing itself; and the box it opened was the
 single-request dialog repeated — every name, date, figure and **reason in full**,
-with the total coming off the books at the head of it. The thing the one-at-a-
-time rule was protecting, that somebody read what they are granting, is still
-what stands between the press and the write. The writes are then the ordinary
-one-entry POSTs in a loop, in order, because there is no batch endpoint and each
-grant is its own `history` row; a failure part-way leaves the grants before it
-standing, so what failed is **named** and the list is re-fetched rather than
-assumed.
+with the total coming off the books at the head of it. The writes were then
+ordinary one-entry POSTs in a loop, in order, because there was no batch endpoint
+and each grant was its own `history` row; a failure part-way left the grants
+before it standing, so what failed was **named** and the list re-fetched rather
+than assumed.
 
-**There is still no batch refusal, and that is the half of the old sentence that
+**There was never a batch refusal, and that is the half of the old sentence that
 was right.** A refusal carries a sentence the employee reads and one sentence
 cannot be written to five people at once — the same reason the queue never
-batches a rejection.
+batches a rejection. `refused` rows from that era are still in the database and
+still print on the employee's row and in their detail pop-up; nothing can produce
+another, and the two places that show one must go on working.
 
 ### The row is a grid, and it was a flex line with one item allowed to shrink
 
@@ -6883,10 +6947,18 @@ second row's first cell is empty so the prose keeps the chip's indent.
 
 ### And on 2026-09-15 it stopped being a panel: two piles, one card, one chip each
 
+> ⚠ **And on 2026-09-18 it stopped being anything at all** — the pile it switched
+> to cannot exist any more, so the chip bar, the component behind it and
+> `อนุมัติให้ถอนทั้งหมด` were all removed and the card's head went back to the
+> shape described at the end of this subsection as "the ordinary day".
+> `.queue-tabs` is unused CSS again, exactly as it was between วันเกิดรอตรวจ and
+> this. Everything below is why the SWITCH was the right answer while there were
+> two piles, which is the part worth keeping.
+
 Asked in as many words — *"ถ้าเอาไปแสดงรวมกับตาราง รออนุมัติ ได้หรือไม่"*.
 
 **The answer is a switch, not a merge, and the reason is the paragraph at the
-head of `components/WithdrawalRequests.jsx`.** The tick boxes, เลือกทั้งหมด, the
+head of “components/WithdrawalRequests.jsx” (ลบแล้ว 2026-09-18).** The tick boxes, เลือกทั้งหมด, the
 batch bar and the สะสม / เพดาน column all belong to a signature that has not
 been given yet. A withdrawal request is an `approved` entry whose hours are
 already in the month's totals and the decision is whether to take them back out
@@ -6908,13 +6980,13 @@ the two became true again with it.
 | | |
 |---|---|
 | the chips | `รออนุมัติ` and `คำขอถอนใบ`, each with its own pile's count |
-| the nav badge | the sum of the two — unchanged since 2026-09-03, see `queueBadge` |
+| the nav badge | the sum of the two — 2026-09-03 to 2026-09-18, see `queueBadge`, which counts one pile again |
 | opens on | `รออนุมัติ`, always, whatever is in either pile |
 | no open request | **no chip bar at all** — the card's head is what it always was |
 | the head's button | `+ บันทึก OT แทนพนักงาน` on the queue, `อนุมัติให้ถอนทั้งหมด` on the other, never both |
 
 **No chip bar while there is nothing behind the second chip**, and the app has
-paid for both halves of that already: `WithdrawalRequests` returned `null` on an
+paid for both halves of that already: the withdrawal panel returned `null` on an
 empty list because a permanent empty panel for a thing that happens a few times
 a month becomes furniture a reader learns to look past, and `QueueTabs.jsx` was
 deleted rather than left showing one tab. `คำขอถอน 0` every day of the month is
@@ -8950,7 +9022,8 @@ squeezed into a cell smaller than itself.
 On the form it is folded away behind **อธิบายเพิ่มเติม (ไม่บังคับ)** and opens
 by itself on an entry that already has one; on screen it is the second
 paragraph of `ReasonCard`, so it appears in the รายละเอียด pop-up on
-รออนุมัติ OT, on ประวัติการขอ OT and on คำขอถอนใบ — and **in no table row**,
+รออนุมัติ OT and on ประวัติการขอ OT — and **in no table row**,
+(it was on คำขอถอนใบ too until that screen went on 2026-09-18),
 asked for in those words. It is in `ENTERED_FIELDS`, so rewriting it is a
 correction the history keeps like any other. `test/extraNote.test.js` asserts
 that `components/PrintForm.jsx` does not mention the field at all, which is the
@@ -11834,7 +11907,8 @@ and the `company` handling in `app/api/employees/**` and the บริษัท 
 ขอมาเป็นประโยคเดียว: *"เรียงใบตามรหัสพนักงานทุก role"* · รอบ 3 ก.ย. แก้เฉพาะ
 เอกสารของคนที่**ปิดเดือน** ส่วนจอที่คนอื่นเปิดทั้งวันคือรายการใบ ซึ่งยังเรียงตาม
 วันที่อยู่ — `รายการรออนุมัติ` · `รออนุมัติ OT` · `รออนุมัติแทน` ·
-`ไม่มีหัวหน้าเซ็น` · `คำขอถอนใบ` · `บันทึกและประวัติ OT` ทั้งหมดนี้คือ
+`ไม่มีหัวหน้าเซ็น` · `คำขอถอนใบ` *(จอนี้ถูกลบเมื่อ 2026-09-18)* ·
+`บันทึกและประวัติ OT` ทั้งหมดนี้คือ
 `GET /api/entries` เราต์เดียว จึงเป็นการแก้ที่เดียวเช่นกัน ตัวเปรียบเทียบชื่อ
 `byEmployeeThenLatest` อยู่ใน `lib/entries.js`
 
@@ -13532,7 +13606,8 @@ build แล้ว
   *เอางี้ดีกว่าคือเรียงใบตามรหัสพนักงานทุก role เลยดีกว่า* ต่อจากรอบ 3 ก.ย. ที่แก้
   ไว้เฉพาะ `ตรวจสอบประจำเดือน` กับ `รายงาน OT ฝ่ายบัญชี`
   · **แก้ที่เดียว** — หกจอที่ลิสต์ใบ (`รายการรออนุมัติ` · `รออนุมัติ OT` ·
-  `รออนุมัติแทน` · `ไม่มีหัวหน้าเซ็น` · `คำขอถอนใบ` · `บันทึกและประวัติ OT`) เป็น
+  `รออนุมัติแทน` · `ไม่มีหัวหน้าเซ็น` · `คำขอถอนใบ` *(ลบแล้ว 2026-09-18 เหลือห้า)* ·
+  `บันทึกและประวัติ OT`) เป็น
   `GET /api/entries` เราต์เดียวกันหมด ตัวเปรียบเทียบคือ `byEmployeeThenLatest`
   ใน `lib/entries.js` ซึ่งถาม `compareCodes` ตัวเดียวกับอีกห้าเอกสาร
   · **`?scope=mine` ไม่ขยับ** และวันที่ยังใหม่ไปเก่า*ภายในคนคนเดียว* เพราะ
@@ -14040,13 +14115,22 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2836 tests**, about 4 s, measured 2026-09-16 across 157
-  files, all green. **`tickPolicy` is the new file of the last round** — the six keys that
-  moved the ช่องติ๊ก rules out of the code and onto ตั้งค่าระบบ, plus `PickMany`,
-  the kit's first control whose answer is a list. Nine cases, and the one that
-  matters asserts a key absent from a browser's policy copy reads as the SHIPPED
-  default rather than as an empty list — the failure that would take เหมารายวัน
-  off every form in the company at once.
+- `npm test` — **2780 tests**, about 4 s, measured 2026-09-18 across 156
+  files, all green. **`withdrawSelfScreens` is the new file of the last round,
+  and two files came OUT with it** — ถอนใบ stopped being a request somebody
+  answers, so `queueWithdrawChips` and `withdrawalRowLayout` went with the
+  screen they pinned and this one replaces both with sixteen cases. It carries
+  the claim the deletion rests on: a withdrawn row is a `cancelled` row, and
+  ตรวจสอบประจำเดือน already lists those — the only thing genuinely missing was
+  WHO closed it, which is `CancelledMark`, a chip beside the status rather than
+  a screen of its own.
+  It read "2836 tests … measured 2026-09-16" until then, when **`tickPolicy` was
+  the new file** — the six keys that moved the ช่องติ๊ก rules out of the code and
+  onto ตั้งค่าระบบ, plus `PickMany`, the kit's first control whose answer is a
+  list. Nine cases, and the one that matters asserts a key absent from a
+  browser's policy copy reads as the SHIPPED default rather than as an empty
+  list — the failure that would take เหมารายวัน off every form in the company at
+  once.
   It read "2824 tests … measured 2026-09-16" until then, when **no file was
   added** — รายละเอียดงานที่ทำ
   became an `<input>` instead of a 64px-tall `<textarea>`, which is also the
@@ -14580,7 +14664,7 @@ build แล้ว
   come back as a rule, and ลบแผนก is `.btn.ghost.danger` in the four-class
   selector that cannot lose the tie to `.modal-foot .btn.ghost`. It read
   "1931/1931" until then.
-  **Before it, `test/withdrawalRowLayout.test.js`** — twenty-one cases
+  **Before it, “test/withdrawalRowLayout.test.js” (ลบแล้ว 2026-09-18)** — twenty-one cases
   over the reviewer's card on คำขอถอนใบที่อนุมัติแล้ว. It read "1915/1915" and
   "thirteen cases" until that card learnt to answer several requests at once.
   **It was REWRITTEN on 2026-09-15** and this paragraph with it: the card became
@@ -14600,7 +14684,7 @@ build แล้ว
   about what went: the 400px ceiling, which existed only because this card sat
   above the queue and does not any more, and the two grey clauses, which must
   stay under the prose and never beside the buttons.
-  **The head's own assertions moved to `test/queueWithdrawChips.test.js`**, with
+  **The head's own assertions moved to “test/queueWithdrawChips.test.js” (ลบแล้ว 2026-09-18)**, with
   the head: the count, and the shape of **อนุมัติให้ถอนทั้งหมด** — above two or
   more only, counted off the rows this reader can actually decide, an amber
   outline that writes nothing, and no ไม่อนุมัติทั้งหมด beside it. The box it
@@ -14925,9 +15009,12 @@ build แล้ว
   sentence rather than a second wording of it.
   **Before them, one case in `test/withdrawal.test.js`**: that each of
   the two refusals either side of the first signature names the OTHER side's
-  button — ยกเลิก before it, ขอถอนใบ after it — rather than sending anybody to
+  button — ยกเลิก before it, ถอนใบ after it — rather than sending anybody to
   ติดต่อฝ่ายบุคคล, which is what `cancelPermission` was still answering months
-  after ขอถอนใบที่อนุมัติแล้ว replaced that very sentence.
+  after ถอนใบที่อนุมัติแล้ว replaced that very sentence. *(It read ขอถอนใบ until
+  2026-09-18, and the case pins the word rather than a substring both spellings
+  would satisfy — a refusal naming a button that is not on the screen is the
+  failure it exists to catch.)*
   **Before them, three more in `test/overlap.test.js`**, and they are about
   the half of เวลาทับซ้อน that is a SCREEN rather than a refusal: that
   `app/api/entries/preview/route.js` asks the same helper the write paths refuse
@@ -15296,10 +15383,16 @@ build แล้ว
   `test/seedEntryPoint.test.js` holds the list, checks it behaviourally, and
   fails if `package.json` learns to start a `src/` file that is not on it.
 - `npm run build` — **passes 2026-09-04**, Next 16.3 under Turbopack, and the
-  route table it prints is **55 `/api/*` routes** plus `/`, `/_not-found` and
-  `/icon.png`. Compared against the 55 `app/api/**/route.js` files on disk, in
+  route table it prints is **54 `/api/*` routes** plus `/`, `/_not-found` and
+  `/icon.png`. Compared against the 54 `app/api/**/route.js` files on disk, in
   both directions: nothing on disk went unbuilt and nothing was built that has
-  no file. This line read "passes 2026-09-03 … 54 routes" until `/api/scans` and
+  no file. It read "**55** `/api/*` routes … 55 files" until 2026-09-18, when
+  `/api/entries/[id]/withdraw/decide` was deleted — ถอนใบ is one press by the
+  owner of the entry and there is no decision left to POST. ⚠ **The date on
+  this line is 2026-09-04 and the count is 2026-09-18's**: the route was removed
+  in a worktree, where a Turbopack build cannot run (see AGENTS.md), so the
+  figure is counted off the tree and the build that last printed it is the one
+  named. This line read "passes 2026-09-03 … 54 routes" until `/api/scans` and
   `/api/scans/import` arrived with the fingerprint-scanner import, and
   "passes 2026-09-03 … 53 routes" until `/api/print/pdf`
   was added the same day, and "passes 2026-08-31 … 57 routes" until the four birthday

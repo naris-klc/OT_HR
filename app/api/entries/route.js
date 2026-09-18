@@ -28,7 +28,7 @@ import { scanChecksFor } from '@/lib/scanMatchQuery.js';
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
   const {
-    status, period, employee, department, from, to, limit, replaced, scope, usage, withdrawal,
+    status, period, employee, department, from, to, limit, replaced, scope, usage,
     scan, decide,
   } = query(req);
 
@@ -118,20 +118,17 @@ export const GET = route(async (req) => {
 
   if (status) q.status = { $in: String(status).split(',') };
   /**
-   * `withdrawal=open` — the requests waiting for an answer, in whatever the
-   * caller's scope already is.
+   * `withdrawal=open` WAS A FILTER HERE UNTIL 2026-09-18 — `withdrawal.state:
+   * 'requested'` inside the caller's ordinary scope, which is what the
+   * คำขอถอนใบ tab on the approval queue listed.
    *
-   * A filter on this list rather than an endpoint of its own, because the rows
-   * are ordinary entries, the scoping is the scoping every other list uses, and
-   * a second route would be a second place for "which teams may this person
-   * see" to be got wrong. The queue screen asks for it; nothing else has to
-   * know it exists.
-   *
-   * Note these rows are `approved` and `pending_hr`, so they do NOT appear in
-   * the pending queue — an entry with an open request keeps counting until
-   * somebody answers, which is the whole point of asking rather than taking.
+   * Nothing asks for it now. Withdrawing lands on `cancelled` in one press, so
+   * there is no pile of open requests to list, and the tab and its component
+   * are both gone — a withdrawn row is read where every other closed row is
+   * read, in ตรวจสอบประจำเดือน and รายงาน OT ประจำทีม, wearing the mark
+   * `CancelledMark` draws. Left as a parameter nobody sends, it would be one
+   * more thing for `status`'s scoping to be got wrong alongside.
    */
-  if (withdrawal === 'open') q['withdrawal.state'] = 'requested';
   if (period) q.period = period;
   /**
    * WHOSE REQUESTS THIS READER MAY SEE AT ALL — the chain of command, applied

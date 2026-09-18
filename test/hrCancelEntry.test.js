@@ -193,21 +193,26 @@ test('/cancel hands the typed reason to the rule, and logs the action it earned'
 });
 
 /**
- * AN OPEN คำขอถอน IS ANSWERED BY THE SAME PRESS.
+ * ── ⚠ AN OPEN คำขอถอน WAS ANSWERED BY THE SAME PRESS, UNTIL 2026-09-18 ──────
  *
- * Only ฝ่ายบุคคล can reach it — a request is open only after the first
- * signature, and past that the employee's branch refuses — so this is not a
- * second rule, it is the consequence of the first. Left alone the subdocument
- * would sit at `requested` on a `cancelled` row: `withdrawalOpen` would keep
- * counting it on the nav badge and in คำขอถอนใบ, and `periodItems` would keep
- * calling that month unfinished, for a question nobody can answer any more.
+ * This route closed the subdocument as `granted` when ฝ่ายบุคคล cancelled a row
+ * that had a request waiting on it. Only they could reach it — a request was
+ * open only after the first signature, and past that the employee's branch
+ * refused — so it was not a second rule but the consequence of the first. Left
+ * alone the subdocument sat at `requested` on a `cancelled` row: `withdrawalOpen`
+ * kept counting it on the nav badge and in คำขอถอนใบ, and `periodItems` kept
+ * calling that month unfinished, for a question nobody could answer any more.
+ *
+ * **All four of those things are gone.** ถอนใบ lands on `cancelled` in one
+ * press, so no entry reaches this route carrying an open request; and the badge
+ * count, the คำขอถอนใบ tab and the `periodItems` line went with it. Asserted in
+ * the negative, because the failure mode here is the branch coming BACK — it
+ * would import a rule that no longer exists and fail loudly, but the comment
+ * above it would read as a live requirement.
  */
-test('cancelling a row with a request waiting closes that request as granted', () => {
-  assert.match(route, /if \(hasOpenWithdrawal\(entry\)\) \{/);
-  assert.match(route, /entry\.withdrawal = withdrawalDecision\(entry\.withdrawal\.toObject\(\), user, \{/);
-  assert.match(route, /granted: true,/);
-  // The same helper the decide route uses, so one record has one shape.
-  assert.match(route, /from '@\/lib\/withdrawal\.js'/);
+test('the route no longer has to close an open request on the way past', () => {
+  assert.ok(!/hasOpenWithdrawal|withdrawalDecision/.test(route), 'the auto-grant branch is back');
+  assert.ok(!/from '@\/lib\/withdrawal\.js'/.test(route), 'this route has no business with that module');
 });
 
 // ── the vocabulary ──────────────────────────────────────────────────────────
@@ -359,8 +364,9 @@ test('the row button is danger-light and the dialog button is the filled one', (
  * THE DIALOG IS `Modal` AND NOT `ConfirmDialog`, and the reason is mechanical:
  * the confirm button has to stay dead until a reason is typed, and
  * `ConfirmDialog` has no `confirmDisabled`. Adding one would be a prop with a
- * single caller; this box is the shape ไม่อนุมัติคำขอถอนใบ in
- * components/WithdrawalRequests.jsx already has for the same job.
+ * single caller. It was inherited from ไม่อนุมัติคำขอถอนใบ in
+ * components/WithdrawalRequests.jsx, deleted on 2026-09-18 with the rest of the
+ * คำขอถอน flow; this is the only box of that shape now.
  */
 test('the dialog refuses to submit an empty reason and says the press is final', () => {
   assert.match(hrEntries, /<Modal\s+title="ยกเลิกใบนี้"/);
@@ -375,11 +381,15 @@ test('the dialog refuses to submit an empty reason and says the press is final',
   assert.ok(!/ConfirmDialog/.test(strip(hrEntries)), 'the box that cannot disable its own confirm');
 });
 
-/** A reader who does not know the press also answers the waiting request would
-    leave the dialog expecting to go and grant it afterwards. */
-test('the dialog says when an open คำขอถอน is being answered too', () => {
-  assert.match(hrEntries, /cancelling\.withdrawal\?\.state === 'requested' && \(/);
-  assert.match(hrEntries, /จะถือว่าอนุมัติคำขอนั้นไปด้วย/);
+/**
+ * ⚠ A SECOND PANEL SAID `ใบนี้มีคำขอถอนของพนักงานรออยู่ — การยกเลิกนี้จะถือว่า
+ * อนุมัติคำขอนั้นไปด้วย`, so a reader would not leave the dialog expecting to go
+ * and grant it afterwards. No entry can be carrying an open request now, so the
+ * panel would warn about a state the system does not produce.
+ */
+test('the dialog no longer warns about a waiting request', () => {
+  assert.ok(!/withdrawal\?\.state === 'requested'/.test(strip(hrEntries)));
+  assert.ok(!/จะถือว่าอนุมัติคำขอนั้นไปด้วย/.test(strip(hrEntries)));
 });
 
 /**

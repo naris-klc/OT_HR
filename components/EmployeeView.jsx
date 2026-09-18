@@ -3,16 +3,17 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  ApprovalSteps, ApproverLine, BirthdayWelfareMark, CapCard, StatusChip, Alert, BucketSplit, Empty,
-  EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead, ReasonCard, RefiledNote, RequestTrail,
-  Section, SegmentList, SignatureFacts, editsOf, stamp, trailOf,
+  ApprovalSteps, ApproverLine, BirthdayWelfareMark, CancelledMark, CapCard, StatusChip, Alert,
+  BucketSplit, ConfirmDialog, Empty, EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead,
+  ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, editsOf, stamp,
+  trailOf,
 } from './common.jsx';
 import { approvalSteps } from '@/lib/approverLine.js';
 import {
   awaitingFirstSignature, cancelCutoffRefusal, filingOf, isBirthdayWelfare,
   isProxyFiled, refileState,
 } from '@/lib/entries.js';
-import { hasOpenWithdrawal, withdrawEligibility } from '@/lib/withdrawal.js';
+import { withdrawEligibility } from '@/lib/withdrawal.js';
 import OtForm from './OtForm.jsx';
 import HolidayBanner from './HolidayBanner.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -25,7 +26,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
    *
    * THE SCREEN NEEDS THE ANSWER BEFORE IT RENDERS, which is not true of the two
    * submission windows the form reads. Past the cutoff this table does not
-   * disable แก้ไข · ยกเลิก · ขอถอนใบ, it does not draw them at all and puts a
+   * disable แก้ไข · ยกเลิก · ถอนใบ, it does not draw them at all and puts a
    * sentence where they were — so there is no press left in which to ask, and
    * nothing to catch a 409 into. The server is still the authority; this is what
    * stops anybody meeting it.
@@ -57,8 +58,21 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   const [detailId, setDetailId] = useState(null);       // row tapped in รายการล่าสุด
   const [cancelling, setCancelling] = useState(null);   // own entry being withdrawn
   const [cancelNote, setCancelNote] = useState('');
-  const [asking, setAsking] = useState(null);           // own signed entry — asking to withdraw
+  const [asking, setAsking] = useState(null);           // own signed entry — about to be withdrawn
   const [askReason, setAskReason] = useState('');
+  /**
+   * The second press, and the reason it exists: ถอนใบ used to be a REQUEST that
+   * somebody else answered, and the answer was the pause. It is one press now
+   * (lib/withdrawal.js), it lands on `cancelled`, and past `cancelCutoffDay`
+   * not even ฝ่ายบุคคล puts it back for the employee — so the dialog restates
+   * the date, the hours and the reason before it goes.
+   *
+   * NOT on ยกเลิก beside it, deliberately: that one closes a request nobody has
+   * signed and the employee may file the same hours again the same minute. The
+   * confirmation is for the act that cannot be undone, and putting one on both
+   * would teach the reader to click through the one that matters.
+   */
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
 
   async function load() {
@@ -113,20 +127,31 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   }
 
   /**
-   * Once somebody has signed it, withdrawing stops being something the employee
-   * does and becomes something they ask for. Nothing moves here: the row stays
-   * อนุมัติ, the hours stay in the month, and the request waits for the หัวหน้า
-   * or ฝ่ายบุคคล to answer. The screen has to say that plainly, because the
-   * button is in the same column as ยกเลิก, which does move things.
+   * ── IT WAS A REQUEST UNTIL 2026-09-18, AND THIS SCREEN SAID SO LOUDLY ──────
+   *
+   * The dialog's headline was `นี่คือคำขอ ไม่ใช่การยกเลิก` and the whole point
+   * of it was that nothing moved: the row stayed อนุมัติ, the hours stayed in
+   * the month, and a หัวหน้า or ฝ่ายบุคคล answered later. That wait is gone —
+   * the entry is `cancelled` when this returns — so every one of those
+   * sentences would now be false, and they are replaced rather than softened.
+   *
+   * The error is caught into the strip at the top like every other failure
+   * here. A refusal at this point is the month wall (the row was fine when the
+   * screen drew it and the งวด closed underneath the reader), and the strip is
+   * where that sentence belongs: the dialog is gone by then.
    */
-  async function askWithdraw() {
+  async function withdraw() {
     try {
       await api.post(`/entries/${asking._id}/withdraw`, { reason: askReason.trim() });
+      setConfirming(false);
       setAsking(null);
       setAskReason('');
       await load();
       onChanged?.();
-    } catch (err) { setError(err.message); }
+    } catch (err) {
+      setConfirming(false);
+      setError(err.message);
+    }
   }
 
   if (!user.maySubmitOt) {
@@ -575,6 +600,20 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                         {editsOf(e).length > 0 && (
                           <div style={{ marginTop: 4 }}><EditedMark entry={e} /></div>
                         )}
+                        {/* ใครเป็นคนปิดใบนี้ — on the employee's own table as
+                            well as on HR's, because the two cancels that are
+                            not theirs look identical to them otherwise: a row
+                            ฝ่ายบุคคล ended and a row they withdrew themselves
+                            both wear the same ยกเลิก chip. Draws nothing on a
+                            live row.
+
+                            Gated on the status rather than left to the mark's
+                            own `null`: the wrapper carries the 4px and an empty
+                            one would put that gap under every live row in the
+                            table. */}
+                        {e.status === 'cancelled' && (
+                          <div style={{ marginTop: 4 }}><CancelledMark entry={e} /></div>
+                        )}
                         {e.rejectionReason && (
                           <div style={{ fontSize: 12, color: 'var(--danger-ink)' }}>
                             เหตุผล: {e.rejectionReason}
@@ -624,24 +663,37 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                           {!past(e) && awaitingFirstSignature(e) && (
                             <>
                               <button className="btn ghost sm" onClick={() => setEditing(e)}>แก้ไข</button>
+                              {/* RED, AND AN OUTLINE — asked for on 2026-09-18
+                                  for this button and ถอนใบ below it. They are
+                                  the two presses on this row that END the
+                                  request, standing in a line of presses that do
+                                  not, and grey made them look like แก้ไข and
+                                  รายละเอียด. Filled red is reserved for the
+                                  press inside the dialog that actually does it,
+                                  which is the same division ยกเลิกใบ uses on
+                                  ตรวจสอบประจำเดือน. */}
                               <button
-                                className="btn ghost sm"
+                                className="btn ghost danger sm"
                                 onClick={() => { setCancelling(e); setCancelNote(''); }}
                               >
                                 ยกเลิก
                               </button>
                             </>
                           )}
-                          {/* After the first signature, withdrawing is a request
-                              rather than an act. Offered by the same rule the
-                              server enforces — a button the server would refuse
-                              teaches the employee to distrust the screen. */}
+                          {/* After the first signature — and it says ถอนใบ
+                              rather than ขอถอนใบ since 2026-09-18, because it
+                              no longer asks anybody. One press, a reason, a
+                              confirmation, and the row is ยกเลิก.
+
+                              Offered by the same rule the server enforces — a
+                              button the server would refuse teaches the
+                              employee to distrust the screen. */}
                           {!past(e) && withdrawEligibility(user, e).ok && (
                             <button
-                              className="btn ghost sm"
+                              className="btn ghost danger sm"
                               onClick={() => { setAsking(e); setAskReason(''); }}
                             >
-                              ขอถอนใบ
+                              ถอนใบ
                             </button>
                           )}
                           {/* THE SENTENCE THAT STANDS WHERE THE THREE WERE.
@@ -655,9 +707,23 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               screen — so here there is no decision left to draw
                               the shape of.
 
-                              `.cell-sub own-note` and not a new class: 190px in
-                              the action cell, which `.row-actions:has(>
-                              .own-note)` already knows to wrap for. The rule
+                              ⚠ IT WAS `.cell-sub own-note` — quiet grey TEXT —
+                              UNTIL 2026-09-18, on the reasoning that a sentence
+                              is not a control and should not look like one.
+                              The user asked for a chip in those words: *ข้อความ
+                              หมดเวลาแก้ไข ให้ใช้เป็นป้ายสีเทา เหมือนป้ายสถานะ
+                              ยกเลิก*. Standing in a row of pill-shaped buttons,
+                              loose text read as a rendering fault rather than
+                              as the row's answer.
+
+                              `.chip.locked` and NOT `.chip.st-cancelled`, whose
+                              two declarations it copies: this row is อนุมัติ,
+                              and an `st-` class means the status of the ใบ. See
+                              the note in app/styles.css.
+
+                              `own-note` STAYS in the list — it is the 190px cap
+                              and the thing `.row-actions:has(> .own-note)`
+                              already knows to wrap the cell for. The rule
                               hiding it above 861px is scoped to `.queue-table`
                               and this is `.stack-table`, so it reads at every
                               width — which is what the complaint "รายการนี้ปุ่ม
@@ -668,15 +734,10 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               do not. One source for both — lib/entries.js. */}
                           {past(e) && wouldOffer(e) && (
                             <span
-                              className="cell-sub own-note"
+                              className="chip locked own-note"
                               title={cancelCutoffRefusal(user, e, policy).error}
                             >
                               {cancelCutoffRefusal(user, e, policy).short}
-                            </span>
-                          )}
-                          {hasOpenWithdrawal(e) && (
-                            <span className="chip" title={`เหตุผล: ${e.withdrawal.reason}`}>
-                              ขอถอนใบแล้ว · รอพิจารณา
                             </span>
                           )}
                           {/* Not an edit: it fills a blank form from this row and
@@ -820,7 +881,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
 
       {asking && (
         <Modal
-          title="ขอถอนใบที่อนุมัติแล้ว"
+          title="ถอนใบที่อนุมัติแล้ว"
           subtitle={`${thaiDate(asking.workDate)} · ${asking.startTime}–${asking.endTime} · ${hours(asking.totals?.otHours)} ชม.`}
           onClose={() => setAsking(null)}
           dirty={askReason.trim().length > 0}
@@ -829,15 +890,24 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
               <button className="btn ghost" onClick={() => setAsking(null)}>ปิด</button>
               {/* Disabled rather than allowed-and-refused: the reason is
                   required by the rule, and a button that submits into a 400 is
-                  a worse way to say so than a button that waits. */}
-              <button className="btn" onClick={askWithdraw} disabled={!askReason.trim()}>
-                ส่งคำขอถอนใบ
+                  a worse way to say so than a button that waits.
+
+                  IT OPENS THE CONFIRMATION, it does not post. Until 2026-09-18
+                  this press only filed a request and somebody else's ตัดสิน was
+                  the pause before the hours moved; now this is the whole of it,
+                  so the pause has to be here. */}
+              <button
+                className="btn danger"
+                onClick={() => setConfirming(true)}
+                disabled={!askReason.trim()}
+              >
+                ถอนใบ
               </button>
             </>
           )}
         >
           <div className="field">
-            <label>เหตุผลที่ขอถอน</label>
+            <label>เหตุผลที่ถอน</label>
             <input
               value={askReason}
               onChange={(e) => setAskReason(e.target.value)}
@@ -849,35 +919,58 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                 this asks somebody to take back what they signed, and the person
                 deciding cannot decide without knowing why. */}
             <span className="field-note">
-              จำเป็นต้องกรอก — ผู้พิจารณาจะเห็นข้อความนี้ และจะถูกบันทึกไว้ในประวัติรายการถาวร
+              จำเป็นต้องกรอก — หัวหน้างานที่เซ็นอนุมัติไว้และฝ่ายบุคคลจะเห็นข้อความนี้ และจะถูกบันทึกไว้ในประวัติรายการถาวร
             </span>
           </div>
-          {/* The one thing this dialog exists to make unambiguous. The button
-              sits in the same column as ยกเลิก, which closes an entry on the
-              spot; this one does not close anything, and an employee who
-              assumed it did would stop counting hours that are still counted.
+          {/* ⚠ THIS PANEL SAID THE OPPOSITE UNTIL 2026-09-18, and it was the
+              most emphatic sentence on the screen: `นี่คือคำขอ ไม่ใช่การยกเลิก`
+              — รายการยังมีสถานะเดิม, ชั่วโมงยังถูกนับ, จนกว่าหัวหน้างานของแผนก
+              หรือฝ่ายบุคคลจะอนุมัติให้ถอน. It existed because this button sat in
+              the same column as ยกเลิก, which DID close an entry on the spot,
+              and an employee who assumed this one did the same would stop
+              counting hours that were still counted.
 
-              ⚠ THE TWO OUTCOMES WERE A SECOND GREY BLOCK UNDER IT UNTIL
-              2026-09-14, and it opened by naming the deciders —
-              หัวหน้างานของแผนกหรือฝ่ายบุคคลเป็นผู้พิจารณา — one line under an
-              Alert that had just ended จนกว่าหัวหน้างานหรือฝ่ายบุคคลจะอนุมัติ
-              ให้ถอน. The same two people, twice, seven words apart. Merged, the
-              Alert names them once and keeps แผนก, which the shorter of the two
-              was missing.
-
-              ALSO GONE: หากไม่อนุมัติ รายการยังมีผลตามเดิม. A refusal changes
-              nothing, and the opening clause has already said what nothing
-              looks like — so that half-sentence only asked the reader to hold
-              the state twice. What survives is the part a refusal actually
-              gives them, which is permission to ask again. */}
+              They are the same act now, so the panel says the thing that has
+              taken its place — **it cannot be undone**, which is the one fact
+              about this press that the old flow's ตัดสิน step used to make
+              impossible to get wrong. `ยื่นใหม่ได้` is the answer to the
+              question that produces: an employee who withdraws by mistake is
+              not stuck, as long as the งวด is still open. */}
           <Alert kind="warn">
-            <strong>นี่คือคำขอ ไม่ใช่การยกเลิก</strong> — รายการยังมีสถานะเดิม
-            {' '}ชั่วโมงยังถูกนับในเพดานของแผนกและยังขึ้นในรายงาน
-            {' '}จนกว่าหัวหน้างานของแผนกหรือฝ่ายบุคคลจะอนุมัติให้ถอน
-            {' · '}ถ้าอนุมัติ รายการจะเปลี่ยนเป็น “ยกเลิก” และชั่วโมงถูกตัดออกจากเดือนนี้
-            {' · '}ถ้าไม่อนุมัติ ขอใหม่ได้เมื่อมีเหตุผลเพิ่มเติม
+            <strong>ถอนแล้วเอาคืนไม่ได้</strong> — รายการจะเปลี่ยนเป็น “ยกเลิก” ทันที
+            {' '}ชั่วโมงถูกตัดออกจากเพดานของแผนกและจากรายงานทุกฉบับ
+            {' · '}หัวหน้างานที่เซ็นอนุมัติไว้จะไม่ได้รับแจ้ง ต้องเข้ามาดูเอง
+            {' · '}ยื่นขอ OT ช่วงเวลานี้ใหม่ได้ ตราบใดที่ยังไม่พ้นวันตัดของงวด
           </Alert>
         </Modal>
+      )}
+
+      {/* ── กล่องยืนยัน — THE PAUSE THAT REPLACED SOMEBODY ELSE'S ตัดสิน ───────
+          Asked for on 2026-09-18 in those terms: ทวนวันที่ + ชั่วโมง + เหตุผล.
+
+          It restates the three things that are about to be true and not the
+          reason it is dangerous — the panel behind it has said that, and a
+          confirmation that argues its case is one people learn to dismiss.
+          `ConfirmDialog` from the kit rather than a second dialog of its own,
+          the same one ยกเลิกใบ uses on ตรวจสอบประจำเดือน. */}
+      {asking && confirming && (
+        <ConfirmDialog
+          title="ยืนยันการถอนใบ"
+          subtitle="กดยืนยันแล้วรายการจะเปลี่ยนเป็น “ยกเลิก” ทันที และเอากลับคืนไม่ได้"
+          danger
+          confirmLabel="ยืนยันถอนใบ"
+          cancelLabel="ย้อนกลับ"
+          onCancel={() => setConfirming(false)}
+          onConfirm={withdraw}
+        >
+          <dl className="fact-grid">
+            <Fact k="วันที่ทำ OT" v={`${thaiDate(asking.workDate)} · วัน${dayName(asking.workDate)}`} />
+            <Fact k="ชั่วโมงที่จะหายไป" v={`${hours(asking.totals?.otHours)} ชม.`} />
+            {/* `wide` — a reason runs to a line of prose and the two facts
+                beside it are four characters each. */}
+            <Fact k="เหตุผลที่ถอน" v={askReason.trim()} wide />
+          </dl>
+        </ConfirmDialog>
       )}
     </div>
   );
@@ -1023,23 +1116,24 @@ function EntryDetail({
               than no button, so each asks the rule rather than the status —
               see awaitingFirstSignature and withdrawEligibility. */}
           {mayEdit && <button className="btn ghost danger" onClick={onCancel}>ยกเลิกคำขอ</button>}
-          {/* NAMED IN FULL, because it is the one button here that does not do
-              what it says on the reviewer's screen. Theirs takes the hours off
-              the books; this one asks somebody to, and the row stays อนุมัติ
-              with its hours counted until they answer. The dialog it opens says
-              so in a warning panel — this is the same sentence compressed to
-              the width of a button. */}
-          {mayAsk && <button className="btn ghost" onClick={onAskWithdraw}>ยื่นขอถอนใบ OT</button>}
+          {/* ⚠ IT READ ยื่นขอถอนใบ OT UNTIL 2026-09-18, and the extra word was
+              carrying a real distinction: this button ASKED, the reviewer's
+              took the hours off the books. It does the same thing as theirs
+              now, so it says the same thing, and `btn ghost danger` beside
+              ยกเลิกคำขอ because both end the request — see the row. */}
+          {mayAsk && <button className="btn ghost danger" onClick={onAskWithdraw}>ถอนใบ OT</button>}
           {refileState(e) === 'open' && <button className="btn" onClick={onRefile}>ส่งใหม่</button>}
           {mayEdit && <button className="btn" onClick={onEdit}>แก้ไข</button>}
           {/* The row's sentence, in the row's own words, gated by the row's own
               counterfactual — so a request whose buttons are missing because it
-              was refused is not told the งวด closed. `.own-note` here too: the
-              foot is a flex row and the class is what lets a sentence take a
-              line of its own in one. */}
+              was refused is not told the งวด closed. The same grey chip the
+              row wears, for the same reason and out of the same two classes —
+              a reader who saw it on the row must meet the same thing when they
+              open the row. `.own-note` here too: the foot is a flex row and the
+              class is what lets it take a line of its own in one. */}
           {past && wouldOffer && (
             <span
-              className="cell-sub own-note"
+              className="chip locked own-note"
               title={cancelCutoffRefusal(user, e, policy).error}
             >
               {cancelCutoffRefusal(user, e, policy).short}
@@ -1091,19 +1185,15 @@ function EntryDetail({
         </Alert>
       )}
 
-      {/* Both halves of the withdrawal story, because the row shows neither in
-          full: what was asked, and — the one an employee goes looking for — the
-          answer when it was no. */}
-      {hasOpenWithdrawal(e) && (
-        <Alert kind="warn">
-          <strong>ส่งคำขอถอนใบแล้ว · รอพิจารณา</strong>
-          <div>เหตุผลที่ขอถอน: {e.withdrawal.reason}</div>
-          <div>
-            รายการยังมีสถานะเดิม และชั่วโมงยังถูกนับ
-            จนกว่าหัวหน้างานหรือฝ่ายบุคคลจะพิจารณา
-          </div>
-        </Alert>
-      )}
+      {/* ส่งคำขอถอนใบแล้ว · รอพิจารณา WAS THE BLOCK ABOVE THIS ONE. There is no
+          waiting state left to describe — see lib/withdrawal.js — and a
+          withdrawn row is `cancelled`, which the chip in the header already
+          says and `CancelledMark` on the monthly screens attributes.
+
+          THE REFUSAL STAYS, for rows decided before 2026-09-18. It is the half
+          an employee goes looking for: they asked a question, somebody said no,
+          and the hours are still theirs. Nothing can produce it any more and it
+          must still read correctly for as long as those rows exist. */}
       {e.withdrawal?.state === 'refused' && (
         <Alert kind="warn">
           <strong>คำขอถอนใบไม่ได้รับอนุมัติ — รายการนี้ยังมีผล</strong>

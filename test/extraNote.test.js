@@ -164,7 +164,8 @@ test('บนจอรายละเอียดใบ: อยู่ในกา
   for (const [name, src] of [
     ['คิวรออนุมัติ', read('components/ApprovalQueue.jsx')],
     ['รายการ OT ของฉัน', read('components/EmployeeView.jsx')],
-    ['คำขอถอนใบ', read('components/WithdrawalRequests.jsx')],
+    // คำขอถอนใบ was the third until 2026-09-18, when the screen was deleted
+    // with the ตัดสิน press it existed for — see lib/withdrawal.js.
   ]) {
     assert.match(src, /extraNote=\{e\.extraNote\}/, `${name} ไม่ได้ส่งรายละเอียดเพิ่มเติมให้การ์ด`);
   }
