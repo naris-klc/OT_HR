@@ -320,15 +320,15 @@ export const GET = route(async (req, { params }) => {
        *
        * Named for the screen the way `hidden` is, and for the opposite reason:
        * `hidden` is hours that are NOT on the paper, this is hours that ARE and
-       * should not be signed for as though they were settled. The paper says so
-       * itself with (รออนุมัติ) in the description cell; this is the list, so
-       * whoever pressed print can act on it without reading 31 rows.
+       * should not be signed for as though they were settled. The paper shows it
+       * by leaving ลงชื่อหัวหน้างาน empty on those rows; this is the list,
+       * so whoever pressed print can act on it without reading 31 rows.
        */
       pending: shown.filter((e) => onSheet(e) && pendingStatuses.includes(e.status)).map(brief),
       /**
        * The other half of the same question: rows on this sheet that are not
-       * approved and carry NO mark — รอ HR under a filter that counts it as
-       * signed, which is อนุมัติแล้ว + รอ HR on ตรวจสอบรายเดือน.
+       * approved and are NOT in the list above — รอ HR under a filter that
+       * counts it as signed, which is อนุมัติแล้ว + รอ HR on ตรวจสอบรายเดือน.
        *
        * The paper is deliberately silent about them; this list is why the
        * screen is not. Whoever pressed print chose that filter and can read

@@ -6618,8 +6618,10 @@ const POLICY_FIELDS = [
      *
      * The failure the setting exists to stop — a row NOBODY has approved
      * sitting in a total somebody is about to sign for — is answered on the
-     * paper now rather than by the query: that row prints with (รออนุมัติ)
-     * beside the work and an EMPTY signature box next to it. The two narrower
+     * paper now rather than by the query: that row prints with an EMPTY
+     * ลงชื่อหัวหน้างาน box beside it. A (รออนุมัติ) mark in the
+     * description cell said the same thing a second time until 2026-09-18,
+     * when HR asked for it off. The two narrower
      * answers keep their places below, because a month printed to file after it
      * is settled is a real document and somebody may still want it.
      */
@@ -6634,7 +6636,7 @@ const POLICY_FIELDS = [
      * themselves below it — see `optionHints`.
      *
      * It shipped as a six-clause paragraph carrying the whole rule: that the
-     * strict answer overrides สถานะที่นับ, where the (รออนุมัติ) mark prints,
+     * strict answer overrides สถานะที่นับ, where the (รออนุมัติ) mark printed,
      * that the line under the grid is conditional, and that nothing recomputes.
      * All true, and none of it is what somebody opening this page is deciding —
      * they are choosing between four answers, and the paragraph described the
@@ -6661,8 +6663,8 @@ const POLICY_FIELDS = [
      */
     optionHints: {
       draft: 'ใบขึ้นทันทีที่พนักงานยื่น — เอาไปให้หัวหน้าเซ็นได้เลย · รายการที่ยังไม่มีใครกดอนุมัติ '
-        + 'จะมีแท็ก “(รออนุมัติ)” ในช่องรายละเอียดงาน และช่อง “ลงชื่อหัวหน้างาน” ของแถวนั้นเว้นว่างไว้ '
-        + 'จนกว่าจะมีคนกดอนุมัติจริง',
+        + 'จะขึ้นบนใบเหมือนแถวอื่น โดยช่อง “ลงชื่อหัวหน้างาน” ของแถวนั้นเว้นว่างไว้ '
+        + 'จนกว่าจะมีคนกดอนุมัติจริง — ช่องที่ว่างคือสิ่งที่บอกว่าแถวนั้นยังไม่ผ่าน',
       signed: 'ใบขึ้นทันทีที่หัวหน้ากดอนุมัติ — รายการ “รอ HR” จึงอยู่บนใบที่ฝ่ายบุคคลถือไว้ยืนยัน '
         + 'ซึ่งคือช่อง “เฉพาะฝ่ายบุคคล” ที่ท้ายใบนั้นเอง · รายการ “รอหัวหน้า” ยังไม่ขึ้น',
       approved: 'พิมพ์เฉพาะรายการที่ฝ่ายบุคคลยืนยันครบแล้ว เหมาะกับการพิมพ์เก็บเข้าแฟ้มหลังปิดเดือน '

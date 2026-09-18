@@ -181,8 +181,8 @@ test('a missing or unrecognised answer reads as the shipped one', () => {
   // and `policy` is undefined in any caller that forgot it. Every one of those
   // must land on the answer the company chose rather than on a fourth answer
   // nobody picked — and under ตั้งแต่ยื่นขอ what keeps the sheet honest is on
-  // the sheet: a row nobody approved prints (รออนุมัติ) with an empty
-  // ลงชื่อหัวหน้างาน box beside it.
+  // the sheet: a row nobody approved prints with an empty ลงชื่อหัวหน้างาน
+  // box beside it.
   const bad = [undefined, null, {}, { formPrintScope: '' },
     { formPrintScope: 'all' }, { formPrintScope: true }];
   for (const policy of bad) {
@@ -304,30 +304,34 @@ test('both print paths pass สถานะที่นับ through, and neith
   assert.match(screen, /<PrintForm\b[\s\S]{0,300}?status=\{statusFilter\}/);
 });
 
-test('an unapproved row says so on the paper, in the cell that carries the other remarks', () => {
-  // Not a column and not a row: F-HR-027 Rev.4 is measured in millimetres
-  // against A4 (see app/print.css), and a fourth remark beside three existing
-  // ones is not a revision of the form.
+test('an unapproved row says so by the box it leaves empty, not by a mark in the cell', () => {
+  // HR asked the (รออนุมัติ) mark off the paper on 2026-09-18, in these
+  // words: *ถ้ารออนุมัติ ไม่ต้องขึ้นวงเล็บ แค่ไม่มีชื่อตรงช่องผู้อนุมัติก็พอ*. The
+  // ลงชื่อหัวหน้างาน column carries a name only where somebody pressed
+  // อนุมัติ, so the empty box is the statement — and it is made in the
+  // column a reader of a signed form asks the question in, rather than a
+  // second time inside a 51mm description cell.
   const code = sourceOf(SHEET);
   const open = code.indexOf('<td className="desc"');
   const cell = code.slice(open, code.indexOf('</td>', open));
-  assert.match(cell, /s && pendingIds\.has\(s\.entryId\) \? ' \(รออนุมัติ\)' : ''/);
-  // Off the server’s list, never off the status a second time: the mark and the
-  // legend that explains it are one decision, so neither can outlive the other on
-  // a document somebody signs.
-  assert.match(
-    code,
-    /const pendingIds = new Set\(\(form\.pending \|\| \[\]\)\.map\(\(p\) => p\.id\)\)/,
-  );
+  assert.doesNotMatch(cell, /\(รออนุมัติ\)' : ''/, 'แท็ก (รออนุมัติ) กลับมาอยู่บนใบ');
   assert.match(cell, /filedByProxy/, 'this is still the cell that carries per-row remarks');
+
+  // The signature box itself, unchanged and unconditional: `approverName` is
+  // absent on a row nobody approved, and `Signed` draws the blank.
+  assert.match(code, /<Signed name=\{s\?\.approverName\} \/>/);
+
+  // `form.pending` is the server's list and is still read — by the screen
+  // block above the sheet, which is now the only reader of it.
+  const sheetOnly = code.slice(code.indexOf('export function F027Sheet'));
+  assert.doesNotMatch(sheetOnly, /form\.pending/, 'ใบไม่ควรอ่าน form.pending อีกแล้ว');
 });
 
-test('the paper carries the mark and no legend under the grid', () => {
-  // HR asked the หมายเหตุ block off F-HR-027 (2026-08-20). The mark stays —
-  // (รออนุมัติ) is the word itself, in the cell beside the work it belongs to,
-  // and it is the one remark there that bears on whether a row may be signed.
-  // What the block added over it was a count and a warning about สรุปรวม, and
-  // both of those are on the screen, in front of whoever pressed print.
+test('nothing under the grid about unapproved rows either', () => {
+  // HR asked the หมายเหตุ block off F-HR-027 (2026-08-20) and the mark
+  // itself off on 2026-09-18. What the block used to add — a count, and the
+  // warning that สรุปรวม is not the figure for accounting — is on the screen,
+  // in front of whoever pressed print and can still do something about it.
   const code = sourceOf(SHEET);
   assert.ok(!code.includes('PendingNote'), 'the legend block is back on the paper');
 
@@ -336,13 +340,14 @@ test('the paper carries the mark and no legend under the grid', () => {
   assert.doesNotMatch(grid, /หมายเหตุ · รายการที่ยังไม่อนุมัติ/);
   assert.match(grid, /<ActingNote form=\{form\} \/>/);
 
-  // And the count the block used to print is still said, on the screen.
+  // The count, and what the paper does instead of marking the row.
   const notices = code.slice(
     code.indexOf('export function FormNotices'),
     code.indexOf('export function F027Sheet'),
   );
   assert.match(notices, /\{form\.pending\.length\} รายการที่ยังไม่อนุมัติ/);
-  assert.match(notices, /\(รออนุมัติ\)/);
+  assert.match(notices, /เว้นช่อง ลงชื่อหัวหน้างาน ของแถวนั้นไว้ว่าง/);
+  assert.doesNotMatch(notices, /\(รออนุมัติ\)/, 'ข้อความบนจอยังอ้างแท็กที่เอาออกไปแล้ว');
 });
 
 test('the rows the paper is silent about are named on the screen, with their dates', () => {
@@ -563,7 +568,7 @@ test('the row says what is being asked once, and what each answer is for', () =>
   // The shipped answer's gloss has to say the part a reader cannot infer from
   // its label: the row goes on the paper, and what is held back is the name in
   // the signature column beside it.
-  assert.match(field, /“\(รออนุมัติ\)”/);
+  assert.doesNotMatch(field, /“\(รออนุมัติ\)”/, 'แท็กนี้ไม่มีบนใบแล้ว');
   assert.match(field, /เว้นว่างไว้/);
 });
 

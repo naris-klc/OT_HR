@@ -49,7 +49,10 @@ test(`ยาวเกิน ${EXTRA_NOTE_MAX_CHARS} ตัวอักษร ถ
 test('ช่องใหม่ยาวกว่าช่องที่พิมพ์ลงใบ — ซึ่งคือเหตุผลที่มันมีอยู่', () => {
   assert.ok(EXTRA_NOTE_MAX_CHARS > DESCRIPTION_MAX_CHARS);
   // 22 is not a number anybody may raise by editing this file: it is the room
-  // left in a 51mm cell that also carries (รออนุมัติ), [ไม่พักเที่ยง] and (แทน).
+  // left in a 51mm cell that also carries [ไม่พักเที่ยง] and (แทน) — and
+  // (รออนุมัติ) as well until it came off the sheet on 2026-09-18. The cap
+  // is what ฝ่ายบุคคล agreed to; nobody has asked to spend what the mark
+  // gave back.
   assert.equal(DESCRIPTION_MAX_CHARS, 22);
 });
 
