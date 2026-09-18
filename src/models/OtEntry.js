@@ -196,10 +196,18 @@ const historySchema = new mongoose.Schema(
       // ASKING, the only action here that changed no status; 'withdraw_grant'
       // and 'withdraw_refuse' were a signer's two answers to it. No new row can
       // carry any of the three.
+      // 'route_hr' is the system moving a request that was waiting for a
+      // หัวหน้า nobody holds any more — the department lost its signer, or the
+      // หน่วยงาน table handed it to ฝ่ายบุคคล — up to the ฝ่ายบุคคล step, where
+      // a request filed today in the same department already lands
+      // (`initialStatus`). Written by nobody: `by` and `byName` are empty, like
+      // 'recompute'. Its own action rather than a note on the approval, because
+      // the fact it records is that NO signature was collected at the first
+      // step and the row still moved. See lib/unsignableRepair.js.
       enum: [
         'submit', 'submit_proxy', 'submit_hr_verified', 'resubmit',
         'approve_mgr', 'reject_mgr', 'approve_hr', 'reject_hr',
-        'cancel', 'hr_cancel', 'edit', 'hr_edit', 'recompute',
+        'cancel', 'hr_cancel', 'edit', 'hr_edit', 'recompute', 'route_hr',
         'withdraw', 'withdraw_request', 'withdraw_grant', 'withdraw_refuse',
       ],
       required: true,

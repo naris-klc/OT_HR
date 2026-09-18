@@ -711,7 +711,9 @@ test('the band brings its own inset, because .card.flush has none', () => {
 test('the pager names the queue it is under, and the queue is named once', () => {
   // `label` reaches three aria-labels: the size box and both chevrons. A name
   // the heading does not use is a name the reader cannot match to anything.
-  assert.match(queueCode, /const queueName = delegatedOnly \? 'รออนุมัติ · ทีมที่รับช่วง'/);
+  // One queue for ฝ่ายบุคคล since 2026-09-18, so one name each — the third,
+  // `รออนุมัติ · ทีมที่รับช่วง`, went with the tab it titled.
+  assert.match(queueCode, /const queueName = isHr \? 'รออนุมัติ OT' : 'รออนุมัติ';/);
   assert.match(queueCode, /<span className="t-name">\{queueName\}<\/span>/);
   assert.match(queueCode, /label=\{queueName\}/);
 });

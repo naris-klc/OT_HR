@@ -52,7 +52,11 @@ test('ห้าแถบยืนพื้นไม่มีชั้นที�
 
   const queue = src('components/ApprovalQueue.jsx');
   for (const [anchor, what] of [
-    ['<strong>คุณกำลังรับช่วงอนุมัติแทน</strong>', 'แถบรับช่วงอนุมัติแทนบนคิว'],
+    // Shortened to one sentence on 2026-09-18 — the three clauses that named
+    // the count and what an approval records moved into the row's pop-up when
+    // the three approval queues became one. The dates stayed: they are a fact
+    // about the reader, and no row can carry them.
+    ['<strong>รับช่วงอนุมัติแทน</strong>', 'แถบรับช่วงอนุมัติแทนบนคิว'],
     ['<strong>แสดง {cut.shown} จาก {cut.total} รายการ</strong>', 'แถบแสดง N จาก M บนคิว'],
   ]) {
     assert.ok(

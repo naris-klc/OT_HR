@@ -1187,9 +1187,13 @@ actor?.name` ใน `OtEntry.log`) เพื่อให้คนที่ลา
 ทั้งสองแผนก และนับ 4 คนเป็น "ไม่มีใครเซ็นให้" (`unsignedStaff`) พร้อมปุ่ม
 แก้ไขสิทธิ์พนักงาน ↗ ข้าง ๆ — เป็นการเตือนเรื่องที่ถูกต้องอยู่แล้ว และชี้ไปที่หน้า
 ที่ "วิธีแก้" คือตั้งหัวหน้าที่ฝ่ายบุคคลไม่ได้อยากให้มี · ตอนนี้ช่องหัวหน้างานของ
-สองแถวนั้นอ่านว่า **ฝ่ายบุคคล** ไม่ใช่ช่องว่างที่มีคำเตือน · ใบที่ยื่นไปแล้วไม่
-ย้ายตาม — สถานะถูกตัดสินตอนยื่นและอยู่ขั้นเดิม (บนฐานนี้ไม่มีใบจากสองแผนกนี้
-เลยสักใบ อ่านเมื่อ 2026-09-07)
+สองแถวนั้นอ่านว่า **ฝ่ายบุคคล** ไม่ใช่ช่องว่างที่มีคำเตือน · **ใบที่ยื่นไปแล้วย้ายตาม ตั้งแต่ 2026-09-18** ย่อหน้านี้เคยอ่านว่า *"ใบที่ยื่น
+ไปแล้วไม่ย้ายตาม — สถานะถูกตัดสินตอนยื่นและอยู่ขั้นเดิม"* ซึ่งจริงจนถึงวันนั้น และ
+เป็นที่มาของใบที่ค้างอยู่ที่ขั้นหัวหน้าโดยไม่มีใครเซ็นได้ · ตอนนี้ใบแบบนั้นถูกดันขึ้น
+ขั้นฝ่ายบุคคลเองเมื่อมีคนเปิดคิวหรือเมื่อตัวเลขบนแท็บถูกอ่าน (`routeUnsignableToHr`)
+พร้อมบรรทัดในประวัติว่าย้ายเพราะอะไร — เกณฑ์คือ *"ถ้ายื่นวันนี้จะไปลงที่ไหน"* ถามด้วย
+`initialStatus` ตัวเดียวกับตอนยื่นจริง (บนฐานนี้ไม่มีใบจากสองแผนกนี้เลยสักใบ อ่านเมื่อ
+2026-09-07)
 
 #### ใครเห็นใบของใคร — กว้างกว่าใครเซ็นใบของใคร
 
@@ -1498,11 +1502,16 @@ route ปฏิเสธ — และแผนกที่ **ฝ่ายบุ
   `delegationId`) **ว่างทั้งหมด** สำหรับกรณีนี้ — ไม่มีใครมอบสิทธิ์ และไม่มีหัวหน้า
   คนไหนอนุญาต ถ้าปล่อยให้ใช้สามฟิลด์นั้น มันจะแยกไม่ออกจากหัวหน้าธรรมดาที่เซ็นให้
   ทีมตัวเอง
-- **มีให้กดบนหน้าจอเดียวเท่านั้น** แท็บ **ไม่มีหัวหน้าเซ็น** (ผู้ดูแลระบบ และ
-  เฉพาะตอนที่จำนวนมากกว่าศูนย์) แสดงเฉพาะใบที่ `nobodyCanSign` หาเจอ ตัว*กฎ*
-  เปิดให้ผู้ดูแลระบบเซ็นขั้นหัวหน้าของใบไหนก็ได้ แต่หน้าจอที่ไล่ใบที่รออนุมัติทั้ง
-  บริษัทมาให้ ก็เท่ากับชวนให้เขาไปเซ็นใบที่หัวหน้าของใบนั้นกำลังจะเซ็นอยู่แล้ว ซึ่งจะ
-  ทำให้สายตาคู่ที่สองของ §6 กลายเป็นพิธีกรรมในทางปฏิบัติ ทั้งที่ตัวกฎดูเหมือนไม่ถูกแตะ
+- **ไม่มีหน้าจอไหนให้กดอีกแล้ว ตั้งแต่ 2026-09-18** ข้อนี้เคยอ่านว่า *"มีให้กดบน
+  หน้าจอเดียวเท่านั้น — แท็บ **ไม่มีหัวหน้าเซ็น** (ผู้ดูแลระบบ และเฉพาะตอนที่จำนวน
+  มากกว่าศูนย์) แสดงเฉพาะใบที่ `nobodyCanSign` หาเจอ"* และเหตุผลที่แคบไว้ก็ยังจริง
+  อยู่: ตัว*กฎ*เปิดให้ผู้ดูแลระบบเซ็นขั้นหัวหน้าของใบไหนก็ได้ หน้าจอที่ไล่ใบที่รอ
+  อนุมัติทั้งบริษัทมาให้จึงเท่ากับชวนให้ไปเซ็นใบที่หัวหน้าของใบนั้นกำลังจะเซ็นอยู่แล้ว
+  · **แต่ไม่มีใบให้เซ็นแทนแล้ว** — ใบที่ไม่มีใครเซ็นได้ถูกระบบย้ายขึ้นขั้นฝ่ายบุคคล
+  เอง (`routeUnsignableToHr` ใน `lib/unsignableRepair.js`) ที่เดียวกับที่ใบซึ่งยื่น
+  ใหม่วันนี้ในแผนกนั้นไปลง · **กฎยังอยู่ครบ** ทั้ง `mayOverrideManagerStep` การ
+  บังคับเหตุผล และฟิลด์ `adminOverride` — ที่หายไปคือจอที่เรียกมัน ไม่ใช่ตัวมัน ดู
+  `docs/plan-merge-approval-queues.md`
 
 `nobodyCanSign` ถาม**เป็นรายใบ ไม่ใช่รายแผนก** และนั่นไม่ใช่ความจู้จี้: แผนกหนึ่ง
 อาจมีหัวหน้าที่เซ็นให้เฉพาะ ไพรมัส ขณะที่มีพนักงาน เดมเทค นั่งอยู่ในแผนกนั้นสองคน
@@ -2085,7 +2094,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     156 files, run by `npm test`. Six named below as a
+test/                     157 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2098,15 +2107,24 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2780 tests
-across 156 files**, measured 2026-09-18 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2793 tests
+across 157 files**, measured 2026-09-18 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
 (⚠ **COUNT IT IN THE TREE THAT HOLDS `dev`, AFTER THE MERGE.** This line said
 "2804 tests across 155 files" for one afternoon: the figure was true in the
 worktree it was measured in and was four cases short of `dev`, because another
 session had landed work meanwhile. A worktree isolates files; it does not
 isolate this number.
-It read "2836 tests across 157 files … measured 2026-09-16" until
+It read "2780 tests across 156 files … measured 2026-09-18" until
+**คิวอนุมัติรวมเหลือหน้าเดียว** — `unsignableRepair` is file 157, and the
+thirteen cases it adds are the four ways a ใบ can end up with no first step
+(the old ใบที่ไม่มีหัวหน้าเซ็นได้ tab could see only one of them) plus what the
+move leaves in the trail. **No test file was deleted although two screens were**:
+รออนุมัติแทน and ไม่มีหัวหน้าเซ็น were never components of their own — both were
+`ApprovalQueue` under a different prop — so the cases that pinned them were
+rewritten in place, in `adminApproval`, `queueStatusColumn`, `queueRoleFilter`,
+`roleNavTabs`, `overCeiling`, `navActiveTab` and four more.
+Before that it read "2836 tests across 157 files … measured 2026-09-16" until
 **ถอนใบเองได้ทันที ไม่ต้องรอใครอนุมัติ** — **and this is the second round where
 the figure goes DOWN because a feature was withdrawn**, 56 cases and a file.
 `queueWithdrawChips` (12) and `withdrawalRowLayout` (33) were deleted with the
@@ -2875,11 +2893,15 @@ became everybody's — and "A หัวหน้า's two are the whole bar … 
 this app that is not a compressed version of a longer list", which was true for
 exactly as long as that bar was.)*
 
-**Seven is a steady state and not a maximum.** Two more tabs come and go, both
-ฝ่ายบุคคล/ผู้ดูแลระบบ only and both keyed on the data rather than the role —
-รออนุมัติแทน while any team is covered, ไม่มีหัวหน้าเซ็น while any request is
-stuck. A covered team makes ฝ่ายบุคคล eight; an admin with both faults open sees
-ten.
+**Seven is now a maximum as well as a steady state — 2026-09-18.** This read
+*"Two more tabs come and go, both ฝ่ายบุคคล/ผู้ดูแลระบบ only and both keyed on
+the data rather than the role — รออนุมัติแทน while any team is covered,
+ไม่มีหัวหน้าเซ็น while any request is stuck. A covered team makes ฝ่ายบุคคล
+eight; an admin with both faults open sees ten."* **Both are folded into
+รออนุมัติ OT**: a covered team's rows were always listed there (ฝ่ายบุคคล's queue
+shows the whole flow) and are signable there now, wearing a green ป้าย
+รับช่วงอนุมัติแทน; a stuck ใบ is repaired rather than listed. The badge over that
+one tab is the sum of both piles — see `queueBadge`.
 
 ### แถบข้างแบ่งเป็นสามบล็อก — 2026-09-03
 
@@ -2894,7 +2916,7 @@ undivided column, and the first two are a different job from the rest.
 | Heading | What is under it |
 |---|---|
 | **ข้อมูลส่วนตัว** | บันทึกและประวัติ OT · พิมพ์ใบขออนุมัติ OT |
-| **การอนุมัติ & รายงาน** | รายการรออนุมัติ · รออนุมัติแทน · ไม่มีหัวหน้าเซ็น · รออนุมัติ OT · ตรวจสอบประจำเดือน · รายงาน OT ประจำทีม · รายงาน OT การเงิน · รายงาน OT แยกแผนก |
+| **การอนุมัติ & รายงาน** | รายการรออนุมัติ · รออนุมัติ OT · ตรวจสอบประจำเดือน · รายงาน OT ประจำทีม · รายงาน OT การเงิน · รายงาน OT แยกแผนก *(เคยมี รออนุมัติแทน กับ ไม่มีหัวหน้าเซ็น อยู่ด้วย จนถึง 2026-09-18)* |
 | **การตั้งค่าระบบ** | ตั้งค่าระบบ · บันทึกประวัติระบบ |
 
 **The table had a third column reading `Folds` until 2026-09-10**, and the
@@ -3215,7 +3237,7 @@ its own for every บทบาท but two. It had had one once before, beside a*
 |---|---|---|---|---|
 | 1 | `personal` | ประวัติ OT | `clock` | บันทึกและประวัติ OT |
 | 2 | `form` | พิมพ์ใบ OT | `document` | พิมพ์ใบขออนุมัติ OT *(ฝ่ายบุคคล และผู้ดูแลระบบ อยู่ใน เพิ่มเติม)* |
-| 3 | `queue` | รออนุมัติ | `check` | รายการรออนุมัติ · รออนุมัติ OT · รออนุมัติแทน · ไม่มีหัวหน้าเซ็น |
+| 3 | `queue` | รออนุมัติ | `check` | รายการรออนุมัติ · รออนุมัติ OT *(เคยมี รออนุมัติแทน กับ ไม่มีหัวหน้าเซ็น จนถึง 2026-09-18)* |
 | 4 | `reports` | รายงาน | `chart` | รายงาน OT ประจำทีม · ตรวจสอบประจำเดือน · รายงาน OT การเงิน · รายงาน OT แยกแผนก |
 | 5 | `more` | เพิ่มเติม | `sliders` | ตั้งค่าระบบ · บันทึกประวัติระบบ |
 
@@ -3533,14 +3555,16 @@ which is more than the two-tab bar's own tabs had.)*
 on the หัวหน้างาน bar and taken across the whole app in one move, because the
 stylesheet's own rule for it is *"count badges are alarms, not decoration — one
 colour, used only here"*: one colour for every count, or the same number means
-different things depending on who is logged in. Four tabs wear it —
-รายการรออนุมัติ, รออนุมัติ OT, รออนุมัติแทน, ไม่มีหัวหน้าเซ็น. `--amber` with
-`--on-amber` is the pair this file had already tuned for this exact object;
-both themes clear AA. **What it gives up, said plainly:** red is gone from the
-nav, and with it the one place this app distinguished a *fault* from a *queue* —
-ไม่มีหัวหน้าเซ็น is a fault and now wears the same amber as three ordinary
-queues. It keeps a tab of its own, which is the distinction that was doing the
-work. (`test/navActiveTab.test.js` had been calling this "THE ORANGE BADGE" in
+different things depending on who is logged in. Two tabs wear it —
+รายการรออนุมัติ and รออนุมัติ OT. It read *"Four tabs wear it — รายการรออนุมัติ,
+รออนุมัติ OT, รออนุมัติแทน, ไม่มีหัวหน้าเซ็น"* until 2026-09-18, when the last
+two were folded into รออนุมัติ OT. `--amber` with `--on-amber` is the pair this
+file had already tuned for this exact object; both themes clear AA. **What it
+gave up, said plainly:** red went from the nav, and with it the one place this
+app distinguished a *fault* from a *queue* — ไม่มีหัวหน้าเซ็น was a fault wearing
+the same amber as ordinary queues, and kept a tab of its own, which was the
+distinction doing the work. **That fault no longer reaches a tab at all**: it is
+repaired where it is found, so there is nothing left for a colour to warn about. (`test/navActiveTab.test.js` had been calling this "THE ORANGE BADGE" in
 its own header the whole time it was red, which is how a colour drifts from
 what everybody believes it is.)
 
@@ -6617,7 +6641,11 @@ missing the rule that matters.
 the covered departments as an argument rather than looking them up, so it stays
 pure; a manager's **รออนุมัติ** carries the covered team's rows alongside their
 own, under a banner naming who is being covered and until when, with every
-covered row wearing a **รับช่วง** chip.
+covered row wearing a green **รับช่วงอนุมัติแทน** chip. *(The chip read
+**รับช่วง · <แผนก>** in grey until 2026-09-18, when ฝ่ายบุคคล's three approval
+tabs became one and it grew a button beside it; the แผนก is under the person's
+name in the same row. The banner was four clauses until the same day — see
+where it is drawn in `components/ApprovalQueue.jsx`.)*
 
 Widening never applies to ฝ่ายบุคคล, who are not narrowed by department in the
 first place — widening a scope that is not narrow would *narrow* it, and it
@@ -8692,9 +8720,11 @@ everybody feels.
 ของตัวเองครบทั้งเดสก์ท็อปและมือถือ ไม่มีแถบใหม่ให้ออกแบบ ไม่มีคลาสใหม่ให้ตั้งชื่อ
 มีแค่สี่ข้อที่จอนี้ตอบไม่เหมือนสองจอก่อนหน้า เพราะจอนี้มี**ช่องติ๊ก**
 
-**แถบเดียวขึ้นทั้งสี่แท็บพร้อมกัน** — รออนุมัติ OT · รออนุมัติ · รออนุมัติแทน ·
-ใบที่ยังไม่มีใครเซ็น เป็นคอมโพเนนต์ตัวเดียวกัน (`components/ApprovalQueue.jsx`)
-ที่ `components/App.jsx` เรียกด้วยพร็อพคนละชุด แก้ที่เดียวจึงได้ทั้งสี่
+**แถบเดียวขึ้นทั้งสองแท็บพร้อมกัน** — รออนุมัติ OT กับ รายการรออนุมัติ เป็น
+คอมโพเนนต์ตัวเดียวกัน (`components/ApprovalQueue.jsx`) ที่ `components/App.jsx`
+เรียกด้วยพร็อพคนละชุด แก้ที่เดียวจึงได้ทั้งคู่ · เคยอ่านว่า **"ทั้งสี่แท็บ"** —
+รวม รออนุมัติแทน กับ ใบที่ยังไม่มีใครเซ็น — จนถึง 2026-09-18 ที่สองแท็บนั้นถูก
+รวมเข้ากับ รออนุมัติ OT (ทั้งคู่ไม่เคยมีคอมโพเนนต์ของตัวเองอยู่แล้ว)
 
 | ข้อที่ต้องตอบ | คำตอบ | เพราะ |
 |---|---|---|
@@ -13263,7 +13293,9 @@ build แล้ว
   2026-09-04 ข้างล่าง** ซึ่งให้คิวของผู้เซ็นขั้นแรกเห็นทั้งสายเหมือนที่ ฝ่ายบุคคล เห็น
   · `wholeFlow` กลับไปเป็น `isHr && !delegatedOnly && !unsignedOnly` — คิวขั้นแรกทั้งสามจอ
   (`รายการรออนุมัติ` · `รออนุมัติแทน` · `ใบที่ไม่มีหัวหน้าเซ็นได้`) ยิง `status=pending_mgr`
-  อย่างเดียว ใบจึงหลุดจากคิวทันทีที่มีคนเซ็น · **จอ ฝ่ายบุคคล ยังลิสต์ทั้งสาย** พร้อม
+  อย่างเดียว ใบจึงหลุดจากคิวทันทีที่มีคนเซ็น *(สองจอหลังถูกรวมเข้ากับ `รออนุมัติ OT`
+  เมื่อ 2026-09-18 และ `wholeFlow` เหลือ `isHr` เฉย ๆ — คิวขั้นแรกที่เหลืออยู่จอเดียว
+  และยังยิงสถานะเดียวเหมือนเดิม)* · **จอ ฝ่ายบุคคล ยังลิสต์ทั้งสาย** พร้อม
   คอลัมน์และช่องกรอง `สถานะ` เหมือนเดิม เพราะแถวที่มันเฝ้าดูคือใบที่*กำลังจะมา*
   ไม่ใช่ใบที่*ไปแล้ว*
   · **ไม่มีอะไรฝั่งเซิร์ฟเวอร์เปลี่ยน** — `scopeFor`, `approvalPermission`,
@@ -13606,8 +13638,8 @@ build แล้ว
   *เอางี้ดีกว่าคือเรียงใบตามรหัสพนักงานทุก role เลยดีกว่า* ต่อจากรอบ 3 ก.ย. ที่แก้
   ไว้เฉพาะ `ตรวจสอบประจำเดือน` กับ `รายงาน OT ฝ่ายบัญชี`
   · **แก้ที่เดียว** — หกจอที่ลิสต์ใบ (`รายการรออนุมัติ` · `รออนุมัติ OT` ·
-  `รออนุมัติแทน` · `ไม่มีหัวหน้าเซ็น` · `คำขอถอนใบ` *(ลบแล้ว 2026-09-18 เหลือห้า)* ·
-  `บันทึกและประวัติ OT`) เป็น
+  `รออนุมัติแทน` กับ `ไม่มีหัวหน้าเซ็น` *(รวมเข้ากับ `รออนุมัติ OT` เมื่อ 2026-09-18)* ·
+  `คำขอถอนใบ` *(ลบแล้ว 2026-09-18)* · `บันทึกและประวัติ OT` — **เหลือสามจอ**) เป็น
   `GET /api/entries` เราต์เดียวกันหมด ตัวเปรียบเทียบคือ `byEmployeeThenLatest`
   ใน `lib/entries.js` ซึ่งถาม `compareCodes` ตัวเดียวกับอีกห้าเอกสาร
   · **`?scope=mine` ไม่ขยับ** และวันที่ยังใหม่ไปเก่า*ภายในคนคนเดียว* เพราะ
@@ -14115,8 +14147,12 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2780 tests**, about 4 s, measured 2026-09-18 across 156
-  files, all green. **`withdrawSelfScreens` is the new file of the last round,
+- `npm test` — **2793 tests**, about 4 s, measured 2026-09-18 across 157
+  files, all green. **`unsignableRepair` is the new file of the last round** —
+  the repair that took the place of the ใบที่ไม่มีหัวหน้าเซ็นได้ tab, and its
+  cases are written against the question that tab could not ask: *where would
+  this ใบ go if it were filed today*. It read "2780 tests across 156 files"
+  until then. **`withdrawSelfScreens` is the new file of the round before,
   and two files came OUT with it** — ถอนใบ stopped being a request somebody
   answers, so `queueWithdrawChips` and `withdrawalRowLayout` went with the
   screen they pinned and this one replaces both with sixteen cases. It carries

@@ -169,17 +169,18 @@ test('ป้ายเลขส้มขึ้นกับจำนวนงา�
  * rule rather than half of one.
  */
 test('แท็บนับงานค้างครบทุกกอง ไม่ว่าจะเปิดอยู่หรือไม่', () => {
-  // ONE PILE AGAIN SINCE 2026-09-18. The open คำขอถอนใบ joined the requests on
-  // 2026-09-03 and brought an `overlap` argument with it — an open request on a
-  // `pending_hr` row was already inside `pendingHr` and would have been counted
-  // twice. Both went when withdrawing stopped waiting for an answer. (There
-  // were briefly three piles on 2026-09-03: วันเกิดรอตรวจ was the third and was
-  // withdrawn with ฝ่ายบุคคล's birthday work the same day.)
-  //
-  // What this file cares about is unchanged by any of that, and is why the
-  // assertion is on the SHAPE of the expression rather than on its terms: there
-  // must be no branch on the open tab anywhere in it.
-  has(jsx, 'const queueBadge = (ownPending) => ownPending;');
+  /**
+   * TWO PILES AGAIN SINCE 2026-09-18, and for the first time they are two piles
+   * of THIS READER'S OWN WORK: ฝ่ายบุคคล's step, and the first step of any team
+   * they are standing in for — which was a tab of its own (รออนุมัติแทน) until
+   * the approval screens were merged into one. They cannot double-count: the
+   * server counts `pending_hr` and `pending_mgr`-in-covered-teams separately.
+   *
+   * What this file cares about is unchanged by any of that, and is why the
+   * assertion is on the SHAPE of the expression rather than on its terms: there
+   * must be no branch on the open tab anywhere in it.
+   */
+  has(jsx, 'const queueBadge = (ownPending, handed = 0) => ownPending + handed;');
   assert.ok(!jsx.includes('tab !== key'), 'badge กลับไปแยกกรณีตามแท็บที่เปิดอีกแล้ว');
 });
 

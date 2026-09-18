@@ -47,7 +47,9 @@ const list = read('components/HrEntries.jsx');
 // ── 1. the route's verdict ──────────────────────────────────────────────────
 
 test('decide=check is opt-in, and it is approvalPermission that answers', () => {
-  assert.match(route, /scan, decide,\s*\n\s*\} = query\(req\);/);
+  // `standin` joined the list on 2026-09-18 — the flag the one approval queue
+  // asks for. See app/api/entries/route.js.
+  assert.match(route, /scan, decide, standin,\s*\n\s*\} = query\(req\);/);
   assert.match(route, /if \(decide === 'check' && entries\.length && mayCorrectEntries\(user\)\) \{/);
   assert.match(route, /const may = approvalPermission\(\{ user, entry, delegations: \[\] \}\);/);
   // A cheap pre-filter in front of the real decider, never instead of it.

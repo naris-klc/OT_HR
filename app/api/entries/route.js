@@ -10,12 +10,13 @@ import {
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
   coreHoursRefusal,
-  capFor, takeCapped, submissionWindowRefusal, entryCompany,
+  capFor, takeCapped, submissionWindowRefusal,
   zeroOtHoursAllowed, byEmployeeThenLatest, mayCorrectEntries,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import { resolveScope, visibleEmployeeClause } from '@/lib/delegationQuery.js';
-import { nobodyCanSign, approvalPermission } from '@/lib/delegation.js';
+import { approvalPermission } from '@/lib/delegation.js';
+import { signerPool, noFirstStep, routeUnsignableToHr } from '@/lib/unsignableRepair.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { blockedMessage, needsOverCeilingReason } from '@/lib/caps.js';
@@ -29,7 +30,7 @@ export const GET = route(async (req) => {
   const user = await requireAuth(req);
   const {
     status, period, employee, department, from, to, limit, replaced, scope, usage,
-    scan, decide,
+    scan, decide, standin,
   } = query(req);
 
   /**
@@ -47,22 +48,24 @@ export const GET = route(async (req) => {
    */
   const reach = await resolveScope(user);
   /**
-   * `scope=unsigned` — the requests NOBODY on the roster can sign.
+   * ── `scope=unsigned` STOOD HERE UNTIL 2026-09-18 ──────────────────────────
    *
-   * ผู้ดูแลระบบ only, because they are the only ones who can do anything about
-   * such a row (`mayOverrideManagerStep`). Asked for by the รออนุมัติแทนหัวหน้า
-   * tab, and it is a narrow list on purpose: an administrator may sign the
-   * หัวหน้า step of ANY request, but a screen listing every request in the
-   * company invites them to sign rows whose own หัวหน้า is about to — which
-   * would make §6's second pair of eyes a formality in practice while leaving
-   * the rule looking untouched. This tab shows the rows that are genuinely
-   * stuck, which is the problem the override was added for.
+   * ผู้ดูแลระบบ only, it answered with the requests waiting at `pending_mgr`
+   * that NOBODY on the roster could sign — the list behind the tab
+   * ใบที่ไม่มีหัวหน้าเซ็นได้, where an administrator signed the first step by
+   * hand with a reason. It was narrow on purpose: the override rule lets them
+   * sign ANY first step, and a screen listing every pending request in the
+   * company would have invited them to sign rows whose own หัวหน้า was about to,
+   * making §6's second pair of eyes a formality while the rule looked untouched.
    *
-   * The filtering itself happens after the query, below: whether anybody covers
-   * a row depends on the entry's owner's payroll as well as its department, and
-   * that is not a mongo filter — see `nobodyCanSign`.
+   * **There is no such list now, because there are no such rows.** A ใบ that
+   * nobody can sign is moved up to the ฝ่ายบุคคล step by `routeUnsignableToHr`
+   * below, where a ใบ filed today in the same department already lands — so the
+   * screen it was on, the scope that fed it and the button on its rows are all
+   * gone, and HR reads one queue. The override rule itself is untouched in
+   * lib/delegation.js; nothing on any screen reaches it. See
+   * docs/plan-merge-approval-queues.md.
    */
-  const unsignedOnly = scope === 'unsigned' && user.role === 'admin';
 
   /**
    * `scope=mine` — MY requests, whoever I am.
@@ -168,31 +171,7 @@ export const GET = route(async (req) => {
     .limit(cap + 1)
     .lean();
 
-  /**
-   * `scope=unsigned`, applied here because it needs the populated owner.
-   *
-   * One roster read for the whole list rather than one per row — a หัวหน้า who
-   * covers a department may sit in any other, so the pool is the same for every
-   * entry and `isDepartmentManager` is what narrows it. The same shape the
-   * roster route's coverage loop uses.
-   *
-   * AFTER the cap, and that is a real limitation said out loud: `truncated`
-   * below counts documents the query matched, so on a list long enough to be
-   * cut short this could report "there are more" when the rest were all
-   * signable. The queue it serves is the requests waiting on a หัวหน้า across
-   * the company — a few rows, on a roster of seventeen — and paying for an
-   * exact count would mean resolving coverage for every pending request in the
-   * database on a screen that exists to show a handful.
-   */
-  const narrowed = unsignedOnly
-    ? await (async () => {
-      const managers = await Employee.find({ role: { $in: SIGNER_ROLES }, active: true })
-        .select('code name role department company approvesCompany approvesDepartments').lean();
-      return matched.filter((e) => nobodyCanSign(e, managers, entryCompany(e)));
-    })()
-    : matched;
-
-  const { rows: found, truncated } = takeCapped(narrowed, cap);
+  const { rows: found, truncated } = takeCapped(matched, cap);
 
   /**
    * `replaced=hide` — one row per line of filing rather than one per document.
@@ -275,6 +254,63 @@ export const GET = route(async (req) => {
     const { checks, hasScans } = await scanChecksFor(entries);
     scanChecked = hasScans;
     for (const entry of entries) entry.scanCheck = checks.get(String(entry._id)) || null;
+  }
+
+  /**
+   * `standin=check` — ใบไหนบนคิวนี้ที่ไม่มีหัวหน้าเป็นคนเซ็น
+   *
+   * Asked for by the one approval queue (2026-09-18), and it does two things in
+   * one roster read because both need the same answer about the same rows.
+   *
+   * ── FIRST IT REPAIRS ─────────────────────────────────────────────────────
+   *
+   * `routeUnsignableToHr` moves any row still waiting at `pending_mgr` that
+   * nobody could sign up to the ฝ่ายบุคคล step — where a request filed today in
+   * that department already lands — and writes a `route_hr` history row saying
+   * so. It patches the objects in this list too, so the rows answered here are
+   * the rows the database holds.
+   *
+   * A write under a GET, agreed with HR: the alternative is a migration somebody
+   * must remember to run the day a หัวหน้า resigns. It costs nothing when there
+   * is nothing to move — see the head of lib/unsignableRepair.js.
+   *
+   * ── THEN IT FLAGS ────────────────────────────────────────────────────────
+   *
+   * `standIn: 'no-manager'` is what puts the green ป้าย รับช่วงอนุมัติแทน on a
+   * row. It is asked of EVERY row and not only of the ones just moved, because
+   * a ใบ filed last week in a department with no signer went straight to
+   * `pending_hr` on its own and is the same thing to the person reading the
+   * queue: a ใบ they are signing in place of a หัวหน้า who does not exist.
+   *
+   * ── TWO REASONS, ONE FIELD, AND DELEGATION WINS ──────────────────────────
+   *
+   * `'delegated'` is a team this reader was handed by a real หัวหน้า for a
+   * window that closes by itself; `'no-manager'` is a ใบ with no first step for
+   * anybody. The ป้าย reads the same either way — *ใบนี้คุณเซ็นแทนหัวหน้าได้* —
+   * because that is the one question the person about to press a button is
+   * asking. Which of the two it was stays in the trail, where it is read when
+   * somebody asks months later why this ใบ carries one signature.
+   *
+   * Delegation is tested first: a covered team's rows are at `pending_mgr` and
+   * are this reader's to sign THROUGH somebody's authority, which is the
+   * narrower and more informative of the two answers.
+   *
+   * Answered here rather than on the client — where `TeamMark` worked it out
+   * from the delegations the screen had already fetched — because the queue now
+   * mixes both kinds of row and the SIGNING rule has to agree with the ป้าย. A
+   * button offered off one rule and refused by another is the 403 this endpoint's
+   * own header warns about.
+   */
+  if (standin === 'check' && entries.length) {
+    const signers = await signerPool();
+    await routeUnsignableToHr(entries, signers);
+    const coveredIds = new Set((reach.covered || []).map((id) => String(id)));
+    for (const entry of entries) {
+      const dept = String(entry.department?._id || entry.department || '');
+      entry.standIn = coveredIds.has(dept) ? 'delegated'
+        : noFirstStep(entry, signers) ? 'no-manager'
+          : null;
+    }
   }
 
   /**

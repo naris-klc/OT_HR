@@ -80,12 +80,15 @@ test('คิว ฝ่ายบุคคล ขอสองสถานะ · �
    * ได้อนุมัติ แต่ของ HR คงไว้เหมือนเดิม* — a first-step queue is a pile of
    * work, and a row somebody has already signed is not work.
    *
-   * THE TWO GUARDS STAY even though no call site pairs `pending_hr` with
-   * either flag: they say what those modes ARE, and this assertion is what
-   * keeps the line from being quietly shortened to `isHr` by somebody who has
-   * only read components/App.jsx.
+   * THE TWO GUARDS WENT WITH THEIR TABS ON 2026-09-18. `delegatedOnly` and
+   * `unsignedOnly` were รออนุมัติแทน and ใบที่ไม่มีหัวหน้าเซ็นได้, both mounted
+   * at `pending_mgr`; the three approval screens are one now, so there is
+   * nothing left for the guards to exclude and `isHr` is the whole answer
+   * again — as it was before 2026-09-04. The property this line protects is
+   * unchanged: exactly one queue lists the whole flow, and it is ฝ่ายบุคคล's.
    */
-  assert.match(code, /const wholeFlow = isHr && !delegatedOnly && !unsignedOnly;/);
+  assert.match(code, /const wholeFlow = isHr;/);
+  assert.doesNotMatch(code, /delegatedOnly|unsignedOnly/);
   assert.match(code, /const listed = wholeFlow \? FLOW_STATUSES : \[stage\];/);
   // The query string is built from `listed` and from nothing else — a literal
   // `status=pending_hr` here would be a third copy of the same decision.
@@ -111,19 +114,19 @@ test('คิว ฝ่ายบุคคล ขอสองสถานะ · �
 test('ทุกคิวขั้นแรกขอสถานะเดียว — ใบที่เซ็นแล้วหลุดจากคิวที่เซ็นมัน', () => {
   assert.match(code, /const isHr = stage === 'pending_hr';/);
   // The one branch that widens is `isHr`'s, and it is the only one.
-  assert.match(code, /const wholeFlow = isHr && /);
-  assert.ok(
-    !/delegatedOnly[^\n]*FLOW_STATUSES|unsignedOnly[^\n]*FLOW_STATUSES/.test(code),
-    'สองโหมดนั้นเป็นคิว pending_mgr อยู่แล้ว การกว้างขึ้นจะพาใบของคนอื่นเข้ามา',
-  );
-  // Every first-step mount, so `[stage]` really is `pending_mgr` for all three.
+  assert.match(code, /const wholeFlow = isHr;/);
+  /**
+   * TWO MOUNTS, NOT FOUR. This loop walked three first-step mounts —
+   * `delegatedOnly`, `unsignedOnly` and the plain หัวหน้า queue — to prove that
+   * `[stage]` really was `pending_mgr` at every one of them. The first two were
+   * รออนุมัติแทน and ใบที่ไม่มีหัวหน้าเซ็นได้, merged into รออนุมัติ OT on
+   * 2026-09-18, so what is left is the pair this file has always been about:
+   * one mount at each step, and no third reading of either.
+   */
   const app = read('components/App.jsx');
-  for (const mode of ['delegatedOnly', 'unsignedOnly', 'plain']) {
-    const line = mode === 'plain'
-      ? /<ApprovalQueue\s+user=\{user\}\s+stage="pending_mgr"/
-      : new RegExp(`stage="pending_mgr" ${mode === 'delegatedOnly' ? 'delegatedOnly' : 'unsignedOnly'}`);
-    assert.match(app, line, `แท็บ ${mode} ไม่ได้ mount ที่ขั้นแรกแล้ว`);
-  }
+  assert.match(app, /<ApprovalQueue\s+user=\{user\}\s+stage="pending_mgr"/);
+  assert.match(app, /<ApprovalQueue\s+user=\{user\}\s+stage="pending_hr"/);
+  assert.doesNotMatch(app, /delegatedOnly|unsignedOnly/);
 });
 
 // ── 2. one predicate, asked at every gate ───────────────────────────────────
@@ -142,8 +145,17 @@ test('signableHere ถูกถามที่ประตูทั้งสี�
   // matrix, and it exists because a แผนก can hold four หัวหน้างาน who all file
   // their own OT now — without it each of them is offered two buttons on the
   // other three’s requests, and both answer 403.
-  assert.match(code, /const signableHere = \(e\) => e\?\.status === stage$/m);
-  assert.match(code, /&& \(isHr \|\| maySignFirstStep\(user, e\)\);/);
+  /**
+   * A THIRD CLAUSE SINCE 2026-09-18, and it is what merging the three approval
+   * screens into one cost: ฝ่ายบุคคล's queue lists `pending_mgr` rows too
+   * (`wholeFlow`), and the ones from a team this reader is standing in for are
+   * signed here now rather than on a tab of their own. `standIn` is the
+   * SERVER's answer, sent beside the row — the client used to decide it from
+   * the delegations it had fetched, and a button offered by one rule and
+   * refused by another is the 403 this file exists to prevent.
+   */
+  assert.match(code, /if \(e\.status === stage\) return isHr \|\| maySignFirstStep\(user, e\);/);
+  assert.match(code, /return isHr && e\.status === 'pending_mgr' && e\.standIn === 'delegated';/);
 
   // the tick box
   assert.match(code, /disabled=\{!signableHere\(e\)/);

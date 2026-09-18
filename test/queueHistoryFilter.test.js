@@ -45,9 +45,17 @@ const ev = (action) => ({ action, at: new Date('2026-09-07T10:00:00Z') });
 
 // ── the list itself ─────────────────────────────────────────────────────────
 
-test('ระบบคำนวณใหม่ตามนโยบาย is a system row, and today it is the only one', () => {
-  assert.deepEqual([...SYSTEM_LOG_ACTIONS], ['recompute']);
+/**
+ * TWO MACHINE-WRITTEN ROWS SINCE 2026-09-18, and the second one is
+ * `route_hr`: the system moving a ใบ off a first step nobody can sign, up to
+ * the ฝ่ายบุคคล step where a ใบ filed today in that department already lands
+ * (lib/unsignableRepair.js). Nobody pressed anything, so it carries no name —
+ * which is exactly the property this list is for.
+ */
+test('the system rows are the two nobody pressed', () => {
+  assert.deepEqual([...SYSTEM_LOG_ACTIONS], ['recompute', 'route_hr']);
   assert.equal(isSystemLog(ev('recompute')), true);
+  assert.equal(isSystemLog(ev('route_hr')), true);
 });
 
 test('nothing a person did counts as a system row', () => {

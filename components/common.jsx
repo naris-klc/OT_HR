@@ -724,6 +724,14 @@ const ACTION_META = {
   withdraw_grant: { label: 'อนุมัติให้ถอนใบ', tone: 'off' },
   withdraw_refuse: { label: 'ไม่อนุมัติให้ถอนใบ — รายการยังมีผล', tone: 'no' },
   recompute: { label: 'ระบบคำนวณใหม่ตามนโยบาย', tone: 'off' },
+  /**
+   * The system moving a ใบ off a first step nobody can sign — see
+   * lib/unsignableRepair.js. The label says WHY in the same breath as WHAT,
+   * because this row is the only answer a reader gets to "where is the
+   * หัวหน้า signature on this ใบ": the note beside it carries the same sentence,
+   * and a label reading only "ระบบย้ายขั้น" would leave them hunting for it.
+   */
+  route_hr: { label: 'ระบบย้ายเข้าขั้นฝ่ายบุคคล — แผนกไม่มีผู้เซ็นขั้นหัวหน้า', tone: 'off' },
 };
 
 /** Labels and formatting for the entered fields, in the order the form asks. */
@@ -1275,19 +1283,53 @@ export function FlatDailyMark({ entry }) {
 }
 
 /**
- * The team a row belongs to, on the queue of somebody standing in for two.
+ * ใบที่ผู้อ่านเซ็นแทนหัวหน้า — the green ป้าย on the one approval queue.
  *
- * Only drawn when the reviewer is covering somebody else's queue as well as
- * their own — on an ordinary queue every row is the same team and a chip
- * saying so on all of them is noise.
+ * ── ONE WORDING FOR TWO SITUATIONS, ASKED FOR IN THOSE WORDS (2026-09-18) ───
+ *
+ * A row wears it when this reader would be signing the first step in place of a
+ * หัวหน้า, and there are two ways that happens: a real หัวหน้า handed them the
+ * team for a window (`standIn: 'delegated'`), or the ใบ has no first step for
+ * anybody because its department has no signer in the roster
+ * (`standIn: 'no-manager'`, which the server has already moved up to the
+ * ฝ่ายบุคคล step — see lib/unsignableRepair.js).
+ *
+ * HR asked for the same ป้าย on both, and it is the right call for the place it
+ * is read: a table of forty rows answers one question at a glance — *which of
+ * these is mine to sign* — and two ป้าย that both mean yes would be a
+ * distinction drawn where nobody is asking for one. WHICH of the two it was is
+ * in the row's pop-up, beside the buttons, and in the ใบ's own history, which is
+ * where it is read months later.
+ *
+ * ── AND THE DEPARTMENT NAME CAME OFF IT ────────────────────────────────────
+ *
+ * It read `รับช่วง · แผนกบัญชี` until the same day. The แผนก is under the
+ * person's name in the same row, and a ป้าย carrying it made the long label
+ * wrap on a phone in front of the row's own buttons.
+ *
+ * `chip green` and not a colour of its own: the pair `--green-bg` /
+ * `--green-dark` is measured for contrast in both themes by
+ * `test/theme.test.js`, and a fifth chip tone would be a colour nobody had
+ * measured. It read `chip delegated` — the grey `--neutral-wash` — until
+ * 2026-09-18, when the row stopped being an aside on a screen about handovers
+ * and became a row with a button on it.
+ *
+ * `coveredDepartments` is the fallback for the queues the server does not flag
+ * — a หัวหน้า's own daily queue, which never asks for `standin=check` because
+ * every row on it is their own step, delegation or not.
  */
 export function TeamMark({ entry, coveredDepartments }) {
   const dept = entry.department?._id || entry.department;
-  if (!dept || !coveredDepartments?.length) return null;
-  if (!coveredDepartments.some((id) => String(id) === String(dept))) return null;
+  const flagged = entry.standIn === 'delegated' || entry.standIn === 'no-manager';
+  const covered = !entry.standIn && dept && coveredDepartments?.length
+    && coveredDepartments.some((id) => String(id) === String(dept));
+  if (!flagged && !covered) return null;
+  const why = entry.standIn === 'no-manager'
+    ? 'แผนกนี้ไม่มีผู้เซ็นขั้นหัวหน้าในทะเบียน — ใบขึ้นมาที่ขั้นฝ่ายบุคคลเอง'
+    : 'รายการจากทีมที่คุณรับช่วงอนุมัติแทน';
   return (
-    <span className="chip delegated" title="รายการจากทีมที่คุณรับช่วงอนุมัติแทน">
-      รับช่วง · {entry.department?.nameTh || entry.department?.name || 'ทีมที่รับช่วง'}
+    <span className="chip green" title={why}>
+      รับช่วงอนุมัติแทน
     </span>
   );
 }

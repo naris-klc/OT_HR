@@ -523,12 +523,22 @@ function Login({ onLogin }) {
  */
 const PAGE = {
   mine: ['บันทึกและประวัติ OT', 'MY OVERTIME'],
-  // หัวหน้างาน only — ฝ่ายบุคคล's stand-in queue is `delegated` below, and no
-  // account reaches both. Renamed with its tab on 2026-08-31; it read
-  // 'รออนุมัติ' until then.
+  // หัวหน้างาน only — ฝ่ายบุคคล sign from `confirm` below, and no account
+  // reaches both. Renamed with its tab on 2026-08-31; it read 'รออนุมัติ' until
+  // then.
   approve: ['รายการรออนุมัติ', 'PENDING · MANAGER'],
-  delegated: ['รออนุมัติแทน', 'PENDING · DELEGATED'],
-  unsigned: ['ใบที่ไม่มีหัวหน้าเซ็นได้', 'PENDING · NO APPROVER'],
+  /**
+   * `delegated` — รออนุมัติแทน — AND `unsigned` — ใบที่ไม่มีหัวหน้าเซ็นได้ —
+   * STOOD HERE UNTIL 2026-09-18, both ฝ่ายบุคคล/ผู้ดูแลระบบ tabs mounting this
+   * component's queue at the first step with a narrowed list.
+   *
+   * ONE APPROVAL QUEUE NOW, asked for in one line: *"ทำไมต้องแยกหน้าด้วย รวม
+   * เข้าในหน้ารออนุมัติหน้าเดียวดีกว่า"* — and the rows were already there. A
+   * ใบ nobody can sign is moved to this queue's own step by the server, and a
+   * ใบ from a team this reader is standing in for was always listed here and is
+   * now signable here, wearing the green ป้าย รับช่วงอนุมัติแทน. See
+   * docs/plan-merge-approval-queues.md.
+   */
   confirm: ['รออนุมัติ OT', 'PENDING · HR'],
   /**
    * TWO KEYS, ONE COMPONENT — the month as the whole company, and the month as
@@ -1186,6 +1196,14 @@ function Shell({ session, onRefresh, onLogout }) {
    * noticed. The refresh behind it is what makes the count right again when
    * somebody else was working the same queue.
    */
+  /**
+   * `stage` is `'pending_hr'`, `'pending_mgr'` or `'delegated'` — the last one
+   * being rows on ฝ่ายบุคคล's queue that belong to a team they are standing in
+   * for. It kept its name when its tab was folded into รออนุมัติ OT
+   * (2026-09-18): the SERVER still counts that pile separately, and the badge
+   * over the one tab is the sum, so a covered row taken off `pendingHr` would
+   * move the wrong number for as long as the refresh takes.
+   */
   function queueDone(stage, n = 1) {
     const key = stage === 'pending_hr' ? 'pendingHr'
       : stage === 'delegated' ? 'pendingMgrDelegated'
@@ -1342,10 +1360,24 @@ function Shell({ session, onRefresh, onLogout }) {
    * happened to ask about an unconfirmed ใบ, which is the kind of wrong that
    * gets explained away rather than found.
    *
-   * With one pile left this is the identity function, and it is kept as a name so
-   * that the two tabs below go on quoting one rule rather than two literals.
+   * ── AND IT IS A SUM AGAIN SINCE 2026-09-18, FOR ONE TAB ──────────────────
+   *
+   * รออนุมัติ OT is the only approval queue ฝ่ายบุคคล have now: their own step,
+   * plus the first step of any team they are standing in for, which used to be
+   * a tab of its own. The badge counts WHAT THIS READER CAN PRESS, which is
+   * both piles — a number that named only the ฝ่ายบุคคล step would send
+   * somebody to a screen holding more work than the badge admitted to.
+   *
+   * The two piles cannot double-count: `pendingHr` counts `pending_hr` and
+   * `pendingMgrDelegated` counts `pending_mgr` in the covered teams. A ใบ that
+   * nobody could sign has already been moved into the first of them by the
+   * server before either number is taken (`routeUnsignableToHr`), which is why
+   * there is no third term here for the tab that used to carry it.
+   *
+   * Still one rule read by both `.sidebar` and `.mobile-nav`, which render the
+   * same `tabs` array — see the head of this block.
    */
-  const queueBadge = (ownPending) => ownPending;
+  const queueBadge = (ownPending, handed = 0) => ownPending + handed;
 
   /**
    * ── THE MENU, ONE BLOCK PER ROLE ──────────────────────────────────────────
@@ -1378,11 +1410,11 @@ function Shell({ session, onRefresh, onLogout }) {
    *                      รายงาน OT แยกแผนก · ตั้งค่าระบบ
    *   ผู้ดูแลระบบ      8 — those seven and บันทึกประวัติระบบ
    *
-   * PLUS TWO THAT COME AND GO, both ฝ่ายบุคคล/ผู้ดูแลระบบ only and both
-   * conditional on the state of the data rather than on a role: รออนุมัติแทน
-   * while any team is covered, and ไม่มีหัวหน้าเซ็น while any request is stuck.
-   * So "ฝ่ายบุคคล has seven" is the steady state and not a maximum — a covered
-   * team makes it eight, and an admin with both faults open sees ten.
+   * NO TAB COMES AND GOES ANY MORE — the counts above are the whole list for
+   * every บทบาท. Two did until 2026-09-18, both ฝ่ายบุคคล/ผู้ดูแลระบบ only and
+   * both conditional on the data rather than on a role: รออนุมัติแทน while any
+   * team was covered, and ไม่มีหัวหน้าเซ็น while any ใบ was stuck. Both are
+   * folded into รออนุมัติ OT — see where they stood, below.
    *
    * THE FIRST TWO ARE EVERYBODY'S, and that is not a nav decision —
    * `Employee.maySubmitOt()` says who may file and `lib/session.js` hands this
@@ -1543,56 +1575,24 @@ function Shell({ session, onRefresh, onLogout }) {
 
   // ── ฝ่ายบุคคล / ผู้ดูแลระบบ ──────────────────────────────────────────────
   /**
-   * ฝ่ายบุคคล standing in for a หัวหน้า get a queue of their own.
+   * ── TWO TABS STOOD HERE UNTIL 2026-09-18 ─────────────────────────────────
    *
-   * A manager needs no such tab — their รออนุมัติ already carries the covered
-   * team's rows, each wearing a รับช่วง chip, because `scopeFor` widens by
-   * department and theirs was narrow. HR's is not narrow, so widening it does
-   * nothing and their existing screens would never show the manager's step at
-   * all. This one asks for `scope=delegated`: the handed-over queue and
-   * nothing else.
+   * `รออนุมัติแทน` (ฝ่ายบุคคล/ผู้ดูแลระบบ, while any team was covered) and
+   * `ไม่มีหัวหน้าเซ็น` (ผู้ดูแลระบบ, while any ใบ was stuck). Both mounted the
+   * approval queue at the first step, and the argument for keeping them apart
+   * was that one is a standing responsibility and the other is a fault.
    *
-   * Keyed on how many teams are covered rather than on how many rows are
-   * waiting — an empty covered queue is still somebody's responsibility, and a
-   * tab that vanished with its last row is a tab nobody would trust to be
-   * there tomorrow.
+   * **The fault has no rows any more.** A ใบ nobody can sign is moved up to the
+   * ฝ่ายบุคคล step by the server (lib/unsignableRepair.js), where a ใบ filed
+   * today in that department already lands — so there is nothing for a fault
+   * tab to list. And the handed-over rows were never anywhere else: ฝ่ายบุคคล's
+   * queue lists the whole flow, so รออนุมัติแทน was a second view of rows that
+   * were already on รออนุมัติ OT with their buttons withheld.
+   *
+   * What tells the two apart now is the row, not the tab: a green ป้าย
+   * รับช่วงอนุมัติแทน, and a sentence in the pop-up saying which of the two it
+   * is. HR asked for one queue — see docs/plan-merge-approval-queues.md.
    */
-  if (['hr', 'admin'].includes(user.role) && counts.delegatedTeams > 0) {
-    tabs.push({
-      key: 'delegated',
-      label: 'รออนุมัติแทน',
-      icon: 'users',
-      group: 'work',
-      bar: 'queue',
-      badge: counts.pendingMgrDelegated,
-    });
-  }
-  /**
-   * ใบที่ไม่มีใครเซ็นได้ — ผู้ดูแลระบบ only, and only while there are any.
-   *
-   * A DIFFERENT TAB FROM รออนุมัติแทน, not a widening of it, because the two
-   * are answers to different questions. That one is a queue somebody was
-   * HANDED, for a window that closes by itself; this one is a fault — requests
-   * sitting at รอหัวหน้า in a แผนก with no หัวหน้า who covers them, which today
-   * is every request anybody files in ADM. Merged, the standing responsibility
-   * and the thing that is broken would wear one badge and one label, and
-   * whichever of them was on screen you would not know which you were reading.
-   *
-   * IT VANISHES AT ZERO, unlike its neighbour. A covered queue with no rows in
-   * it is still somebody's job today; a repaired fault is not, and a tab that
-   * sat there permanently reading 0 would be the one nobody looks at on the day
-   * it finally says 1.
-   */
-  if (user.role === 'admin' && counts.unsignedPending > 0) {
-    tabs.push({
-      key: 'unsigned',
-      label: 'ไม่มีหัวหน้าเซ็น',
-      icon: 'users',
-      group: 'work',
-      bar: 'queue',
-      badge: counts.unsignedPending,
-    });
-  }
   if (['hr', 'admin'].includes(user.role)) {
     tabs.push({
       key: 'confirm',
@@ -1600,7 +1600,7 @@ function Shell({ session, onRefresh, onLogout }) {
       icon: 'check',
       group: 'work',
       bar: 'queue',
-      badge: queueBadge(counts.pendingHr),
+      badge: queueBadge(counts.pendingHr, counts.pendingMgrDelegated),
     });
     tabs.push({ key: 'monthly', label: 'ตรวจสอบประจำเดือน', icon: 'calendar', group: 'work', bar: 'reports' });
     // Closing the month, not checking it — hence its own tab next to the
@@ -2163,17 +2163,6 @@ function Shell({ session, onRefresh, onLogout }) {
                 onOpenPolicy={openPolicy}
               />
             )}
-            {/* The covered queue stays a single list: a ฝ่ายบุคคล standing in for
-                a หัวหน้า already sees every birthday in the company on their own
-                รอ HR ยืนยัน, so a second copy here would be the same rows twice. */}
-            {tab === 'delegated' && <ApprovalQueue user={user} stage="pending_mgr" delegatedOnly onChanged={queueDone} onOpenPolicy={openPolicy} />}
-            {/* The same queue component, asking the server for a different
-                list — `scope=unsigned`. Not a second copy of the screen: every
-                rule about what a row shows and which buttons it earns is the
-                same one, and the one thing that differs (a reason is compulsory
-                here) is a fact about the rows, which the component reads off
-                the mode it was given. */}
-            {tab === 'unsigned' && <ApprovalQueue user={user} stage="pending_mgr" unsignedOnly onChanged={queueDone} onOpenPolicy={openPolicy} />}
             {tab === 'confirm' && (
               <ApprovalQueue
                 user={user}

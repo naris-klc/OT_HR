@@ -20,8 +20,7 @@ import {
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
 import {
-  barredAsOwnFiling, signedManagerStep,
-  OVERRIDE_NOTE_REQUIRED, DELEGATED_APPROVAL_RECORDED,
+  barredAsOwnFiling, signedManagerStep, DELEGATED_APPROVAL_RECORDED,
 } from '@/lib/delegation.js';
 import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
@@ -237,7 +236,7 @@ const OWN_FILING_NOTE = {
  * read, so even the batch path stops for one to be typed.
  */
 export default function ApprovalQueue({
-  user, stage, onChanged, onOpenPolicy, delegatedOnly = false, unsignedOnly = false,
+  user, stage, onChanged, onOpenPolicy,
 }) {
   const isHr = stage === 'pending_hr';
   /**
@@ -274,8 +273,7 @@ export default function ApprovalQueue({
    * naming a queue the heading calls something else names nothing the reader
    * can see.
    */
-  const queueName = delegatedOnly ? 'รออนุมัติ · ทีมที่รับช่วง'
-    : isHr ? 'รออนุมัติ OT' : 'รออนุมัติ';
+  const queueName = isHr ? 'รออนุมัติ OT' : 'รออนุมัติ';
   /**
    * WHICH STATUSES THIS SCREEN ASKS THE SERVER FOR — one place, read by the
    * fetch, by the สถานะ dropdown and by the empty states.
@@ -285,18 +283,17 @@ export default function ApprovalQueue({
    * for its own step and nothing else, so a request leaves it the moment
    * somebody signs it.
    *
-   * THE TWO GUARDS AFTER `isHr` ARE NOT DECORATION, even though no call site
-   * pairs `stage="pending_hr"` with either flag today (see components/App.jsx —
-   * both special tabs mount at the first step). They say what the modes ARE:
-   * `delegatedOnly` is a queue somebody was HANDED, the first step of the teams
-   * they cover and nothing else, and `unsignedOnly` is the rows at that step
-   * that nobody on the roster can sign. Neither is a picture of a flow, and a
-   * later reading of this line should not have to work that out from `isHr`.
+   * IT READ `isHr && !delegatedOnly && !unsignedOnly` UNTIL 2026-09-18. Those
+   * two flags were the tabs รออนุมัติแทน and ใบที่ไม่มีหัวหน้าเซ็นได้, which
+   * mounted this component at `pending_mgr` with a narrowed list. Both tabs are
+   * gone — one approval queue, see docs/plan-merge-approval-queues.md — so the
+   * guards have nothing left to exclude and `isHr` is the whole answer again,
+   * exactly as it was before 2026-09-04.
    *
-   * It read `!delegatedOnly && !unsignedOnly` between 2026-09-04 and
+   * It read `!delegatedOnly && !unsignedOnly` alone between 2026-09-04 and
    * 2026-09-09, which is what put signed rows on a หัวหน้า's queue.
    */
-  const wholeFlow = isHr && !delegatedOnly && !unsignedOnly;
+  const wholeFlow = isHr;
   const listed = wholeFlow ? FLOW_STATUSES : [stage];
   /**
    * Is this a row THIS queue signs, or one it is only showing?
@@ -320,8 +317,23 @@ export default function ApprovalQueue({
    * row with a sentence where its buttons would be is the shape this screen
    * already uses for the ones it cannot sign.
    */
-  const signableHere = (e) => e?.status === stage
-    && (isHr || maySignFirstStep(user, e));
+  /**
+   * AND — since 2026-09-18 — the ROW AT THE OTHER STEP that this reader may
+   * still sign: a ใบ at `pending_mgr` in a team they are standing in for.
+   *
+   * ฝ่ายบุคคล's queue lists the whole flow (`wholeFlow`), so those rows were
+   * already on screen; until the tabs were merged they carried no buttons here
+   * and were signed from รออนุมัติแทน instead. `standIn === 'delegated'` is the
+   * server's own answer, computed beside the rows it is about
+   * (`standin=check`) — the client used to work it out from the delegations it
+   * had fetched, and a button offered by one rule and refused by another is a
+   * 403 with a green tick on it.
+   */
+  const signableHere = (e) => {
+    if (!e) return false;
+    if (e.status === stage) return isHr || maySignFirstStep(user, e);
+    return isHr && e.status === 'pending_mgr' && e.standIn === 'delegated';
+  };
   /**
    * WHY THIS ROW CARRIES NO DECISION — one sentence, or `null` when it carries
    * two buttons. Added 2026-09-14 for the POP-UP, which had been answering the
@@ -349,18 +361,23 @@ export default function ApprovalQueue({
     return null;
   };
   /**
-   * ใบที่ไม่มีหัวหน้าเซ็นได้ — every row here is one an administrator is signing
-   * IN PLACE OF a หัวหน้า who does not exist, so every decision on this screen
-   * needs a reason (`OVERRIDE_NOTE_REQUIRED`).
+   * ── THE FIRST REASON THIS DIALOG COULD DEMAND A SENTENCE IS GONE ──────────
    *
-   * Read off the MODE rather than off the row, and that is what makes the
-   * screen and the server agree without the client modelling delegation
-   * coverage: the server put a row in this list precisely because nobody could
-   * sign it, so `approvalPermission` will take the administrator's override
-   * path for every one of them and refuse every one without a note. On any
-   * other queue this is false and nothing changes — an administrator holding a
-   * real delegation signs from รออนุมัติแทน with no reason demanded, exactly as
-   * ฝ่ายบุคคล does, because there the server does not demand one either.
+   * `needsReason = unsignedOnly` stood here: every row on ใบที่ไม่มีหัวหน้าเซ็นได้
+   * was one an administrator signed IN PLACE OF a หัวหน้า who does not exist, so
+   * the server refused each of them without a reason (`OVERRIDE_NOTE_REQUIRED`)
+   * and the dialog collected one.
+   *
+   * **No row on this queue is that any more.** A ใบ nobody can sign is moved to
+   * the ฝ่ายบุคคล step by the server before this screen ever sees it
+   * (lib/unsignableRepair.js), where ฝ่ายบุคคล sign their own step and no
+   * override is involved; a ใบ at `pending_mgr` is signed here only through a
+   * real delegation, which never demanded a sentence — not on the old
+   * รออนุมัติแทน tab either, because the server does not ask for one.
+   *
+   * The administrator override itself is untouched in lib/delegation.js. What
+   * is gone is the screen that reached it. See
+   * docs/plan-merge-approval-queues.md.
    */
   /**
    * SECOND REASON THIS DIALOG CAN DEMAND A SENTENCE, added 2026-09-02, and it
@@ -379,7 +396,6 @@ export default function ApprovalQueue({
    * unticking that row has to stop asking.
    */
   const capReason = (list = []) => list.some((e) => needsOverCeilingReason(e));
-  const needsReason = unsignedOnly;
   const toast = useToast();
 
   const [entries, setEntries] = useState(null);
@@ -561,17 +577,23 @@ export default function ApprovalQueue({
 
   async function load(limit = asked) {
     try {
-      // `scope=delegated` narrows to the covered teams instead of widening the
-      // caller's own reach — the difference between a ฝ่ายบุคคล seeing the one
-      // queue they were handed and seeing every pending request in the company.
       // `usage=cap` adds each row's running total for its own month — see
       // CapUsageCell, and `queueCapUsage` for why it costs the same however
       // long the queue is.
-      // `scope=unsigned` is the third reading of the same list: the rows at
-      // this stage that NOBODY on the roster covers. See app/api/entries.
-      const scope = delegatedOnly ? '&scope=delegated' : (unsignedOnly ? '&scope=unsigned' : '');
+      //
+      // `standin=check` is ฝ่ายบุคคล's only, and it does two things in one
+      // roster read on the server: it moves any ใบ still waiting at a first step
+      // nobody can sign up to this queue's own step, and it marks every row this
+      // reader is signing in place of a หัวหน้า — either because they were handed
+      // the team, or because the ใบ never had a signer. It is what draws the
+      // green ป้าย and what decides which `pending_mgr` rows carry buttons.
+      // A หัวหน้า's queue asks for neither: their rows are their own step.
+      //
+      // TWO `scope=` READINGS WERE SENT FROM HERE UNTIL 2026-09-18 —
+      // `delegated` for the covered teams and `unsigned` for the rows nobody
+      // could sign. Both tabs are merged into this one; see app/api/entries.
       const res = await api.get(
-        `/entries?status=${listed.join(',')}&usage=cap${scope}`
+        `/entries?status=${listed.join(',')}&usage=cap${isHr ? '&standin=check' : ''}`
         + `${limit ? `&limit=${limit}` : ''}`,
       );
       setEntries(res.entries);
@@ -622,7 +644,7 @@ export default function ApprovalQueue({
     // Passed rather than read off `asked`: the reset above lands on the next
     // render, so the closure here would still be holding the old queue's.
     load(null);
-  }, [stage, delegatedOnly, unsignedOnly]);
+  }, [stage]);
 
   // ── what the table is showing ─────────────────────────────────────────────
 
@@ -845,10 +867,18 @@ export default function ApprovalQueue({
     listRef.current?.scrollIntoView({ block: 'start' });
   }
 
-  /** How much of this queue is somebody else's team. */
+  /**
+   * How much of this queue is somebody else's team.
+   *
+   * `standIn` is the server's answer and is present only where it was asked for
+   * (`standin=check`, ฝ่ายบุคคล's queue). A หัวหน้า's queue has no such field
+   * and falls back to the departments this reader covers, which is what both
+   * queues used until 2026-09-18.
+   */
   const coveredCount = useMemo(
-    () => (entries || []).filter((e) => covered.some(
-      (id) => String(id) === String(e.department?._id),
+    () => (entries || []).filter((e) => (
+      e.standIn === 'delegated'
+      || (!e.standIn && covered.some((id) => String(id) === String(e.department?._id)))
     )).length,
     [entries, covered],
   );
@@ -1029,10 +1059,27 @@ export default function ApprovalQueue({
 
     const ok = list.length - failed.length;
     if (ok > 0) {
-      // Which badge just went down. The covered queue has a counter of its own,
-      // and taking a row off the manager's number instead would move the wrong
-      // one on screen until the refresh behind it landed.
-      onChanged?.(delegatedOnly ? 'delegated' : stage, ok);
+      /**
+       * Which badge just went down — asked PER ROW since 2026-09-18, because one
+       * batch on this queue can hold both kinds: ฝ่ายบุคคล's own step, and the
+       * first step of a team they are standing in for. The covered rows have a
+       * counter of their own on the server (`pendingMgrDelegated`), and taking
+       * them off ฝ่ายบุคคล's number instead would move the wrong one on screen
+       * until the refresh behind it landed.
+       *
+       * Rows that failed are not deducted from either: `failed` is counted by
+       * name, so the split below is over the whole batch when nothing failed —
+       * and when something did, the refresh that follows is what puts both
+       * numbers right.
+       */
+      if (failed.length === 0) {
+        const handed = list.filter((e) => e.status === 'pending_mgr' && e.standIn === 'delegated');
+        const own = list.length - handed.length;
+        if (own > 0) onChanged?.(stage, own);
+        if (handed.length > 0) onChanged?.('delegated', handed.length);
+      } else {
+        onChanged?.(stage, 0);
+      }
       toast(done(ok, list));
     }
     if (failed.length) {
@@ -1148,9 +1195,7 @@ export default function ApprovalQueue({
           </div>
           <div className="hint" style={{ margin: '3px 0 0' }}>
               <>
-                {delegatedOnly
-                  ? 'คิวของหัวหน้างานที่คุณรับช่วงมา · การอนุมัติจะบันทึกว่าทำแทนเจ้าของคิว'
-                  : isHr
+                {isHr
                     ? 'ตรวจสอบรายเดือน · รายการที่อนุมัติแล้วจะเข้าสู่รายงานส่งออก'
                     : (
                       <>
@@ -1221,7 +1266,7 @@ export default function ApprovalQueue({
             answers a withdrawal now, so there is one button here again. */}
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           {countLabel && <span className="chip muted">{countLabel}</span>}
-          {!isHr && !delegatedOnly && isSigner(user.role) && (
+          {!isHr && isSigner(user.role) && (
             <button className="btn ghost sm" onClick={() => setFiling(true)}>
               + บันทึก OT แทนพนักงาน
             </button>
@@ -1246,34 +1291,28 @@ export default function ApprovalQueue({
       */}
       {holding.length > 0 && (
         <div style={{ padding: '0 18px' }}>
-          {/* THE SUBJECT IS THE READER, the middle is the system's, and the
-              tail is what THIS reader needs next — see
-              `DELEGATED_APPROVAL_RECORDED` in lib/delegation.js, which the
-              card in ผู้รับช่วงอนุมัติแทน draws from the same line.
+          {/* ── ONE SENTENCE SINCE 2026-09-18, AND IT IS THE DATES ──────────
+              It ran to four clauses: who handed the queue over and until when ·
+              how many of the rows below are theirs · that an approval is
+              recorded as ทำแทน (`DELEGATED_APPROVAL_RECORDED`) · and that the
+              real หัวหน้า may still sign at any time.
 
-              ⚠ "ทำแทน" LOST ITS `<strong>` ON 2026-09-12, on both screens.
-              The word is already inside “ ” — which is what says it is the
-              label written into the record rather than a description of it —
-              and a bold word in the line that is deliberately the quiet one
-              is the notice arguing with itself about which line matters.
+              Three of those moved into the row's own pop-up with the merge of
+              the three approval queues, and the reason is where each one is
+              READ. The count is on every row already, as the green ป้าย; the
+              other two are things somebody needs at the moment they are about
+              to press a button, which is inside the pop-up and not on a notice
+              they scrolled past. The pop-up is also what a phone can read —
+              this notice has no hover and neither does a `title`.
 
-              ⚠ AND THE LINE IT WAS QUIET IN IS GONE — 2026-09-14. The two
-              clauses above were a `.say` deck under the names; they are the
-              end of the same sentence now, which is the shape agreed for กอง ก
-              that day. The card in ผู้รับช่วงอนุมัติแทน lost its own deck in
-              the same week and for the same reason, so the pair the test below
-              guards still reads as one pair. Two clauses were dropped on the
-              way: "และแถวเหล่านั้น" in front of the ป้าย, which only pointed
-              back at the rows the sentence had just named, and nothing else —
-              the four facts are all still here, and this notice is allowed the
-              second line it needs for them. */}
+              WHAT COULD NOT MOVE IS THE WINDOW. A stand-in whose window shut
+              yesterday and one who never had a queue both see the same screen,
+              and the only difference is what is missing from it. Naming the
+              dates while they are open is what makes their closing legible, and
+              no row can carry that: it is a fact about the reader. */}
           <Alert kind="info">
-            <strong>คุณกำลังรับช่วงอนุมัติแทน</strong>{' '}
-            {holding.map((d) => `${d.from?.name} (ถึง ${thaiDate(d.toDate)})`).join(' · ')}
-            {' '}— คิวด้านล่างรวมทีมที่รับช่วงมาแล้ว {coveredCount} รายการ
-            {' '}มีป้าย “รับช่วง” กำกับไว้ ·{' '}
-            {`การอนุมัติของคุณ${DELEGATED_APPROVAL_RECORDED}`}
-            {' · หัวหน้าเจ้าของคิวยังอนุมัติเองได้ตลอดเวลา'}
+            <strong>รับช่วงอนุมัติแทน</strong>{' '}
+            {holding.map((d) => `${d.from?.name} ถึง ${thaiDate(d.toDate)}`).join(' · ')}
           </Alert>
         </div>
       )}
@@ -2013,9 +2052,13 @@ export default function ApprovalQueue({
                         <FlatDailyMark entry={e} />
                       </div>
                     )}
-                    {/* Whose team this row is from, when the reviewer is
-                        holding more than one. */}
-                    {covered.length > 0 && (
+                    {/* ใบที่ผู้อ่านเซ็นแทนหัวหน้า — a handed-over team, or a
+                        ใบ whose แผนก has no signer at all. `TeamMark` decides
+                        which rows wear it (and draws nothing on the rest); the
+                        condition here only asks whether this queue could hold
+                        such a row at all, so an ordinary หัวหน้า's queue with no
+                        delegation pays nothing. */}
+                    {(covered.length > 0 || e.standIn) && (
                       <div style={{ marginTop: 4 }}>
                         <TeamMark entry={e} coveredDepartments={covered} />
                       </div>
@@ -2300,7 +2343,7 @@ export default function ApprovalQueue({
               /* WHICH SCOPE THE SENTENCE NAMES — the four readings this one
                  component runs in, worked out here where the props that decide
                  them live rather than re-derived from `stage` down there. */
-              mode={delegatedOnly ? 'delegated' : unsignedOnly ? 'unsigned' : isHr ? 'hr' : 'signer'}
+              mode={isHr ? 'hr' : 'signer'}
               covers={user.coversDepartments?.length || 0}
               scope={user.department?.name}
             />
@@ -2340,7 +2383,6 @@ export default function ApprovalQueue({
           entries={confirming}
           verb={verb}
           isHr={isHr}
-          needsReason={needsReason}
           overCeiling={capReason(confirming)}
           busy={busy}
           onClose={() => setConfirming(null)}
@@ -2410,7 +2452,7 @@ export default function ApprovalQueue({
           onApprove={() => {
             const e = detail;
             setDetail(null);
-            if (needsReason || needsOverCeilingReason(e)) setConfirming([e]);
+            if (needsOverCeilingReason(e)) setConfirming([e]);
             else approve([e]);
           }}
           onReject={(reason, notify) => { const e = detail; setDetail(null); reject([e], reason, notify); }}
@@ -2455,7 +2497,7 @@ function pileLabel(count) {
  * A batch shows what it is about to move; a single row shows the row.
  */
 function ConfirmModal({
-  entries, verb, isHr, busy, needsReason = false, overCeiling = false, onClose, onConfirm,
+  entries, verb, isHr, busy, overCeiling = false, onClose, onConfirm,
 }) {
   const total = entries.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
   /**
@@ -2468,30 +2510,24 @@ function ConfirmModal({
   const capped = entries.filter((e) => needsOverCeilingReason(e));
   const many = entries.length > 1;
   /**
-   * The reason an administrator gives for signing in a หัวหน้า's place.
+   * The reason for letting a request through over its department's ceiling.
    *
-   * Local to the dialog and never pre-filled. A default here — "แผนกนี้ไม่มี
-   * หัวหน้า" would be the obvious one to reach for — is a sentence the system
-   * wrote appearing in the record as something a person decided, on the one
-   * line whose whole job is to say what a person decided. It is three words to
-   * type and this is not a screen anybody visits daily.
+   * Local to the dialog and never pre-filled: a default here is a sentence the
+   * system wrote appearing in the record as something a person decided, on the
+   * one line whose whole job is to say what a person decided.
+   *
+   * ── IT ANSWERED TWO RULES UNTIL 2026-09-18 ───────────────────────────────
+   *
+   * The other one was `needsReason` — an administrator signing the หัวหน้า step
+   * where no หัวหน้า exists, on the ใบที่ไม่มีหัวหน้าเซ็นได้ tab. That tab is
+   * gone and no row reaches this dialog needing it (see where `needsReason`
+   * stood, up in the queue), so the box, its label and its note have one rule
+   * to serve again. The shape they were given for two is kept: ONE box, because
+   * one person is making one decision, and a second textarea would ask them to
+   * justify it twice and then disagree with themselves in the record.
    */
   const [why, setWhy] = useState('');
-  /**
-   * TWO RULES, ONE BOX, ONE `ready`.
-   *
-   * `needsReason` is the administrator signing where no หัวหน้า exists;
-   * `overCeiling` is a request that was over its department's ceiling when it
-   * was filed. Either one demands a sentence, and both are satisfied by the
-   * same one — it goes to the server as `note`, which both refusals read.
-   *
-   * A second textarea for the second rule was the obvious first shape and is
-   * wrong: one person is making one decision, and two boxes on one sheet ask
-   * them to say the same thing twice and then disagree with themselves in the
-   * record. What changes with two rules is the WORDING above the box, not the
-   * number of boxes.
-   */
-  const mustExplain = needsReason || overCeiling;
+  const mustExplain = overCeiling;
   const ready = !mustExplain || why.trim().length > 0;
 
   // Same verb and same count as the button that opened this — see `pileLabel`.
@@ -2602,36 +2638,18 @@ function ConfirmModal({
           sheet that has to be done rather than read, and a required field
           under a collapsible list of forty rows is a required field somebody
           hunts for after the button refuses to work. */}
-      {needsReason && (
-        <Alert kind="warn">
-          <strong>ใบนี้ไม่มีหัวหน้าแผนกที่เซ็นได้</strong>
-          {' — '}คุณกำลังเซ็นในขั้นหัวหน้าแทน · จะถูกบันทึกไว้ในประวัติของใบว่าเป็นการเซ็นแทน
-          โดยผู้ดูแลระบบ พร้อมเหตุผลที่กรอก
-          {' · '}หลังจากนี้ใบจะไปรอขั้นฝ่ายบุคคล และ<strong>คุณจะเซ็นขั้นนั้นของใบเดียวกันไม่ได้</strong>
-          {' '}ต้องให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ
-        </Alert>
-      )}
-
-      {/* ONE BOX FOR BOTH RULES — see `mustExplain` above. What changes with
-          which rule fired is the label and the example, because those are what
-          tell somebody what to write; a second textarea would be asking one
-          person to justify one decision twice. */}
       {mustExplain && (
         <div className="field" style={{ marginTop: 12 }}>
           <div className="field-head">
             <label htmlFor="override-why">
-              {needsReason && overCeiling ? 'เหตุผลที่เซ็นแทนหัวหน้า และเหตุผลที่ให้ผ่านเกินเพดาน *'
-                : needsReason ? 'เหตุผลที่เซ็นแทนหัวหน้า *'
-                  : `เหตุผลที่${verb}ทั้งที่เกินเพดาน *`}
+              {`เหตุผลที่${verb}ทั้งที่เกินเพดาน *`}
             </label>
           </div>
           <textarea
             id="override-why"
             rows={2}
             value={why}
-            placeholder={needsReason
-              ? 'เช่น แผนก ADM ยังไม่มีหัวหน้างาน · หัวหน้าลาออกเมื่อ 20 ส.ค. ยังไม่ได้ตั้งคนใหม่'
-              : 'เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมด่วน · ปิดงบสิ้นเดือน'}
+            placeholder="เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมด่วน · ปิดงบสิ้นเดือน"
             onChange={(ev) => setWhy(ev.target.value)}
           />
           {/* NOT the ceiling sentence a second time. The banner above carries
@@ -2640,7 +2658,7 @@ function ConfirmModal({
               say, and it is the one ไม่อนุมัติ has printed under its own box
               since it existed. */}
           <div className="field-note">
-            {needsReason ? OVERRIDE_NOTE_REQUIRED : `ต้องกรอกเหตุผลก่อนจึงจะ${verb}ได้`}
+            {`ต้องกรอกเหตุผลก่อนจึงจะ${verb}ได้`}
             {many && ' · เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้'}
           </div>
         </div>
@@ -3009,6 +3027,36 @@ function DetailModal({
             <Alert kind="info">
               <strong>{blocked.head}</strong>
               {' — '}{blocked.body}
+            </Alert>
+          )}
+
+          {/* ── WHOSE SIGNATURE THIS WOULD BE, WHEN IT IS NOT THIS DESK'S ───
+              Both halves of the green ป้าย on the row, spelled out where
+              somebody is about to press a button rather than in a notice at the
+              top of the screen they scrolled past. The ป้าย says the same thing
+              for both — *ใบนี้คุณเซ็นแทนหัวหน้าได้* — because that is the
+              question being asked at a glance; here there is room for which of
+              the two it is, and for what it costs.
+
+              The first two sentences came off the รับช่วง notice at the head of
+              the queue on 2026-09-18, when the three approval tabs became one.
+              `DELEGATED_APPROVAL_RECORDED` is the same string ผู้รับช่วงอนุมัติ
+              in ตั้งค่าระบบ draws from, so the promise made here and the record
+              made there cannot drift apart.
+
+              A phone can read this; it could not read the `title` on the ป้าย. */}
+          {e.standIn === 'delegated' && (
+            <Alert kind="info">
+              <strong>คุณกำลังเซ็นในขั้นหัวหน้าแทนเจ้าของคิว</strong>
+              {' — '}{`การอนุมัติของคุณ${DELEGATED_APPROVAL_RECORDED}`}
+              {' · หัวหน้าเจ้าของคิวยังอนุมัติเองได้ตลอดเวลา'}
+            </Alert>
+          )}
+          {e.standIn === 'no-manager' && (
+            <Alert kind="info">
+              <strong>แผนกนี้ไม่มีผู้เซ็นขั้นหัวหน้าในทะเบียน</strong>
+              {' — '}ใบจึงขึ้นมาที่ขั้นฝ่ายบุคคลเอง เหมือนใบที่ยื่นใหม่ในแผนกนี้วันนี้
+              {' · '}ลายเซ็นของคุณเป็นลายเซ็นเดียวของใบนี้ และมีบรรทัดในประวัติบอกไว้ว่าทำไม
             </Alert>
           )}
 
@@ -4135,16 +4183,26 @@ function QueueCleared({ cleared, isHr, mode = 'signer', covers = 0, scope = '' }
      * reading the whole company are one word apart on screen and a company
      * apart in what the emptiness means.
      */
+/**
+     * TWO MODES SINCE 2026-09-18, AND THEY WERE FOUR.
+     *
+     * `delegated` — ค้นจากทีมที่คุณรับช่วงอนุมัติอยู่ — and `unsigned` —
+     * ค้นจากใบที่ไม่มีหัวหน้าคนไหนบนทะเบียนเซ็นได้ — were the two extra
+     * approval tabs, and each needed its own pair of sentences precisely
+     * because its list was narrower than the screen it looked like. Both are
+     * folded into ฝ่ายบุคคล's queue now, whose scope is the whole company and
+     * always was, so `hr` says what an empty screen means for both.
+     *
+     * The covered team's rows are inside that answer rather than beside it: HR
+     * reads every แผนก, delegation or not, and a ใบ nobody can sign has been
+     * moved onto this very step by the time the screen is drawn.
+     */
     const where = {
       hr: 'ค้นจากทุกแผนกทั้งบริษัท',
-      delegated: 'ค้นจากทีมที่คุณรับช่วงอนุมัติอยู่',
-      unsigned: 'ค้นจากใบที่ไม่มีหัวหน้าคนไหนบนทะเบียนเซ็นได้',
       signer: covers > 1 ? `ค้นจาก ${covers} แผนกที่คุณดูแล` : `ค้นจากแผนก${scope || 'ของคุณ'}`,
     }[mode];
     const next = {
       hr: 'ใบจะขึ้นที่นี่ตั้งแต่ตอนที่พนักงานยื่น ทั้งใบที่ยังรอหัวหน้าเซ็นและใบที่ถึงคิวคุณแล้ว',
-      delegated: 'ใบจะขึ้นที่นี่เมื่อมีคนในทีมที่คุณรับช่วงยื่น และหายไปเองเมื่อหมดช่วงที่รับมา',
-      unsigned: 'ทุกแผนกที่มีใบค้างอยู่ตอนนี้ มีคนเซ็นได้ครบ — ไม่มีอะไรค้างให้ผู้ดูแลระบบเซ็นแทน',
       // 2026-09-09: it read `และจะอยู่ต่อจนฝ่ายบุคคลยืนยัน` while a signed row
       // stayed on this queue. It does not any more — see `wholeFlow` — so the
       // sentence says where it goes instead of claiming it stays.
