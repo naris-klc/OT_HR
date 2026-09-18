@@ -269,7 +269,7 @@ export function FormNotices({ form, who = null, asked = '' }) {
               )}
             />
             <div style={{ fontSize: 12, marginTop: 4 }}>
-              รายการเหล่านี้พิมพ์ลงใบพร้อมเครื่องหมาย (รออนุมัติ) ในช่องรายละเอียดงาน ·
+              รายการเหล่านี้พิมพ์ลงใบโดยเว้นช่อง ลงชื่อหัวหน้างาน ของแถวนั้นไว้ว่าง ·
               ยอดบนใบจึงยังไม่ใช่ยอดที่จะส่งบัญชี — หากต้องการใบสำหรับลงลายเซ็น
               ให้ตัดสินรายการที่ค้างให้ครบก่อนพิมพ์ หรือเปลี่ยน
               “นโยบายการพิมพ์ใบขออนุมัติ OT” ในตั้งค่าระบบเป็น
@@ -321,7 +321,8 @@ export function FormNotices({ form, who = null, asked = '' }) {
       )}
 
       {/* Hours on the paper that ฝ่ายบุคคล has not confirmed yet and that the
-          paper does not mark — รอ HR under a filter that counts it as signed.
+          block above does not list — รอ HR under a filter that counts it as
+          signed.
           INFO rather than the warning above it: this is the state the filter was
           chosen to print, so it is a fact to have, not a problem to fix. It is
           still said — and said with its dates — because the sheet's own silence
@@ -442,18 +443,6 @@ export function FormNotices({ form, who = null, asked = '' }) {
  */
 export function F027Sheet({ form, sheet = null }) {
   const cell = (v) => (v ? hours(v) : '');
-  /**
-   * Which sessions carry (รออนุมัติ) — READ OFF `form.pending`, the same list
-   * the legend under the grid counts and the warning above the sheet prints.
-   *
-   * It used to be `status !== 'approved'` here and the whole list there, which
-   * was two readings of one rule in two files, and they have to agree: a mark
-   * with no legend is an unexplained abbreviation on a document somebody signs,
-   * and a legend with no mark is a line about rows the reader cannot find. Now
-   * neither can move without the other. Which statuses are in the list is the
-   * server's decision — `formPendingStatuses` in lib/reports.js.
-   */
-  const pendingIds = new Set((form.pending || []).map((p) => p.id));
 
   return (
     <div className="f027">
@@ -566,18 +555,21 @@ export function F027Sheet({ form, sheet = null }) {
                 <td className="n">{cell(s?.[BUCKETS.OT3_HOLIDAY])}</td>
                 <td className="desc" title={s?.description}>
                   {s?.description || ''}
-                  {/* FIRST OF THE FOUR MARKS, because it is the only one that
-                      bears on whether the row should be signed. Rarer than it
-                      looks: under เฉพาะรายการที่อนุมัติแล้ว no session here can
-                      carry another status at all, and under อนุมัติแล้ว + รอ HR
-                      the รอ HR rows are not marked either — the step they are
-                      waiting on is the เฉพาะฝ่ายบุคคล box at the foot of this
-                      sheet. In the description cell for the same reason (แทน)
-                      is: F-HR-027 Rev.4 is a controlled form measured in
-                      millimetres, and a remark where HR already reads three
-                      others is not a revision of it. What it means is spelt out
-                      under the grid. */}
-                  {s && pendingIds.has(s.entryId) ? ' (รออนุมัติ)' : ''}
+                  {/* (รออนุมัติ) WAS THE FIRST MARK AND CAME OFF ON 2026-09-18.
+                      HR asked for it off in those words: *ถ้ารออนุมัติ
+                      ไม่ต้องขึ้นวงเล็บ แค่ไม่มีชื่อตรงช่องผู้อนุมัติก็พอ* — the empty
+                      ลงชื่อหัวหน้างาน box beside the row already says the row is
+                      unapproved, and it says it in the column a reader of a
+                      signed form looks at. The mark restated that in the one
+                      cell on the sheet that is short of room — 51mm holding a
+                      description, and it was the longest of the marks.
+
+                      WHAT IS NOT LOST WITH IT: the count, the list of which
+                      rows, and the warning that สรุปรวม is therefore not the
+                      figure for accounting, are all on the screen above the
+                      sheet in `FormNotices`, in front of the person who pressed
+                      print. `form.pending` is still read here — by that block,
+                      not by the paper. */}
                   {/* (ต่อจากคืนก่อน) WAS THE THIRD MARK and came off on
                       2026-09-02 with the row it belonged to. It labelled the
                       line an overnight session drew on the date it ran INTO;
@@ -652,20 +644,16 @@ export function F027Sheet({ form, sheet = null }) {
         </tbody>
       </table>
 
-      {/* NO LEGEND FOR (รออนุมัติ) — there used to be a หมายเหตุ block here
-          naming what the mark meant, how many rows carried it, and that the
-          สรุปรวม above was therefore not the figure to send to accounting. HR
-          asked for it off the sheet (2026-08-20), and the sheet is theirs: this
-          is a controlled form measured in millimetres against A4, and three
-          lines that grow under the grid are three lines the form does not have.
+      {/* NOTHING UNDER THE GRID ABOUT UNAPPROVED ROWS — not a หมายเหตุ block
+          (off the sheet 2026-08-20, HR's call: a controlled form measured in
+          millimetres has no three lines that grow under the grid) and, since
+          2026-09-18, not a mark in the description cell either.
 
-          THE MARK ITSELF STAYS. It is the one remark in the description cell
-          that bears on whether a row should be signed, and unlike (แทน) it
-          needs no gloss — it is the word รออนุมัติ, in Thai, in the cell beside
-          the work it belongs to. What the legend added over that was the count
-          and the warning about สรุปรวม, and both of those are on the screen
-          above the sheet, in front of the person who pressed print and can
-          still do something about them (see `FormNotices`). */}
+          WHAT SAYS IT NOW IS THE EMPTY ลงชื่อหัวหน้างาน BOX, which is the
+          column a reader of a signed form reads anyway. The count, which rows,
+          and the warning that สรุปรวม is not the figure for accounting are on
+          the screen above the sheet, in front of the person who pressed print
+          and can still do something about them (see `FormNotices`). */}
 
       {/* Who filled a row in, and who signed one, when that was not the
           obvious person.

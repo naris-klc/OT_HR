@@ -8905,10 +8905,13 @@ and never by the screen.
 > carries what was APPROVED.
 
 **What the 2026-09-09 move actually changes is one column's worth of paper.**
-A `pending_mgr` row now prints — with `(รออนุมัติ)` in the รายละเอียดงานที่ทำ
-cell and an **empty ลงชื่อหัวหน้างาน box** beside it, because `managerSignature`
-answers null for a row nobody has approved and `Signed` renders nothing at all
-for null. That empty box is the whole of the answer to the fear the flag was
+A `pending_mgr` row now prints, with an **empty ลงชื่อหัวหน้างาน box** beside
+it, because `managerSignature` answers null for a row nobody has approved and
+`Signed` renders nothing at all for null. *(It read "with `(รออนุมัติ)` in the
+รายละเอียดงานที่ทำ cell and an empty box beside it" until 2026-09-18, when HR
+asked the mark off: ถ้ารออนุมัติ ไม่ต้องขึ้นวงเล็บ แค่ไม่มีชื่อตรงช่องผู้อนุมัติก็พอ.
+The empty box was always the half that could not be argued with; the mark said it
+a second time, in a 51mm cell.)* That empty box is the whole of the answer to the fear the flag was
 written for: the sheet may now be carried to the person who signs it, which is
 what the form is called and what it is for, and it cannot claim a signature it
 does not have.
@@ -8933,21 +8936,29 @@ after it is settled.
 **The failure the flag exists for is now answered per ROW rather than per
 SHEET.** That failure is a สรุปรวม somebody signs for while the app still has
 rows waiting for their decision, and until 2026-09-09 the answer was to keep the
-row off the paper. It is now on the paper, saying so twice: `(รออนุมัติ)` in the
-รายละเอียดงานที่ทำ cell, and the empty signature box. `approved` and `signed`
-are both still there for the reader who wants the narrower document.
+row off the paper. It is now on the paper, and what says so is the empty
+signature box. *(It said so twice — `(รออนุมัติ)` in the รายละเอียดงานที่ทำ
+cell as well — until 2026-09-18.)* `approved` and `signed` are both still there
+for the reader who wants the narrower document.
 
 > This paragraph read "**A `pending_mgr` row — the one NOBODY has approved — is
 > as far off this sheet as it ever was, and reaches paper only under `screen`
 > and `draft`**" until 2026-09-09. Under the shipped answer it now reaches the
 > paper on every sheet.
 
-**Both queues are marked again, and that is `formPendingStatuses` unchanged.** It
-drops the mark from a `pending_hr` row only while no รอหัวหน้า row can reach the
-same sheet — marking one queue and not the other would read as "these are the
-unapproved rows" on a sheet carrying both. So `signed` prints an unmarked sheet
-and `draft` marks both queues, from one rule. What the screen above the sheet
-says, with dates, is which rows those are.
+**No queue is marked on the paper at all since 2026-09-18**, and
+`formPendingStatuses` is unchanged: it now splits the rows for the two blocks on
+the SCREEN above the sheet rather than for anything printed. It drops a
+`pending_hr` row from the ยังไม่อนุมัติ block only while no รอหัวหน้า row can
+reach the same sheet, for the reason the mark had: naming one queue and staying
+silent about the other would read as "the rest are approved" on a sheet carrying
+both. What the screen says, with dates, is which rows those are.
+
+> This paragraph read "**Both queues are marked again, and that is
+> `formPendingStatuses` unchanged** … So `signed` prints an unmarked sheet and
+> `draft` marks both queues, from one rule" until 2026-09-18. Every sheet is an
+> unmarked sheet now; the rule that produced the two answers still runs, for the
+> screen.
 
 **And since 2026-09-09 that screen OPENS on the statuses the sheet prints.**
 ตรวจสอบประจำเดือน's สถานะที่นับ starts at **อนุมัติแล้ว + รอ HR**. Asked for in
@@ -12813,6 +12824,25 @@ build แล้ว
 
 **Verified**
 
+- **แท็ก `(รออนุมัติ)` ออกจากใบ F-HR-027 — ช่องลงชื่อที่ว่างคือคำตอบเดียว** —
+  2026-09-18 · สั่งมาพร้อมภาพใบจริงที่มีแถวเดียวเขียนว่า *ทำอาร์ตเวิร์กแคตตาล็อกฉบับใหม่ (รออนุมัติ)*:
+  *ถ้ารออนุมัติ ไม่ต้องขึ้นวงเล็บ แค่ไม่มีชื่อตรงช่องผู้อนุมัติก็พอ*.
+  **คำตอบมีอยู่บนกระดาษแล้วตั้งแต่ 2026-09-09** — `managerSignature` ตอบ `null` บนแถวที่ยัง
+  ไม่มีใครกดอนุมัติ ช่อง ลงชื่อหัวหน้างาน จึงว่างอยู่แล้ว แท็กจึงเป็นการพูดซ้ำในช่องที่แคบที่สุดของใบ
+  (รายละเอียดงานที่ทำ 51 มม.) · ที่หายไปคือสิบสองตัวอักษร ซึ่งเป็นมาร์กที่ยาวที่สุดในสามอัน.
+  **เพดาน 22 ตัวอักษรไม่ขยับ** — `DESCRIPTION_MAX_CHARS` คือตัวเลขที่ตกลงกันกับฝ่ายบุคคลไว้
+  เมื่อ 2026-09-16 ยังไม่มีใครขอใช้ที่ว่างที่ได้คืนมา · `test/extraNote.test.js` ยังตรึง 22 ไว้เท่าเดิม.
+  **`form.pending` ยังอยู่ครบ แต่เหลือผู้อ่านเดียว** — กล่องเตือนเหนือใบบนหน้าจอ ที่บอกจำนวน
+  รายการ วันที่ และเตือนว่ายอดบนใบยังไม่ใช่ยอดส่งบัญชี · `formPendingStatuses` ไม่ถูกแก้เลย แต่ตอนนี้
+  แบ่งแถวให้สองกล่องบนหน้าจอ ไม่ได้แบ่งมาร์กบนกระดาษอีกต่อไป.
+  **จอที่ขยับตามสามที่** — ข้อความเหนือใบ (`FormNotices`) เลิกอ้างแท็ก เปลี่ยนเป็น
+  *เว้นช่อง ลงชื่อหัวหน้างาน ของแถวนั้นไว้ว่าง* · คำอธิบายตัวเลือก `ตั้งแต่ยื่นขอ` ในตั้งค่าระบบ
+  เลิกสัญญาเรื่องแท็ก · คู่มือในแอป (`ManualView`) แก้ทั้งข้อความ ภาพจำลอง และ alt ของภาพ.
+  **เทสต์ 2793/2793 ผ่าน** · `test/formPrintScope.test.js` กลับด้านจาก “แท็กต้องอยู่”
+  เป็น “แท็กต้องไม่อยู่ และใบต้องไม่อ่าน `form.pending` อีกแล้ว”.
+  **⚠ ยังไม่ได้เดินด้วยตาบนใบจริง** — ที่ตรึงไว้คือโค้ดกับเทสต์ และบิลด์บน distDir แยก
+  (`--webpack` ใน worktree) · การ deploy เป็นการตัดสินของผู้ใช้.
+
 - **ฝ่ายบุคคลเลือกตำแหน่งบนหน้านโยบายไม่ได้ — เอฟเฟกต์ไปอยู่ผิดคอมโพเนนต์** —
   2026-09-16 รอบแก้ · แจ้งจากหน้าจอพร้อมภาพ: *hr ตั้งค่านโยบายไม่ได้ตามรูป
   เลือกตำแหน่งไม่ได้* · กล่องอ่านว่า **ยังไม่ได้เลือกตำแหน่ง** และกดไม่ได้ ขณะที่
@@ -13153,10 +13183,12 @@ build แล้ว
   ฟิลเตอร์มา) · ค่าที่ระบบไม่รู้จักก็ตกลงมาที่ค่าที่ชิป.
   **ไม่มีอะไรใหม่ต้องเขียนเพื่อ “รอแค่ชื่อผู้อนุมัติ”** — `managerSignature` ตอบ
   `null` บนแถวที่ยังไม่มีใครกดอนุมัติอยู่แล้ว และ `Signed` ไม่เรนเดอร์อะไรเลยเมื่อ
-  ไม่มีชื่อ ช่อง ลงชื่อหัวหน้างาน จึงว่างเป็นกล่องเปล่าตามที่สั่ง · แถวนั้นได้ป้าย
-  `(รออนุมัติ)` ในช่องรายละเอียดงานด้วย และแถว `รอ HR` กลับมามีป้ายอีกครั้งโดย
-  `formPendingStatuses` ตัวเดิม เพราะกฎของมันคือ "ไม่ติดป้ายให้ รอ HR เฉพาะตอนที่
-  แถว รอหัวหน้า ขึ้นใบเดียวกันไม่ได้".
+  ไม่มีชื่อ ช่อง ลงชื่อหัวหน้างาน จึงว่างเป็นกล่องเปล่าตามที่สั่ง · ข้อนี้เคยเขียนต่อว่า
+  **“แถวนั้นได้ป้าย `(รออนุมัติ)` ในช่องรายละเอียดงานด้วย และแถว `รอ HR`
+  กลับมามีป้ายอีกครั้ง”** จนถึง **18 ก.ย. 2569** ที่ป้ายออกจากกระดาษทั้งหมด
+  ตามคำสั่ง *ถ้ารออนุมัติ ไม่ต้องขึ้นวงเล็บ แค่ไม่มีชื่อตรงช่องผู้อนุมัติก็พอ* ·
+  `formPendingStatuses` ยังทำงานเหมือนเดิม แต่ตอนนี้แบ่งแถวให้กล่องข้อความสองกล่องบนหน้าจอ
+  ไม่ใช่กระดาษอีกแล้ว.
   **คำเตือนบนหน้าตั้งค่าแยกเป็นสองแบบ** — ⚠️ เหลือไว้ให้ `screen` ซึ่งเป็นคำตอบเดียวที่
   ตัดสินจากหน้าจออื่น ส่วน ตั้งแต่ยื่นขอ เป็น ℹ️ ที่บอกสิ่งที่อ่านจากหน้านั้นไม่ได้ —
   ช่องลงชื่อเว้นว่าง และถ้ารายการถูกปฏิเสธทีหลัง กระดาษที่พิมพ์ไปแล้วจะไม่ตรงกับระบบ

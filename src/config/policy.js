@@ -526,15 +526,17 @@ export const DEFAULT_POLICY = Object.freeze({
    * document: a month printed to file after it is settled is not the same piece
    * of paper as a month printed to be signed.
    *
-   * A รอหัวหน้า row says so on the paper as well: `(รออนุมัติ)` prints in the
-   * รายละเอียดงานที่ทำ cell, where [ไม่พักเที่ยง] and (แทน) already sit. Not a
-   * column and not a row — F-HR-027 Rev.4 is a controlled form measured in
-   * millimetres against the paper, and a remark in the cell HR already reads is
-   * not a revision of it. Under this default a รอ HR row is marked too, and
-   * that is `formPendingStatuses` doing what it has always done: it drops the
-   * mark from รอ HR only while no รอหัวหน้า row can reach the same sheet, since
-   * marking one queue and not the other would read as "these are the unapproved
-   * rows" on a sheet carrying both.
+   * A รอหัวหน้า row says so on the paper as well, by the box it leaves
+   * EMPTY: ลงชื่อหัวหน้างาน carries a name only where somebody pressed
+   * อนุมัติ, so an unsigned row looks like an unsigned row in the column
+   * that question is asked in.
+   *
+   * It read "`(รออนุมัติ)` prints in the รายละเอียดงานที่ทำ cell" until
+   * 2026-09-18, when HR asked the mark off: *ถ้ารออนุมัติ ไม่ต้องขึ้นวงเล็บ
+   * แค่ไม่มีชื่อตรงช่องผู้อนุมัติก็พอ* — one statement of the fact, in the
+   * column meant for it, on a form measured in millimetres against A4.
+   * `formPendingStatuses` still splits the same rows, but for the two blocks on
+   * the SCREEN above the sheet now, not for anything printed.
    *
    * COSMETIC in the strict sense lib/policyVersion.js means. Every hour on the
    * sheet comes from stored `segments`, resolved when the entry was filed; this
@@ -845,9 +847,12 @@ export function normaliseDescription(raw) {
  * be entered, in characters.
  *
  * THE POINT OF THIS FIELD IS THAT THE CAP ABOVE CANNOT MOVE. F-HR-027 gives
- * รายละเอียดงานที่ทำ one line of a 51mm cell that also has to hold ` (รออนุมัติ)`,
- * ` [ไม่พักเที่ยง]` and ` (แทน)`, so 22 is the room that is left over rather
- * than a number somebody picked. Employees needed more room than that and
+ * รายละเอียดงานที่ทำ one line of a 51mm cell that also has to hold
+ * ` [ไม่พักเที่ยง]` and ` (แทน)` — and ` (รออนุมัติ)`, the longest of the
+ * three, until it came off the sheet on 2026-09-18 — so 22 is the room that is
+ * left over rather than a number somebody picked. The cap stays where it is:
+ * it was agreed with ฝ่ายบุคคล as the printed line's length, and no one has
+ * asked to spend the twelve characters the mark gave back. Employees needed more room than that and
  * ฝ่ายบุคคล needed the sheet not to overflow; asked on 2026-09-16 and answered
  * by splitting the question in two — the short line prints, this one does not.
  *
