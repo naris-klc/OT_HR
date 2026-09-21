@@ -1,7 +1,9 @@
 import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { accountingReport } from '@/lib/accounting.js';
-import { cyclePeriods, mergeAccountingReports } from '@/lib/accountingCycle.js';
+import {
+  cyclePeriods, mergeAccountingReports, isCycle, nextPeriod, previousPeriod,
+} from '@/lib/accountingCycle.js';
 import { PERIOD_RE } from '@/lib/reports.js';
 import { COMPANY_KEYS } from '@/src/config/companies.js';
 import { COMPANY_REPORT_ROLES } from '@/lib/roles.js';
@@ -71,6 +73,21 @@ export const GET = route(async (req, { params }) => {
    * ตัวมันเอง จึงไม่มีสาขาที่เทสต์เดินไม่ถึง
    */
   const periods = cyclePeriods(period, second);
+  /**
+   * งวดคือสองเดือนที่ **ติดกัน** — ตรวจตั้งแต่ 2026-09-21
+   *
+   * `?with=2026-03` บนเดือนกันยายนเคยผ่าน และได้ใบที่มีคอลัมน์สองเดือนซึ่งไม่มี
+   * ใครสั่งจ่ายพร้อมกัน พร้อมหัวรายงานที่กลายเป็นเดือนมีนาคมเพราะ `cyclePeriods`
+   * เรียงเดือนก่อน · ข้อความบอกเดือนที่ถูกต้องไปเลย เพราะคนที่พิมพ์ผิดกำลังหา
+   * มันอยู่ และมีให้ตอบได้แค่สองเดือน
+   */
+  if (!isCycle(periods)) {
+    return fail(
+      `งวดจ่ายต้องเป็นสองเดือนที่ติดกัน — เดือนที่สองของ ${period} `
+      + `เป็นได้แค่ ${previousPeriod(period)} หรือ ${nextPeriod(period)}`,
+      400,
+    );
+  }
   const reports = await Promise.all(periods.map((p) => accountingReport(p, opts)));
 
   return json(mergeAccountingReports(reports));

@@ -299,7 +299,19 @@ test('the 500-row ceiling caps a page now, not a visit', () => {
   // largest page this screen asks for is 100, and the end of the collection is
   // reachable by pressing › rather than by narrowing the dates.
   assert.match(route, /const MAX_LIMIT = 500;/);
-  assert.match(route, /Math\.min\(Number\(q\.limit\) \|\| DEFAULT_LIMIT, MAX_LIMIT\)/);
+  /**
+   * IT PINNED `Math.min(Number(q.limit) || DEFAULT_LIMIT, MAX_LIMIT)` UNTIL
+   * 2026-09-21 — the shape, not the promise, and the shape had a hole in it.
+   * `-1` is not falsy so it survived `|| DEFAULT_LIMIT`, `Math.min` then
+   * preferred it, and `.limit(limit + 1)` below became `.limit(0)`, which
+   * mongoose reads as no ceiling at all: `?limit=-1` returned 12,100 rows on a
+   * screen whose ceiling is written 500 (walked against the database that day).
+   *
+   * `capFor` is the rule that was already right — tested in
+   * test/entryListCap.test.js — now told this screen's own ceiling. What is
+   * pinned here is that this route goes through it.
+   */
+  assert.match(route, /capFor\(q\.limit, MAX_LIMIT, DEFAULT_LIMIT\)/);
 });
 
 // ── 6. what was removed, by name ────────────────────────────────────────────

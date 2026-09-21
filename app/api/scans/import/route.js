@@ -72,8 +72,14 @@ export const POST = route(async (req) => {
    * A month's file holds a few hundred distinct codes and the roster is a few
    * hundred rows; `codeMatcher()` would be a regex query per code that no index
    * can serve. One `find` and a Map built with the same `normalizeCode()` the
-   * matcher is built from gives the same answer — PM-0620 in the file finds
-   * PM00620 on the roster and the reverse — for one round trip.
+   * matcher is built from gives the same answer — `PM-0620` in the file finds
+   * `pm0620` on the roster and the reverse — for one round trip.
+   *
+   * ⚠ IT READ `PM00620` INSTEAD OF `pm0620` UNTIL 2026-09-21. `normalizeCode`
+   * drops punctuation and case and nothing else; a leading zero is neither, so
+   * `PM-0620` and `PM00620` are two people. A file spelling somebody the second
+   * way lands in `unknownCodes` below, which is the correct answer and not the
+   * one the old sentence promised.
    */
   const roster = await Employee.find({}, 'code name company').lean();
   const byKey = new Map(roster.map((e) => [normalizeCode(e.code), e]));

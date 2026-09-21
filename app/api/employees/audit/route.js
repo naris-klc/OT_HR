@@ -4,6 +4,7 @@ import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { rosterPermission } from '@/lib/employees.js';
 import { AUDITED_FIELDS } from '@/lib/rosterAudit.js';
+import { capFor } from '@/lib/entries.js';
 
 /**
  * ประวัติการแก้ทะเบียน across the whole roster — the screen for the question
@@ -101,7 +102,9 @@ export const GET = route(async (req) => {
     filter.by = q.by;
   }
 
-  const limit = Math.min(Number(q.limit) || DEFAULT_LIMIT, MAX_LIMIT);
+  /* ค่าติดลบรอด `|| DEFAULT` แล้วทำให้ `.limit(limit + 1)` ข้างล่างเป็น
+     `.limit(0)` = ไม่จำกัด — ดู `capFor` ใน lib/entries.js (2026-09-21) */
+  const limit = capFor(q.limit, MAX_LIMIT, DEFAULT_LIMIT);
 
   // One more than asked for, so the screen can say the list is cut off rather
   // than presenting a truncated history as the whole of it.

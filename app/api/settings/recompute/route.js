@@ -2,6 +2,7 @@ import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { recomputeEntries } from '@/src/services/otService.js';
 import { authorizeReplay } from '@/lib/policyVersion.js';
+import { isPeriod } from '@/lib/periodStatus.js';
 
 /**
  * Manual replay — useful after a bulk holiday import or a data fix.
@@ -23,7 +24,18 @@ export const POST = route(async (req) => {
   const payload = await body(req);
 
   const filter = {};
-  if (payload?.period) filter.period = payload.period;
+  /**
+   * งวดถูกตรวจรูปก่อนเข้า filter — จนถึง 2026-09-21 มันเดินเข้าไปดิบ ๆ และ
+   * `{"period":{"$ne":null}}` ก็กลายเป็นเงื่อนไขของ Mongo ได้ตรง ๆ
+   *
+   * เส้นทางนี้จำกัด `admin`/`hr` อยู่แล้ว ตัวดำเนินการที่หลุดเข้าไปจึงไม่ยกระดับ
+   * สิทธิ์ของใคร — แต่ค่าจาก body ไม่ควรเดินเข้า query โดยไม่ผ่านด่าน และงวดที่
+   * สะกดผิดควรได้ 400 แทนที่จะได้การคำนวณใหม่ทั้งฐานอย่างเงียบ ๆ
+   */
+  if (payload?.period) {
+    if (!isPeriod(payload.period)) return fail('ประจำเดือนต้องเป็นรูปแบบ YYYY-MM', 400);
+    filter.period = payload.period;
+  }
   if (payload?.status) filter.status = { $in: String(payload.status).split(',') };
 
   const includeApproved = Boolean(payload?.includeApproved);

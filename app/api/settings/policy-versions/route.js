@@ -4,6 +4,7 @@ import Setting from '@/src/models/Setting.js';
 import { route, query, body, json } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { diffPolicy, policyHash, samePolicy } from '@/lib/policyVersion.js';
+import { capFor } from '@/lib/entries.js';
 
 /**
  * Every rule set the system has computed with, newest first, each with what
@@ -23,9 +24,12 @@ export const GET = route(async (req) => {
   requireRole(await requireAuth(req), 'admin', 'hr');
   const { limit } = query(req);
 
+  /* เพดาน 200 เพิ่มเมื่อ 2026-09-21 — เดิมเป็น `Number(limit) || 50` ซึ่งไม่มี
+     ขีดบน และรับค่าติดลบเข้าไปเป็น `.limit(-n)` ด้วย · แต่ละเวอร์ชันพก
+     `policy` ทั้งก้อนมาด้วย รายการที่ไม่มีเพดานจึงไม่ใช่แค่แถวเยอะ */
   const versions = await PolicyVersion.find()
     .sort({ seq: -1 })
-    .limit(Number(limit) || 50)
+    .limit(capFor(limit, 200, 50))
     .lean();
 
   const counts = await OtEntry.aggregate([

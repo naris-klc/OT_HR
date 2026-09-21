@@ -145,6 +145,67 @@ test('the first sheet is read, and named', () => {
 });
 
 /**
+ * A workbook with the `<sheet>` tag written by hand — `workbook()` above always
+ * emits `name` before `r:id`, which is the very assumption under test.
+ */
+function sheetTagWorkbook(tag, { relId = 'rId1' } = {}) {
+  return zip([
+    ['[Content_Types].xml', '<?xml version="1.0"?><Types/>'],
+    ['xl/workbook.xml', `<?xml version="1.0"?><workbook><sheets>${tag}</sheets></workbook>`],
+    ['xl/_rels/workbook.xml.rels',
+      `<?xml version="1.0"?><Relationships><Relationship Id="${relId}" `
+      + 'Target="worksheets/sheet1.xml"/></Relationships>'],
+    ['xl/styles.xml',
+      '<?xml version="1.0"?><styleSheet><cellXfs count="1"><xf numFmtId="0"/></cellXfs></styleSheet>'],
+    ['xl/sharedStrings.xml', '<?xml version="1.0"?><sst count="0"/>'],
+    ['xl/worksheets/sheet1.xml',
+      '<?xml version="1.0"?><worksheet><sheetData><row r="1">'
+      + '<c r="A1" t="inlineStr"><is><t>code</t></is></c></row></sheetData></worksheet>'],
+  ]);
+}
+
+/**
+ * ATTRIBUTE ORDER IN XML MEANS NOTHING, AND THIS READER USED TO BET ON IT.
+ *
+ * Two patterns were tried in turn, one per order — and the second put `r:id` in
+ * group 1 and `name` in group 2, while the code went on reading group 1 as the
+ * name. A workbook writing `r:id` first came back named `rId1`, and the
+ * relationship lookup then searched for `Id="ทะเบียน"`, found nothing and fell
+ * back to `sheet1.xml`: the right rows by luck on a one-sheet file, the wrong
+ * sheet on any other. Confirmed against a real file on 2026-09-21.
+ */
+test('the sheet is named the same whichever order its attributes are written in', () => {
+  const nameFirst = readXlsxGrid(sheetTagWorkbook('<sheet name="ทะเบียน" sheetId="1" r:id="rId1"/>'));
+  const idFirst = readXlsxGrid(sheetTagWorkbook('<sheet r:id="rId1" sheetId="1" name="ทะเบียน"/>'));
+
+  assert.equal(nameFirst.sheet, 'ทะเบียน');
+  assert.equal(idFirst.sheet, 'ทะเบียน', 'r:id ก่อน name เคยให้ชื่อแผ่นงานเป็น rId1');
+  assert.deepEqual(idFirst.grid, nameFirst.grid);
+});
+
+/**
+ * `r:id` IS A VALUE OUT OF A FILE SOMEBODY UPLOADED, NOT A SEARCH PATTERN.
+ *
+ * `r:id="r.d1"` matched `Id="rXd1"` until 2026-09-21 — the wrong relationship,
+ * so the wrong worksheet, with nothing said. Ids are `rId1`-shaped in every
+ * file anybody has seen, which is why it never happened; that is not a reason
+ * to let the value reach `new RegExp` unescaped.
+ */
+test('a sheet id carrying regex characters matches only itself', () => {
+  // The relationship on record is `rXd1`. A `.` still meaning "any character"
+  // would match it; escaped it does not, and the reader falls back to
+  // sheet1.xml rather than reading a sheet it was never pointed at.
+  const { sheet } = readXlsxGrid(sheetTagWorkbook('<sheet name="x" r:id="r.d1"/>', { relId: 'rXd1' }));
+  assert.equal(sheet, 'x', 'the name still comes from the tag');
+
+  // And an id that IS on record still resolves — the escape must not break the
+  // ordinary lookup it exists to protect.
+  const ok = readXlsxGrid(sheetTagWorkbook('<sheet name="y" r:id="rId7"/>', { relId: 'rId7' }));
+  assert.equal(ok.sheet, 'y');
+  assert.deepEqual(ok.grid, [['code']]);
+});
+
+/**
  * The bug this file's real-world twin found on its first run. A blank cell is
  * written `<c r="B2" s="1"/>`, and a pattern that only knows `<c …>…</c>` will
  * match it and then run on to the NEXT cell's closing tag hunting for a body —

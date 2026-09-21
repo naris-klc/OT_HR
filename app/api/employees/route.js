@@ -71,6 +71,22 @@ export const GET = route(async (req) => {
 
 export const POST = route(async (req) => {
   const actor = await requireAuth(req);
+
+  /**
+   * ประตูบานแรก: ผู้ที่แตะทะเบียนไม่ได้เลย ถูกปฏิเสธก่อนที่ payload จะถูกอ่าน
+   *
+   * จนถึง 2026-09-21 การตรวจรูปข้อมูลอยู่ก่อนการตรวจสิทธิ์ หัวหน้างานที่ยิง
+   * `POST /api/employees` เปล่า ๆ จึงได้ *ต้องระบุรหัสพนักงาน ชื่อ-สกุล และแผนก*
+   * — คำตอบที่สอนรูปแบบของฟอร์มให้คนที่ไม่มีสิทธิ์ส่งฟอร์มนั้น 403 เป็นคำตอบ
+   * เดียวที่ถูกสำหรับเขา ไม่ว่าเขาจะส่งอะไรมา
+   *
+   * บานที่สอง (`{ role }` ข้างล่าง) ยังต้องอยู่หลังการอ่าน payload เพราะมันตอบ
+   * คำถามคนละข้อ — *ฝ่ายบุคคลตั้งบทบาทนี้ให้ใครได้หรือไม่* ซึ่งต้องรู้บทบาทที่
+   * ขอมาก่อนจึงจะตอบได้
+   */
+  const mayRoster = rosterPermission(actor);
+  if (!mayRoster.ok) return fail(mayRoster.error, mayRoster.status);
+
   const {
     code, name, email, position, birthDate, department, role, company, approvesCompany, password,
     approvesDepartments,
