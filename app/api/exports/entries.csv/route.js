@@ -1,10 +1,12 @@
 import OtEntry, { STATUS_LABEL_TH } from '@/src/models/OtEntry.js';
 import { SIGNER_ROLES } from '@/lib/roles.js';
-import { route, query, csvResponse } from '@/lib/http.js';
+import { route, query, csvResponse, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
-import { latestPerSession, reportStatuses, departmentScope } from '@/lib/reports.js';
+import {
+  latestPerSession, reportStatuses, departmentScope, PERIOD_RE,
+} from '@/lib/reports.js';
 import { companyOf } from '@/src/config/companies.js';
 import { signsForCompany } from '@/lib/entries.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
@@ -23,7 +25,13 @@ export const GET = route(async (req) => {
   const q = query(req);
 
   const filter = {};
-  if (q.period) filter.period = q.period;
+  /* งวดถูกตรวจรูปตั้งแต่ 2026-09-21 — เดิมเดินเข้า filter ดิบ ๆ และ
+     `?period=2026-13` ได้ไฟล์ CSV ที่มีแต่หัวตาราง ซึ่งอ่านเหมือนเดือนที่ไม่มี
+     ใครทำ OT · ต่างจากอีกสี่เราต์ของเดือนที่ตอบ 400 มาตลอด */
+  if (q.period) {
+    if (!PERIOD_RE.test(String(q.period))) return fail('ต้องระบุ period เป็น YYYY-MM', 400);
+    filter.period = q.period;
+  }
   if (q.from || q.to) {
     filter.workDate = {};
     if (q.from) filter.workDate.$gte = q.from;

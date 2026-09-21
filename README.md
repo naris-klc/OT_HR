@@ -1845,6 +1845,13 @@ collection จากฐานข้อมูลจริง ไม่ใช่�
 > บีบช่วงวันที่ให้แคบลง หรือเปิด Excel — บนหน้าจอเดียวในระบบนี้ที่มีไว้เพื่อ*อ่าน*
 > อย่างเดียว และหน้าต่างนั้นโตได้อย่างเดียว ย้อนกลับไม่ได้ ถอนที่กดไปแล้วไม่ได้
 
+> **และเพดานนั้นหลุดกับค่าติดลบ จนถึง 2026-09-21** `?limit=-1` คืน **12,100
+> แถว** ในคำขอเดียว (ยิงจริงวันนั้น) — `-1` ไม่เป็น falsy จึงรอด
+> `|| DEFAULT_LIMIT`, `Math.min` ยิ่งเลือกมัน แล้ว `.limit(limit + 1)` กลายเป็น
+> `.limit(0)` ซึ่ง mongoose อ่านว่า *ไม่จำกัด* · ตอนนี้ทั้ง `GET /api/logs` และ
+> `GET /api/employees/audit` คิดเพดานด้วย `capFor` ตัวเดียวกับที่ `/api/entries`
+> ใช้มาตลอด โดยส่งเพดานของจอตัวเองเข้าไป
+
 **ตารางบันทึกแบ่งหน้าที่เซิร์ฟเวอร์ ตาราง การใช้สิทธิ์พิเศษ แบ่งที่เบราว์เซอร์**
 และเป็นคนละแบบด้วยเหตุผลของแต่ละ endpoint `GET /api/logs` รับ `skip` เพิ่มมา
 และนับด้วย `countDocuments` ทุกครั้ง `หน้า 3 / 47` จึงเป็นตัวเลขจริงไม่ใช่การเดา
@@ -2094,7 +2101,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     157 files, run by `npm test`. Six named below as a
+test/                     158 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2107,9 +2114,19 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2793 tests
-across 157 files**, measured 2026-09-18 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2813 tests
+across 158 files**, measured 2026-09-21 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2793 tests across 157 files … measured 2026-09-18" until **ผล QA
+2026-09-21** — `requestInputGuards` is file 158, and it pins the six routes that
+answered 500 to a mistyped id, the two that let `?limit=-1` past a ceiling they
+printed, and the two period checks that disagreed with each other. The other
+cases are spread over `accountingCycle` (a งวด is two months that TOUCH),
+`xlsxImport` (attribute order is not meaningful, and an `r:id` out of an
+uploaded file is not a search pattern) and `tablePager`, which had pinned the
+broken `Math.min` shape as though it were the promise.
+docs/plan-qa-fixes-2026-09-21.md records what was fixed, and the three findings
+the user decided to leave exactly as they are.
 (⚠ **COUNT IT IN THE TREE THAT HOLDS `dev`, AFTER THE MERGE.** This line said
 "2804 tests across 155 files" for one afternoon: the figure was true in the
 worktree it was measured in and was four cases short of `dev`, because another
@@ -14179,8 +14196,13 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2793 tests**, about 4 s, measured 2026-09-18 across 157
-  files, all green. **`unsignableRepair` is the new file of the last round** —
+- `npm test` — **2813 tests**, about 5 s, measured 2026-09-21 across 158
+  files, all green. **`requestInputGuards` is the new file of the last round**
+  — the twelve refusals a mistyped request is owed, written after a QA pass
+  walked the whole API against the database and found six routes answering 500
+  to a bad id, two letting `?limit=-1` past a ceiling they printed, and two
+  period checks that disagreed. It read "2793 tests across 157 files" until
+  then. **`unsignableRepair` was the new file of the round before** —
   the repair that took the place of the ใบที่ไม่มีหัวหน้าเซ็นได้ tab, and its
   cases are written against the question that tab could not ask: *where would
   this ใบ go if it were filed today*. It read "2780 tests across 156 files"

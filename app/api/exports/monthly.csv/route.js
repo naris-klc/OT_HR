@@ -5,7 +5,9 @@ import { route, query, csvResponse, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS, summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
-import { latestPerSession, reportStatuses, departmentScope } from '@/lib/reports.js';
+import {
+  latestPerSession, reportStatuses, departmentScope, PERIOD_RE,
+} from '@/lib/reports.js';
 import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
 import { companyOf } from '@/src/config/companies.js';
@@ -17,8 +19,11 @@ export const GET = route(async (req) => {
   const user = requireRole(await requireAuth(req), 'hr', 'admin', ...SIGNER_ROLES);
   const q = query(req);
 
+  /* `PERIOD_RE` แทนสำเนาที่เขียนเองตรงนี้ ตั้งแต่ 2026-09-21 — บรรทัดนี้เคยเป็น
+     `/^\d{4}-\d{2}$/` ซึ่งเป็นกติกาเดียวกันคนละสำเนา และเมื่อตัวจริงเข้มขึ้น
+     เป็นเดือน 01–12 สำเนานี้ก็ยังรับ `2026-13` อยู่ตามลำพัง */
   const period = q.period;
-  if (!/^\d{4}-\d{2}$/.test(String(period || ''))) {
+  if (!PERIOD_RE.test(String(period || ''))) {
     return fail('ต้องระบุ period เป็น YYYY-MM', 400);
   }
 

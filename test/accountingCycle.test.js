@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   cyclePeriods, cycleTag, shortMonth, mergeAccountingReports, MAX_CYCLE_MONTHS,
+  isCycle, nextPeriod, previousPeriod,
 } from '../lib/accountingCycle.js';
 
 /**
@@ -318,4 +320,58 @@ test('เดือนที่กระทบยอดไม่ลงทำใ�
     '2026-11',
     'ใบที่ไม่ถูกนับต้องบอกเดือนของตัวเอง — บนใบสองเดือนมันไม่ใช่เรื่องที่รู้กันอยู่แล้ว',
   );
+});
+
+/**
+ * ── งวดคือสองเดือนที่ *ติดกัน* — ตรวจตั้งแต่ 2026-09-21 ────────────────────
+ *
+ * `?with=` ตรวจแค่รูปแบบและตรวจว่าไม่ซ้ำเดือนแรก จนถึงวันนั้น
+ * `/api/reports/accounting/2026-09?with=2026-03` จึงตอบ 200 และรวมสองเดือนที่
+ * ห่างกันหกเดือนเป็นใบเดียว (ยิงจริง) — และเพราะ `cyclePeriods` เรียงเดือนก่อน
+ * ฟิลด์ `period` ที่ตอบกลับก็กลายเป็น `2026-03` ให้คนที่เรียก `/2026-09`
+ */
+
+test('เดือนถัดไปและเดือนก่อนหน้า ข้ามปีได้ถูกต้อง', () => {
+  assert.equal(nextPeriod('2026-11'), '2026-12');
+  assert.equal(nextPeriod('2026-12'), '2027-01');
+  assert.equal(previousPeriod('2027-01'), '2026-12');
+  assert.equal(previousPeriod('2026-11'), '2026-10');
+});
+
+test('เดือนที่ไม่มีอยู่จริงไม่มีเดือนถัดไป — ไม่เดาให้', () => {
+  for (const bad of ['2026-13', '2026-00', '2026-1', 'abcd-01', '', null, undefined]) {
+    assert.equal(nextPeriod(bad), null, String(bad));
+    assert.equal(previousPeriod(bad), null, String(bad));
+  }
+});
+
+test('งวดที่ติดกันใช้ได้ ไม่ว่าผู้ใช้เลือกเดือนไหนก่อน', () => {
+  // `cyclePeriods` เรียงให้แล้ว คนที่เลือกธันวาคมก่อนได้ใบเดียวกับคนที่เลือก
+  // พฤศจิกายนก่อน — `isCycle` จึงอ่านเฉพาะผลที่เรียงแล้ว
+  assert.equal(isCycle(cyclePeriods('2026-11', '2026-12')), true);
+  assert.equal(isCycle(cyclePeriods('2026-12', '2026-11')), true);
+  assert.equal(isCycle(cyclePeriods('2026-12', '2027-01')), true, 'ข้ามปี');
+});
+
+test('เดือนที่ห่างกันไม่ใช่งวด', () => {
+  assert.equal(isCycle(cyclePeriods('2026-09', '2026-03')), false);
+  assert.equal(isCycle(cyclePeriods('2026-09', '2026-11')), false, 'เว้นหนึ่งเดือนก็ยังไม่ติดกัน');
+  assert.equal(isCycle(cyclePeriods('2026-12', '2027-02')), false);
+});
+
+test('งวดเดือนเดียวใช้ได้เสมอ — นั่นคือรายงานปกติ', () => {
+  assert.equal(isCycle(cyclePeriods('2026-09')), true);
+  assert.equal(isCycle([]), true, 'ไม่มีอะไรให้ค้าน');
+});
+
+test('เราต์ปฏิเสธงวดที่ไม่ติดกัน และบอกสองเดือนที่เป็นไปได้', () => {
+  const src = readFileSync(
+    new URL('../app/api/reports/accounting/[period]/route.js', import.meta.url),
+    'utf8',
+  );
+  assert.match(src, /if \(!isCycle\(periods\)\)/);
+  assert.match(src, /งวดจ่ายต้องเป็นสองเดือนที่ติดกัน/);
+  // ข้อความต้องบอกทางออก ไม่ใช่แค่บอกว่าผิด — คนที่พิมพ์ผิดกำลังหาเดือนที่ถูกอยู่
+  assert.match(src, /previousPeriod\(period\)/);
+  assert.match(src, /nextPeriod\(period\)/);
 });

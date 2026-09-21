@@ -4,6 +4,7 @@ import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { delegationPermission, publicDelegation } from '@/lib/delegation.js';
 import { today } from '@/lib/delegationQuery.js';
+import { capFor } from '@/lib/entries.js';
 
 // `approvesCompany` because `publicDelegation` reports it: a card that says
 // "แผนกวิศวกรรม" about a queue narrowed to one payroll is telling the reader
@@ -26,10 +27,19 @@ export const GET = route(async (req) => {
     ? {}
     : { $or: [{ from: user._id }, { to: user._id }] };
 
+  /**
+   * เพดาน 500 เพิ่มเมื่อ 2026-09-21 — เดิมไม่มีเลย
+   *
+   * `?all=1` ของฝ่ายบุคคลอ่านทั้งคอลเลกชันพร้อม populate สองฝั่ง ซึ่งวันนี้คือ
+   * ห้าแถวและอีกหลายปีข้างหน้าก็ยังไม่มาก — แต่จอนี้เรียงจากวันเริ่มล่าสุดลงมา
+   * และไม่มีตัวแบ่งหน้า สิ่งที่หายไปเมื่อรายการยาวขึ้นจึงเป็นของเก่าที่สุด
+   * ซึ่งเป็นของที่ไม่มีใครเปิดหาอยู่แล้ว
+   */
   const rows = await ApprovalDelegation.find(filter)
     .populate('from', PERSON)
     .populate('to', PERSON)
     .sort({ fromDate: -1 })
+    .limit(capFor(q.limit, 500, 500))
     .lean();
 
   const all = rows.map((row) => publicDelegation(row, on));

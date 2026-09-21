@@ -2,6 +2,7 @@ import AccessLog, { RETENTION } from '@/src/models/AccessLog.js';
 import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { describeRequest, deviceLabel, EVENTS, statusClass } from '@/lib/accessLog.js';
+import { capFor } from '@/lib/entries.js';
 
 /**
  * บันทึกระบบ — the traffic log, read.
@@ -148,7 +149,10 @@ export const GET = route(async (req) => {
     ];
   }
 
-  const limit = Math.min(Number(q.limit) || DEFAULT_LIMIT, MAX_LIMIT);
+  /* `capFor` ไม่ใช่ `Math.min` เอง: ค่าติดลบรอดด่าน `|| DEFAULT` แล้วทำให้
+     `.limit(limit + 1)` ข้างล่างกลายเป็น `.limit(0)` = ไม่จำกัด — `?limit=-1`
+     เคยคืน 12,100 แถวจนถึง 2026-09-21 ดู `capFor` ใน lib/entries.js */
+  const limit = capFor(q.limit, MAX_LIMIT, DEFAULT_LIMIT);
 
   /**
    * WHERE IN THE LIST — the page, expressed as rows already passed.

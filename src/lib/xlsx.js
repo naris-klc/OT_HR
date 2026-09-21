@@ -177,13 +177,37 @@ export function readXlsxGrid(bytes) {
    * first sheet in `sheet2.xml`, and reading the lowest-numbered file would
    * quietly return a sheet nobody is looking at.
    */
-  const first = /<sheet\b[^>]*?name="([^"]*)"[^>]*?r:id="([^"]*)"/.exec(workbook)
-    ?? /<sheet\b[^>]*?r:id="([^"]*)"[^>]*?name="([^"]*)"/.exec(workbook);
-  const sheetName = first ? unescapeXml(first[1]) : 'Sheet1';
+  /**
+   * ── ATTRIBUTE ORDER IS NOT MEANINGFUL, AND THIS USED TO ASSUME IT WAS ─────
+   *
+   * Until 2026-09-21 the tag was matched by two patterns, one for each order,
+   * and the second one put `r:id` in group 1 and `name` in group 2 — while the
+   * code below went on reading group 1 as the name. A workbook writing
+   * `<sheet r:id="rId1" sheetId="1" name="ทะเบียน"/>` — legal XML, and what
+   * some writers emit — came back named **`rId1`**, and the relationship
+   * lookup then searched for `Id="ทะเบียน"`, found nothing, and fell back to
+   * `sheet1.xml`: the right rows by luck on a one-sheet file, the wrong sheet
+   * on any other. Confirmed with a real file on 2026-09-21.
+   *
+   * So the tag is found first, and each attribute read out of it on its own.
+   * Order stops being a thing this has an opinion about.
+   */
+  const tag = /<sheet\b[^>]*>/.exec(workbook)?.[0] ?? '';
+  const nameAttr = /\bname="([^"]*)"/.exec(tag);
+  const idAttr = /\br:id="([^"]*)"/.exec(tag);
+  const sheetName = nameAttr ? unescapeXml(nameAttr[1]) : 'Sheet1';
   let target = 'xl/worksheets/sheet1.xml';
-  if (first) {
+  if (idAttr) {
     const rels = read('xl/_rels/workbook.xml.rels');
-    const rel = new RegExp(`<Relationship[^>]*Id="${first[2]}"[^>]*Target="([^"]*)"`).exec(rels);
+    /**
+     * ESCAPED, because `r:id` is a value out of a file somebody uploaded.
+     * `r:id="r.d1"` matched `Id="rXd1"` before this — the wrong relationship,
+     * so the wrong worksheet, silently. Ids are `rId1`-shaped in every file
+     * anybody has seen; that is a reason it has never happened, not a reason
+     * the value may be a search pattern.
+     */
+    const wanted = idAttr[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rel = new RegExp(`<Relationship[^>]*Id="${wanted}"[^>]*Target="([^"]*)"`).exec(rels);
     if (rel) {
       const path = rel[1].replace(/^\//, '');
       target = path.startsWith('xl/') ? path : `xl/${path}`;
