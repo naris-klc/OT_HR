@@ -492,9 +492,13 @@ export default function HrView({
   const [scanLoading, setScanLoading] = useState(false);
   const readsScans = mayCorrect && scope !== 'team';
 
-  async function loadScan() {
+  /**
+   * `quiet` — อ่านผลเทียบใหม่โดยไม่ซ่อนการ์ด ใช้ตอนปิด HrEntries (ดูข้างล่าง)
+   * เดือนบนจอยังเป็นเดือนเดิม การ์ดที่หายไปแล้วกลับมาคือการกระพริบเปล่า ๆ
+   */
+  async function loadScan({ quiet = false } = {}) {
     if (!readsScans) return;
-    setScanLoading(true);
+    if (!quiet) setScanLoading(true);
     try {
       const base = `/scans?period=${period}${deptParam}`;
       const first = await api.get(base);
@@ -512,7 +516,7 @@ export default function HrView({
        * Saying it in `error` would put a red box over a table that is correct.
        */
       setScan(null);
-    } finally { setScanLoading(false); }
+    } finally { if (!quiet) setScanLoading(false); }
   }
 
   /**
@@ -1381,7 +1385,16 @@ export default function HrView({
         employee={opened}
         period={period}
         mayEdit={mayCorrect}
-        onClose={() => setOpened(null)}
+        /**
+         * ปิดแล้วอ่านผลเทียบสแกนใหม่ทุกครั้ง แม้ HR ไม่ได้แก้อะไร
+         *
+         * `flaggedBy` (กฎติ๊ก §5.2) มาจาก `loadScan` และเดิมถูกอ่านแค่ตอนเปลี่ยน
+         * เดือน/ตัวกรอง · HR แจ้ง 2026-10-07: พนักงานแก้เวลาให้ตรงสแกนแล้ว HR
+         * เปิดดูก็เห็นว่าตรง แต่ปิดกลับมา ช่องติ๊กยังถูกล็อกเพราะผลเทียบเป็นของ
+         * ก่อนแก้ — อนุมัติไม่ได้ · ต้องอ่านตอนปิด ไม่ใช่แค่ใน `onChanged`
+         * เพราะคนแก้คือพนักงานจากอีกเครื่อง HR แค่เปิดดู
+         */
+        onClose={() => { setOpened(null); loadScan({ quiet: true }); }}
         onChanged={load}
       />
     );

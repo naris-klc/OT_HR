@@ -60,7 +60,7 @@ test('HrView asks for the scans; the import card is handed the answer', () => {
   // A card saying `17 แถวต้องตรวจ` above a panel saying something else is a
   // screen a reader cannot trust about either figure.
   assert.match(hrView, /const \[scan, setScan\] = useState\(null\);/);
-  assert.match(hrView, /async function loadScan\(\)/);
+  assert.match(hrView, /async function loadScan\(\{ quiet = false \} = \{\}\)/);
   assert.ok(!scanImport.includes('api.get('), 'ScanImport is fetching the month again');
 
   // The panel reads them off the prop rather than out of state of its own.
@@ -113,6 +113,14 @@ test('a stale month never sits under a heading that has moved on', () => {
   // …and the card draws NOTHING while the answer is in flight, so the gap is
   // not a flash of ยังไม่ได้เทียบ on a month that is fine.
   assert.match(card, /if \(loading\) return null;/);
+});
+
+test('closing a person re-reads the comparison, so a corrected row unlocks its tick-box', () => {
+  // HR แจ้ง 2026-10-07: พนักงานแก้เวลาให้ตรงสแกนแล้ว แต่ช่องติ๊กยังล็อก เพราะ
+  // `flaggedBy` เป็นผลเทียบก่อนแก้ · คนแก้คือพนักงาน ไม่ใช่ HR — `onChanged`
+  // จึงไม่ยิง ต้องอ่านใหม่ตอนปิดเสมอ และอ่านแบบ quiet ไม่ให้การ์ดกระพริบ
+  assert.match(hrView, /onClose=\{\(\) => \{ setOpened\(null\); loadScan\(\{ quiet: true \}\); \}\}/);
+  assert.match(hrView, /if \(!quiet\) setScanLoading\(true\);/);
 });
 
 // ── 3. who may see it at all ────────────────────────────────────────────────
