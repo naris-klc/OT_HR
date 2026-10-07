@@ -5958,6 +5958,11 @@ is wrong. The same family as the 21:10 bug below: the wrong evidence is worse
 than none. The exception is a punch inside the tolerance of both ends, which on
 a short enough request is one trip through the door genuinely answering both.
 
+**ตั้งแต่ 2026-10-07 สแกนที่ตรงหรือหลังเวลาจบ OT ก็ถูกกันเหมือนกัน** ไม่ใช่แค่ตัวที่
+ฝั่งจบยกไป · HR แจ้ง: ใบ `17:00–18:00` สแกน `07:51 · 18:09 · 18:22` ขึ้นว่าเวลาเริ่ม
+ไม่ตรง เพราะฝั่งจบยก 18:09 แล้ว 18:22 (สแกนออกซ้ำ) หลุดไปเป็นเวลาเริ่ม · สแกนหลัง
+OT จบเป็นการมาถึงของ OT นั้นไม่ได้ ข้อยกเว้นในค่าเผื่อของเวลาเริ่มยังเหมือนเดิม
+
 #### Where you actually SEE the comparison — the card names the people
 
 *"แล้วจะดูการเปรียบเทียบตรงไหน"* (HR, 2026-09-04), and the question was the
