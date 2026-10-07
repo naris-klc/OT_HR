@@ -50,7 +50,8 @@
       "Bash(python3 -)",
       "Bash(awk 'NR>=1875 && NR<=1912' RS='}' ORS='}\\\\n' /tmp/served.css 2>/dev/null | head -5; echo \"=== via sed on expanded ===\"; tr '}' '}\\\\n' < /tmp/served.css | sed -n '1880,1912p')",
       "Bash(curl -s -D - -o /dev/null http://localhost:3000/_next/static/chunks/app_0bgotus._.css)",
-      "Bash(rm -rf \"app/api/entries/[id]/attendance-check\" && echo \"ลบ route แล้ว\"; ls \"app/api/entries/[id]/\")"
+      "Bash(rm -rf \"app/api/entries/[id]/attendance-check\" && echo \"ลบ route แล้ว\"; ls \"app/api/entries/[id]/\")",
+      "Bash(mongosh *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\suwan\\Documents\\OT_HR\\app\\api\\entries\\[id]\\attendance-check"
