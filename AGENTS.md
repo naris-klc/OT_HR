@@ -214,6 +214,14 @@ worktree full of files does not surface in everybody else's `git status`.
   at once collide on it. Pick a port nobody is holding, and name the build
   directory after your task — `VERIFY_DIST_DIR=.next-verify-<task>`, which
   `.next-*/` already ignores.
+- **พรีวิวที่ส่งให้ผู้ใช้เปิดดู ใช้ port 3005 เท่านั้น** — ทั้ง mockup ใน
+  `mockups/` และ build ที่ต้องให้ผู้ใช้ดู สั่งไว้ 2026-10-08: *ยึดไว้ 1 port
+  สำหรับโปรเจ็คนี้เสมอ ไม่เปลี่ยนไปมา* · ลิงก์ที่ส่งจึงเป็น
+  `http://localhost:3005/…` เสมอ · port ที่ใช้ตรวจเองโดยไม่ส่งให้ผู้ใช้ยังเลือก
+  ได้ตามข้อบน · ถ้า 3005 มีอีก session ถืออยู่ อย่าย้ายไป port อื่น บอกผู้ใช้
+  ว่าใครถืออยู่แล้วให้ผู้ใช้ตัดสิน · mockup เสิร์ฟจากโฟลเดอร์ `mockups/`
+  (`python3 -m http.server 3005 --bind 127.0.0.1`) ไม่ใช่จากรากของ repo
+  เพราะรากมี `.env`
 - **:3000 and the deploy.** Both belong to the main tree, and the deploy is the
   user's call — see the section below before you go near either.
 
