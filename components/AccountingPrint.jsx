@@ -5,7 +5,9 @@ import { accountingLabel, api, THAI_MONTHS } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { cyclePeriods, shortMonth } from '@/lib/accountingCycle.js';
-import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from './common.jsx';
+import {
+  Alert, NoticeStack, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours,
+} from './common.jsx';
 
 /**
  * สรุป OT ส่งบัญชี rendered for print — one element per SIDE of A4 portrait,
@@ -130,10 +132,13 @@ export default function AccountingPrint({
       {/* Both notices belong on the screen, not on the sheet — the sheet is the
           table and nothing else. This one is here rather than only on the
           report screen because the print view is opened straight from the nav,
-          and a sheet sent to accounting while it is showing is short. */}
-      <UnaccountedHours unaccounted={data.unaccounted} />
-
-      <PendingNotice count={data.pending?.count} />
+          and a sheet sent to accounting while it is showing is short.
+          2026-10-08: ทั้งสองเป็นแถวในกล่องแจ้งเตือนกล่องเดียว (ระบบแจ้งเตือน
+          เดียวทั้งแอป) แทนกล่องแดงกับแถบส้มที่ซ้อนกัน */}
+      <NoticeStack id="accounting-print">
+        <UnaccountedHours unaccounted={data.unaccounted} />
+        <PendingNotice count={data.pending?.count} />
+      </NoticeStack>
 
       <SheetScroll className="acct-screen">
         {data.companies.length === 0 ? (

@@ -190,9 +190,20 @@ test('the screen banner stays off the paper', () => {
   // The counterpart: the long banner with the id table is for the screen. On
   // the sheet it would take a third of a page and tell accounting nothing they
   // can act on.
+  // 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): เคยเป็น `.box error no-print` ของมัน
+  // เอง ตอนนี้เป็นแถว error ใน `NoticeStack` ซึ่งเป็นคนถือ `no-print`
   const common = sourceOf('components/common.jsx');
   const banner = common.slice(common.indexOf('export function UnaccountedHours'));
-  assert.match(banner.slice(0, 400), /className="box error no-print"/);
+  assert.match(banner.slice(0, 600), /<NoticeRow\s+tone="error"/);
+  const stack = common.slice(common.indexOf('export function NoticeStack('), common.indexOf('export function NoticeRow('));
+  assert.match(stack, /notice-stack no-print/);
+  for (const file of ['components/AccountingPrint.jsx', 'components/DepartmentPrint.jsx']) {
+    assert.match(
+      sourceOf(file),
+      /<NoticeStack id="[a-z-]+">\s*<UnaccountedHours unaccounted=\{data\.unaccounted\} \/>/,
+      `${file}: the banner is outside the notice box`,
+    );
+  }
 });
 
 // ── the three previews are stacks of A4 sheets ──────────────────────────────
@@ -402,8 +413,12 @@ test('the acting note is not marked no-print, and the screen copy is', () => {
 
   // Its screen counterpart says the same things to whoever pressed print, and
   // must stay off the sheet — two copies of the block on one page.
-  const screen = code.slice(code.indexOf('{form.acting?.length > 0 && ('), code.indexOf('{/* Inside no-print'));
-  assert.match(screen, /className="no-print"/);
+  // 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): a row in the page's `NoticeStack`,
+  // which carries `no-print` for every row in it.
+  const notices = code.slice(code.indexOf('export function FormNotices'), code.indexOf('function ActingNote'));
+  const at = notices.indexOf('{form.acting?.length > 0 && (');
+  assert.ok(at > notices.indexOf('<NoticeStack id="print-form">') && at < notices.indexOf('</NoticeStack>'));
+  assert.match(notices.slice(at, at + 200), /<NoticeRow/);
 });
 
 test('the flag ships off — the paper is unchanged until HR sees a sample', () => {

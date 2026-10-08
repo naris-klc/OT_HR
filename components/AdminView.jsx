@@ -79,7 +79,7 @@ const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 // the printed sheets use it.
 import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, PickMany,
-  RowAction,
+  NoticeRow, NoticeStack, RowAction,
   ClearButton, PAGE_SIZE, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
   pageQuery, pageWindow, serverRows, useKeptFetch, usePageClamp,
 } from './common.jsx';
@@ -594,63 +594,37 @@ function SigningCoverage({ departments, people, onGo }) {
 
   if (!gaps.length) return null;
 
+  /* ระบบแจ้งเตือนเดียวทั้งแอป (2026-10-08): แถว error ใน `NoticeStack` ของ
+     แผนกและเพดาน — ซ่อนไม่ได้ · ปุ่มหลัก (ไปตั้งหัวหน้า) คือ `action` ของแถว
+     ปุ่มรอง (ผู้รับช่วงอนุมัติ) อยู่ใน `more` เพราะแถวมีปุ่มได้ปุ่มเดียว
+
+     THE TWO REMEDIES, AND WHICH ONE IS THE DEFAULT. Appointing or re-scoping a
+     หัวหน้า is what CLOSES this warning; ผู้รับช่วงอนุมัติ is a stand-in with an
+     end date that clears the queue and leaves the department exactly as
+     uncovered as it was. So the first is the row's button and the second sits
+     one press further, with a clause saying what it does. Which one is right
+     depends on whether the department is short a หัวหน้า for good or for this
+     week — something this screen cannot know — so both stay. */
   return (
-    <Alert kind="error">
-      {/* No ⚠ in the text: `.alert.error` already draws its own mark to the
-          left of this line, and a second one two characters into the sentence
-          is the same glyph twice. The badges in the table wear the ⚠ because
-          they have no mark of their own. */}
-      <strong>บางแผนกยังไม่มีหัวหน้าเซ็นอนุมัติครอบคลุมทุกบริษัท</strong>
-      {' '}— ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดอนุมัติได้
-      {/* THE TWO REMEDIES, AS TWO BUTTONS.
-
-          This sentence used to end in the names of two tabs — "ในแท็บ พนักงาน"
-          and "ในแท็บ ผู้รับช่วงอนุมัติ" — which is a set of directions rather
-          than a way out: whoever reads this banner is on แผนกและเพดาน, has just
-          been told somebody's OT will sit unsigned, and then has to go and find
-          the tab the sentence named. The tabs are six buttons in a row above,
-          and two of the six are the ones meant.
-
-          Both of them, not one. The banner has always said there are two ways
-          out, and which one is right depends on something this screen cannot
-          know — whether the department is short a หัวหน้า for good or short one
-          this week.
-
-          ONE OF THEM IS FILLED AND THE OTHER IS NOT, and that is a change from
-          two identical ghosts. Two buttons of equal weight in a red banner is a
-          fork with no default: the eye takes the leftmost, which is the right
-          answer by accident rather than by design. Filling the first one says
-          which is the ordinary repair — appointing or re-scoping a หัวหน้า is
-          what CLOSES this warning, and it is the only one of the two that does.
-          ผู้รับช่วงอนุมัติ is a stand-in with an end date: it clears the queue and
-          leaves the department exactly as uncovered as it was, so the banner is
-          still here tomorrow. A secondary button is what that is.
-
-          It is a hierarchy, not a recommendation. Both are still one press away
-          and the sentence still names what each one does, because a button label
-          has room for a destination and not for a rule.
-
-          THE SENTENCE ABOVE THEM IS GONE, and the first button absorbed it. It
-          read "แก้ได้สองทาง — ตั้งหรือแก้ 'เซ็นให้บริษัท' ของหัวหน้า หรือตั้ง
-          ผู้รับช่วงอนุมัติ", which is the two button labels again in longer
-          words: a line explaining a control that is already visible and already
-          says what it does. On a phone it cost a paragraph above two full-width
-          buttons. What it did carry that the old labels did not is WHERE the
-          repair is — so that went into the label, which is where somebody
-          deciding whether to press it is looking. */}
-      <div className="alert-actions">
-        {onGo && (
-          <>
-            <button className="btn sm" onClick={() => onGo('employees')}>
-              ไปที่หน้าพนักงานเพื่อตั้งค่าสิทธิ์ ↗
-            </button>
-            <button className="btn ghost sm" onClick={() => onGo('delegation')}>
-              ตั้งผู้รับช่วงอนุมัติ
-            </button>
-          </>
-        )}
-      </div>
-    </Alert>
+    <NoticeRow
+      tone="error"
+      title="บางแผนกยังไม่มีหัวหน้าเซ็นอนุมัติครอบคลุมทุกบริษัท"
+      detail="ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดอนุมัติได้"
+      action={onGo && (
+        <button type="button" className="btn ghost sm" onClick={() => onGo('employees')}>
+          ไปที่หน้าพนักงานเพื่อตั้งค่าสิทธิ์ ↗
+        </button>
+      )}
+      more={onGo && (
+        <div>
+          หรือ{' '}
+          <button type="button" className="link" onClick={() => onGo('delegation')}>
+            ตั้งผู้รับช่วงอนุมัติ
+          </button>
+          {' '}— แก้คิวชั่วคราว แผนกยังไม่มีหัวหน้าเหมือนเดิม
+        </div>
+      )}
+    />
   );
 }
 
@@ -906,13 +880,15 @@ function Departments({ user, onGo, roster }) {
           table now — see `CapNote`. A rule about two boxes, printed four rows
           above the first of them and separated from it by a red banner and a
           pair of chips, is read before there is anything to read it against. */}
-      {(error || roster.error) && <Alert kind="error">{error || roster.error}</Alert>}
-      {ok && <Alert kind="ok">{ok}</Alert>}
-
       {/* Above the table rather than in it: a department with nobody to sign
           for its people is not a column of that department's row, it is a thing
-          somebody has to go and do. */}
-      <SigningCoverage departments={rows} people={people} onGo={onGo} />
+          somebody has to go and do. ข้อผิดพลาดของหน้าอยู่ในกล่องเดียวกัน
+          (ระบบแจ้งเตือนเดียวทั้งแอป, 2026-10-08) */}
+      <NoticeStack id="departments">
+        {(error || roster.error) && <NoticeRow tone="error" title={error || roster.error} />}
+        <SigningCoverage departments={rows} people={people} onGo={onGo} />
+      </NoticeStack>
+      {ok && <Alert kind="ok">{ok}</Alert>}
 
       {/* ── the two ways to read the table ────────────────────────────────────
           BETWEEN THE BANNER AND THE TABLE, because that is the seam it belongs
@@ -7473,11 +7449,17 @@ function Policy({ user }) {
         · การแก้ข้อที่มีผลต่อการคำนวณจะคำนวณใบใหม่ทันทีตามข้อ “เปลี่ยนนโยบายแล้วคำนวณใบใหม่”
         — ใบที่วันทำงานอยู่ก่อนวันเริ่มใช้ยังคิดตามกฎเดิม
       </div>
-      {error && <Alert kind="error">{error}</Alert>}
+      {/* ระบบแจ้งเตือนเดียวทั้งแอป (2026-10-08): ทุกเรื่องที่ค้างบนหน้านี้อยู่ใน
+          กล่องเดียว — ข้อผิดพลาด · กฎที่ยังไม่บันทึกเป็นเวอร์ชัน · ใบที่ยังไม่กำกับ
+          เวอร์ชัน (เดิมอยู่ใต้หัวข้อประวัติ) · ค่าที่ตั้งทับโปรแกรม */}
+      <NoticeStack id="policy">
+        {error && <NoticeRow tone="error" title={error} />}
+        <UnrecordedPolicy live={live} canEdit={canEdit} busy={busy} onRecord={recordLive} />
+        <UnversionedEntries unversioned={unversioned} />
+        <LivePolicy policy={policy} defaults={defaults} overrides={overrides} />
+      </NoticeStack>
       {msg && <Alert kind="ok">{msg}</Alert>}
-
-      <UnrecordedPolicy live={live} canEdit={canEdit} busy={busy} onRecord={recordLive} />
-      <LivePolicy policy={policy} defaults={defaults} overrides={overrides} />
+      <LivePolicyClean policy={policy} defaults={defaults} overrides={overrides} />
 
       {/* Both typed before the dropdown is touched, because changing a dropdown
           IS the save — there is no button to attach a reason or a date to
@@ -7830,7 +7812,7 @@ function Policy({ user }) {
         ไม่ใช่แค่ปรับค่า · ข้อ 10 และ 11 รองรับทั้งไฟล์และการกรอกเองอยู่แล้ว
       </div>
 
-      <PolicyHistory versions={versions} unversioned={unversioned} live={live} total={total} />
+      <PolicyHistory versions={versions} live={live} total={total} />
 
       {pending && (
         <ConfirmPolicyChange
@@ -8067,35 +8049,18 @@ function ConfirmPolicyChange({
  * "record these rules" is only an obvious thing to press once you can see which
  * rules drifted.
  *
- * ── THE ONE BANNER IN กอง ก THAT DID NOT BECOME ONE ROW — 2026-09-14 ────────
+ * ── ONE ROW NOW, SINCE 2026-10-08 — ระบบแจ้งเตือนเดียวทั้งแอป ─────────────
  *
- * The answer given that day made the holiday banner's shape the default for
- * every standing notice, and said an exception has to carry its reason in the
- * commit rather than be taken quietly. This is the exception, for two reasons
- * that are both about somebody else's screen:
+ * Until then this was the one banner in กอง ก that stayed a full panel (the
+ * 2026-09-14 exception): heading, a `.say` line, the drift list and a button
+ * with a note under it. It is a `NoticeRow` in the page's `NoticeStack id="policy"`
+ * now — the same title as `PolicyDriftBanner` on the queues, but this one KEEPS
+ * WHAT THAT ONE LACKS, because it is the destination of that one's link: the
+ * drift list (in `more`) and the button that fixes it (`action`).
  *
- *   `PolicyDriftBanner` in components/PolicyVersion.jsx ALREADY IS the one-row
- *   version of this notice, on the two queues, and the comment above it says
- *   it is less than this one on purpose — no diff, no button — because it ENDS
- *   IN A LINK TO THIS PAGE. A destination that says exactly what the signpost
- *   said is a reader who pressed the link and arrived nowhere.
- *
- *   The drift list is a LIST. The rule that took the ▲/▼ folds off two notices
- *   on 2026-09-14 is that a fold over a sentence is an admission the sentence
- *   is too long, while a fold over a list is a reader choosing whether to read
- *   it — and the same line cuts here: a sentence may be shortened, rows saying
- *   which rule moved from what to what may not be merged into one.
- *
- * So what was shortened is prose and only prose. The `.say` line lost the
- * clause explaining WHY the system refuses to stamp a mismatched version —
- * mechanism, and it is argued at the top of this comment where the reader who
- * wants it will be. The note under the button lost its second half, which sent
- * the reader to `npm run migrate:policy-version` for entries already filed:
- * this page carries a whole amber banner about exactly that further down (see
- * `unversioned` in PolicyHistory), one that knows HOW MANY entries are
- * waiting and says the script touches nothing but the version number. Two
- * mentions on one screen, and the one that went is the one with no count in it
- * and no reassurance, sitting under a button that does something else.
+ * The drift list is a LIST, so it is folded and not merged: a fold over a list
+ * is the reader choosing whether to read it. The unstamped entries already
+ * filed are the `unversioned` row in the same stack, which knows how many.
  */
 function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
   if (!live || live.recorded) return null;
@@ -8103,44 +8068,37 @@ function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
   const first = live.latestSeq == null;
 
   return (
-    <Alert kind="warn">
-      <strong>
-        {first
-          ? 'กฎที่ใช้อยู่ยังไม่เคยถูกบันทึกเป็นเวอร์ชัน'
-          : `กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน ${live.latestSeq} ซึ่งเป็นเวอร์ชันล่าสุดที่บันทึกไว้`}
-      </strong>
-      <div className="say">
-        ระหว่างนี้ <strong>ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน</strong>
-        {' '}และจะไม่มีอะไรฟ้องจนกว่าจะปิดเดือน
-        {!first && ' · มักเกิดจากการ deploy ที่แก้ค่าตั้งต้นในไฟล์ โดยไม่ได้บันทึกผ่านหน้านี้'}
-      </div>
-
-      {live.drift?.length > 0 && (
-        <div className="say">
-          {/* IT WROTE `color: var(--muted)` ON ITSELF UNTIL 2026-09-12, when the
-              block around it became `.say` — which IS that grey. Two decisions
-              about one colour, and the one that went is the hand-written copy. */}
-          <div>ต่างจากเวอร์ชันล่าสุด:</div>
-          {live.drift.map((c) => (
-            <div key={c.key}>
-              {CHANGE_LABEL[c.key] || c.key}: {JSON.stringify(c.from)} → {JSON.stringify(c.to)}
-              {c.arithmetic && <span style={{ color: 'var(--amber)' }}> (มีผลต่อการคำนวณ)</span>}
+    <NoticeRow
+      tone="warn"
+      title={first
+        ? 'กฎที่ใช้อยู่ยังไม่เคยถูกบันทึกเป็นเวอร์ชัน'
+        : `กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน ${live.latestSeq} ซึ่งเป็นเวอร์ชันล่าสุดที่บันทึกไว้`}
+      detail="ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน และจะไม่มีอะไรฟ้องจนกว่าจะปิดเดือน"
+      action={canEdit && (
+        <button type="button" className="btn ghost sm" onClick={onRecord} disabled={busy}>
+          บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่
+        </button>
+      )}
+      more={(
+        <>
+          {!first && <div>มักเกิดจากการ deploy ที่แก้ค่าตั้งต้นในไฟล์ โดยไม่ได้บันทึกผ่านหน้านี้</div>}
+          {live.drift?.length > 0 && (
+            <div>
+              <div>ต่างจากเวอร์ชันล่าสุด:</div>
+              {live.drift.map((c) => (
+                <div key={c.key}>
+                  {CHANGE_LABEL[c.key] || c.key}: {JSON.stringify(c.from)} → {JSON.stringify(c.to)}
+                  {c.arithmetic && <strong> (มีผลต่อการคำนวณ)</strong>}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+          {canEdit && (
+            <div className="hint">ปุ่มนี้บันทึกกฎที่ใช้อยู่ตามเดิมทุกข้อ ไม่เปลี่ยนค่าใด และไม่คำนวณใบใดใหม่</div>
+          )}
+        </>
       )}
-
-      {canEdit && (
-        <div style={{ marginTop: 10 }}>
-          <button className="btn" onClick={onRecord} disabled={busy}>
-            บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่
-          </button>
-          <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 4 }}>
-            บันทึกกฎที่ใช้อยู่ตามเดิมทุกข้อ ไม่เปลี่ยนค่าใด และไม่คำนวณใบใดใหม่
-          </div>
-        </div>
-      )}
-    </Alert>
+    />
   );
 }
 
@@ -8172,19 +8130,30 @@ const CHANGE_LABEL = Object.fromEntries(POLICY_FIELDS.map((f) => [f.key, f.label
  * terminal, and because the badge saying a question is unanswered belongs next
  * to the value that is answering it in the meantime.
  */
-function LivePolicy({ policy, defaults, overrides }) {
+function livePolicyDiff(policy, defaults, overrides) {
   if (!policy || !defaults) return null;
-
   const moved = diffPolicy(defaults, policy);
   const movedKeys = new Set(moved.map((d) => d.key));
   const pinned = (overrides || []).filter((k) => !movedKeys.has(k) && k in defaults);
-  if (!moved.length && !pinned.length) {
-    return (
-      <div className="hint" style={{ marginTop: 10 }}>
-        ทุกข้อในหน้านี้ใช้ค่าตั้งต้นของโปรแกรม ไม่มีข้อใดถูกตั้งทับไว้
-      </div>
-    );
-  }
+  return { moved, pinned };
+}
+
+/** The line that stands where the row would, when nothing is overridden. Not a
+    notice — a fact about the page — so it sits outside the `NoticeStack`. */
+function LivePolicyClean({ policy, defaults, overrides }) {
+  const d = livePolicyDiff(policy, defaults, overrides);
+  if (!d || d.moved.length || d.pinned.length) return null;
+  return (
+    <div className="hint" style={{ marginTop: 10 }}>
+      ทุกข้อในหน้านี้ใช้ค่าตั้งต้นของโปรแกรม ไม่มีข้อใดถูกตั้งทับไว้
+    </div>
+  );
+}
+
+function LivePolicy({ policy, defaults, overrides }) {
+  const diff = livePolicyDiff(policy, defaults, overrides);
+  if (!diff || (!diff.moved.length && !diff.pinned.length)) return null;
+  const { moved, pinned } = diff;
 
   const arithmetic = moved.filter((d) => d.arithmetic).length;
 
@@ -8193,29 +8162,21 @@ function LivePolicy({ policy, defaults, overrides }) {
      again, a chip per value, and a button — most of it said on every visit to a
      page whose rows already carry their own amber ตั้งทับค่าตั้งต้น tag.
 
-     So the row is the heading and the count of what moves hours, and the chips
-     sit behind ดูรายละเอียด with the pinned ones. The `display: contents`
-     mechanism is `.scan-drawer-head`'s, line for line (styles.css).
-
      THE ALARM IS STILL IN THE ROW: how many values differ, and how many of them
      change hours. What folds is WHICH values — each is already tagged beside its
-     own question, so the chips are the index and not the warning. */
+     own question, so the chips are the index and not the warning.
+
+     A `NoticeRow` in `NoticeStack id="policy"` since later the same day
+     (ระบบแจ้งเตือนเดียวทั้งแอป) — the hand-built `.alert-row-head` +
+     `Disclosure` that did the folding is gone; the row's ▾ does it. */
   return (
-    <Alert kind={arithmetic ? 'warn' : 'info'}>
-      {/* NO EMOJI IN THE HEADING. `Alert` draws its own mark. */}
-      <div className="alert-row-head">
-        <strong className="alert-row-title">
-          {moved.length > 0
-            ? `ปรับค่าจากโปรแกรมเดิม ${moved.length} รายการ${arithmetic ? ` · ${arithmetic} มีผลต่อชั่วโมง` : ''}`
-            : `ไม่มีค่าใดต่างจากโปรแกรมเดิม — แต่มี ${pinned.length} ข้อที่ถูกเก็บค่าไว้แล้ว`}
-        </strong>
-        <Disclosure
-          as="div"
-          lines={0}
-          of="ค่าที่ปรับจากโปรแกรมเดิม"
-          more="ดูรายละเอียด ▾"
-          less="ซ่อนรายละเอียด ▴"
-        >
+    <NoticeRow
+      tone={arithmetic ? 'warn' : 'info'}
+      title={moved.length > 0
+        ? `ปรับค่าจากโปรแกรมเดิม ${moved.length} รายการ${arithmetic ? ` · ${arithmetic} มีผลต่อชั่วโมง` : ''}`
+        : `ไม่มีค่าใดต่างจากโปรแกรมเดิม — แต่มี ${pinned.length} ข้อที่ถูกเก็บค่าไว้แล้ว`}
+      more={(
+        <>
           {/* CHIPS, NOT A PARAGRAPH EACH (2026-09-07), AND ONE COLOUR FOR
               "CHANGED" — amber, always: every chip here is a value this
               installation changed. Whether it moves hours is said in WORDS,
@@ -8243,21 +8204,46 @@ function LivePolicy({ policy, defaults, overrides }) {
               this. */}
           {pinned.length > 0 && (
             <>
-              <div className="hint" style={{ marginTop: 8 }}>ตรึงไว้เท่ากับค่าตั้งต้นวันนี้:</div>
+              <div className="hint">ตรึงไว้เท่ากับค่าตั้งต้นวันนี้:</div>
               <div className="policy-diffs">
                 {pinned.map((k) => (
                   <span key={k} className="chip muted">{CHANGE_LABEL[k] || k}</span>
                 ))}
               </div>
-              <div className="hint" style={{ marginTop: 6 }}>
+              <div className="hint">
                 เท่ากันอยู่ตอนนี้ แต่ถูกเก็บค่าไว้แล้ว — ถ้าโปรแกรมเวอร์ชันใหม่เปลี่ยนค่าตั้งต้นของข้อเหล่านี้
                 ระบบนี้จะไม่เปลี่ยนตาม
               </div>
             </>
           )}
-        </Disclosure>
-      </div>
-    </Alert>
+        </>
+      )}
+    />
+  );
+}
+
+/**
+ * Entries filed with no version — the reason a monthly banner will refuse to
+ * say whether the figures compare, said on the page the fix is run from.
+ *
+ * It sat inside `PolicyHistory`, under the history heading, as an `Alert` until
+ * 2026-10-08. It is a row in the page's `NoticeStack id="policy"` now
+ * (ระบบแจ้งเตือนเดียวทั้งแอป): one box of notices per page, at the top.
+ */
+function UnversionedEntries({ unversioned }) {
+  if (!(unversioned > 0)) return null;
+  return (
+    <NoticeRow
+      tone="warn"
+      title={`มีใบ OT ${unversioned} ใบที่ยังไม่ได้กำกับเวอร์ชัน`}
+      detail="ยื่นก่อนระบบเริ่มบันทึก"
+      more={(
+        <div>
+          รัน <code>npm run migrate:policy-version</code> หนึ่งครั้งเพื่อกำกับให้ครบ ·
+          {' '}สคริปต์เขียนเฉพาะเลขเวอร์ชัน ไม่แตะชั่วโมงหรือสถานะของใบใด
+        </div>
+      )}
+    />
   );
 }
 
@@ -8277,7 +8263,7 @@ function LivePolicy({ policy, defaults, overrides }) {
  * the same object as one a whole month hangs off.
  */
 function PolicyHistory({
-  versions, unversioned, live, total,
+  versions, live, total,
 }) {
   /**
    * ── WHERE THE PAGE IS CUT, AND WHY IT IS CUT HERE AND NOT AT THE ENDPOINT ──
@@ -8338,17 +8324,6 @@ function PolicyHistory({
             be checked against each other without opening the database. */}
         {live?.hash && <> · ลายนิ้วมือกฎที่ใช้อยู่ <code>{live.hash}</code></>}
       </div>
-
-      {/* Said here rather than left for a report to discover: entries with no
-          version are the reason a monthly banner will refuse to say whether the
-          figures compare, and this page is where the fix is run from. */}
-      {unversioned > 0 && (
-        <Alert kind="warn">
-          มีใบ OT {unversioned} ใบที่ยังไม่ได้กำกับเวอร์ชัน (ยื่นก่อนระบบเริ่มบันทึก) ·
-          {' '}รัน <code>npm run migrate:policy-version</code> หนึ่งครั้งเพื่อกำกับให้ครบ ·
-          {' '}สคริปต์เขียนเฉพาะเลขเวอร์ชัน ไม่แตะชั่วโมงหรือสถานะของใบใด
-        </Alert>
-      )}
 
       {versions.length === 0 ? (
         <Empty>ยังไม่มีเวอร์ชันที่บันทึกไว้ — รัน npm run migrate:policy-version เพื่อสร้างเวอร์ชันแรก</Empty>

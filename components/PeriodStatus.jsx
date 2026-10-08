@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, periodLabel } from '@/lib/api.js';
 import { previousMonthOutstanding } from '@/lib/periodStatus.js';
 import { previousPeriod } from '@/lib/reports.js';
-import { Alert } from './common.jsx';
+import { Alert, NoticeRow } from './common.jsx';
 
 /**
  * สรุปสถานะงวด — what is still unanswered in this month, and nothing else.
@@ -112,7 +112,10 @@ export default function PeriodStatus({
   // button is on the card head now and never passed through here, so the wrapper
   // held nothing — and an empty strip is the one thing `.month-notices:empty`
   // cannot take off the page.
-  if (!state) return err ? <Alert kind="error">{err}</Alert> : null;
+  if (!state) {
+    if (!err) return null;
+    return compact ? <NoticeRow tone="error" title={err} /> : <Alert kind="error">{err}</Alert>;
+  }
 
   const lastMonth = previousMonthOutstanding(previous);
   /**
@@ -190,100 +193,36 @@ export default function PeriodStatus({
    */
 
   if (compact) {
+    /* ── หนึ่งแถวในกล่องแจ้งเตือนของหน้า — 2026-10-08 ─────────────────────────
+
+       เคยเป็น `.period-strip box warn|ok` ที่วาดเครื่องหมาย ⚠/✓ เอง เป็นแถวหนึ่ง
+       ใน `NoticeStack` ของ ตรวจสอบประจำเดือน ตามระบบแจ้งเตือนเดียวทั้งแอป
+       (components/common.jsx) — หัวเรื่องคือ `headline` ที่มีตัวเลข รายละเอียดคือ
+       ผลของมัน และเดือนก่อนอยู่หลัง ▾
+
+       เดือนที่ไม่มีอะไรค้างยังเป็นแถว ok: มันคือคำตอบของคำถามก่อนพิมพ์ ถ้าว่าง
+       *ตรวจแล้วไม่มีค้าง* กับ *ยังไม่โหลด* จะดูเหมือนกัน */
+    const detail = [
+      ...state.outstanding.map((item) => (state.outstanding.length > 1 ? item.text : item.why)),
+      ...(state.review.length
+        ? [`ควรตรวจก่อนพิมพ์ (ไม่ได้ค้างใคร) ${state.review.map((item) => item.text).join(' · ')}`]
+        : []),
+    ].join(' · ');
     return (
-      /**
-       * ── ⚠ `box warn` / `box ok` — 2026-09-11 ─────────────────────────────
-       *
-       * *"เปลี่ยนแจ้งเตือนนี้ … ให้เป็นสไตล์เดียวกับแจ้งเตือนด้านล่าง"*, pointing at
-       * the cream band สรุป OT ส่งบัญชี and สรุปแผนก carry over their totals —
-       * `ค้างอนุมัติ n รายการ … ซึ่งไม่ถูกนับในสรุปนี้`. IT IS THE SAME SENTENCE
-       * ABOUT THE SAME QUEUE, said one screen earlier, so it had no business
-       * being a differently-shaped object.
-       *
-       * `box` AND NOT A GROUND OF ITS OWN. `.box` is the app's four-palette
-       * band and those two screens wear it unmodified; `.period-strip` beside
-       * it now says only what a notice with a fold needs on top of one.
-       *
-       * ⚠ AND THE TWO STATES TAKE TWO PALETTES. `warn` while something is
-       * outstanding, `ok` when nothing is — a green band is the answer to the
-       * question this component exists to ask before somebody prints, and
-       * leaving the clear month blank would mean *checked, nothing pending*
-       * and *not loaded* look identical again. `.clear`/`.outstanding` are gone
-       * with the palettes they used to carry by hand.
-       */
-      <div className={`period-strip box ${state.clear ? 'ok' : 'warn'}`}>
-        {/* ── ⚠ ONE ROW, AND NOTHING IS FOLDED AWAY IN IT ──────────────────
-
-            It was a headline row, a `.strip-actions` row under it and a panel
-            behind รายละเอียด — three lines tall before anything was opened, in a
-            band whose other notices are one. Cut in two steps on 2026-09-11:
-            *"กระชับให้แสดงใน 1 แถว"* moved the verb into the sentence, and
-            *"ให้กระชับ ได้ใจความในแถวเดียว กันกับแจ้งเตือน เลยไม่ต้องกดซ่อนแสดง
-            รายละเอียด"* took the verb away as well.
-
-            ⚠ THE FOLD WAS NOT PROTECTING MUCH. What it hid was one consequence
-            clause and last month's count — two facts, both of them the reason
-            the headline matters, and both of them shorter than the control that
-            hid them. A notice whose point is *read this before you print* that
-            makes the reader press to find out why is a notice half of them will
-            not finish.
-
-            EVERYTHING IS TEXT IN ONE FLOW, not flex items. As separate items
-            this row broke BETWEEN them at 390px — the ⚠ took a line to itself,
-            the headline wrapped across two more, the verb landed on a fourth.
-            Written as a sentence it wraps the way a sentence wraps, and one row
-            is what a desktop sees. */}
-        <div className="strip-line">
-          {/* THE GLYPH IS NOT THE ONLY THING THAT SAYS WHICH — the band's own
-              palette says it too, and the word ค้าง or the tick is in the
-              headline itself. A ✓/⚠ carrying the whole message is one that a
-              reader with a colour deficiency and a screen reader both miss;
-              here it is the third telling, not the first. */}
-          <span className="strip-mark" aria-hidden="true">{state.clear ? '✓' : '⚠'}</span>
-          <strong className="strip-head">{state.headline}</strong>
-
-          {/* `why` AND NOT `text`, because the headline four words back already
-              carries the count — the first draft of the old card printed the
-              whole sentence and read "มีใบรออนุมัติค้างอยู่ 4 ใบ" twice, which
-              reads as a bug rather than as emphasis. Two outstanding things get
-              their `short` back, because then the headline holds two counts and
-              two bare consequences after it would be a matching exercise. */}
-          {state.outstanding.map((item) => (
-            <React.Fragment key={item.kind}>
-              {' · '}
-              {state.outstanding.length > 1 ? item.text : item.why}
-            </React.Fragment>
-          ))}
-
-          {/* Finished, and worth a second look before the sheet is signed —
-              after the outstanding pile and never in the headline, because
-              neither of these holds up a printout. */}
-          {state.review.length > 0 && (
-            <>
-              {' · ควรตรวจก่อนพิมพ์ (ไม่ได้ค้างใคร) '}
-              {state.review.map((item) => item.text).join(' · ')}
-            </>
-          )}
-
-          {/* Only when last month still has something unanswered in it. A quiet
-              finished month is silent — see `previousMonthOutstanding`.
-
-              IT NAMES THE BOX, NOT A DIRECTION. This read "เลือกเดือนนั้นด้านบน"
-              until 2026-09-10, pointing at a ประจำเดือน picker that has been
-              BELOW this line since the strip moved over the controls; a name
-              stays true wherever the box goes. Shortened to the verb and the box
-              on 2026-09-11 — เพื่อตรวจก่อนพิมพ์ is what the whole notice is for
-              and does not need saying a second time inside it. */}
-          {lastMonth && (
-            <>
-              {' · '}
+      <>
+        <NoticeRow
+          tone={state.clear ? 'ok' : 'warn'}
+          title={state.headline}
+          detail={detail || null}
+          more={lastMonth && (
+            <div>
               <strong>เดือนก่อน · {periodLabel(previousPeriod(period))}</strong>
               {' '}{lastMonthShorts} — เลือกที่ช่อง ประจำเดือน
-            </>
+            </div>
           )}
-        </div>
-        {err && <Alert kind="error">{err}</Alert>}
-      </div>
+        />
+        {err && <NoticeRow tone="error" title={err} />}
+      </>
     );
   }
 

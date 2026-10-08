@@ -393,11 +393,17 @@ test('whoever pressed print is told what the paper cannot say', () => {
   // reports a disagreement between this sheet and the other reports for the
   // month rather than something about the sheet alone, so it may least of all
   // be allowed onto the paper by accident.
+  // 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): หกกล่อง `no-print` กลายเป็นหกแถวใน
+  // `NoticeStack` กล่องเดียว — `no-print` อยู่ที่กล่อง จึงนับแถวแทน
+  assert.match(notices, /<NoticeStack id="print-form">/);
   assert.equal(
-    (notices.match(/className="no-print"/g) || []).length,
+    (notices.match(/<NoticeRow\b/g) || []).length,
     6,
-    'every notice block above the sheet must be marked no-print',
+    'every notice above the sheet must be a row in the stack',
   );
+  const common = sourceOf('components/common.jsx');
+  const stack = common.slice(common.indexOf('export function NoticeStack('), common.indexOf('export function NoticeRow('));
+  assert.match(stack, /notice-stack no-print/, 'the notice box reaches the paper');
 });
 
 /**
@@ -462,25 +468,35 @@ test('forty sheets raise one notice box, not forty — and it names its counts f
     assert.match(kinds, new RegExp(`key: '${key}'`), `the digest drops ${key} on a bundle`);
   }
 
-  // Counts always visible; names behind the toggle. `<details>` and not state:
-  // the list is rebuilt whenever the month or สถานะที่นับ changes.
-  assert.match(bundle, /<details className="notice-fold">\s*<summary>ดูรายละเอียด<\/summary>/);
+  // Counts always visible; names behind the toggle.
+  // 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): `<details className="notice-fold">`
+  // อันเดียวของทั้งกล่อง กลายเป็น ▾ ของแต่ละแถว — จำนวนอยู่ในหัวเรื่อง
+  // รายชื่ออยู่ใน `more`
+  const digest = bundle.slice(bundle.indexOf('function NoticeDigest('));
+  assert.match(digest, /title=\{kind\.title\(sheets\.length,/);
+  assert.match(digest, /more=\{<FoldGroup kind=\{kind\} sheets=\{sheets\} forms=\{forms\} \/>\}/);
+  assert.ok(!bundle.includes('notice-fold'), 'the digest grew its own fold again');
 
-  // And the box takes the loudest tone in it — an amber notice may not be
-  // quietened to blue by being counted beside one.
-  assert.match(bundle, /groups\.some\(\(\{ kind \}\) => kind\.level === 'warn'\) \? 'warn' : 'info'/);
+  // And no amber notice may be quietened to blue by being counted beside one —
+  // each kind is its own row now, in its own tone.
+  assert.match(digest, /tone=\{kind\.level\}/);
 });
 
 test('the notice box grows with its list — no cap, no scroller inside the page', () => {
   // It was capped at 120px and scrolled inside itself until 2026-09-10: the
   // counts scrolled out of view, the names were cut mid-line, and a second
   // scrollbar sat inside a page that already scrolls. The fold keeps it small.
+  // 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): `.notice-digest` ถูกถอด — ไดเจสต์เป็น
+  // แถวใน `NoticeStack id="print-batch"` จึงเฝ้ากล่องกลางแทน
   const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
-  const rule = css.slice(css.indexOf('.notice-digest {'), css.indexOf('.notice-digest > .alert'));
-  const body = rule.slice(0, rule.indexOf('}'));
-  assert.ok(!/max-height/.test(body), 'the digest is capped again');
-  assert.ok(!/overflow/.test(body), 'the digest scrolls inside itself again');
-  assert.match(sourceOf(BUNDLE), /className="no-print notice-digest"/);
+  const at = css.indexOf('.notice-stack {');
+  assert.ok(at > -1, 'the shared notice box has no rule');
+  const body = css.slice(at, css.indexOf('}', at));
+  assert.ok(!/max-height/.test(body), 'the notice box is capped again');
+  assert.ok(!/overflow-y/.test(body), 'the notice box scrolls inside itself again');
+  const bundle = sourceOf(BUNDLE);
+  assert.match(bundle, /<NoticeStack id="print-batch">[\s\S]*<NoticeDigest forms=\{forms \|\| \[\]\} asked=\{status\} \/>[\s\S]*<\/NoticeStack>/);
+  assert.ok(!bundle.includes('notice-digest'), 'the digest has a box of its own again');
 });
 
 test('an opened digest shows a few names per group and more on request', () => {

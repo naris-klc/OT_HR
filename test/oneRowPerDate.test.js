@@ -205,7 +205,8 @@ test('the screen warns, names the nights, and says which reports disagree', () =
     code.indexOf('export function F027Sheet'),
   );
   const block = notices.slice(notices.indexOf('form.notPrinted?.length > 0'));
-  assert.match(block.slice(0, 200), /Alert kind="warn"/, 'a short sheet is a warning, not a note');
+  // `tone="warn"` since 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป) — a NoticeRow, was `<Alert kind="warn">`.
+  assert.match(block.slice(0, 200), /tone="warn"/, 'a short sheet is a warning, not a note');
   // Through `ShowMore` since 2026-09-10 — the first few nights, more on request.
   assert.match(block, /items=\{form\.notPrinted\}/, 'the total alone does not say which night');
   // The whole reason this block exists: the paper and every other document for
@@ -223,7 +224,13 @@ test('the warning is on the screen and never on the paper', () => {
   const block = notices.slice(notices.indexOf('form.notPrinted?.length > 0'));
   // Adding a line to a controlled form to explain a line taken off it is not a
   // trade this sheet makes — the F027Sheet body must never see the list.
-  assert.match(notices.slice(notices.indexOf('form.notPrinted') - 400), /className="no-print"/);
+  // Since 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป) the row sits inside the
+  // page's `NoticeStack`, which is what carries `no-print`.
+  assert.ok(
+    notices.indexOf('<NoticeStack id="print-form">') < notices.indexOf('form.notPrinted?.length > 0')
+      && notices.indexOf('form.notPrinted?.length > 0') < notices.indexOf('</NoticeStack>'),
+    'the midnight notice left the notice box',
+  );
   assert.ok(block.length > 0);
   assert.doesNotMatch(code.slice(code.indexOf('export function F027Sheet')), /notPrinted/);
 });

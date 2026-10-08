@@ -50,20 +50,15 @@ test('ห้าแถบยืนพื้นไม่มีชั้นที�
     );
   }
 
+  /* ⚠ สองแถบบนคิวเป็น `NoticeRow` ตั้งแต่ 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป)
+     — ไม่มี `</Alert>` ให้ตัดอีกแล้ว และ `NoticeRow` ไม่มีชั้น `.say` เลย มีแค่
+     หัวเรื่องกับรายละเอียดสั้น ๆ ในแถวเดียว · ที่เฝ้าต่อคือสองแถบนั้นยังอยู่ และ
+     ไม่มี `.say` กลับมาในคิว */
   const queue = src('components/ApprovalQueue.jsx');
-  for (const [anchor, what] of [
-    // Shortened to one sentence on 2026-09-18 — the three clauses that named
-    // the count and what an approval records moved into the row's pop-up when
-    // the three approval queues became one. The dates stayed: they are a fact
-    // about the reader, and no row can carry them.
-    ['<strong>รับช่วงอนุมัติแทน</strong>', 'แถบรับช่วงอนุมัติแทนบนคิว'],
-    ['<strong>แสดง {cut.shown} จาก {cut.total} รายการ</strong>', 'แถบแสดง N จาก M บนคิว'],
-  ]) {
-    assert.ok(
-      !notice(queue, anchor, what).includes('className="say"'),
-      `${what}: ชั้น .say กลับมาแล้ว`,
-    );
-  }
+  assert.match(queue, /title=\{`รับช่วงอนุมัติแทน \$\{holding\.map\(/, 'หาไม่เจอ: แถบรับช่วงอนุมัติแทนบนคิว');
+  assert.match(queue, /title=\{`แสดง \$\{cut\.shown\} จาก \$\{cut\.total\} รายการ`\}/, 'หาไม่เจอ: แถบแสดง N จาก M บนคิว');
+  const stack = queue.slice(queue.indexOf('<NoticeStack id="queue">'), queue.indexOf('</NoticeStack>'));
+  assert.ok(!stack.includes('className="say"'), 'คิว: ชั้น .say กลับมาแล้ว');
 });
 
 /**
@@ -100,13 +95,17 @@ test('ชิปวันเกิดกับชิปบันทึกแท�
  *
  * เทสต์นี้จึงเฝ้าสิ่งที่ต้อง*อยู่* ไม่ใช่สิ่งที่ต้องหายไป
  */
-test('กล่องนโยบายการคำนวณยังเป็นฉบับเต็ม — ชั้นเงียบ รายการ และปุ่ม', () => {
+test('กล่องนโยบายการคำนวณยังเป็นฉบับเต็ม — รายการ และปุ่ม', () => {
   const admin = src('components/AdminView.jsx');
   const i = admin.indexOf('function UnrecordedPolicy(');
   assert.ok(i >= 0, 'หา UnrecordedPolicy ไม่เจอ');
   const box = admin.slice(i, admin.indexOf('const CHANGE_LABEL', i));
 
-  assert.ok(box.includes('className="say"'), 'ชั้นเงียบของกล่องนโยบายหายไป');
+  /* ⚠ "ชั้นเงียบ" (`className="say"`) ถูกยึดไว้จนถึง 2026-10-08 — วันนั้นกล่องนี้เป็น
+     `NoticeRow` (ระบบแจ้งเตือนเดียวทั้งแอป) และรายการ drift ย้ายไปอยู่หลัง ▾
+     (`more`) ซึ่งเป็นที่ของ "รายการ" ในระบบนั้น · สิ่งที่ต้องอยู่ยังอยู่ครบ */
+  assert.match(box, /<NoticeRow/, 'กล่องนโยบายไม่ได้เป็นแถวในกล่องแจ้งเตือน');
+  assert.match(box, /more=\{/, 'รายการ drift ไม่มีที่อยู่หลัง ▾');
   assert.ok(box.includes('live.drift'), 'รายการสิ่งที่ต่างจากเวอร์ชันล่าสุดหายไป');
   assert.ok(box.includes('บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่'), 'ปุ่มบันทึกเวอร์ชันหายไป');
 });

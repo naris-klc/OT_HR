@@ -170,10 +170,13 @@ test('under 560 the buttons are a thumb tall and take the line', () => {
 
 // ── the amber count ─────────────────────────────────────────────────────────
 
-test('the count of rows with no reason is a tight notice', () => {
-  assert.match(card, /<Alert kind="warn" tight>/);
-  // `tight` is a size `Alert` already had — this change added no fourth one.
-  assert.match(css, /\.alert\.tight \{ padding: 10px 12px; font-size: 12\.5px; \}/);
+test('the count of rows with no reason is a row in the screen\'s notice box', () => {
+  // It was `<Alert kind="warn" tight>` until 2026-10-08 — ระบบแจ้งเตือนเดียว
+  // ทั้งแอป made every standing banner a `NoticeRow` inside a `NoticeStack`.
+  // The intent is the same: the count is stated above the table, compactly,
+  // with the count itself in the title.
+  assert.match(card, /<NoticeStack id="log-exceptions">/);
+  assert.match(card, /<NoticeRow\s+tone="warn"\s+title=\{`\$\{data\.withoutReason\} รายการไม่มีเหตุผลบันทึกไว้`\}/);
 });
 
 // ── and the ⓘ is the app's, not a second one ────────────────────────────────

@@ -131,12 +131,41 @@ const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
  */
 const bannerCode = banner.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-/** The `.announce > .fold-pill` inside the phone block, not the base one above it. */
-const phonePill = (() => {
-  const media = css.indexOf('@media (max-width: 860px)', css.indexOf('\n.announce {'));
-  const at = css.indexOf('.announce > .fold-pill {', media);
-  return { media, at, rule: at > 0 ? css.slice(at, css.indexOf('}', at)) : '' };
-})();
+/* ⚠ แถบนี้เป็น `.announce` สีเขียวของตัวเองจนถึง 2026-10-08 และหกเทสต์ที่ยึด
+   กฎ CSS ของมัน (อยู่ในเนื้อหน้า · โทเคนสี · ปุ่มปฏิทินบนมือถือ · ขอบปุ่ม · ชื่อยาว
+   ตัดบรรทัด · ปุ่มลงแถวของตัวเอง) ถูกเขียนใหม่ข้างล่างให้ยึดกล่องแจ้งเตือนกลาง
+   (`.notice-*`) ที่ตอนนี้วาดมัน — เหตุผลของแต่ละข้อยังเป็นของเดิม */
+const ruleOf = (sel, from = 0) => {
+  const at = css.indexOf(`${sel} {`, from);
+  return at < 0 ? '' : css.slice(at, css.indexOf('}', at));
+};
+const phoneAt = css.indexOf('@media (max-width: 860px)', css.indexOf('\n.notice-stack {'));
+
+test('the banner is in flow, in the theme\'s own tokens', () => {
+  // `.appbar` and the tab strip are pinned already; a third pinned band would
+  // hold ~90px more of a 780px phone before the first field.
+  assert.ok(!/position:\s*(sticky|fixed)/.test(ruleOf('\n.notice-stack')), 'กล่องแจ้งเตือนกลายเป็นแถบปัก');
+  assert.match(ruleOf('\n.notice-row.info'), /background: var\(--info-bg\)/, 'พื้นไม่ได้ใช้โทเคน');
+  assert.match(bannerCode, /<NoticeRow\s+tone="info"/);
+});
+
+test('on a phone the calendar button is a full-width, tappable row of its own', () => {
+  // Reported on 2026-08-28: a phone-width button hugging the left edge with the
+  // card empty beside it. 44px is the number this app uses for every phone target.
+  const rule = ruleOf('.notice-body-act > :is(button, a)', phoneAt);
+  assert.ok(phoneAt > 0 && rule, 'ไม่พบกฎปุ่มทำต่อในบล็อกมือถือ');
+  assert.match(rule, /width: 100%/);
+  assert.match(rule, /min-height: 44px/);
+  // AND NOT THE BRAND GREEN — `+ บันทึก OT ใหม่` is the one primary on this screen.
+  assert.match(bannerCode, /className="btn ghost sm"/);
+});
+
+test('a long holiday name wraps instead of pushing the button off the right edge', () => {
+  const text = ruleOf('\n.notice-text');
+  assert.match(text, /flex: 1/);
+  assert.match(text, /min-width: 0/);
+  assert.match(ruleOf('\n.notice-acts'), /flex: none/);
+});
 
 test('the banner is on BOTH employee screens — the dashboard and the form', () => {
   // Asked for as "หน้า Dashboard และหน้ายื่นคำขอ OT". On this app those are one
@@ -146,6 +175,10 @@ test('the banner is on BOTH employee screens — the dashboard and the form', ()
   const mounts = employee.match(/<HolidayBanner/g) || [];
   assert.equal(mounts.length, 2, 'แถบประกาศต้องอยู่ทั้งหน้า Dashboard และหน้ายื่นคำขอ');
   assert.ok(employee.includes("import HolidayBanner from './HolidayBanner.jsx'"));
+  // Each inside the screen's one notice box since 2026-10-08, with the landing
+  // tab's other rows (`notices`) beside it — ระบบแจ้งเตือนเดียวทั้งแอป.
+  const stacked = employee.match(/<NoticeStack id="employee-home">\s*\{notices\}\s*<HolidayBanner/g) || [];
+  assert.equal(stacked.length, 2, 'แถบประกาศไม่ได้อยู่ในกล่องแจ้งเตือนของหน้า');
 });
 
 test('there is no state in which it disappears, and none in which it is half-drawn', () => {
@@ -188,7 +221,12 @@ test('there is no state in which it disappears, and none in which it is half-dra
   for (const gone of ['hidden={', 'announce-fold', 'collapsed', 'ot-holiday-fold', 'localStorage']) {
     assert.ok(!bannerCode.includes(gone), `แถบประกาศมี ${gone} อีกแล้ว`);
   }
-  assert.ok(bannerCode.includes('useOneLine({'), 'แถบประกาศพับด้วยกลไกของตัวเองแทนที่จะใช้ของกลาง');
+  // ⚠ IT PINNED `useOneLine({` UNTIL 2026-10-08. Since then the row is a
+  // `NoticeRow` and hiding belongs to the `NoticeStack` around it — whose memory
+  // is keyed on the row's TITLE, so a new month shows it again. ระบบแจ้งเตือน
+  // เดียวทั้งแอป: no private fold here, and none from `useOneLine` either.
+  assert.match(bannerCode, /<NoticeRow\s+tone="info"/, 'แถบประกาศพับด้วยกลไกของตัวเองแทนที่จะใช้ของกลาง');
+  assert.ok(!/useOneLine|foldClick/.test(bannerCode), 'แถบประกาศยังมีที่พับของตัวเองซ้อนกับของกล่องแจ้งเตือน');
 
   // `onClose` and the dialog's own state are a different thing and must stay:
   // the calendar is a Modal somebody opened, not a part of the row being hidden.
@@ -199,77 +237,56 @@ test('the row says the whole announcement — heading, count, days, and the empt
   // *"กระชับให้เป็นแถวเดียว แต่ได้เนื้อหาครบถ้วน"*, 2026-09-11. The second half
   // is the one a compression breaks, so it is the one pinned: every fact the
   // three-row version carried is still written by this component.
-  assert.ok(bannerCode.includes('ประกาศวันหยุดประจำเดือน {periodLabel(period)}'), 'หัวข้อหายไปจากแถว');
-  assert.ok(bannerCode.includes('{inMonth.length} วัน'), 'จำนวนวันหยุดของเดือนหายไป');
-  assert.ok(bannerCode.includes('เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้'), 'เดือนที่ไม่มีวันหยุดกลับไปเงียบ');
-  assert.ok(bannerCode.includes('วันหยุดถัดไปคือ'), 'วรรควันหยุดถัดไปหายไป');
+  //
+  // ⚠ RE-CUT ON 2026-10-08 into a `NoticeRow` (ระบบแจ้งเตือนเดียวทั้งแอป): the
+  // month and the count are the TITLE — the text the stack remembers when it is
+  // hidden, so a new month or a new day brings the row back — the day numbers
+  // are the `detail`, and every name is in `more`. Until then this test pinned
+  // one inline flow under an `<h3 className="announce-head">`.
+  assert.ok(bannerCode.includes('ประกาศวันหยุดเดือน${periodLabel(period)} · ${inMonth.length} วัน'),
+    'หัวเรื่องไม่ได้บอกเดือนกับจำนวนวัน');
+  assert.ok(bannerCode.includes('ไม่มีวันหยุดบริษัทที่ประกาศไว้'), 'เดือนที่ไม่มีวันหยุดกลับไปเงียบ');
+  assert.ok(bannerCode.includes('วันหยุดถัดไป'), 'วรรควันหยุดถัดไปหายไป');
   assert.ok(bannerCode.includes('{h.name}'), 'ชื่อวันหยุดหายไปจากแถว');
+  assert.match(bannerCode, /title=\{title\}[\s\S]*detail=\{detail \|\| null\}[\s\S]*more=\{more\}/,
+    'แถวไม่ได้แบ่งเป็น หัวเรื่อง · รายละเอียด · ส่วนที่กาง');
 
-  // ONE FLOW AND NOT FOUR BLOCKS, which is the mechanism rather than the
-  // result. A `<ul>`, a `<p>` and an `<h3>` cannot share a line however short
-  // they are; written as text in one container the row breaks where a SENTENCE
-  // breaks. `.announce-days` and `.announce-none` were those blocks.
-  // `.one-line` rides the same container while folded (2026-09-15) — the class
-  // is added, the flow is not split.
-  assert.match(bannerCode, /className=\{`announce-line\$\{folded \? ' one-line' : ''\}`\}/, 'ไม่มีสายข้อความเดียวของแถว');
-  for (const block of ['announce-days', 'announce-none', '<ul', '<li', '<p ']) {
-    assert.ok(!bannerCode.includes(block), `${block} ยังอยู่ — แถวจะแตกเป็นก้อนแทนที่จะตัดแบบประโยค`);
+  // NO BLOCKS OF ITS OWN. The row is the shared `NoticeRow`; the old
+  // `.announce-*` pieces were this component's private layout.
+  for (const block of ['announce-', '<ul', '<li', '<p ', '<h3']) {
+    assert.ok(!bannerCode.includes(block), `${block} ยังอยู่ — แถวนี้ต้องเป็น NoticeRow ของกลาง`);
   }
-
-  // STILL AN <h3>. Inline is where it is drawn, not what it is: a screen reader
-  // has to be able to find the announcement as a heading.
-  assert.match(bannerCode, /<h3 className="announce-head">/, 'หัวข้อไม่ใช่ heading อีกแล้ว');
-  const head = css.slice(css.indexOf('\n.announce-head {'), css.indexOf('}', css.indexOf('\n.announce-head {')));
-  assert.match(head, /display: inline/, 'หัวข้อยังเป็น block — มันจะกินบรรทัดของตัวเอง');
-  assert.ok(!/margin: 0 0 \d/.test(head), 'หัวข้อยังมีระยะใต้ตัวเอง ทั้งที่ไม่มีอะไรอยู่ใต้มันแล้ว');
 });
 
-test('เดือนยาว ๆ บอกสามวันแล้วนับที่เหลือ — และที่เหลืออยู่หลังปุ่มที่เห็นอยู่', () => {
-  // "ทั้งสองสถานะ แต่เกิน 3 วันให้ย่อ", 2026-09-11. สงกรานต์ alone is three
-  // days; a month at five or six spelled out is a paragraph pretending to be a
-  // row, which is the thing being fixed.
-  assert.ok(bannerCode.includes('const NAMED = 3'), 'จำนวนวันที่เอ่ยชื่อไม่ใช่ค่าคงที่ที่อ่านได้แล้ว');
-  assert.ok(bannerCode.includes('inMonth.slice(0, NAMED)'), 'แถวไม่ได้ตัดที่ NAMED');
-  assert.ok(bannerCode.includes('และอีก ${rest} วัน'), 'ไม่ได้บอกว่าที่เหลือมีกี่วัน');
+test('ทุกวันของเดือนมีชื่ออยู่ใน more — และปฏิทินทั้งปีอยู่ที่ปุ่มของแถว', () => {
+  // ⚠ UNTIL 2026-10-08 THIS WAS "เดือนยาว ๆ บอกสามวันแล้วนับที่เหลือ": the row
+  // named three (`NAMED = 3`) and counted the rest, because a month at five or
+  // six spelled out on one line was a paragraph pretending to be a row. In a
+  // `NoticeRow` the list is behind ▾, where it has room, so nothing is counted
+  // instead of named any more.
+  assert.ok(!bannerCode.includes('NAMED'), 'ยังตัดรายชื่อที่สามวันทั้งที่ more มีที่พอ');
+  assert.match(bannerCode, /const more = inMonth\.length > 0 \? inMonth\.map\(/, 'more ไม่ได้มีครบทุกวัน');
 
-  // AND THE REST IS NOT BEHIND A PRESS NOBODY CAN FIND, which is what
-  // `test/disclosure.test.js` refuses in ScanImport. ปฏิทินวันหยุดประจำปี is
-  // the next thing on the same row and it lists the whole year by month.
-  assert.ok(bannerCode.includes('setShowCalendar(true)'), 'ไม่มีปุ่มเปิดปฏิทินที่จะไปดูวันที่เหลือ');
-  assert.ok(bannerCode.includes('ดูปฏิทินวันหยุดประจำปี'), 'ปุ่มไม่ได้บอกว่ามันพาไปดูอะไร');
+  // ปฏิทินวันหยุดประจำปี is the row's one action.
+  assert.ok(bannerCode.includes('setShowCalendar(true)'), 'ไม่มีปุ่มเปิดปฏิทิน');
+  assert.match(bannerCode, /action=\{\(\s*<button[^\n]*className="btn ghost sm"[^\n]*setShowCalendar\(true\)\}>\s*ดูปฏิทิน/,
+    'ปุ่มปฏิทินไม่ได้เป็น action ของแถว');
 });
 
 test('a day in the row is a number, a weekday in brackets, and a name — in that rank', () => {
   // THE DAY NUMBER AND NOT `thaiDate`, and that follows the app's one-date-form
-  // rule rather than breaking it: under a heading that already says สิงหาคม
+  // rule rather than breaking it: under a title that already says สิงหาคม
   // 2569, `12/08/2569` is three quarters of a repetition — the same reason the
   // ปฏิทินวันหยุดประจำปี table prints a day number under its month heading.
-  assert.match(bannerCode, /className="when">\{Number\(h\.date\.slice\(8, 10\)\)\}/, 'วันที่ในแถวยังพิมพ์เดือนซ้ำกับหัวข้อ');
-  // THE WEEKDAY IS ABBREVIATED, AND ONLY HERE. It is a CHECK on the date, and
-  // three of `(วันพุธ)` in one row is the row this change exists to shorten.
-  // The empty-month clause keeps the long form: one date, in prose, in another
-  // month from the heading.
-  assert.match(bannerCode, /className="dow">\(\{dayAbbr\(h\.date\)\}\)/, 'ชื่อวันในแถวไม่ได้ย่อ');
+  assert.match(bannerCode, /const day = \(h\) => Number\(h\.date\.slice\(8, 10\)\)/, 'วันที่ในแถวยังพิมพ์เดือนซ้ำกับหัวข้อ');
+  // THE WEEKDAY IS ABBREVIATED in the list. It is a CHECK on the date. The
+  // empty-month clause keeps the long form: one date, in another month.
+  assert.match(bannerCode, /<strong>\{day\(h\)\}<\/strong> \(\{dayAbbr\(h\.date\)\}\) \{h\.name\}/,
+    'รายการไม่ได้เป็น วันที่ (ชื่อวันย่อ) ชื่อวันหยุด');
   assert.match(bannerCode, /\(วัน\$\{dayName\(upcoming\.date\)\}\)/, 'วันหยุดถัดไปเสียชื่อวันแบบเต็มไป');
-
-  // THE RANK IS THE ONE THE STACKED ENTRY HAD — only the axis moved. The
-  // weekday is the quietest (`--muted`): it is read once, to check the date.
-  // The name is the announcement's CONTENT and must not be as quiet as its own
-  // cross-check (`--ink-2`, the step between `--muted` and the date's `--ink`)
-  // — it read `--muted` for one round in 2026-08 and was reported as too faint.
-  const rule = (sel) => css.slice(css.indexOf(sel), css.indexOf('}', css.indexOf(sel)));
-  assert.match(rule('.announce-line .when {'), /font-weight: 600/, 'วันที่ไม่ได้หนักกว่าคำรอบข้าง');
-  assert.match(rule('.announce-line .dow {'), /color: var\(--muted\)/, 'ชื่อวันไม่ใช่เสียงที่เบาที่สุดแล้ว');
-  assert.match(rule('.announce-line .what {'), /color: var\(--ink-2\)/, 'ชื่อวันหยุดจางเท่าตัวตรวจสอบวันที่');
-
-  // AND NOT A STEP SMALLER, which is the one thing that changed with the axis.
-  // Stacked, the name and the weekday were 12.5px under a 13.5px date — the
-  // second line of an entry is subordinate by position too. On one line there
-  // is no second line, and 12.5px beside 13.5px inside a sentence is a wobble
-  // in the type rather than a rank.
-  for (const sel of ['.announce-line .dow {', '.announce-line .what {']) {
-    assert.ok(!/font-size/.test(rule(sel)), `${sel} ยังย่อขนาดตัวอักษร — ในประโยคเดียวกันมันจะอ่านเป็นตัวสั่น ไม่ใช่ลำดับ`);
-  }
+  // ⚠ The `.announce-line .when/.dow/.what` colour ranks this test pinned until
+  // 2026-10-08 went with the inline row: in `more` the date is bold and the
+  // rest is the notice's own ink.
 });
 
 test('the browser is not asked to remember anything about this banner', () => {
@@ -293,23 +310,7 @@ test('the browser is not asked to remember anything about this banner', () => {
   assert.ok(!bannerCode.includes('useId'), 'ยังสร้าง id ของแผงที่ไม่มีอยู่แล้ว');
 });
 
-test('the banner is in flow and is not a third pinned band', () => {
-  const rule = css.slice(css.indexOf('\n.announce {'), css.indexOf('}', css.indexOf('\n.announce {')));
-  assert.ok(rule.length > 0, 'ไม่พบกฎ .announce');
-  // `.appbar` is `sticky; top: 0` and the tab strip is `sticky; top: 62px`. A
-  // third pinned band would hold ~90px more of a 780px phone, so a quarter of
-  // the viewport would be furniture before the first field.
-  assert.ok(!/position:\s*(sticky|fixed)/.test(rule),
-    'แถบประกาศกลายเป็นแถบปักที่สาม — บนมือถือจะกินพื้นที่ก่อนถึงช่องกรอกแรก');
-});
 
-test('the green is the theme\'s token, not a dark-mode hex', () => {
-  const rule = css.slice(css.indexOf('\n.announce {'), css.indexOf('}', css.indexOf('\n.announce {')));
-  assert.match(rule, /background: var\(--green-bg\)/,
-    'พื้นหลังไม่ได้ใช้โทเคน — สีที่เลือกมือจะถูกแค่ธีมเดียวจากสองธีมที่แอปนี้มี');
-  assert.match(rule, /var\(--green-accent\)/, 'ขอบไม่ได้มาจาก --green-accent');
-  assert.match(rule, /border-radius: var\(--radius-sm\)/, 'มุมไม่ได้อยู่ในตระกูลเดียวกับ .alert');
-});
 
 test('somewhere still says that เสาร์–อาทิตย์ are holidays without being announced', () => {
   // Saturday and Sunday are holidays BY RULE and are deliberately not rows in
@@ -336,36 +337,7 @@ test('the calendar dialog reuses the rows the banner already fetched', () => {
   assert.ok(banner.includes('holidays={holidays}'), 'ปฏิทินไม่ได้รับรายการที่โหลดมาแล้ว');
 });
 
-test('on a phone the calendar button is the card\'s own row, at a tappable height', () => {
-  // Reported on 2026-08-28 after the banner shipped: on a phone the paragraph
-  // above wraps to three lines and the pill landed alone under the last of
-  // them, hugging the left edge with the card empty to its right.
-  // IT IS THE ONE INSIDE THE PHONE BLOCK, not the base rule above it that sets
-  // the gap. On a desktop the pill sits at the end of a line of text and is read
-  // as part of the paragraph; stretched there it would be a 1100px-wide button
-  // for a secondary link.
-  assert.ok(phonePill.media > 0 && phonePill.at > phonePill.media, 'ไม่พบกฎปุ่มปฏิทินในบล็อกจอมือถือ');
-  assert.match(phonePill.rule, /width: 100%/, 'ปุ่มไม่ได้เต็มความกว้างการ์ด');
-  assert.match(phonePill.rule, /justify-content: center/, 'ข้อความในปุ่มไม่ได้อยู่กึ่งกลาง');
-  // 44px is the number this app uses for every phone target — `.action-row > .btn`
-  // and `.pick-list .check` in the same block. The pill's desktop height is
-  // about 24px, which is a target for a mouse.
-  assert.match(phonePill.rule, /min-height: 44px/, 'ปุ่มยังสูงเท่าขนาดเดสก์ท็อป — เล็กเกินไปสำหรับนิ้ว');
-});
 
-test('the calendar button stays outlined and stays out of the primary\'s way', () => {
-  const rule = phonePill.rule;
-  // Asked for as "ขอบเส้นสว่าง Background โปร่งใส". The transparent half was
-  // already true — `.fold-pill` is `background: none` — so what moved is the
-  // edge: the same currentColor derivation, from 28% to 55%.
-  assert.match(rule, /border-color: color-mix\(in srgb, currentColor 55%, transparent\)/,
-    'ขอบปุ่มไม่ได้สว่างขึ้น');
-  assert.ok(!/background:/.test(rule), 'ปุ่มปฏิทินได้พื้นหลังมา — ต้องโปร่งใส');
-  // AND NOT THE BRAND GREEN. `+ บันทึก OT ใหม่` is the filled green button and
-  // the only primary action on this screen; a second green control one card
-  // away — even an outlined one — makes the reader decide which is the point.
-  assert.ok(!/--green/.test(rule), 'ปุ่มรองใช้สีเขียวของแบรนด์ ไปแย่งกับปุ่มหลัก');
-});
 
 test('the rates sentence is gone and has not crept back', () => {
   // Removed on request 2026-08-28, having been argued for here — which is
@@ -375,30 +347,6 @@ test('the rates sentence is gone and has not crept back', () => {
   assert.ok(!bannerCode.includes('announce-rule'), 'ย่อหน้าเงื่อนไขยังอยู่ในคอมโพเนนต์');
 });
 
-test('a long holiday name wraps instead of pushing the pill off the right edge', () => {
-  // ⚠ THIS TEST USED TO SAY "each holiday is two lines". The name rode ON the
-  // date's line, was removed, and came back as a line of its own — three rounds
-  // on 2026-08-28 — because `วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชชนนีพันปีหลวง`
-  // beside its date wrapped to three lines on a phone and dragged the entries
-  // under it out of alignment. That failure was about a COLUMN of entries
-  // losing its left edge, and there is no column now: one sentence has no rows
-  // to knock out of line, and `YEAR` above keeps that name as the fixture.
-  //
-  // WHAT THE SAME NAME CAN STILL DO IS PUSH THE ROW'S OTHER ITEM OFF THE EDGE,
-  // and the answer is the rule §Responsive in AGENTS.md names first: a flex
-  // child refuses to shrink below its content without `min-width: 0`.
-  const line = css.slice(css.indexOf('\n.announce-line {'), css.indexOf('}', css.indexOf('\n.announce-line {')));
-  assert.match(line, /min-width: 0/, 'ชื่อวันหยุดยาว ๆ จะดันปุ่มปฏิทินตกขอบแทนที่จะตัดบรรทัด');
-  assert.match(line, /flex: 1/, 'สายข้อความไม่ได้กินที่ที่เหลือ — ปุ่มจะไม่ไปชิดขวา');
-
-  // AND THE PILL IS THE ROW'S OTHER ITEM, held at the far end whatever the
-  // sentence's length — "ดันไปชิดขอบขวาของแถว", 2026-09-11. `.fold-pill`'s own
-  // 8px top margin separates a control from a paragraph ABOVE it; beside one it
-  // would push the pill off the line.
-  const pill = css.slice(css.indexOf('\n.announce > .fold-pill {'), css.indexOf('}', css.indexOf('\n.announce > .fold-pill {')));
-  assert.match(pill, /flex: none/, 'ปุ่มปฏิทินยืดหดตามแถว');
-  assert.ok(!/margin: 0 0 0|margin-top: (8|10)px/.test(pill), 'ปุ่มปฏิทินยังถูกดันลงจากบรรทัด');
-});
 
 test('the name drawn is whatever the calendar says, with nothing reading the text', () => {
   // THE DISTINCTION THIS FILE EXISTS TO HOLD, and it has now been tested from
@@ -409,11 +357,12 @@ test('the name drawn is whatever the calendar says, with nothing reading the tex
   // paid OT at the wrong rate for months. A day named badly is fixed where the
   // name is, on ตั้งค่าระบบ → วันหยุดบริษัท.
   assert.ok(!/ทดสอบ/.test(bannerCode), 'คอมโพเนนต์รู้จักชื่อวันหยุดเฉพาะราย — ห้ามกรองตามเนื้อหา');
-  const list = bannerCode.slice(bannerCode.indexOf('announce-line'), bannerCode.indexOf('function HolidayCalendar'));
+  // From `const more` since 2026-10-08, when the list moved into the row's ▾.
+  const list = bannerCode.slice(bannerCode.indexOf('const more'), bannerCode.indexOf('function HolidayCalendar'));
   assert.ok(list.includes('{h.name}'), 'รายการในแถบไม่ได้แสดงชื่อวันหยุด');
-  // `named` IS A SLICE AND NOTHING ELSE — the only reason a day is not spelled
-  // out is that it is the fourth, never that of what it is called.
-  assert.ok(!/named\s*=\s*inMonth\.filter/.test(bannerCode), 'การตัดสามวันกลายเป็นการกรอง ไม่ใช่การตัดท้าย');
+  // EVERY DAY OF THE MONTH IS LISTED — no filter, since 2026-10-08 not even
+  // the slice to three that `named` was.
+  assert.ok(!/inMonth\.filter/.test(bannerCode), 'รายการวันหยุดกลายเป็นการกรอง');
   assert.ok(!/name\s*(===|!==|\.includes|\.match|\.startsWith)/.test(bannerCode),
     'มีการอ่านเนื้อหาของชื่อวันหยุดมาตัดสินใจ');
   // …and the dialog still prints all three columns.
@@ -421,23 +370,6 @@ test('the name drawn is whatever the calendar says, with nothing reading the tex
   assert.ok(dialog.includes('{h.name}'), 'ปฏิทินทั้งปีต้องยังบอกชื่อวันหยุด');
 });
 
-test('on a phone the pill drops to its own line by asking for the whole width', () => {
-  // ⚠ THIS TEST PINNED `margin-top: 10px` UNTIL 2026-09-11 — the gap between a
-  // stacked list of dates and the button under it, tuned against the 3px
-  // between that list's rows so the button did not read as a fourth date. There
-  // is no list and no stack: the pill is the row's right-hand corner now, and
-  // what needs pinning is the one width at which it stops being one.
-  //
-  // `flex-basis: 100%` AND `flex-wrap` ON THE ROW, and no second container.
-  // The mark and the sentence have already taken the first line, so an item
-  // asking for the full width cannot join them and wraps below — which is why
-  // there is no phone-only copy of this button to keep in step with the
-  // desktop one.
-  const row = css.slice(phonePill.media, css.indexOf('.announce-mark', phonePill.media));
-  assert.match(row, /\.announce \{[^}]*flex-wrap: wrap/, 'แถวไม่ได้ยอมให้ตัดบรรทัด ปุ่มจะเบียดอยู่บรรทัดเดียวกัน');
-  assert.match(phonePill.rule, /flex: 1 0 100%/, 'ปุ่มไม่ได้ขอความกว้างทั้งแถว จึงไม่ตกลงมาเป็นแถวของตัวเอง');
-  assert.ok(!/margin-top/.test(phonePill.rule), 'ปุ่มบนมือถือยังถือระยะบนของตัวเอง ทั้งที่ gap ของแถวจัดการให้แล้ว');
-});
 
 test('the year is fetched per year, not per month', () => {
   // The dashboard's month picker changes `period` on every press. Keyed on the
@@ -464,9 +396,8 @@ test('กฎของปุ่มย่อถูกลบทิ้งจริ�
     assert.ok(!css.includes(`${gone} {`) && !css.includes(`${gone},`),
       `กฎ ${gone} ยังค้างอยู่ทั้งที่ไม่มีใครวาดแล้ว`);
   }
-  // The other ▲/▼ in this app is a different control on a different panel and
-  // keeps its 44px target — the phone block still has `.alert-fold`.
-  assert.match(css.slice(phonePill.media), /\.alert-fold \{/, 'ปุ่มย่อของกล่องแจ้งเตือนหายไปด้วย');
+  // ⚠ `.alert-fold` ถูกยึดว่ายังอยู่จนถึง 2026-10-08 — วันนั้นมันออกไปพร้อม
+  // `AlertFold` เมื่อแจ้งเตือนทั้งแอปเป็น `NoticeRow` (ดู test/disclosure.test.js)
 });
 
 /**
@@ -596,6 +527,9 @@ test('ทุกบทบาทเห็นประกาศ ไม่ใช่�
   const bare = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
   assert.match(bare, /\{tab === home && home !== 'mine' && \(/,
     'แถบประกาศไม่ได้ผูกกับหน้าแรกของบทบาท');
+  // In the landing tab's one `NoticeStack` since 2026-10-08.
+  assert.match(bare, /<NoticeStack id="home">\s*\{homeNotices\}\s*<HolidayBanner \/>\s*<\/NoticeStack>/,
+    'แถบประกาศไม่ได้อยู่ในกล่องแจ้งเตือนของหน้าแรก');
 
   // `home` IS THE ROLE. If defaultTab stops answering for every role, this
   // mount silently stops covering one of them — so the two are read together.

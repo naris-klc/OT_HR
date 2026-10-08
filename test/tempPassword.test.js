@@ -519,8 +519,12 @@ test('every path that issues one also demands it be replaced', () => {
   // could reach and no other — until 2026-09-03; it is a strip on the landing
   // tab now. What must never be true is that NOTHING reads the flag, which is
   // what deleting the gate would have left had the strip not gone in with it.
+  // Since 2026-10-08 the strip is a `NoticeRow` among the landing tab's rows
+  // (`homeNotices`), drawn only inside the `tab === home` stacks — ระบบ
+  // แจ้งเตือนเดียวทั้งแอป.
   const app = strip(readFileSync(join(ROOT, 'components/App.jsx'), 'utf8'));
-  assert.match(app, /tab === home && user\.mustChangePassword && \(/);
+  assert.match(app, /\{user\.mustChangePassword && <PasswordReminder /);
+  assert.match(app, /tab === home && home !== 'mine' && \(\s*<NoticeStack id="home">\s*\{homeNotices\}/);
 
   // Cleared in one place only, by the person who typed the new value.
   const self = strip(readFileSync(join(ROOT, 'app/api/employees/me/password/route.js'), 'utf8'));
@@ -551,9 +555,12 @@ test('signing in reaches the app, and the flag is said in ink instead', () => {
   // 2. AND THE FLAG IS STILL READ, on the landing tab, by the one thing left
   //    that says a รหัสพนักงาน printed on every ใบ OT is this account's
   //    working password.
+  //    A `warn` `NoticeRow` in the landing tab's `NoticeStack` since 2026-10-08.
   assert.match(app, /function PasswordReminder\(/);
-  assert.match(app, /tab === home && user\.mustChangePassword && \(/);
-  assert.match(app, /<PasswordReminder onOpenProfile=\{openPasswordChange\}/);
+  assert.match(app, /user\.mustChangePassword && <PasswordReminder onOpenProfile=\{openPasswordChange\}/);
+  assert.match(app, /notices=\{tab === home \? homeNotices : null\}/);
+  const reminder = app.slice(app.indexOf('function PasswordReminder('), app.indexOf('function Login('));
+  assert.match(reminder, /<NoticeRow\s+tone="warn"/);
   // And that press names the CARD, not just the tab — ข้อมูลส่วนตัว opens at
   // ข้อมูลของคุณ and เปลี่ยนรหัสผ่าน is the fourth card down it. See the jump
   // section in test/profileActions.test.js for the landing itself.

@@ -4,8 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { api, hours, withHours, currentPeriod, periodLabel } from '@/lib/api.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
 import {
-  Alert, BirthdayNote, Empty, ExportMenu, OverCeilingFigure, OverCeilingNote, PickOne,
-  UnaccountedHours,
+  BirthdayNote, Empty, ExportMenu, NoticeRow, NoticeStack, OverCeilingFigure,
+  OverCeilingNote, PickOne, UnaccountedHours,
 } from './common.jsx';
 import DepartmentPrint from './DepartmentPrint.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -208,21 +208,25 @@ export default function DepartmentView() {
         </div>
       </div>
 
-      {error && <Alert kind="error">{error}</Alert>}
+      {/* 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): เรื่องที่ค้างบนหน้านี้เป็นแถวใน
+          กล่องแจ้งเตือนกล่องเดียว แทนกล่องแยกที่ซ้อนกัน */}
+      <NoticeStack id="department">
+        {error && <NoticeRow tone="error" title={error} />}
 
-      {/* Same report, same shortfall: this sheet regroups the very rows สรุป OT
-          ส่งบัญชี prints, so an entry that reached no row there reaches none
-          here either — and every department total is short with nothing on the
-          page saying so. */}
-      <UnaccountedHours unaccounted={data?.unaccounted} />
+        {/* Same report, same shortfall: this sheet regroups the very rows สรุป
+            OT ส่งบัญชี prints, so an entry that reached no row there reaches
+            none here either — and every department total is short with nothing
+            on the page saying so. */}
+        <UnaccountedHours unaccounted={data?.unaccounted} />
 
-      {data?.pending?.count > 0 && (
-        <div className="box warn no-print">
-          เดือนนี้ยังมีรายการค้างอนุมัติ {data.pending.count} รายการ ของพนักงาน {data.pending.employees} คน
-          {' '}({hours(data.pending.hours)} ชม.) ซึ่ง<strong>ไม่ถูกนับ</strong>ในสรุปนี้ —
-          {' '}ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนสรุปแผนก
-        </div>
-      )}
+        {data?.pending?.count > 0 && (
+          <NoticeRow
+            tone="warn"
+            title={`เดือนนี้ค้างอนุมัติ ${data.pending.count} รายการ (${hours(data.pending.hours)} ชม.) ไม่ถูกนับในสรุปนี้`}
+            detail={`ของพนักงาน ${data.pending.employees} คน · ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนสรุปแผนก`}
+          />
+        )}
+      </NoticeStack>
 
       {!data ? (
         <div className="card"><Empty>กำลังโหลด…</Empty></div>

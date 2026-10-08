@@ -6,7 +6,7 @@ import {
   Alert, CancelledMark, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, Modal, ProxyMark,
   RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
-  RowAction, ShowMore, StatusChip, editsOf, trailOf,
+  NoticeStack, RowAction, ShowMore, StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail, isProxyFiled } from '@/lib/entries.js';
 import {
@@ -633,9 +633,9 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
             wired inside the banner, because `MonthAlerts` draws the same notice
             ON ตรวจสอบรายเดือน and a link back to where you already are is
             worse than no link — it passes nothing and gets a plain sentence. */}
-        <div className="entry-notice">
+        <NoticeStack id="entries" className="entry-notice">
           <PolicyVersionBanner spread={spread} onGoMonthly={onClose} />
-        </div>
+        </NoticeStack>
 
         {/* WHAT THE CHIPS IN THE จาก–ถึง COLUMN MEAN, said BEFORE the reader
             meets one — and, more importantly, said on a month that has no chips

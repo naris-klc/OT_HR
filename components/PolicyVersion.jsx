@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
-import { Alert, Disclosure } from './common.jsx';
+import { NoticeRow } from './common.jsx';
 
 /**
  * How a rule set appears on a screen HR is closing a month on.
@@ -162,35 +162,21 @@ export function PolicyDriftBanner({ user, onOpenPolicy }) {
 
   if (!live || live.recorded) return null;
 
-  // ⚠ THE REASON WRITTEN HERE STOPPED BEING TRUE ON 2026-08-13, six days after
-  // it was written. It read: "One child, not three: .alert is a flex row whose
-  // first item is the icon, so every element passed in becomes another column
-  // beside it." `4d50891` gave the Alert an `.alert-body` wrapper that day, so
-  // children have stacked as ordinary blocks ever since and the single child
-  // below is no longer holding anything together. It stays because ONE FLOW is
-  // what this notice wants for its own sake — the row breaks where the sentence
-  // breaks — which is the shape กอง ก took on 2026-09-14 and the shape this
-  // strip had first. Found while reshaping the six banners of that group, by
-  // reading `Alert` in components/common.jsx rather than this sentence.
+  // แถวหนึ่งใน `NoticeStack` ของหน้าที่วาง (2026-10-08) · ลิงก์ไปหน้านโยบายเป็น
+  // ปุ่มทำต่อของแถว
   return (
-    <Alert kind="warn">
-      <div>
-        <strong>
-          {live.latestSeq == null
-            ? 'กฎที่ใช้อยู่ยังไม่เคยถูกบันทึกเป็นเวอร์ชัน'
-            : `กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน ${live.latestSeq} ซึ่งเป็นเวอร์ชันล่าสุดที่บันทึกไว้`}
-        </strong>
-        {' — ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน'}
-        {onOpenPolicy && (
-          <>
-            {' · '}
-            <button type="button" className="link" onClick={onOpenPolicy}>
-              ดูรายละเอียดที่หน้านโยบายการคำนวณ
-            </button>
-          </>
-        )}
-      </div>
-    </Alert>
+    <NoticeRow
+      tone="warn"
+      title={live.latestSeq == null
+        ? 'กฎที่ใช้อยู่ยังไม่เคยถูกบันทึกเป็นเวอร์ชัน'
+        : `กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน ${live.latestSeq} ซึ่งเป็นเวอร์ชันล่าสุดที่บันทึกไว้`}
+      detail="ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน"
+      action={onOpenPolicy && (
+        <button type="button" className="btn ghost sm" onClick={onOpenPolicy}>
+          ดูที่หน้านโยบาย
+        </button>
+      )}
+    />
   );
 }
 
@@ -338,32 +324,10 @@ export function PolicyVersionBanner({ spread, onGoMonthly }) {
   const notice = policyVersionNotice(spread, { onGoMonthly });
   if (!notice) return null;
 
+  /* แถวหนึ่งใน `NoticeStack` ของหน้าที่วาง (2026-10-08) — หัวเรื่องคือสิ่งที่ผิด
+     รายละเอียดคือจะไปดูที่ไหน และรายชื่อเวอร์ชันซึ่งเป็นหลักฐาน ไม่ใช่สัญญาณ
+     อยู่หลัง ▾ · ผู้เรียกต้องวางมันใน `NoticeStack` */
   return (
-    // A renderer of `policyVersionNotice` and nothing else, so this panel and
-    // the list item ตรวจสอบรายเดือน draws from the same call can never be two
-    // different colours — or two different sentences — about one month.
-    <Alert kind={notice.kind}>
-      {/* ONE ROW, picked from three mockups on 2026-10-08 (*"แบนเนอร์นี้ยังไม่
-          กระชับ"*). It was a heading, a version list cut at the banner's edge,
-          and the instruction under it. The heading (what is wrong) and `say`
-          (where to go about it) now share the row; the version list, which is
-          evidence for the heading and not the alarm, sits behind ดูรายละเอียด —
-          the same row `LivePolicy` uses (`.alert-row-head`). Named in
-          `ALERTS_THAT_MAY_FOLD` in test/disclosure.test.js on those terms. */}
-      <div className="alert-row-head">
-        <span className="alert-row-title">
-          <strong>{notice.heading}</strong> · {notice.say}
-        </span>
-        <Disclosure
-          as="div"
-          lines={0}
-          of="รายชื่อเวอร์ชันของกฎในเดือนนี้"
-          more="ดูรายละเอียด ▾"
-          less="ซ่อนรายละเอียด ▴"
-        >
-          {notice.figures}
-        </Disclosure>
-      </div>
-    </Alert>
+    <NoticeRow tone={notice.kind} title={notice.heading} detail={notice.say} more={notice.figures} />
   );
 }
