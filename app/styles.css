@@ -4343,6 +4343,9 @@ td > .approver-line { margin-top: 5px; }
    has no sticky bar of its own at any width, so the phone reads the same rule.
    14px of clearance, the landing `.manual-sec` and `.profile-password` take. */
 .table-wrap.roster-list { scroll-margin-top: calc(62px + 14px); }
+/* ประวัติการแก้ทะเบียน lands the same way since it began paging, 2026-10-08 —
+   the same screen, the same one sticky bar. */
+.audit-list { scroll-margin-top: calc(62px + 14px); }
 
 /* ── ค้นหาบนตรวจสอบรายเดือน ────────────────────────────────────────────────
    The same box as ทะเบียนพนักงาน's, and since 2026-09-10 it is the first field
@@ -11583,46 +11586,24 @@ table.mini tbody tr:hover { background: none; }
   background: var(--neutral-wash); font: 400 12.5px/1.6 var(--sans); color: var(--muted);
 }
 
-/* ══ ตรวจสอบรายเดือน — THE PAGER DOES NOT EXIST ON A DESKTOP ══════════════
+/* ══ ตรวจสอบรายเดือน — A PAGE IS A CLASS ON A ROW, AT EVERY WIDTH ═════════
 
-   `.pager-row` is the ก่อนหน้า / ถัดไป row and `.off-page` marks every card
-   that is not among the five the current page holds. Both are written into the
-   markup unconditionally — the JSX says WHICH rows are off the page and nothing
-   else — and it is this rule, with its pair in the 860px block, that decides
-   whether being off the page means anything.
+   `.off-page` marks every person who is not on the page the shared
+   `TablePager` under the table is on, and this rule takes them off the screen.
+   app/print.css puts them back, so Ctrl+P still prints the whole month — the
+   reason this is a class and not a `.slice()`, the same one
+   `.acct-table tbody tr.off-page` gives above.
 
-   Above 860px it does not. A sixty-row table of ten narrow columns is read
-   at a glance and down its columns; paging it would hide fifty-five rows behind
-   a control. So the pager is removed here and `.off-page` is deliberately
-   given NO rule at all, which is what leaves every row drawn.
+   ⚠ THIS SECTION READ "THE PAGER DOES NOT EXIST ON A DESKTOP" UNTIL 2026-10-08.
+   Above 860px every row of the month was drawn, `.off-page` was given no rule
+   here on purpose, and the phone had its own `.pager-row` and a fold
+   (`.cards-more-row`) inside the `<tbody>`. The user asked for one pager at
+   both widths with the redrawn band, and for no pager at all on a month of 50
+   or fewer — `pageWindow` marks nobody off-page then, so this rule hides
+   nothing on a short month.
 
-   NO RULE ABOVE THIS LINE MAY REACH `.hr-table`'s `.off-page`, and that is
-   load-bearing rather than an omission: one `display: none` written here by
-   mistake takes fifty-five people out of the desktop month.
-   `test/hrMonthCards.test.js` asserts it for exactly that reason.
-
-   ⚠ IT READ "`.off-page` HAS NO DECLARATION ANYWHERE ABOVE THIS LINE" UNTIL
-   2026-09-11, and on that day สรุป OT ส่งบัญชี took the same mechanism — see
-   `.acct-table tbody tr.off-page` above, which hides the rows this page does
-   not show at EVERY width. That screen's table is also a printed document, so
-   a `.slice()` would have cut the paper copy to whatever the screen was left
-   on; hiding rows that are still in the markup is the answer to both problems
-   at once, and the class the app already had a word for. What is still banned
-   here is what was ever dangerous: a rule that reaches THIS table, and any
-   bare `.off-page` selector, which reaches every table there is.
-
-   Stated as a plain `display: none` and NOT as an inline style in the
-   component: an inline style beats the media query and the pager would never
-   appear on a phone at all. */
-.hr-table tbody tr.pager-row { display: none; }
-/* ══ ดูพนักงานทั้งหมด (n ราย) — THE OTHER PHONE-ONLY ROW, ALSO OFF ══════════
-
-   Same reason as the pager above it: up here the table draws every row of the
-   month, `off-page` is given no rule, and a control that reveals rows nobody is
-   hiding would be a button for something that is not happening. The two rows
-   are the screen's two mechanisms and exactly one of them exists on any given
-   month — see `CARD_FOLD` in components/HrView.jsx. */
-.hr-table tbody tr.cards-more-row { display: none; }
+   STILL NO BARE `.off-page` SELECTOR: it would reach every table there is. */
+.hr-table tbody tr.off-page { display: none; }
 
 /* ══ mobile — the design's own 860px breakpoint ══════════════════════════ */
 
@@ -15127,239 +15108,15 @@ table.mini tbody tr:hover { background: none; }
      who could reach the ninth person either by flicking inside the box or by
      pressing ถัดไป with nothing to say which was meant.
 
-     WHAT IS LEFT IS THE PAGE. `.off-page` hides everybody who is not among the
-     current five, so the list is five cards long whatever the month holds — and
-     five cards, the pager and the total are a length the page's own scroll
-     handles. There is no scrollport on this screen now: no `max-height`, no
-     `overflow-y`, and nothing nested for a flick to hand on at its end, which
-     is why `overscroll-behavior` went with it rather than being kept in case.
+     WHAT IS LEFT IS THE PAGE. It read "five cards, the pager and the total
+     are a length the page's own scroll handles" until 2026-10-08, when the
+     phone's own five-a-page pager and the fold at three went and the shared
+     band took both widths at 50 a page (see `.hr-table tbody tr.off-page`
+     above the phone block). There is still no scrollport on this screen — no
+     `max-height`, no `overflow-y`, nothing nested for a flick to hand on at
+     its end — and the page's own scroll moves the list. */
 
-     AND A SIXTH SINCE 2026-08-28 — A FOLD AT THREE, ON THE MONTHS WITH NO
-     PAGER. `.off-page` is the class for that too: `cardsTo` in the component is
-     the page's own end on a month that has a pager and the fold's on a month
-     that does not, so there is still ONE class saying one thing, and still
-     never two mechanisms over one list. Which of the two a month gets is
-     `pageCount`, decided in one place. See `CARD_FOLD` in HrView for why a fold
-     is safe here when the 2026-08-25 fold at five was not: this one only exists
-     where the whole month is on the screen behind it.
-
-     WHAT WAS GIVEN UP WITH THE BOX, said plainly rather than left to be found.
-     The box kept the card's HEIGHT fixed, so วันเกิดของเดือนนี้ sat at the same
-     distance under the total in every month and could not be pushed off the
-     bottom by a long one. That distance is now whatever five cards come to,
-     which varies by a line of name and no longer by the size of the month — a
-     smaller promise than the box made, kept without a second scrollbar to make
-     it.
-
-     ABOVE 860px NONE OF THIS APPLIES: `.pager-row` is `display: none` and
-     `.off-page` is given no rule at all, so the desktop table still draws every
-     row of the month. The cost of paging at all is written down over
-     `CARD_PAGE` in components/HrView.jsx. */
-  .hr-table tbody tr.off-page { display: none; }
-  /* Not a card: no border, no fill, no 15px of padding. The row it sits in on
-     screen is a control, and a bordered block around it reads as a sixth person
-     with nothing in them.
-
-     AND 12px OF MARGIN EITHER SIDE, WHICH IS THE ONLY THING THAT SAYS SO NOW.
-     Asked for on 2026-08-27: the pager and รวมทั้งหมด were "ชิดการ์ดพนักงาน
-     เกินไป". They were — at exactly 12px, which is the `gap` between one
-     employee card and the next, so the band with the chevrons in it and the
-     month's own total were spaced into the list at the list's own rhythm and
-     read as the sixth and seventh people on the page. Taking the border and
-     the fill off (above) stopped them LOOKING like cards; nothing had yet
-     stopped them SITTING like cards.
-
-     THE PARENT IS A FLEX COLUMN, so `gap` and `margin` add up here rather than
-     collapsing: this number is added to the list's own 12. It read "6px" — and
-     therefore 18 — for a day, and the same joint was asked about again on
-     2026-08-28, this time as the foot of the last card wanting to be "โปร่งและ
-     สม่ำเสมอ". 18 was measured and it was real; what it was not was ENOUGH to
-     read as a change of kind, because the two things it separates are not two
-     borders. Above it a card's last ink is a 44px bordered button 15px inside
-     its own edge; below it the band's first ink is a 38px filled chevron
-     square with no padding at all, hard against the top of its row. 12 makes
-     both gaps 24 — twice the cards' own pitch, and the column now goes
-     12 · 12 · 12 · 12 (five cards) · 24 · pager · 24 · total.
-
-     EACH ROW STATES THE GAP ABOVE ITSELF, AND IT USED TO BE ONE NUMBER FOR
-     TWO GAPS. This read `margin: 12px 0` — top and bottom — with รวมทั้งหมด
-     stating nothing, on the ground that "the pager's bottom margin IS the gap
-     over the total, written once". That held while the pager was drawn on every
-     month. Since 2026-08-28 it is not drawn at all when a month fits on one
-     page (see the note over it in components/HrView.jsx), and a gap that lives
-     on an element which is sometimes absent is a gap that is sometimes absent:
-     รวมทั้งหมด would have slid up to the list's own 12px pitch and read as the
-     fifth person again, which is the exact defect the margin was added to fix.
-
-     So the pager keeps a TOP margin only and the total states its own. Two
-     declarations of 12, and what makes that not a duplicated number is that
-     they are two different joints: one under the list, one under whatever
-     precedes the total. The column reads 12 · 12 · 12 · 12 (five cards) · 24 ·
-     pager · 24 · total, and on a month that fits, 12 · 12 · 12 · 24 · total. */
-  .hr-table tbody tr.pager-row {
-    display: block; padding: 0; border: 0; background: none;
-    margin: 12px 0 0;
-  }
-  .hr-table tbody tr.pager-row:hover { background: none; }
-
-  /* ══ ดูพนักงานทั้งหมด (n ราย) — THE FOLD UNDER THE THIRD CARD ═══════════
-
-     Asked for on 2026-08-28: "ให้ Limit แสดงการ์ดพนักงานเพียง 3 รายการแรก" with
-     a button under the third. It is the SAME OBJECT as the pager one row up —
-     not a card, full width, standing out of the list's own rhythm — and it is
-     drawn on exactly the months the pager is not. `CARD_FOLD` in
-     components/HrView.jsx carries why the two never appear together.
-
-     THE SAME `margin: 12px 0 0` AS THE PAGER, and for the same arithmetic:
-     `.hr-table tbody` is a flex column, so this adds to the list's own 12px
-     `gap` and the joint under the third card comes out at 24 — twice the pitch
-     between two cards, which is what says "this is not the fourth person". The
-     total below states its own 12, so the column reads the same whichever of
-     the two rows is standing.
-
-     THE BUTTON ITSELF IS `.bday-more`'s, to the pixel. Two full-width folds on
-     one screen that look different are two different promises; these are the
-     same control over two lists, and the only thing that differs is what the
-     label counts. Written out rather than shared with a comma because they sit
-     in different blocks of this file and neither should move the other by
-     accident — that is what a `grep` for the property is for. */
-  .hr-table tbody tr.cards-more-row {
-    display: block; padding: 0; border: 0; background: none;
-    margin: 12px 0 0;
-  }
-  .hr-table tbody tr.cards-more-row:hover { background: none; }
-  .btn.cards-more {
-    display: flex; place-content: center; align-items: center;
-    width: 100%; min-height: 44px;
-  }
-
-  /* ‹ · หน้า 2 / 12 · › over แสดง 6–10 จาก 57 รายการ — ONE BAND, 56px TALL.
-
-     IT WAS 73px AND TWO FULL ROWS until 2026-08-26: "แสดง 6–10 จาก 57 รายการ"
-     ran the full width of the card on a line of its own, and under it two 106px
-     buttons wearing `‹ ก่อนหน้า` and `ถัดไป ›` at a 44px target held the page
-     number between them. Nothing in it was wrong; it was simply the tallest
-     thing between the fifth card and รวมทั้งหมด, on the one screen where the
-     ground under the list is already spoken for.
-
-     WHERE THE HEIGHT WENT, and what did not go with it. Both sentences are
-     still here and so is every state the row can be in. What went is the
-     BUTTONS' row: they are 38px squares on the page number's own line now
-     rather than a 44px row of their own under it, and the words went onto
-     `aria-label` — which is why the chevrons are not `aria-hidden` decoration
-     on a labelless button.
-
-     THE RANGE IS A ROW AGAIN, AND THAT COST 18 OF THE 35. It was the second
-     line of a middle COLUMN for a few hours the same day, which made the band
-     38px — and put the buttons 8.8px BELOW the line they read as being beside.
-     Grid centring is honest there and the eye is not: `align-items: center`
-     centres a 38px square on a 37px two-line block, so the square and the block
-     shared a centre line while the button and the words `หน้า 2 / 12` did not.
-     Measured, reported and rebuilt as two grid ROWS, with the buttons on the
-     page number's row and the range spanning underneath: the two now share a
-     centre line to the pixel, and the band is 56px rather than 38.
-
-     THE RANGE SPANS ALL THREE COLUMNS rather than sitting under the middle one.
-     Under the middle column it would have to wrap inside about 144px at 320px
-     and would take two lines on any long month; across the whole band it has
-     the card's full 240 and stays on one line everywhere the app is used.
-
-     `auto minmax(0, auto) auto` UNDER `justify-content: center` rather than the
-     `1fr auto 1fr` this was. `1fr` either side pinned the buttons to the ENDS
-     of a 280px card, which is the layout of a wide table's footer and reads as
-     spread out rather than compact; centring the three tracks instead lets the
-     group take only the width it needs and keeps the two buttons the same
-     distance from the middle whatever the page number comes to, because both
-     of them are now the same 38px square. */
-  .hr-table tbody tr.pager-row .pager-controls {
-    display: grid; grid-template-columns: auto minmax(0, auto) auto;
-    grid-template-areas:
-      'prev  at    next'
-      'range range range';
-    justify-content: center; align-items: center; gap: 1px 10px;
-  }
-  .hr-table tbody tr.pager-row .pager-prev { grid-area: prev; }
-  .hr-table tbody tr.pager-row .pager-next { grid-area: next; }
-  /* 38 AND NOT 44, WHICH IS A REAL TRADE AND NOT A ROUNDING.
-     44px is the target every other button on this card keeps, and these two
-     give up 6px of it. What buys that back: a chevron has no label to be missed
-     by, the two are 10px apart with the page number between them rather than
-     side by side, and neither is destructive — a mis-press goes one page the
-     wrong way and the other button undoes it. `padding: 0` so the square is the
-     square; `line-height: 1` so the glyph sits on its centre. */
-  .hr-table tbody tr.pager-row .pager-controls .btn.pager-step {
-    width: 38px; min-width: 38px; height: 38px; padding: 0;
-    display: flex; align-items: center; justify-content: center;
-    font: 400 20px/1 var(--sans);
-  }
-  /* The middle cell of the top row — the one the two buttons are aligned to.
-     `min-width: 0` so a page number that grows (หน้า 128 / 128) narrows itself
-     rather than pushing a chevron off the card. */
-  .hr-table tbody tr.pager-row .pager-at {
-    grid-area: at; display: block; min-width: 0; white-space: nowrap;
-    text-align: center;
-    font: 400 12.5px/1.35 var(--sans); color: var(--muted);
-  }
-  .hr-table tbody tr.pager-row .pager-at strong {
-    font: 600 14px/1.35 var(--mono); color: var(--ink);
-  }
-  /* WHERE IN THE LIST, under WHICH PAGE. `--muted-2` and 11.5px — a step
-     quieter than the page number above it, the same step `td.cap-col::before`
-     takes over the figure it heads. It was `--muted` at 12.5px while it had a
-     row to itself.
-
-     `text-wrap: balance` FOR THE LONGEST MONTH THIS APP WILL SEE. Spanning the
-     whole band this line does not wrap at any width the app is used at — "แสดง
-     116–120 จาก 120 รายการ", the longest a sixty-person month can make it, is
-     about 150px against the 240 the card has at 320px. `balance` is here for
-     the day that stops being true: it splits a wrapped line down the middle
-     rather than at its last space, which is what left รายการ alone on a line
-     when this text was confined to the middle column and had 144px. */
-  .hr-table tbody tr.pager-row .pager-range {
-    grid-area: range; display: block; text-align: center; text-wrap: balance;
-    font: 400 11.5px/1.35 var(--sans); color: var(--muted-2);
-  }
-  .hr-table tbody tr.pager-row .pager-range strong {
-    font: 600 11.5px/1.35 var(--mono); color: var(--ink-2);
-  }
-  /* ══ THE ENDS OF THE LIST ARE OUTLINES, NOT SLABS ══════════════════════
-
-     IT READ "THE ENDS NEED NOTHING DECLARED HERE" until 2026-08-28, and what
-     the app's own `.btn:disabled` then drew was **a `--neutral-wash` fill with
-     `--muted` text**. That rule is right for the buttons it was written for and
-     wrong for these two, because it INVERTS them: `.pager-step` is a `.btn
-     ghost`, whose live state is a transparent ground and a hairline, so
-     disabling one made it the most filled object in the band. On a month that
-     fits on one page BOTH chevrons are disabled — two grey slabs that can never
-     do anything, either side of "หน้า 1 / 1".
-
-     REPORTED AS "เศษ Element สีเทาโผล่ขึ้นมาบริเวณ Top Bar", asked to be
-     deleted, and it is not a stray element: it is these two. `.appbar` is
-     `position: sticky`, so the page scrolls UNDER it — and the bar was frosted
-     glass at the time, so a 38px `--neutral-wash` square (on the dark theme
-     that token is the same grey as รวมทั้งหมด's own card) crossing that edge
-     showed THROUGH the header as a grey rounded shape, four lines above the
-     pager text that names it. The frost is gone since later the same day — see
-     `--bar-ground` — which is what finally ended that class of report; this
-     paragraph is what the chevrons themselves needed. Hit-tested at 412×887 on the deployed app before
-     anything was changed: `button.btn.ghost.sm.pager-step.pager-prev` and
-     `.pager-next`, both `disabled`, at the exact coordinates reported.
-
-     SO THE FIX IS THE VOICE, NOT THE ELEMENT. A disabled ghost keeps the ghost's
-     transparent ground and goes quiet: `--line` for the ring it already had,
-     `--muted-2` for the glyph — the same step down `.pager-range` takes on the
-     line below. Nothing is removed: the band is drawn on every month on purpose
-     (see the paragraph over `.pager-row`), and a reader can still see there is a
-     ‹ and a › and that neither is available.
-
-     STILL NOT A FADE. `opacity` stays at 1, for the reason that rule states: a
-     ghost faded to .45 is illegible on the dark theme. This changes which three
-     properties are set, not how solid the ink is. */
-  .hr-table tbody tr.pager-row .pager-controls .btn.pager-step:disabled {
-    background: none; border-color: var(--line); color: var(--muted-2);
-  }
-
-  /* ══ รวมทั้งหมด IS THE ROW AFTER THE PAGER ══════════════════════════════
+  /* ══ รวมทั้งหมด IS THE LAST CARD OF THE LIST ═══════════════════════════
 
      A card, but not a person's: no buttons, no ceiling, and the two cells it
      does carry are its name and the month's total.
@@ -15386,11 +15143,12 @@ table.mini tbody tr:hover { background: none; }
      the last row. The vertical 15 was buying nothing — this row has one line in
      it where a person's has three — so it is 11, and the row is 46px instead of
      54. Asked for on 2026-08-26 together with the pager above it. */
-  /* THE 12 IS ITS OWN SINCE 2026-08-28, and the paragraph over `.pager-row`
-     carries why: the pager is not drawn on a month that fits, so the gap over
-     this row cannot be hung on the pager's bottom margin any more. With the
-     list's own `gap` it comes to 24 either way — under the pager on a long
-     month, under the last employee card on a short one. */
+  /* THE 12 IS ITS OWN SINCE 2026-08-28: the gap over this row was once hung on
+     the phone pager's bottom margin, and a gap on an element that is sometimes
+     absent is sometimes absent. With the list's own `gap` it comes to 24 under
+     the last employee card — twice the cards' pitch, so the month's total does
+     not read as one more person. The pager that stood above it is gone
+     (2026-10-08); the shared band sits under the table instead. */
   .hr-table tbody tr.total-row {
     grid-template-areas: 'who cap';
     margin-top: 12px;
@@ -16649,170 +16407,147 @@ table.mini tbody tr:hover { background: none; }
 }
 
 /* ══ THE FOOT OF A TABLE THAT PAGES ═══════════════════════════════════════
-   `TablePager` in components/common.jsx, drawn under both tables on
-   บันทึกประวัติระบบ — the traffic list and การใช้สิทธิ์พิเศษ.
+   `TablePager` in components/common.jsx — one band under every paged table.
 
-   IT IS NOT `.hr-table tbody tr.pager-row`, AND THE CLASS NAMES INSIDE IT ARE
-   THE SAME ON PURPOSE. That one is a `<td colSpan={10}>` inside a table body,
-   `display: none` above 860px, and laid out as a two-row grid so that a
-   chevron, the page number and the range fit across a 280px card. This is a
-   band under a table on every width. What the two share is what the reader
-   sees — `‹`, `หน้า A / B`, `แสดง n–m จาก T รายการ`, a 38px square — so they
-   share the class names that carry it and each states its own geometry. A
-   single rule set for both would be a rule set whose layout is decided by
-   which screen is asking, and neither could be changed without checking the
-   other.
+   ONE LINE SINCE 2026-10-08, ~42px: a 30px control and 6px over it. It was two
+   halves ~62px tall until then — a size box on the left, two stacked sentences
+   and two 38px chevrons on the right — and the user chose the slim line with
+   numbered pages from three mockups (`mockups/pagination`, option B).
+
+   IT WAS NOT `.hr-table tbody tr.pager-row` AND NOW THERE IS NO SUCH THING.
+   ตรวจสอบประจำเดือน had its own phone-only pager inside a `<tbody>` until the
+   same day; it draws this band now, at both widths.
 
    THE HAIRLINE IS THE POINT OF THE BAND. Without it the last row of the table
-   and the first control under it are one list, and a reader scrolling to the
-   bottom meets a dropdown where a row should be. 1px in `--line`, 12px of air
-   above the controls and 8 between the table and the rule — the ratio matters
-   more than the numbers: the rule belongs to the table above it and the
-   controls belong to the rule. */
+   and the first control under it are one list. 1px in `--line`, 8px between
+   the table and the rule, 6px between the rule and the controls — the rule
+   belongs to the table above it and the controls belong to the rule. */
 .table-pager {
   display: flex; flex-wrap: wrap; align-items: center;
-  justify-content: space-between; gap: 10px 18px;
-  border-top: 1px solid var(--line); padding-top: 12px; margin-top: 8px;
+  justify-content: space-between; gap: 6px 16px;
+  border-top: 1px solid var(--line); padding-top: 6px; margin-top: 8px;
 }
 /* 16 INSTEAD OF 8, WHERE THE BAND CLOSES A SECTION RATHER THAN A CARD.
-   The two log tables sit inside a `.card` whose own padding is already under
-   them, so 8px over the rule is the whole gap a reader sees. ประวัติเวอร์ชัน
-   นโยบาย is an `<h3>` and a table loose in a tab, with the next block close
-   behind it — at 8px its rule reads as a divider between two sections rather
-   than as the foot of the table above, which is the one thing the rule is
-   there to say. */
+   ประวัติเวอร์ชันนโยบาย is an `<h3>` and a table loose in a tab, with the next
+   block close behind it — at 8px its rule reads as a divider between two
+   sections rather than as the foot of the table above. */
 .table-pager.roomy { margin-top: 16px; }
 
 /* ── AND ON A CARD THAT HAS NO PADDING TO SIT IN ─────────────────────────────
-   `.card.flush` is `padding: 0` — the toolbars, the table and the panels each
-   bring their own inset — so a band dropped in there would put its dropdown
-   against the card's left edge and its chevrons against the bottom one. 18px is
-   what `.queue-tools`, `.card.flush > .card-head` and the tables' own cells
-   take, so everything lines up down the left.
-
-   NAMED FOR THE CARD AND NOT FOR THE SCREEN. It was `.queue-pager` for the few
-   hours between คิวรออนุมัติ's band and สรุป OT ส่งบัญชี's, and the second
-   caller is what the name had to answer for: two screens whose cards are
-   `.card.flush` need the same inset, and a `.acct-pager` repeating these three
-   numbers is the second copy that stops agreeing. `.queue-pager` still exists
-   below, holding the ONE declaration that is genuinely about the queue.
+   `.card.flush` is `padding: 0`, so the band brings the 18px every other block
+   in such a card takes, and 8px under it so the card does not end on the
+   controls' edge. Named for the card and not for the screen — คิวรออนุมัติ,
+   รายงาน OT การเงิน and ตรวจสอบประจำเดือน are all `.card.flush`.
 
    THE HAIRLINE IS DELIBERATELY NOT INSET WITH THEM. A border spans the padding
-   box, so it still runs edge to edge the way the row rules above it do and the
-   controls sit inside it; inset to match them it would read as a divider
-   floating in the card rather than as the foot of the table.
-
-   16 AT THE FOOT AND THE BASE RULE'S 12 AT THE TOP: the card ends immediately
-   under this band, and 12px of air below a 38px control is a card that looks
-   cut off. `margin-top` is the base rule's 8 — `tbody tr:last-child td` drops
-   the last row's own border, so those 8px are the whole gap between the last
-   row and the rule. */
-.table-pager.flush-pager { padding: 12px 18px 16px; }
+   box, so it runs edge to edge the way the row rules above it do. */
+.table-pager.flush-pager { padding: 6px 18px 8px; }
 @media (max-width: 860px) {
   /* 12 at this width, which is `.queue-tools`' own phone padding and the inset
      `.queue-table tbody` gives the cards it stacks. */
-  .table-pager.flush-pager { padding: 12px 12px 16px; }
+  .table-pager.flush-pager { padding: 6px 12px 10px; }
   /* AND THE ONE LINE THAT IS THE QUEUE'S ALONE. Its rows are cards down here and
      `.queue-table tbody` already leaves 12px of air under the last of them, so
      the band gives its own `margin-top` back; kept, the rule would float 20px
-     below the thing it closes. `.acct-table` stays a table at this width — a
-     frozen first column and a sideways scroll — so its last row ends on a
-     border and the base 8px is the gap that band wants. */
+     below the thing it closes. */
   .table-pager.queue-pager { margin-top: 0; }
 }
 
-/* ── แสดง [ 10 ▾ ] รายการต่อหน้า ─────────────────────────────────────────
-   Three items on one line, and the middle one is a whole `Field` — `PickOne`
-   renders one so that its label, which is clipped out of the picture here, is
-   still in the document for `aria-labelledby` to point at. `.field` is
-   `flex: 1; min-width: 150px` by default, which on this row would be a 150px
-   box holding the string "10", so both are overridden rather than the
-   component being taught a second shape. */
-.table-pager .pager-size { display: flex; align-items: center; gap: 8px; }
-.table-pager .pager-word { font: 400 12.5px/1.35 var(--sans); color: var(--muted); }
-.table-pager .pager-size-pick { flex: none; min-width: 0; width: 78px; }
-/* 38 AND NOT `--field-h`'s 46. A form field is 46px tall because it is the
-   thing the screen is FOR; this one sits in a footer beside two 38px squares,
-   and a box four rows of a table high, taller than the buttons next to it,
-   makes the band read as a form somebody has to fill in before the table
-   works. `--field-pad-x` drops with it, or "100" and the ▾ have 28px of
-   padding in a 78px box and the figure truncates. */
-.table-pager .pager-size-pick .pick-one { min-height: 38px; padding: 0 10px; }
-/* Mono and tabular, because it is a figure — the same face every other number
-   in this app is set in, and the reason `.pick-one .val` is SANS by default is
-   that it usually holds a Thai department name. Four rows reading 10 · 20 ·
-   50 · 100 are a column of figures and belong in the other face. */
+/* ── 1–50 จาก 214 คน · [ 50 ▾ ] ต่อหน้า ─────────────────────────────────────
+   The middle item is a whole `Field` — `PickOne` renders one so that its
+   label, clipped out of the picture here, is still in the document for
+   `aria-labelledby`. `.field` is `flex: 1; min-width: 150px` by default, which
+   here would be a 150px box holding "50", so both are overridden rather than
+   the component being taught a second shape. `min-width: 0` on the line
+   because at 360px it is allowed to wrap and must never push the card wide. */
+.table-pager .pager-say {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0;
+  font: 400 13px/1.35 var(--sans); color: var(--muted);
+}
+.table-pager .pager-range { white-space: nowrap; }
+.table-pager .pager-range strong { font: 500 13px/1.35 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.table-pager .pager-size { display: inline-flex; align-items: center; gap: 6px; }
+.table-pager .pager-word { white-space: nowrap; }
+.table-pager .pager-size-pick { flex: none; min-width: 0; width: 70px; }
+/* 30 AND NOT `--field-h`'s 46: it sits in a footer beside 30px squares, and a
+   box taller than the buttons next to it makes the band read as a form. */
+.table-pager .pager-size-pick .pick-one { min-height: 30px; padding: 0 8px; }
+/* Mono and tabular, because it is a figure — `.pick-one .val` is SANS by
+   default because it usually holds a Thai department name. */
 .table-pager .pager-size-pick .pick-one .val {
   font: 500 13px/1.3 var(--mono); font-variant-numeric: tabular-nums;
 }
 
-/* ── หน้า A / B · ‹ › ────────────────────────────────────────────────────
-   The two sentences stack in one column and the chevrons sit to the right of
-   them, so the range and the page number share a centre line with the buttons
-   whatever either comes to. `margin-left: auto` on a wrapped row keeps this
-   half at the right edge even when the size selector has taken a line of its
-   own — `justify-content: space-between` alone puts it at the LEFT the moment
-   the two are on separate lines, which is the one width nobody tests at. */
+/* ── ‹ 1 … 4 5 6 … 12 › ──────────────────────────────────────────────────
+   `margin-left: auto` keeps this half at the right edge even when the line
+   wraps — `justify-content: space-between` alone puts it at the LEFT the
+   moment the two halves are on separate lines. */
 .table-pager .pager-controls {
-  display: flex; align-items: center; gap: 10px; margin-left: auto;
+  display: flex; align-items: center; gap: 4px; margin-left: auto;
 }
-.table-pager .pager-say { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-.table-pager .pager-range { white-space: nowrap; font: 400 12.5px/1.35 var(--sans); color: var(--muted); }
-.table-pager .pager-range strong { font: 600 12.5px/1.35 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
-/* A step quieter than the line above it, the same step `.pager-range` takes
-   under `.pager-at` on the phone pager — the two lines are inverted here
-   because on a wide screen the range is the sentence being read and the page
-   number is the place-marker beside it. */
-.table-pager .pager-at { white-space: nowrap; font: 400 11.5px/1.35 var(--sans); color: var(--muted-2); }
-.table-pager .pager-at strong { font: 600 11.5px/1.35 var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+/* 30px squares, `padding: 0 6px` so a two- or three-digit page widens the
+   button instead of cramping it. Three classes, so they beat `.btn.sm` and
+   `.btn:disabled` on specificity rather than on where they sit in the sheet. */
+.table-pager .btn.pager-step,
+.table-pager .btn.pager-num {
+  min-width: 30px; height: 30px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font: 500 13px/1 var(--mono); font-variant-numeric: tabular-nums;
+}
+.table-pager .btn.pager-step { width: 30px; padding: 0; font: 400 18px/1 var(--sans); }
+/* THE PAGE THE READER IS ON IS FILLED GREEN — the one filled object on the
+   band, so it reads as "here" and not as a button to press. `aria-current`
+   and not a class: `.btn.ghost.sm.on` already means an open toggle in this
+   sheet, and the attribute is what a screen reader announces anyway. */
+.table-pager .btn.pager-num[aria-current='page'],
+.table-pager .btn.pager-num[aria-current='page']:hover:not(:disabled) {
+  background: var(--green); border-color: var(--green); color: var(--on-fill);
+}
+.table-pager .pager-gap {
+  min-width: 18px; text-align: center; color: var(--muted-2);
+  font: 400 13px/1 var(--mono);
+}
+/* `/ 12` is the phone's — beside the one number the phone shows. */
+.table-pager .pager-of { display: none; }
 
-/* 38px square, `padding: 0` so the square is the square and `line-height: 1`
-   so the glyph sits on its centre — the same three lines and the same trade as
-   the phone pager's, written out at `.hr-table tbody tr.pager-row
-   .pager-controls .btn.pager-step`: a chevron has no label to be missed by, and
-   a mis-press goes one page the wrong way and the other button undoes it. */
-.table-pager .btn.pager-step {
-  width: 38px; min-width: 38px; height: 38px; padding: 0;
-  display: flex; align-items: center; justify-content: center;
-  font: 400 20px/1 var(--sans);
-}
 /* THE ENDS OF THE LIST ARE OUTLINES, NOT SLABS — and NOT a fade either.
-   The specification this was built to asked for `disabled:opacity-40`; this app
-   found out on its own deployed page what that costs, and the paragraph is at
-   the phone pager's own `:disabled` rule. Twice over: `.btn:disabled` fills
-   with `--neutral-wash`, which INVERTS a ghost button (whose live state is a
-   transparent ground and a hairline) into the most filled object on the row —
-   and on a single page BOTH chevrons are disabled, so that is two grey slabs
-   that can never do anything, either side of `หน้า 1 / 1`. An `opacity: .4`
-   ghost is illegible on ธีมมืด, which is the other half of the same finding.
-   So the disabled state is the VOICE and not the element: the ghost keeps its
-   transparent ground and goes quiet, one step down, and a reader can still see
-   there is a ‹ and a › and that neither is available.
+   `.btn:disabled` fills with `--neutral-wash`, which INVERTS a ghost button
+   (whose live state is a transparent ground and a hairline) into the most
+   filled object on the row; an `opacity: .4` ghost is illegible on ธีมมืด. So
+   the disabled state is the VOICE and not the element: the ghost keeps its
+   transparent ground and goes quiet, one step down.
 
    NO `opacity` LINE, AND ITS ABSENCE IS THE ASSERTION. `.btn:disabled` already
-   declares `opacity: 1` — restating it here would say nothing the app does not
-   already do, and test/hrMonthCards.test.js reads every `pager-step:disabled`
-   rule below its 860px marker for the WORD, on the ground that a fade is what
+   declares `opacity: 1`, and test/hrMonthCards.test.js reads every
+   `pager-step:disabled` rule for the WORD, on the ground that a fade is what
    this pattern keeps coming back as. Three properties, none of them opacity. */
 .table-pager .btn.pager-step:disabled {
   background: none; border-color: var(--line); color: var(--muted-2);
 }
 
-/* THE TWO HALVES STACK, AND THE ARROWS STAY ON THE RIGHT. Below 560px "แสดง
-   [10] รายการต่อหน้า" and "แสดง 1–10 จากทั้งหมด 120 รายการ" do not go on one
-   line at any type size worth reading, so the row wraps — the size on top
-   because it is set once, the arrows underneath because they are pressed
-   repeatedly and belong nearest the thumb. 44px there and not 38: this is the
-   width where the band is being tapped rather than clicked, and the 6px the
-   desktop square gives up is bought back by there being room for it. */
-@media (max-width: 560px) {
-  .table-pager { flex-direction: column; align-items: stretch; gap: 12px; }
-  .table-pager .pager-controls { margin-left: 0; justify-content: flex-end; }
-  .table-pager .btn.pager-step { width: 44px; min-width: 44px; height: 44px; }
-  /* The box goes with them. It is the same 44px target the rest of the app
-     keeps on a phone, and a 38px control beside two 44px squares is the one
+/* ── THE PHONE: ‹ [5] / 12 › ON 44px TARGETS ──────────────────────────────
+   Below 860px the numbered list does not fit beside the sentence and is not
+   what a thumb wants anyway, so the non-current numbers and the gaps are
+   hidden and `/ 12` is shown — the same buttons, one layout less. The
+   sentence and the size box take the first line, the stepper sits centred on
+   the second, nearest the thumb that has just finished scrolling. */
+@media (max-width: 860px) {
+  .table-pager { justify-content: center; }
+  .table-pager .pager-say { flex-basis: 100%; justify-content: center; }
+  .table-pager .pager-controls { margin: 0 auto; gap: 8px; }
+  .table-pager .btn.pager-num:not([aria-current='page']),
+  .table-pager .pager-gap { display: none; }
+  .table-pager .pager-of {
+    display: inline; white-space: nowrap; color: var(--muted);
+    font: 500 14px/1 var(--mono); font-variant-numeric: tabular-nums;
+  }
+  .table-pager .btn.pager-step,
+  .table-pager .btn.pager-num { width: 44px; min-width: 44px; height: 44px; }
+  .table-pager .btn.pager-step { font-size: 22px; }
+  .table-pager .btn.pager-num { font-size: 15px; }
+  /* The box goes with them — a 30px control beside 44px squares is the one
      shape that reads as a mistake rather than as a choice. */
-  .table-pager .pager-size-pick { width: 88px; }
+  .table-pager .pager-size-pick { width: 80px; }
   .table-pager .pager-size-pick .pick-one { min-height: 44px; }
 }
 

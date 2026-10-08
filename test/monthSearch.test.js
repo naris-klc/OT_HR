@@ -89,8 +89,8 @@ test('the printed bundle is the rows on screen, however few', () => {
   assert.match(hrView, /onSelect: \(\) => setPrinting\(\{ employees: shown\.map\(\(r\) => r\.employee\) \}\)/);
   assert.match(hrView, /disabled: !shown\.length,/);
   // `shown`, and not `data.employees`. The second argument is the row's place
-  // in the list, which is what the phone's page window compares against — see
-  // `CARD_PAGE` and `test/hrMonthCards.test.js`. Whatever else this grows, the
+  // in the list, which is what the page window compares against — see
+  // `pageWindow` and `test/hrMonthCards.test.js`. Whatever else this grows, the
   // list it maps over is the search's, or the bundle and the screen have
   // stopped agreeing.
   assert.match(hrView, /\{shown\.map\(\(row, i\) => \(/, 'the table still draws the unfiltered list');
@@ -992,11 +992,12 @@ test('picking somebody opens their month — and leaves the filter alone', () =>
   // they came back from it.
   assert.ok(!/setFind/.test(fn), 'picking a suggestion clears the search box');
   assert.ok(!/setQuery/.test(fn), 'picking a suggestion rewrites the applied query');
-  // THE PAGE IS NOT LEFT ALONE, and that is a different thing. Below 860px the
-  // list is five cards and everybody else is `display: none` — a person on page
-  // 7 has no element on the screen to scroll to at all.
+  // THE PAGE IS NOT LEFT ALONE, and that is a different thing. Past 50 people
+  // the month is paged at both widths and everybody off the page is
+  // `display: none` — a person on page 2 has no element on the screen to scroll
+  // to at all. (It read "Below 860px the list is five cards" until 2026-10-08.)
   assert.match(fn, /const i = shown\.findIndex\(\(r\) => r\.employee\._id === id\);/);
-  assert.match(fn, /if \(i >= 0\) setPage\(Math\.floor\(i \/ CARD_PAGE\) \+ 1\);/);
+  assert.match(fn, /if \(i >= 0\) setPage\(Math\.floor\(i \/ pageSize\) \+ 1\);/);
   assert.match(hrView, /const rowDomId = \(employeeId\) => `hr-row-\$\{employeeId\}`;/);
   assert.match(hrView, /id=\{rowDomId\(row\.employee\._id\)\}/);
   assert.match(hrView, /flash === row\.employee\._id \? ' row-flash' : ''/);

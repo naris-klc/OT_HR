@@ -79,7 +79,8 @@ const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, PickMany,
   RowAction,
-  ClearButton, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
+  ClearButton, PAGE_SIZE, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
+  pageQuery, pageWindow, serverRows, useKeptFetch, usePageClamp,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
@@ -2579,11 +2580,13 @@ function Employees({ user }) {
    * synchronous. The same reason the search box above is allowed to be
    * client-side.
    *
-   * 20, the app's ordinary opening size — the four on the box are `PAGE_SIZES`,
-   * 10 · 20 · 50 · 100, the same four every other table offers.
+   * `PAGE_SIZE` (50), the app's one opening size since 2026-10-08 — it read
+   * "20, the app's ordinary opening size" until then. A search that matches 50
+   * people or fewer is not paged at all (`PAGER_FROM`). The four on the box are
+   * still `PAGE_SIZES`, 10 · 20 · 50 · 100.
    */
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   /**
    * THE SEARCH, NOT THE REGISTER. `load()` runs again after every แก้ไข, every
    * รีเซ็ตรหัสผ่าน and every CSV import; keyed on `rows` a reader who was on
@@ -2597,15 +2600,14 @@ function Employees({ user }) {
      The object is a new one on every change — see `setFilter` — so it compares
      unequal exactly when something was actually chosen. */
   usePageReset(setPage, [find, filters, pageSize]);
-  const pageCount = Math.max(1, Math.ceil(shown.length / pageSize));
   /**
-   * CLAMPED BEFORE THE SLICE, not only in the sentence. `TablePager` clamps
-   * what it PRINTS; an unclamped slice under it is an empty table beneath a
-   * band reading หน้า 4 / 2 — which is what deleting the last row of the last
-   * page, or a search narrowing under a reader, would draw.
+   * CLAMPED BEFORE THE SLICE, not only in the sentence — `pageWindow` does it.
+   * An unclamped slice is an empty table beneath a band reading หน้า 4 / 2,
+   * which is what deleting the last row of the last page, or a search
+   * narrowing under a reader, would draw.
    */
-  const at = Math.min(Math.max(page, 1), pageCount);
-  const pageRows = shown.slice((at - 1) * pageSize, at * pageSize);
+  const win = pageWindow(page, pageSize, shown.length);
+  const pageRows = shown.slice(win.from, win.to);
 
   /**
    * ถัดไป PUTS THE READER AT THE TOP OF THE LIST, the way คิวรออนุมัติ and
@@ -3705,7 +3707,7 @@ function Employees({ user }) {
         <TablePager
           label="ทะเบียนพนักงาน"
           unit="คน"
-          page={at}
+          page={win.at}
           pageSize={pageSize}
           total={shown.length}
           onPage={goPage}
@@ -5551,12 +5553,8 @@ function DocumentCode() {
  * used to read a trail the pop-up would refuse.
  */
 function RosterAudit() {
-  const [records, setRecords] = useState(null);
-  const [hasMore, setHasMore] = useState(false);
   const [people, setPeople] = useState([]);
   const [depts, setDepts] = useState([]);
-  /** Who has ever written to this trail — from the records, not from the roster. */
-  const [actors, setActors] = useState([]);
   /**
    * The four filters, as one object.
    *
@@ -5580,11 +5578,11 @@ function RosterAudit() {
    * EVERY FILTER GOES TO THE SERVER, and none of them narrows the list in the
    * browser.
    *
-   * The endpoint answers with the newest `limit` records and says whether it cut
-   * the list off. Filtering that answer here would filter the most recent 100
-   * records — so "แก้วันเกิด, โดยฝ่ายบุคคล" would come back empty on a roster
-   * whose last 100 changes happened to be แผนก moves, and read as "this has
-   * never happened" rather than "look further back".
+   * The endpoint answers with one PAGE of the records that match. Filtering
+   * that page here would filter fifty records — so "แก้วันเกิด, โดยฝ่ายบุคคล"
+   * would come back empty on a roster whose last fifty changes happened to be
+   * แผนก moves, and read as "this has never happened" rather than "look on the
+   * next page".
    *
    * THE ONE THING THAT IS SEARCHED IN THE BROWSER is the roster inside
    * กรองตามพนักงาน's picker, and it is the exception that proves the rule
@@ -5593,20 +5591,51 @@ function RosterAudit() {
    * present, never miss one that is absent. The records list has no such
    * guarantee, which is why it is not narrowed here.
    */
-  useEffect(() => {
-    setRecords(null);
-    const params = new URLSearchParams(
-      Object.entries(filters).filter(([, v]) => v),
-    ).toString();
-    api.get(`/employees/audit${params ? `?${params}` : ''}`)
-      .then((res) => {
-        setRecords(res.records);
-        setHasMore(res.hasMore);
-        setActors(res.actors || []);
-        setError('');
-      })
-      .catch((err) => setError(err.message));
-  }, [filters]);
+  /**
+   * PAGED ON THE SERVER SINCE 2026-10-08, the way บันทึกระบบ is. Until then the
+   * route answered with the newest 100 records and a `hasMore` flag, and the
+   * screen said `รายการยาวกว่าที่แสดงได้ — หน้านี้แสดงเฉพาะรายการล่าสุด`: record
+   * 101 was reachable only by narrowing a filter. The route now counts the
+   * filter (`total`) and takes `skip`, so every record is on some page.
+   *
+   * `useKeptFetch` and not `setRecords(null)` first: emptying the list before
+   * the reply is the collapse that threw a reader back to the top of
+   * บันทึกประวัติระบบ on every page press (see `useKeptFetch`).
+   */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  usePageReset(setPage, [filters, pageSize]);
+  const params = React.useMemo(() => {
+    const p = new URLSearchParams(Object.entries(filters).filter(([, v]) => v));
+    const { skip, limit } = pageQuery(page, pageSize);
+    p.set('limit', String(limit));
+    if (skip > 0) p.set('skip', String(skip));
+    return p.toString();
+  }, [filters, page, pageSize]);
+  const {
+    data, error: loadError, busy,
+  } = useKeptFetch(() => api.get(`/employees/audit?${params}`), [params]);
+  const total = data?.total || 0;
+  const win = pageWindow(page, pageSize, total);
+  usePageClamp(setPage, page, data ? win.at : page);
+  /* Memoised, and the reason is not speed: `TrailList` resets its folds when
+     `records` is a new array, and a fresh slice on every render would reset
+     them on every render. */
+  const records = React.useMemo(
+    () => (data ? serverRows(data.records, data.total, pageSize) : null),
+    [data, pageSize],
+  );
+  /** Who has ever written to this trail — from the records, not from the roster. */
+  const actors = data?.actors || [];
+
+  /* ถัดไป lands at the top of the list, from the handler — the way ทะเบียนพนักงาน
+     does it, and for its reason: a trail is read down, and page 3 arriving at
+     page 2's scroll depth begins in the middle. */
+  const listRef = useRef(null);
+  function goPage(next) {
+    setPage(next);
+    listRef.current?.scrollIntoView({ block: 'start' });
+  }
 
   return (
     <div className="card">
@@ -5725,31 +5754,37 @@ function RosterAudit() {
         )}
       </div>
 
-      {error && <Alert kind="error">{error}</Alert>}
-      {hasMore && (
-        <Alert kind="warn">
-          รายการยาวกว่าที่แสดงได้ — หน้านี้แสดงเฉพาะรายการล่าสุด
-          {' '}เลือกตัวกรองด้านบนให้แคบลง เพื่อดูประวัติของสิ่งที่กำลังตามหาให้ครบขึ้น
-        </Alert>
-      )}
-      {!records && !error && <Empty>กำลังโหลด…</Empty>}
+      {(error || loadError) && <Alert kind="error">{error || loadError}</Alert>}
+      {!records && !error && !loadError && <Empty>กำลังโหลด…</Empty>}
       {records && (
-        <TrailList
-          records={records}
-          depts={depts}
-          withWho
-          /* Folded to one line each — this is the list the fold was asked for.
-             See TrailList for why the pop-up next door is not folded. */
-          foldable
-          /* …except when the question is itself about a field. กรองตามสิ่งที่ถูกแก้
-             is the one filter whose answer lives in the diff rather than in the
-             heading, so a list narrowed by it arrives open. The other three
-             narrow WHO and WHAT KIND, both of which are already on the heading
-             line, and they arrive folded like everything else. */
-          openByDefault={Boolean(filters.field)}
-          empty={narrowed
-            ? 'ไม่มีการแก้ไขที่ตรงกับตัวกรองนี้ — ลองล้างตัวกรองบางข้อออก'
-            : 'ยังไม่มีการแก้ไขที่บันทึกไว้ — ทะเบียนเริ่มเก็บประวัติตั้งแต่รุ่นนี้เป็นต้นไป'}
+        <div className="audit-list" ref={listRef} aria-busy={busy}>
+          <TrailList
+            records={records}
+            depts={depts}
+            withWho
+            /* Folded to one line each — this is the list the fold was asked for.
+               See TrailList for why the pop-up next door is not folded. */
+            foldable
+            /* …except when the question is itself about a field. กรองตามสิ่งที่ถูกแก้
+               is the one filter whose answer lives in the diff rather than in the
+               heading, so a list narrowed by it arrives open. The other three
+               narrow WHO and WHAT KIND, both of which are already on the heading
+               line, and they arrive folded like everything else. */
+            openByDefault={Boolean(filters.field)}
+            empty={narrowed
+              ? 'ไม่มีการแก้ไขที่ตรงกับตัวกรองนี้ — ลองล้างตัวกรองบางข้อออก'
+              : 'ยังไม่มีการแก้ไขที่บันทึกไว้ — ทะเบียนเริ่มเก็บประวัติตั้งแต่รุ่นนี้เป็นต้นไป'}
+          />
+        </div>
+      )}
+      {records && (
+        <TablePager
+          label="ประวัติการแก้ทะเบียน"
+          page={win.at}
+          pageSize={pageSize}
+          total={total}
+          onPage={goPage}
+          onPageSize={setPageSize}
         />
       )}
     </div>
@@ -8317,10 +8352,11 @@ function PolicyHistory({
      PRINTS, which keeps the sentence honest; if the list gets shorter under a
      reader on the last page — `recordLive()` cannot do that, but a future
      filter could — an unclamped slice is an empty table under a pager saying
-     `หน้า 4 / 2`. The same two lines HrView's own pager settled on. */
-  const pageCount = Math.max(1, Math.ceil(versions.length / pageSize));
-  const at = Math.min(Math.max(page, 1), pageCount);
-  const shown = versions.slice((at - 1) * pageSize, at * pageSize);
+     `หน้า 4 / 2`. `pageWindow` does it for every paged table since 2026-10-08;
+     `always`, because this list is paged to be read and stays paged however
+     short it is — the one exception to `PAGER_FROM`. */
+  const win = pageWindow(page, pageSize, versions.length, true);
+  const shown = versions.slice(win.from, win.to);
   /**
    * The route stops at fifty. `total` is how many exist, so the two together
    * are what lets the line under the table say the list is cut instead of
@@ -8387,11 +8423,11 @@ function PolicyHistory({
         </div>
       )}
 
-      {/* DRAWN ON A SINGLE PAGE TOO, like the two on บันทึกประวัติระบบ. Both
-          chevrons dead under `แสดง 1–7 จากทั้งหมด 7 เวอร์ชัน` is a statement
-          about the list — a reader knows they are looking at all of it. A band
-          that appeared only once a list got long would leave "is this
-          everything?" unanswered on exactly the lists where the answer is yes.
+      {/* DRAWN ON A SINGLE PAGE TOO — `always`, THE ONE TABLE THAT KEEPS IT.
+          Every other band in the app is withheld at 50 rows or fewer since
+          2026-10-08 (`PAGER_FROM`); this list never reaches 50 and is paged at
+          5 · 10 · 20 to be read a version at a time, so the user kept its band
+          on. This read "like the two on บันทึกประวัติระบบ" until then.
           Not drawn on a list of NONE, where the `Empty` above has already said
           there is nothing and a pager would be chrome around a sentence. */}
       {versions.length > 0 && (
@@ -8400,7 +8436,8 @@ function PolicyHistory({
           label="ประวัติเวอร์ชันนโยบาย"
           unit="เวอร์ชัน"
           sizes={SHORT_PAGE_SIZES}
-          page={at}
+          always
+          page={win.at}
           pageSize={pageSize}
           total={versions.length}
           onPage={setPage}

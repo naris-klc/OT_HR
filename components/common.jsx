@@ -3419,10 +3419,102 @@ export function AddBirthDateHint({ onOpen }) {
  *
  * Four figures and not a box to type one in: the choice is "a screenful", "a
  * scroll", "a long scroll" or "the whole afternoon", and the difference between
- * 20 and 23 is not a question anybody has. `10` first because it is the one a
- * reader arriving at a table they have never seen wants — see `TablePager`.
+ * 20 and 23 is not a question anybody has.
+ *
+ * EVERY TABLE OPENS ON 50 SINCE 2026-10-08 — `PAGE_SIZE`. It read "`10` first
+ * because it is the one a reader arriving at a table they have never seen
+ * wants" until then, and each screen chose its own opening size (10 on
+ * บันทึกประวัติระบบ, 20 on the queue and the roster, 50 on รายงาน OT การเงิน).
+ * The user settled it the day the band was redrawn: one opening size, and a
+ * list that fits inside it is not paged at all — see `PAGER_FROM`.
  */
 export const PAGE_SIZES = [10, 20, 50, 100];
+
+/** The size every paged table opens on. See `PAGE_SIZES`. */
+export const PAGE_SIZE = 50;
+
+/**
+ * A LIST OF THIS MANY ROWS OR FEWER IS NOT PAGED — the band is not drawn and
+ * every row is on screen, whatever the page-size box was last left at.
+ * Asked for on 2026-10-08 with the redrawn band: a pager under a list that fits
+ * on one page is chrome around a list the reader can already see the end of.
+ *
+ * It replaced the opposite rule, which read "IT DRAWS ON A SINGLE PAGE TOO …
+ * a band that appeared only when a list got long would leave 'is this
+ * everything?' unanswered" until that day. The answer to that question is now
+ * the list itself: with no band there is no page, so what is drawn is all of
+ * it. That only holds if a hidden band can never leave rows hidden, which is
+ * why no caller cuts its own page — they all cut through `pageWindow`, which
+ * returns the whole list whenever the band would be withheld.
+ *
+ * ประวัติเวอร์ชันนโยบาย is the one exception (`always` on `TablePager`): it is
+ * paged at 5 · 10 · 20 to be READ a version at a time, not to get past.
+ */
+export const PAGER_FROM = 50;
+
+/**
+ * WHICH ROWS ARE ON SCREEN — the one place a page is turned into indexes.
+ *
+ * `from` is 0-based and `to` exclusive, so a caller writes `list.slice(from,
+ * to)` (or, on รายงาน OT การเงิน, `i >= from && i < to` — that sheet hides rows
+ * rather than dropping them, see there). `at` is `page` clamped into range:
+ * an unclamped slice is an empty table under a band reading `หน้า 4 / 2`, the
+ * bug every caller used to guard against with the same two lines of its own.
+ *
+ * `paged` is the same test `TablePager` makes before drawing anything, and
+ * that sameness is the whole point: when it is false the window is every row,
+ * so the band and the rows can never disagree about whether there is a page.
+ */
+export function pageWindow(page, pageSize, total, always = false) {
+  const paged = always || total > PAGER_FROM;
+  if (!paged) return { paged, at: 1, pageCount: 1, from: 0, to: total };
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const at = Math.min(Math.max(page, 1), pageCount);
+  const from = (at - 1) * pageSize;
+  return { paged, at, pageCount, from, to: Math.min(from + pageSize, total) };
+}
+
+/**
+ * `skip` and `limit` for a list the SERVER pages (บันทึกระบบ,
+ * ประวัติการแก้ทะเบียน), where the total is not known until the reply.
+ *
+ * PAGE 1 ASKS FOR AT LEAST `PAGER_FROM` ROWS. A reader who left the box at 10
+ * and then narrowed the list to 30 rows gets no band — and without this, ten
+ * rows under no band, with twenty more nobody can reach. Asking page 1 for 50
+ * means a list that turns out short arrives whole; a list that turns out long
+ * is cut back to the page with `serverRows`. At most 40 rows over-read, once.
+ */
+export function pageQuery(page, pageSize) {
+  const at = Math.max(page, 1);
+  return {
+    skip: (at - 1) * pageSize,
+    limit: at === 1 ? Math.max(pageSize, PAGER_FROM) : pageSize,
+  };
+}
+
+/** The rows of a `pageQuery` reply that belong on screen. */
+export function serverRows(rows, total, pageSize) {
+  return total > PAGER_FROM ? rows.slice(0, pageSize) : rows;
+}
+
+/**
+ * The page buttons between ‹ and ›: the first, the last, the current one and
+ * one either side of it, and `'…'` for a run that is skipped.
+ *
+ * A GAP OF ONE PAGE IS DRAWN AS THAT PAGE. `1 … 3 4 5` puts an ellipsis where
+ * the `2` would go, the same width and one press less useful — so a single
+ * missing page is filled in and `…` only ever stands for two or more.
+ */
+export function pageList(at, pageCount) {
+  const keep = new Set([1, pageCount, at - 1, at, at + 1]);
+  const out = [];
+  for (let p = 1; p <= pageCount; p += 1) {
+    if (keep.has(p)) out.push(p);
+    else if (keep.has(p - 1) && keep.has(p + 1)) out.push(p);
+    else if (out[out.length - 1] !== '…') out.push('…');
+  }
+  return out;
+}
 
 /**
  * The same four questions on a list that will never be long.
@@ -3440,47 +3532,36 @@ export const SHORT_PAGE_SIZES = [5, 10, 20];
  * ── THE FOOT OF A TABLE THAT PAGES ─────────────────────────────────────────
  *
  * ONE COMPONENT, BECAUSE THE SECOND COPY IS WHERE THE TWO STOP AGREEING.
- * บันทึกประวัติระบบ has two tables on one screen — the traffic list under three
- * of its tabs, and การใช้สิทธิ์พิเศษ under the fifth — and they are read by the
- * same person in the same sitting. Two pagers built separately are two answers
- * to "what does › do at the end", two default page sizes, and two ways of
- * counting from 1. `HrView`'s own `.pager-row` is the third and is NOT this: it
- * is drawn inside a `<tbody>` on phones only, stacked into two grid rows to fit
- * a 280px card, and folding it in here would make one component whose layout is
- * decided by which of three screens is asking. What they share is the VOICE —
- * the chevrons, `หน้า A / B`, `แสดง n–m จาก T รายการ`, and the class names — and
- * that is shared by naming the same classes, not by one component drawing both.
+ * Every paged table in the app draws this one: both lists on บันทึกประวัติระบบ,
+ * คิวรออนุมัติ, ทะเบียนพนักงาน, ประวัติการแก้ทะเบียน, รายงาน OT การเงิน,
+ * ตรวจสอบประจำเดือน and ประวัติเวอร์ชันนโยบาย. `HrView`'s own `.pager-row` was
+ * the one deliberately NOT folded in — a `<td>` inside a `<tbody>`, phone-only,
+ * stacked for a 280px card — until 2026-10-08, when the band became one line
+ * that fits a card at either width and that screen took it like the rest.
  *
- * TWO SIDES, AND WHICH FACT GOES ON WHICH.
- * Left is the one setting: how long a page is. Right is where the reader is and
- * the two presses that move them. The order is the order somebody uses them —
- * the size is chosen once on arrival and the arrows every few seconds after —
- * and putting the arrows at the right edge is what keeps them under the thumb
- * that has just finished scrolling the table above.
+ * ONE LINE, REDRAWN 2026-10-08 (mockup option B, chosen by the user). Until
+ * then it was two halves ~62px tall: `แสดง [10 ▾] รายการต่อหน้า` on the left,
+ * two stacked sentences (`แสดง 1–10 จากทั้งหมด 24 รายการ` over `หน้า 1 / 3`)
+ * and two 38px chevrons on the right. Now, ~42px:
  *
- * THE RULE ABOVE IT IS THE POINT OF THE WHOLE BAND. Without a `border-top` this
- * is a row of controls floating under a table, and the last data row and the
- * first control read as the same list. One hairline in `--line` and 12px of air
- * says the table ended here.
+ *     1–50 จาก 214 คน · [50 ▾] ต่อหน้า        ‹ 1 2 3 4 5 ›
  *
- * `disabled`, NOT HIDDEN, AT THE ENDS — the reason is written out at
- * `.hr-table tbody tr.pager-row .pager-controls .btn.pager-step:disabled` in the
- * stylesheet and is the same here: a control that vanishes at an end moves the
- * one beside it, so the second press of a thumb already travelling lands on the
- * button that goes the other way. And it goes quiet rather than faded — a ghost
- * button at `opacity: .4` is illegible on ธีมมืด, which is a thing this app
- * found out on the deployed page and not in a stylesheet.
+ * Left is what the reader is looking at and the one setting; right is the
+ * numbered pages, so the last page is one press rather than › held down. Below
+ * 860px the numbers give way to `‹ [3] / 5 ›` on 44px targets.
  *
- * IT DRAWS ON A SINGLE PAGE TOO. `pageCount` of 1 leaves both chevrons dead and
- * the sentence reading "แสดง 1–7 จากทั้งหมด 7 รายการ", which is a statement
- * about the list — the reader knows they are looking at all of it. A band that
- * appeared only when a list got long would leave "is this everything?"
- * unanswered on exactly the lists where the answer is yes.
+ * `disabled`, NOT HIDDEN, AT THE ENDS: a control that vanishes at an end moves
+ * the one beside it, so the second press of a thumb already travelling lands on
+ * the button that goes the other way. And it goes quiet rather than faded — a
+ * ghost button at `opacity: .4` is illegible on ธีมมืด, which is a thing this
+ * app found out on the deployed page and not in a stylesheet.
  *
- * WHAT IT DOES NOT DO: clamp `page`. The caller owns that state and is the only
+ * NOT DRAWN AT ALL FOR `PAGER_FROM` ROWS OR FEWER, unless `always` — see there.
+ *
+ * WHAT IT DOES NOT DO: own `page`. The caller owns that state and is the only
  * one that knows what invalidates it — a filter changing, a tab changing, a
  * fetch coming back shorter — so this draws what it is handed and the callers
- * reset. See `usePageReset`.
+ * reset. See `usePageReset` and `pageWindow`.
  */
 export function TablePager({
   page,
@@ -3493,68 +3574,73 @@ export function TablePager({
   label = 'ตาราง',
   /**
    * WHAT THE ROWS ARE CALLED — "รายการ" on a log, "เวอร์ชัน" on
-   * ประวัติเวอร์ชันนโยบาย, where a row is a rule set somebody can name and go
-   * and look at rather than an item in a list.
+   * ประวัติเวอร์ชันนโยบาย, "คน" wherever a row is a person.
    *
    * A word and not a `render` hook, because the sentence it lands in is fixed:
-   * `แสดง 1–10 จากทั้งหมด 24 <unit>`. A caller that needed a different SENTENCE
-   * would be a caller this component is the wrong shape for, and the way to
-   * find that out is for the prop to be too small to fake it with.
+   * `1–10 จาก 24 <unit>`. A caller that needed a different SENTENCE would be a
+   * caller this component is the wrong shape for, and the way to find that out
+   * is for the prop to be too small to fake it with.
    */
   unit = 'รายการ',
   /**
-   * `roomy` where the band closes a section rather than a card — 16px of air
-   * over the rule instead of 8. The two log tables sit inside a `.card` whose
-   * own padding is already under them; ประวัติเวอร์ชันนโยบาย is an `<h3>` and a
-   * table loose in a tab, with the next heading close behind, so its rule needs
-   * to belong to the table above more visibly than a card's does.
+   * DRAWN EVEN ON A SHORT LIST. ประวัติเวอร์ชันนโยบาย only — a list paged to be
+   * read five versions at a time, where `PAGER_FROM` would never be reached.
+   * The caller passes the same flag to `pageWindow`, or the rows and the band
+   * disagree about whether there is a page.
+   */
+  always = false,
+  /**
+   * `roomy` where the band closes a section rather than a card; `flush-pager`
+   * inside a `.card.flush`, which has no padding of its own. See the CSS.
    */
   className = '',
 }) {
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const at = Math.min(Math.max(page, 1), pageCount);
+  const win = pageWindow(page, pageSize, total, always);
+  if (!win.paged) return null;
+  const { at, pageCount } = win;
   // 1-based and inclusive, the way the sentence reads it. An empty list would
-  // otherwise say "แสดง 1–0", so `from` gives way to 0 when there is nothing.
-  const from = total === 0 ? 0 : (at - 1) * pageSize + 1;
-  const to = Math.min(at * pageSize, total);
+  // otherwise say "1–0", so `from` gives way to 0 when there is nothing.
+  const from = total === 0 ? 0 : win.from + 1;
+  const { to } = win;
 
   return (
     <div className={`table-pager${className ? ` ${className}` : ''}`}>
-      {/* แสดง [ 10 ▾ ] รายการต่อหน้า — the words are OUTSIDE the control on
-          purpose. `PickOne` puts its question above the box; here the question
-          is the sentence the box sits inside, so the label is clipped out of
-          the picture (`hideLabel`) and kept in the document, which is what
-          `aria-labelledby` on the combobox points at. See `.field.label-off`.
+      {/* 1–50 จาก 214 คน · [ 50 ▾ ] ต่อหน้า — the words are OUTSIDE the
+          control on purpose. `PickOne` puts its question above the box; here
+          the question is the sentence the box sits inside, so the label is
+          clipped out of the picture (`hideLabel`) and kept in the document,
+          which is what `aria-labelledby` on the combobox points at.
 
           `PickOne` AND NOT A `<select>`: the app took the operating system's
-          own menus off every screen on 2026-09-04, and this bar is drawn under
-          a table on a page whose filters are all `PickOne`. One kind of
-          dropdown per screen. */}
-      <div className="pager-size">
-        <span className="pager-word">แสดง</span>
-        <PickOne
-          label={`จำนวน${unit}ต่อหน้า — ${label}`}
-          hideLabel
-          className="pager-size-pick"
-          value={String(pageSize)}
-          onChange={(v) => onPageSize(Number(v))}
-          options={sizes.map((n) => ({ value: String(n), label: String(n) }))}
-        />
-        <span className="pager-word">{unit}ต่อหน้า</span>
-      </div>
+          own menus off every screen on 2026-09-04. One kind of dropdown.
 
-      {/* `aria-live` on the sentences and not on the buttons: pressing › moves
+          `aria-live` on the range and not on the buttons: pressing › moves
           the reader, and what a screen reader has to say afterwards is where
           they now are, not that a button was pressed. */}
+      <div className="pager-say">
+        <span className="pager-range" aria-live="polite">
+          <strong>{from}–{to}</strong> จาก <strong>{total.toLocaleString('th-TH')}</strong> {unit}
+        </span>
+        <span className="pager-dot" aria-hidden="true">·</span>
+        <span className="pager-size">
+          <PickOne
+            label={`จำนวน${unit}ต่อหน้า — ${label}`}
+            hideLabel
+            className="pager-size-pick"
+            value={String(pageSize)}
+            onChange={(v) => onPageSize(Number(v))}
+            options={sizes.map((n) => ({ value: String(n), label: String(n) }))}
+          />
+          <span className="pager-word">ต่อหน้า</span>
+        </span>
+      </div>
+
+      {/* ‹ 1 … 4 5 6 … 12 › on a wide screen, ‹ [5] / 12 › on a phone. The
+          phone's form is the SAME buttons with the non-current numbers hidden
+          by the stylesheet, so there is one list of controls and two layouts
+          of it rather than two components. `.pager-of` is the `/ 12` the
+          phone shows beside the current page. */}
       <div className="pager-controls">
-        <div className="pager-say" aria-live="polite">
-          <span className="pager-range">
-            แสดง <strong>{from}–{to}</strong> จากทั้งหมด <strong>{total.toLocaleString('th-TH')}</strong> {unit}
-          </span>
-          <span className="pager-at">
-            หน้า <strong>{at}</strong> / <strong>{pageCount}</strong>
-          </span>
-        </div>
         <button
           type="button"
           className="btn ghost sm pager-step pager-prev"
@@ -3565,6 +3651,22 @@ export function TablePager({
         >
           ‹
         </button>
+        {pageList(at, pageCount).map((p, i) => (p === '…' ? (
+          // eslint-disable-next-line react/no-array-index-key
+          <span key={`gap-${i}`} className="pager-gap" aria-hidden="true">…</span>
+        ) : (
+          <button
+            key={p}
+            type="button"
+            className="btn ghost sm pager-num"
+            onClick={() => onPage(p)}
+            aria-current={p === at ? 'page' : undefined}
+            aria-label={`หน้า ${p} — ${label}`}
+          >
+            {p}
+          </button>
+        )))}
+        <span className="pager-of">/ {pageCount}</span>
         <button
           type="button"
           className="btn ghost sm pager-step pager-next"
@@ -3598,6 +3700,18 @@ export function usePageReset(setPage, deps) {
   React.useEffect(() => { setPage(1); },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     deps);
+}
+
+/**
+ * The page a SERVER-paged list is on, put back in range once the reply says
+ * how long the list is. A list paged in the browser needs none of this —
+ * `pageWindow` clamps the slice in the same render — but a server page is
+ * requested before its total is known, so page 3 of a list that has since
+ * shrunk to one page would ask for rows that are not there under a band that
+ * is not drawn. `at` is `pageWindow(...).at` for the reply in hand.
+ */
+export function usePageClamp(setPage, page, at) {
+  React.useEffect(() => { if (page !== at) setPage(at); }, [setPage, page, at]);
 }
 
 /**

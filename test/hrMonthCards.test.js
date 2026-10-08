@@ -371,101 +371,52 @@ test('a card with no ceiling still answers สะสม / เพดาน with t
 
 // ── หน้าละ 5 คน ──────────────────────────────────────────────────────────────
 
-test('five to a page, and the page is the whole of the mechanism', () => {
-  // Five to a page — the number lives in the component, once.
-  assert.match(hrView, /const CARD_PAGE = 5;/);
-  // A WINDOW, not a fold: page 3 hides the ten rows above the five it draws as
-  // well as everything below them.
-  assert.match(hrView, /const from = \(current - 1\) \* CARD_PAGE;/);
-  assert.match(hrView, /const to = from \+ CARD_PAGE;/);
-  // The class the phone reads. It shares the attribute with `row-flash` since
-  // the dropdown landed — two independent facts about one row, and the page
-  // window is the half asserted here.
-  //
-  // `cardsTo` SINCE 2026-08-28 AND IT IS THE SAME NUMBER AS `to` HERE: on a
-  // month with a pager the two are equal, and on one without — where the pager
-  // is not drawn at all — the fold under the third card moves the end of the
-  // range. One class, one question (is this row on the phone's screen), two
-  // mechanisms that never both exist. See the fold's own test below.
-  // `row-open` LEADS THE CLASS LIST SINCE 2026-09-10 and `off-page` follows it
-  // with a leading space, because the row itself is what opens the person now —
-  // the pencil that used to do it is gone. Three independent facts, one
-  // attribute: this row opens somebody, this row is off the phone's page, this
-  // row was just jumped to from the dropdown.
-  assert.match(hrView, /`row-open\$\{i < from \|\| i >= cardsTo \? ' off-page' : ''\}/);
-  assert.match(hrCode, /const cardsTo = folding && !showAllCards \? CARD_FOLD : to;/);
-  // A CLASS AND NOT `shown.slice`, which is the shorter way to draw five cards
-  // and draws five ROWS with it. The desktop has no pager — `.pager-row` is
-  // `display: none` above 860px — so a sliced list is a month with fifty-five
-  // people missing and no control anywhere on screen to reach them.
-  assert.ok(!/shown\.slice\(/.test(hrCode), 'the phone’s page window sliced the desktop’s month away');
-  assert.match(hrCode, /\{shown\.map\(\(row, i\) => \(/);
-  // …and no `dvh`: the list is no longer a box, and it was never the
-  // component's business how tall one was.
+/**
+ * ONE PAGER AT BOTH WIDTHS — 2026-10-08.
+ *
+ * Until then this file pinned "five to a page, and the page is the whole of the
+ * mechanism" (`CARD_PAGE = 5`, a phone-only `.pager-row` inside the `<tbody>`)
+ * and "the fold under the third card exists only where the pager does not"
+ * (`CARD_FOLD = 3`), with the desktop drawing all ~77 people of a month. The
+ * user replaced both with the shared `TablePager` at both widths, 50 to a page,
+ * and no band at all on a month of 50 or fewer. What those tests protected is
+ * kept below in the new shape: ONE mechanism over one list, a page that is a
+ * CLASS rather than a slice, and nothing a hidden band can leave hidden.
+ */
+test('the month pages through the shared band, at both widths', () => {
+  assert.ok(!/CARD_PAGE|CARD_FOLD|showAllCards|cards-more-row|pager-row/.test(hrCode),
+    'the phone’s own pager or the fold came back — two mechanisms over one list');
+  assert.equal(hrCode.match(/<TablePager\b/g)?.length, 1, 'one table, one band');
+  assert.match(hrCode, /const \[pageSize, setPageSize\] = useState\(PAGE_SIZE\);/);
+  assert.match(hrCode, /const win = pageWindow\(page, pageSize, shown\.length\);/);
+  assert.match(hrCode, /className="flush-pager no-print"/);
+  assert.match(hrCode, /total=\{shown\.length\}/);
+  assert.match(hrCode, /page=\{win\.at\}/);
+  // The band is a block under the table, never a row inside it.
+  assert.ok(hrView.indexOf('<TablePager') > hrView.indexOf('</table>'),
+    'the band went back inside the table body');
   layoutIsTheStylesheets();
 });
 
-/**
- * ONE MECHANISM AT A TIME, AND `pageCount` IS WHAT PICKS IT.
- *
- * The fold under the third card was asked for on 2026-08-28 — "Limit แสดงการ์ด
- * พนักงานเพียง 3 รายการแรก" with a ดูพนักงานทั้งหมด under it. This screen has
- * carried six mechanisms over one list and the lesson written down from the last
- * of them is that TWO of them at once is the failure: a reader who can reach the
- * ninth person either by pressing ถัดไป or by opening a fold has two controls
- * and no way to tell which is meant.
- *
- * So the fold exists only where the pager does not, which is the assertion this
- * test exists for. The rest — the label, the reset, the dropdown — is pinned
- * because each is a way for a folded row to become unreachable.
- */
-test('the fold under the third card exists only where the pager does not', () => {
-  assert.match(hrView, /const CARD_FOLD = 3;/);
-  // The three conditions, and each one is a way the fold could hide something
-  // it must not: a pager beside it, a search whose matches it would swallow, or
-  // a month short enough that the button hides nothing at all.
-  assert.match(hrCode, /const folding = pageCount === 1 && !query\.trim\(\) && shown\.length > CARD_FOLD;/);
-  // The row is drawn only then, and it is a ROW — `.hr-table tbody` is the flex
-  // column the cards live in, so anything that sits in that column has to be one.
-  assert.match(hrCode, /\{folding && \(\s*<tr className="cards-more-row">/);
-  // `colCount` AND NOT `10` SINCE 2026-09-10: the คอลัมน์สแกน is drawn only on
-  // a month that has a scan file, so this table is eleven columns wide or ten
-  // and every full-width row in it has to ask rather than assume.
-  assert.match(hrCode, /<td className="pager-col" colSpan=\{colCount\}>/);
-  // Two OPTIONAL columns now — สแกน and the tick-box — so the width is a sum
-  // rather than a ternary, and no full-width row writes a number of its own.
-  assert.match(hrCode, /const colCount = 10 \+ \(showScanCol \? 1 : 0\) \+ \(showPickCol \? 1 : 0\);/);
-  // The count is on the button in BOTH states, like the birthday fold below it.
-  assert.match(hrView, /ดูพนักงานทั้งหมด \(\$\{shown\.length\} ราย\)/);
-  assert.match(hrView, /ย่อรายการ — แสดง \$\{CARD_FOLD\} รายแรก/);
-  assert.match(hrView, /aria-expanded=\{showAllCards\}/);
-  // AND THE DROPDOWN OPENS IT. Below 860px the fourth card of a short month
-  // carries `off-page` exactly as the sixth of a long one does, so a person
-  // picked from the suggestion list could have no element on the screen to
-  // scroll to — the same defect `setPage` is called for, from the other
-  // mechanism.
-  const jump = hrCode.slice(hrCode.indexOf('function goToRow'), hrCode.indexOf('function onFindKeyDown'));
-  assert.match(jump, /setShowAllCards\(true\);/);
-  // ABOVE 860px NEITHER ROW EXISTS. The desktop draws every row of the month,
-  // `off-page` is given no rule, and a control for a fold that is not happening
-  // is a control for nothing.
-  const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
-  assert.match(desktop, /\.hr-table tbody tr\.cards-more-row \{ display: none; \}/);
-  assert.match(desktop, /\.hr-table tbody tr\.pager-row \{ display: none; \}/);
-  // The band stands out of the list's rhythm the same way the pager does: 12
-  // added to the flex column's own 12 makes 24, twice the pitch between cards.
-  assert.match(phone, /\.hr-table tbody tr\.cards-more-row \{\s*display: block; padding: 0; border: 0; background: none;\s*margin: 12px 0 0;/);
-  // …and the button is the birthday fold's, to the pixel.
-  assert.match(phone, /\.btn\.cards-more \{\s*display: flex; place-content: center; align-items: center;\s*width: 100%; min-height: 44px;/);
+test('the page is a class on a row, never a slice — the month prints whole', () => {
+  // `win.from`/`win.to` are every row on a month of 50 or fewer, so a hidden
+  // band can never leave a row hidden.
+  assert.match(hrView, /`row-open\$\{i < win\.from \|\| i >= win\.to \? ' off-page' : ''\}/);
+  assert.ok(!/shown\.slice\(/.test(hrCode), 'the page sliced the month — Ctrl+P would print one page of it');
+  assert.match(hrCode, /\{shown\.map\(\(row, i\) => \(/);
+  // Hidden on screen at every width, put back on paper.
+  assert.match(desktop, /\.hr-table tbody tr\.off-page \{ display: none; \}/);
+  assert.match(read('app/print.css'), /\.hr-table tbody tr\.off-page \{ display: table-row !important; \}/);
+  // Still no bare `.off-page` selector, which would reach every table there is.
+  assert.ok(!/(^|[\s,])\.off-page\s*\{/m.test(css),
+    'an unqualified .off-page rule — it reaches every table in the app');
 });
 
 test('a page that no longer exists is clamped, not drawn empty', () => {
   // `load()` can shorten the list without the month, the filter or the search
-  // changing — HR withdraws the last live entry of the only person on page 12.
-  assert.match(hrView, /const pageCount = Math\.max\(1, Math\.ceil\(shown\.length \/ CARD_PAGE\)\);/);
-  assert.match(hrView, /const current = Math\.min\(page, pageCount\);/);
-  // Clamped at render, so the empty page never exists for a frame — and `page`
-  // is left alone, so a list that grows back returns the reader where they were.
+  // changing — HR withdraws the last live entry of the only person on the last
+  // page. `pageWindow` clamps at render, so the empty page never exists for a
+  // frame, and `page` is left alone.
   assert.ok(
     !/setPage\(Math\.min/.test(hrCode) && !/useEffect[^)]*pageCount/.test(hrCode),
     'the clamp became an effect, which draws the empty page for one frame first',
@@ -485,8 +436,8 @@ test('a new page starts at the top of the list, and only when a button asks', ()
     hrCode,
     /function goPage\(next\) \{\s*setPage\(next\);\s*listRef\.current\?\.scrollIntoView\(\{ block: 'start' \}\);\s*\}/,
   );
-  assert.match(hrView, /onClick=\{\(\) => goPage\(current - 1\)\}/);
-  assert.match(hrView, /onClick=\{\(\) => goPage\(current \+ 1\)\}/);
+  // The band calls it for every press — ‹, ›, and each page number.
+  assert.match(hrCode, /onPage=\{goPage\}/);
   // IN THE HANDLER AND NOT ON AN EFFECT. `scrollTop = 0` was the same act as
   // resetting the box, because the box was the thing scrolled; the page is now,
   // and an effect over `[current, find, period, …]` would fire on mount and on
@@ -541,202 +492,26 @@ test('nothing on this screen is a scrollport any more', () => {
   assert.ok(!/\.hr-table tbody \{[^}]*max-height/.test(desktop), 'the box reached the desktop table');
 });
 
-test('the pager sits under the fifth card, above the total, and disables its ends', () => {
-  const block = hrView.slice(hrView.indexOf('<tr className="pager-row">'));
-  const row = block.slice(0, block.indexOf('</tr>'));
-  assert.match(row, /แสดง <strong>\{from \+ 1\}–\{Math\.min\(to, shown\.length\)\}<\/strong> จาก/);
-  assert.match(row, /<strong>\{shown\.length\}<\/strong> รายการ/);
-  // From the clamped value, never from raw `page`, or the label and the rows
-  // drawn could disagree on exactly the month that shortened.
-  assert.match(row, /หน้า <strong>\{current\}<\/strong> \/ <strong>\{pageCount\}<\/strong>/);
-  assert.match(row, /onClick=\{\(\) => goPage\(current - 1\)\}/);
-  assert.match(row, /disabled=\{current <= 1\}/);
-  assert.match(row, /onClick=\{\(\) => goPage\(current \+ 1\)\}/);
-  assert.match(row, /disabled=\{current >= pageCount\}/);
-  // `disabled` rather than gone: a control that disappears at the ends moves the
-  // two beside it, and the second press of a travelling thumb lands on the
-  // button that goes back.
-  assert.ok(!/\{current > 1 && \(\s*<button/.test(row), 'ก่อนหน้า is hidden at page 1 instead of disabled');
-  assert.match(row, /<div className="pager-say" aria-live="polite">/);
-  assert.match(row, /colSpan=\{colCount\}/);
-
-  // THE ORDER OF THE WHOLE SCREEN: five cards, the pager directly under the
-  // fifth of them, then รวมทั้งหมด. The pager belongs to the cards —
-  // "แสดง 6–10 จาก 57 รายการ" is a sentence about the five immediately above it
-  // — and a month's total read in between breaks that sentence in half.
-  //
-  // วันเกิดของเดือนนี้ closed the screen under the total until 2026-09-03. It
-  // was removed with ฝ่ายบุคคล's birthday work; the footnotes end the card now.
-  assert.ok(
-    hrView.indexOf('<tr className="pager-row">') < hrView.indexOf('<tr className="total-row">'),
-    'the pager ended up under รวมทั้งหมด',
-  );
+test('the total closes the list, and the band sits under the table', () => {
+  // It read "the pager sits under the fifth card, above the total, and disables
+  // its ends" until 2026-10-08. The phone's `.pager-row` is gone; the shared
+  // band's ends, names and disabled voice are pinned in test/tablePager.test.js.
   assert.ok(!hrView.includes('<BirthdayMonth'), 'วันเกิดของเดือนนี้ came back');
-  // Not a card, and one band that has to stay one band.
-  assert.match(phone, /\.hr-table tbody tr\.pager-row \{\s*display: block; padding: 0; border: 0; background: none;/);
-
-  // AND IT IS NOT DRAWN AT ALL ON A MONTH THAT FITS — 2026-08-28, and this is
-  // the SECOND time this condition has existed, so it is pinned with both
-  // reasons rather than left to be tidied a third time.
-  //
-  // It was `{shown.length > CARD_PAGE && …}`, was removed on 2026-08-26 so that
-  // "แสดง 1–4 จาก 4 รายการ" — the one line saying how long the list is — could
-  // not go missing from exactly the months short enough to doubt, and is back
-  // because on a month that fits the band is a control that can do nothing
-  // (both ends `disabled`) above a sentence about a list already scrolled past.
-  // Reported twice in one day as an element that should not be there.
-  //
-  // The count is not lost with it: the export button says "(N คน)" at the top
-  // of the screen, every card is on screen when there is one page, and the line
-  // returns the moment there is a second — which is when it does work.
-  assert.match(hrCode, /\{pageCount > 1 && \(\s*<tr className="pager-row">/,
-    'the pager went back to being drawn on every month, or lost its condition');
-  // The condition is on the ROW, not on the buttons inside it: a band that
-  // keeps its height and empties itself is the shape problem the 2026-08-26
-  // removal was written about.
-  assert.ok(!/\{pageCount > 1 && [\s\S]{0,120}pager-step/.test(hrCode),
-    'only part of the band is conditional — it will draw an empty 56px row');
-  // AND IT IS SPACED OUT OF THE LIST'S OWN RHYTHM, 2026-08-27. Asked for as the
-  // pager and รวมทั้งหมด being "ชิดการ์ดพนักงานเกินไป": they sat at exactly
-  // 12px, which is the `gap` between one employee card and the next, so a
-  // control and a month's total were spaced into the list at the list's own
-  // pitch and read as the sixth and seventh people on the page. Taking the
-  // border and the fill off had stopped them LOOKING like cards; nothing had
-  // stopped them SITTING like cards.
-  //
-  // THE PARENT IS A FLEX COLUMN — `gap` and `margin` add here rather than
-  // collapsing, so this number is added to the list's own 12. It read "6px",
-  // and therefore 18, for a day: asked about again on 2026-08-28 as the foot of
-  // the last card wanting to be "โปร่งและสม่ำเสมอ", because the two things this
-  // joint separates are not two borders — a bordered button 15px inside the
-  // card's edge above, a filled chevron square hard against the top of the band
-  // below. 12 makes both gaps 24, twice the cards' own pitch.
-  //
-  // TOP ONLY, AND รวมทั้งหมด NOW STATES ITS OWN. This assertion read
-  // "margin: 12px 0" with a negative one under it forbidding any margin on the
-  // total row, on the ground that the pager's BOTTOM margin was the gap over the
-  // total, written once. That stopped being safe the moment the pager stopped
-  // being drawn on a month that fits: a gap hung on an element that is sometimes
-  // absent is sometimes absent, and the total would have slid back to the list's
-  // own 12px pitch — the exact defect the margin was added for.
-  assert.match(phone, /\.hr-table tbody tr\.pager-row \{[^}]*margin: 12px 0 0;/);
+  assert.ok(
+    hrView.indexOf('<tr className="total-row">') < hrView.indexOf('<TablePager'),
+    'the band ended up inside the list, above รวมทั้งหมด',
+  );
+  // รวมทั้งหมด states its own gap over the last card, twice the cards' pitch.
   assert.match(phone, /\.hr-table tbody \{\s*display: flex; flex-direction: column; gap: 12px;/,
     'the list stopped being a flex column — margin and gap no longer add up');
-  assert.match(phone, /\.hr-table tbody tr\.total-row \{[^}]*margin-top: 12px;/,
-    'the total went back to hanging its gap on a row that is not always drawn');
-  // CENTRED, NOT SPREAD. It was `1fr auto 1fr` until 2026-08-26, which pinned
-  // the two buttons to the ENDS of the card — the layout of a wide table's
-  // footer. The three tracks take the width they need and the group is centred,
-  // so the buttons stay the same distance from the page number whatever it
-  // comes to; `minmax(0, auto)` is what lets the page number narrow itself
-  // rather than push a chevron off the card.
-  assert.match(phone, /\.pager-controls \{\s*display: grid; grid-template-columns: auto minmax\(0, auto\) auto;/);
-  assert.match(phone, /justify-content: center; align-items: center; gap: 1px 10px;/);
-  // Both ends are the SAME SQUARE, which is what makes centring symmetrical.
-  assert.match(phone, /\.pager-controls \.btn\.pager-step \{\s*width: 38px; min-width: 38px; height: 38px; padding: 0;/);
-  // AND A DISABLED END IS AN OUTLINE, NOT A SLAB — 2026-08-28.
-  //
-  // `.pager-step` is a `.btn ghost`, whose live state is a transparent ground
-  // and a hairline; the app-wide `.btn:disabled` gives it a `--neutral-wash`
-  // FILL, which makes the dead control the loudest object in the band. On a
-  // month that fits on one page both ends are disabled, so it is two grey slabs
-  // either side of "หน้า 1 / 1" — and the app bar is sticky and frosted, so
-  // when the band scrolls under it they read as grey debris crossing the
-  // header. That is exactly how it was reported. The fix is the voice, not the
-  // element: the band is still drawn on every month.
-  assert.match(
-    phone,
-    /\.pager-controls \.btn\.pager-step:disabled \{\s*background: none; border-color: var\(--line\); color: var\(--muted-2\);/,
-  );
-  // The app-wide rule is untouched — this is one selector deeper, not a change
-  // to what a disabled button looks like everywhere else.
+  assert.match(phone, /\.hr-table tbody tr\.total-row \{[^}]*margin-top: 12px;/);
+  // The app-wide disabled rule is untouched.
   assert.match(css, /\.btn:disabled,[\s\S]{0,200}background: var\(--neutral-wash\);/);
-  // …and it is still not a fade: `opacity: 1` is deliberate, because a ghost at
-  // .45 is illegible on the dark theme.
-  assert.ok(!/pager-step:disabled \{[^}]*opacity/.test(phone),
-    'the disabled chevron went back to being faded');
-  // The words are on the buttons, not in them — see the note in HrView.jsx.
-  // A chevron with no accessible name is a button a screen reader cannot use.
-  for (const label of ['ก่อนหน้า', 'ถัดไป']) {
-    assert.match(row, new RegExp(`aria-label="${label}"`), `the pager's ${label} lost its name`);
-  }
-  assert.ok(!/pager-step[^>]*aria-hidden/.test(row), 'the chevron is decoration on a nameless button');
-
-  // TWO GRID ROWS, AND THE BUTTONS ARE ON THE PAGE NUMBER'S.
-  //
-  // This is the assertion that would have caught what shipped for a few hours
-  // on 2026-08-26: the range was the second line of a `.pager-where` div in the
-  // middle COLUMN, which made the band 38px and put each chevron 8.8px below
-  // the words beside it — `align-items: center` centring a 38px square on a
-  // 37px two-line block, a true centre and the wrong one.
-  //
-  // A wrapper around the two sentences is what makes that mistake, because it
-  // takes them out of the grid the buttons are placed in. So: no wrapper, and
-  // the areas named.
-  // `hrCode` and not `hrView`: the note beside this markup EXPLAINS the wrapper
-  // it no longer has, and the first run of this assertion caught that sentence.
-  // Fourth time this file has done it to itself — see the note over `hrCode`.
-  assert.ok(!/pager-where/.test(hrCode), 'the two sentences went back inside a wrapper');
-  assert.match(phone, /grid-template-areas:\s*'prev\s+at\s+next'\s*'range range range';/);
-  assert.match(phone, /\.pager-prev \{ grid-area: prev; \}/);
-  assert.match(phone, /\.pager-next \{ grid-area: next; \}/);
-  assert.match(phone, /\.pager-at \{\s*grid-area: at;/);
-  // Spanning all three columns rather than sitting under the middle one: it has
-  // the card's full width, so it stays on one line at every width the app is
-  // used at instead of wrapping inside about 144px at 320.
-  assert.match(phone, /\.pager-range \{\s*grid-area: range; display: block; text-align: center; text-wrap: balance;/);
-  // The disabled ends wear what every other disabled button in this app wears.
-  assert.ok(!/pager-controls \.btn:disabled/.test(phone), 'the pager opted out of the app’s disabled treatment');
-
-  /**
-   * And the desktop hides the whole row while leaving THIS TABLE'S `.off-page`
-   * unstyled — one `display: none` written there by mistake takes fifty-five
-   * people out of the desktop month.
-   *
-   * IT READ `!desktop.includes('.off-page {')` UNTIL 2026-09-11, which banned
-   * the string rather than the rule. `.off-page` stopped being this screen's
-   * private class that day: สรุป OT ส่งบัญชี pages `.acct-table` by the same
-   * mechanism — every row drawn, the ones off the page hidden — because its
-   * table is also a printed document and a `.slice()` would cut the paper copy
-   * short. Two tables, one word for "not on this page", and each says which
-   * rows it means.
-   *
-   * So the ban is now the two shapes that would actually reach this table: a
-   * bare `.off-page` selector, which reaches every table in the app, and any
-   * rule that names `.hr-table`.
-   */
-  assert.match(desktop, /\.hr-table tbody tr\.pager-row \{ display: none; \}/);
-  assert.ok(!/(^|[\s,])\.off-page\s*\{/m.test(desktop),
-    'an unqualified .off-page rule — it reaches every table in the app, this one included');
-  assert.ok(!/\.hr-table[^{,]*\.off-page\s*\{/.test(desktop),
-    'the paging reached the desktop table');
+  assert.ok(!/pager-step:disabled \{[^}]*opacity/.test(css),
+    'a disabled chevron went back to being faded');
 });
 
-test('the pager is drawn on every month, including the ones that fit', () => {
-  // It used to be `{shown.length > CARD_PAGE && …}`, and the four-person August
-  // had no pager at all: the foot of the list was a different shape depending on
-  // how many people filed OT, and "แสดง 1–4 จาก 4 รายการ" — the one line that
-  // says how long the list is — was missing from exactly the months short enough
-  // to doubt. Asked for by name on 2026-08-26.
-  assert.ok(!/shown\.length > CARD_PAGE/.test(hrCode), 'the pager went back behind a condition');
-  // The ends carry it instead: one page means `current <= 1` and
-  // `current >= pageCount` are both true, so both buttons come up disabled and
-  // the count line still states the month.
-  const row = hrView.slice(hrView.indexOf('<tr className="pager-row">'));
-  assert.match(row.slice(0, row.indexOf('</tr>')), /disabled=\{current <= 1\}[\s\S]*disabled=\{current >= pageCount\}/);
-  // `pageCount` has a floor of 1, so a short month says "หน้า 1 / 1" and never
-  // "หน้า 1 / 0".
-  assert.match(hrView, /const pageCount = Math\.max\(1, Math\.ceil\(shown\.length \/ CARD_PAGE\)\);/);
-  // The one row that IS conditional is the search's own empty state, and it
-  // replaces the whole table — pager and total included — rather than sitting
-  // under an empty one.
-  assert.ok(
-    hrView.indexOf('shown.length === 0 ? (') < hrView.indexOf('<div className="table-wrap card-list"'),
-    'the empty state stopped replacing the table',
-  );
-});
-
-test('รวมทั้งหมด is the row after the pager, not a bar over the page', () => {
+test('รวมทั้งหมด is the last card, not a bar over the page', () => {
   const total = phone.slice(phone.indexOf('.hr-table tbody tr.total-row {'));
   const rule = total.slice(0, total.indexOf('}'));
   // THE THIRD POSITION THIS ROW HAS HELD, and the first that floats over
@@ -774,14 +549,18 @@ test('neither the box nor the page is a filter', () => {
   // card's ดูเฉพาะคนที่ต้องตรวจ takes a month of sixty down to eleven, which is
   // a shorter list than page 8 has any claim on. It is a screen filter like
   // `query` and belongs in this list for `query`'s reason, not `dept`'s.
+  //
+  // `pageSize` IS THE SIXTH, SINCE 2026-10-08, when the page-size box arrived
+  // with the shared band; the fold's own reset (`setShowAllCards(false)`) went
+  // with the fold.
   assert.match(
     hrView,
-    /setPage\(1\);\s*setShowAllCards\(false\);\s*\}, \[period, statusFilter, dept, query, onlyFlagged\]\);/,
+    /setPage\(1\);\s*\}, \[period, statusFilter, dept, query, onlyFlagged, pageSize\]\);/,
   );
   // Picking somebody from the dropdown moves the page too, and that is NOT this
   // reset: it is the page that HOLDS them, so the card exists to be scrolled to
   // at all below 860px. Pinned in test/monthSearch.test.js beside `goToRow`.
-  assert.match(hrView, /if \(i >= 0\) setPage\(Math\.floor\(i \/ CARD_PAGE\) \+ 1\);/);
+  assert.match(hrView, /if \(i >= 0\) setPage\(Math\.floor\(i \/ pageSize\) \+ 1\);/);
 });
 
 test('รวมทั้งหมด is a card too, and has no buttons to offer', () => {

@@ -39,7 +39,12 @@ import { capFor } from '@/lib/entries.js';
  * written before the promotion.
  */
 
-const DEFAULT_LIMIT = 100;
+/* A PAGE, NOT A WINDOW, since 2026-10-08. `limit` is the length of one page
+   and `skip` how far in it starts; `total` counts the filter so the screen can
+   say `หน้า 3 / 12`. Until then the defaults were the same 100 and 300 with a
+   `hasMore` flag, and record 101 was reachable only by narrowing a filter.
+   50 is the screen's page and `PAGER_FROM`; 300 stays as the guard. */
+const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 300;
 
 export const GET = route(async (req) => {
@@ -105,15 +110,21 @@ export const GET = route(async (req) => {
   /* ค่าติดลบรอด `|| DEFAULT` แล้วทำให้ `.limit(limit + 1)` ข้างล่างเป็น
      `.limit(0)` = ไม่จำกัด — ดู `capFor` ใน lib/entries.js (2026-09-21) */
   const limit = capFor(q.limit, MAX_LIMIT, DEFAULT_LIMIT);
+  // A junk or negative skip would throw in Mongo or mis-page; the same guard
+  // app/api/logs/route.js keeps.
+  const skip = Math.max(0, Math.trunc(Number(q.skip) || 0));
 
-  // One more than asked for, so the screen can say the list is cut off rather
-  // than presenting a truncated history as the whole of it.
-  const found = await EmployeeAudit.find(filter)
-    .sort({ createdAt: -1 })
-    .limit(limit + 1)
-    .lean();
-
-  const records = found.slice(0, limit);
+  /* `_id` breaks ties because pages are cut by `skip`: two records written in
+     the same millisecond (a CSV import writes dozens) in an unstable order are
+     a record shown on two pages and another shown on none. */
+  const [records, total] = await Promise.all([
+    EmployeeAudit.find(filter)
+      .sort({ createdAt: -1, _id: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    EmployeeAudit.countDocuments(filter),
+  ]);
 
   /**
    * Who appears in this trail as an editor — read off the records themselves,
@@ -137,7 +148,7 @@ export const GET = route(async (req) => {
   ])).map((a) => ({ id: String(a._id), name: a.name || null, role: a.role || null }));
 
   return json({
-    hasMore: found.length > limit,
+    total,
     actors,
     records: records.map((r) => ({
       id: String(r._id),

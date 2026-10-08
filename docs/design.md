@@ -25,7 +25,7 @@
 
 | ไฟล์ | มีอะไรอยู่ |
 |---|---|
-| `components/common.jsx` | `Modal` `ConfirmDialog` `Section` `Fact` `Field` `Empty` `Alert` `StatusChip` `ShowMore` `useShowMore` `RowAction` `TipLayer` และมาร์กประจำแถวอีกชุด (`EditedMark` `ProxyMark` `TeamMark` …) |
+| `components/common.jsx` | `Modal` `ConfirmDialog` `Section` `Fact` `Field` `Empty` `Alert` `StatusChip` `ShowMore` `useShowMore` `RowAction` `TipLayer` `TablePager` `pageWindow` และมาร์กประจำแถวอีกชุด (`EditedMark` `ProxyMark` `TeamMark` …) |
 | `components/popover.jsx` | `Popover` `PickerBox` `usePicker` `useSheet` — ดรอปดาวน์ทุกใบและ bottom sheet |
 | `components/icons.jsx` | `Icon` และ `ICON_NAMES` — ชุดไอคอน SVG ชุดเดียวของแอป |
 | `components/nav.jsx` | `useBackHandler` `BackProvider` — สแตกปุ่มย้อนกลับของแอปเอง |
@@ -120,6 +120,14 @@ own`) พร้อมกับตรวจว่าโทเคนทุกต�
 - **แถวตารางเตี้ยที่สุดก่อนเสมอ** — `td` 7px 12px · `th` 8px 12px · ของรองในเซลล์
   (ชิป วันในสัปดาห์) อยู่บรรทัดเดียวกับค่าบนจอกว้าง ไม่ซ้อนลงบรรทัดใหม่ ·
   สั่งไว้ 2026-10-08
+- **ตารางที่ยาวเกิน 50 แถวแบ่งหน้าด้วย `TablePager` เท่านั้น** — แถบบรรทัดเดียว
+  ~42px: ซ้าย `1–50 จาก 214 คน · [50 ▾] ต่อหน้า` · ขวา `‹ 1 … 4 5 6 … 12 ›`
+  หน้าปัจจุบันทึบเขียว · ต่ำกว่า 860px เหลือ `‹ [5] / 12 ›` ปุ่ม 44px ·
+  **หน้าละ 50 (`PAGE_SIZE`) และรายการที่มี ≤ 50 แถวไม่วาดแถบเลย แสดงครบทุกแถว**
+  (`PAGER_FROM`) · ตัดแถวผ่าน `pageWindow` เสมอ ห้ามเขียน `slice` เอง —
+  แถบที่ถูกซ่อนจึงซ่อนแถวไม่ได้ · ตารางที่ถูกพิมพ์ (`Ctrl+P`) ใช้คลาส `off-page`
+  แทนการตัด · ข้อยกเว้นเดียวคือ ประวัติเวอร์ชันนโยบาย (`always`) ·
+  สั่งไว้ 2026-10-08 · `test/tablePager.test.js`
 - **ปุ่มในคอลัมน์ของตาราง ชิดขวาเสมอ** — `td .row-actions` มี
   `justify-content: flex-end` อยู่แล้ว ใช้คลาสนั้นอย่าจัดเอง · คอลัมน์ปุ่มกว้าง
   เท่าแถวที่วาดปุ่ม*มากที่สุด* แถวที่วาดน้อยกว่าจึงเหลือช่องว่างเสมอ และทุกตาราง

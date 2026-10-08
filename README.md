@@ -1841,10 +1841,14 @@ collection จากฐานข้อมูลจริง ไม่ใช่�
 **ตารางทั้งสองบนหน้านี้มีแถบเปลี่ยนหน้าอยู่ท้ายตาราง** ตั้งแต่ 2026-09-08 —
 ตารางบันทึกใต้สามแท็บที่เป็นรายการ และตาราง การใช้สิทธิ์พิเศษ ใต้แท็บที่ห้า
 แถบเดียวกัน (`TablePager` ใน `components/common.jsx`) เลือกจำนวนแถวต่อหน้าได้
-**10 · 20 · 50 · 100** เริ่มที่ 10 บอกว่ากำลังอ่านแถวไหนอยู่
-(`แสดง 1–10 จากทั้งหมด 120 รายการ` และ `หน้า 1 / 12`) และมีลูกศร `‹` `›`
+**10 · 20 · 50 · 100** เริ่มที่ 50 และ**ไม่วาดแถบเลยเมื่อรายการมีไม่เกิน 50 แถว**
+(ดู §แถบเปลี่ยนหน้าบรรทัดเดียว) บอกว่ากำลังอ่านแถวไหนอยู่ (`1–50 จาก 120
+รายการ`) มีเลขหน้าให้กดข้าม และมีลูกศร `‹` `›`
 ที่**หมดสิทธิ์กดเมื่อสุดทาง แต่ไม่หายไป** — ปุ่มที่หายไปตอนสุดทางจะดันปุ่มข้าง ๆ
 มานั่งที่เดิมของมัน แล้วนิ้วที่กำลังกดรัวก็จะไปโดนปุ่มที่พากลับทางเดิม
+
+> เคยอ่านว่า "เริ่มที่ 10" และ "(`แสดง 1–10 จากทั้งหมด 120 รายการ` และ
+> `หน้า 1 / 12`)" จนถึง 2026-10-08 ที่แถบถูกวาดใหม่เป็นบรรทัดเดียว
 
 > **เดิมเป็นปุ่ม ดูย้อนหลังเพิ่ม และมันมีเพดาน** `limit` เริ่มที่ 100 กดทีละ 200
 > จนถึง 500 แล้วขึ้นแถบเหลืองว่า `แสดงได้สูงสุด 500 รายการต่อครั้ง` พร้อมแนะให้
@@ -2121,9 +2125,11 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2828 tests
+and the engine know nothing about Next.js, so the whole suite — **2833 tests
 across 159 files**, measured 2026-10-08 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2828 tests across 159 files" until **แถบเปลี่ยนหน้าบรรทัดเดียว**
+(2026-10-08), which added five cases to `tablePager`.
 It read "2813 tests across 158 files … measured 2026-09-21" until **นโยบายการ
 คำนวณแก้ได้บนหน้าจอ** — `policySettings` is file 159, and it pins each rule that
 became a setting that day.
@@ -7224,7 +7230,8 @@ is worth having.
 **ตารางประวัติเวอร์ชันนโยบาย แบ่งหน้าที่เบราว์เซอร์ ไม่ใช่ที่ endpoint —
 และคอลัมน์ สิ่งที่เปลี่ยนจากเวอร์ชันก่อนหน้า คือเหตุผล** (ตั้งแต่ 2026-09-08 ·
 `TablePager` ตัวเดียวกับที่อยู่ใต้ตารางบน บันทึกประวัติระบบ · 5 · 10 · 20
-เวอร์ชันต่อหน้า เริ่มที่ 10). Route คำนวณ `changes` ของแต่ละแถวจาก
+เวอร์ชันต่อหน้า เริ่มที่ 10 · **ตารางเดียวในแอปที่วาดแถบเสมอแม้ไม่ถึง 50 แถว**
+(`always` ตั้งแต่ 2026-10-08) เพราะแบ่งหน้าไว้*อ่าน*ทีละเวอร์ชัน). Route คำนวณ `changes` ของแต่ละแถวจาก
 `versions[i + 1]` คือเวอร์ชันก่อนหน้ามัน ซึ่งทำได้เฉพาะเวอร์ชันที่โหลดมาแล้ว — นั่นคือ
 เหตุผลที่แถวเก่าสุดของรายการเขียนว่า `ไม่ได้โหลดเวอร์ชันก่อนหน้ามาเทียบ` แทนที่จะเป็น
 `—` **ถ้าไปขอ endpoint ทีละสิบแถวโดยข้ามยี่สิบแถวแรก คอลัมน์นั้นจะพังที่แถวแรกของ
@@ -8832,6 +8839,44 @@ everybody feels.
 > moment the box is answered. The inset rule is scoped to `.queue-tools` and
 > `test/filterBar.test.js` fails if it ever reaches `.form-grid`.
 
+### แถบเปลี่ยนหน้าบรรทัดเดียว · ไม่แบ่งหน้าเมื่อไม่เกิน 50 แถว — 2026-10-08
+
+**ผู้ใช้เลือกแบบ B จาก mockup สามแบบ** แก้ที่ `TablePager` ที่เดียว ทุกตารางที่
+แบ่งหน้าเปลี่ยนตาม
+
+| | ก่อน | หลัง |
+|---|---|---|
+| หน้าตา | สองบรรทัด ~62px · `แสดง [10 ▾] รายการต่อหน้า` · `แสดง 1–10 จากทั้งหมด 24 รายการ` / `หน้า 1 / 3` · ‹ › 38px | บรรทัดเดียว ~42px · `1–50 จาก 214 คน · [50 ▾] ต่อหน้า` · `‹ 1 … 4 5 6 … 12 ›` หน้าปัจจุบันทึบเขียว ปุ่ม 30px |
+| มือถือ (< 860px) | ซ้อนสองบรรทัดที่ 560px | `‹ [5] / 12 ›` ปุ่ม 44px ใต้บรรทัดจำนวน |
+| หน้าละ | แต่ละจอเลือกเอง 10 / 20 / 50 | **50 ทุกจอ** (`PAGE_SIZE`) |
+| รายการสั้น | วาดแถบเสมอ ลูกศรกดไม่ได้ทั้งคู่ | **≤ 50 แถวไม่วาดแถบ แสดงครบ** (`PAGER_FROM`) |
+
+**แถบที่ไม่ถูกวาดต้องไม่ซ่อนแถว** จึงไม่มีจอไหนตัดหน้าเอง ทุกจอตัดผ่าน
+`pageWindow` ซึ่งคืนทุกแถวเมื่อแถบไม่ถูกวาด · ตารางที่เซิร์ฟเวอร์แบ่งหน้า
+(บันทึกระบบ · ประวัติการแก้ทะเบียน) ใช้ `pageQuery` — หน้า 1 ขออย่างน้อย 50 แถว
+คนที่ตั้งไว้ 10 แล้วกรองเหลือ 30 จึงเห็นครบ 30 ไม่ใช่ 10 แถวโดยไม่มีทางไปต่อ ·
+เลขหน้าที่เกินหลังข้อมูลหดถูกดึงกลับด้วย `usePageClamp`
+
+**ข้อยกเว้นเดียว: ประวัติเวอร์ชันนโยบาย** วาดแถบเสมอ (`always`) — รายการไม่เคยถึง
+50 และแบ่งหน้า 5 · 10 · 20 ไว้อ่าน
+
+**จอที่ได้แถบเพิ่ม**
+
+- **ตรวจสอบประจำเดือน** — เดิมจอกว้างวาดครบทุกคน (~77 คนต่อเดือน) ส่วนมือถือมี
+  ตัวแบ่งหน้าของตัวเอง (`.pager-row` หน้าละ 5) กับปุ่มพับที่การ์ดใบที่สาม · ตอนนี้
+  ใช้แถบกลางทั้งสองความกว้าง กลไกเดียว · แถวนอกหน้ายังวาดไว้แล้วซ่อนด้วย
+  `off-page` (เหมือน รายงาน OT การเงิน) เพื่อให้ `Ctrl+P` พิมพ์ครบทั้งเดือน ·
+  ⚠ เดือนที่ไม่เกิน 50 คนบนมือถือจึงเป็นการ์ดยาวครบทุกคน ไม่มีพับแล้ว
+- **ประวัติการแก้ทะเบียน** — เดิม route ส่ง 100 รายการล่าสุดพร้อม `hasMore` และจอขึ้น
+  แถบเหลือง *รายการยาวกว่าที่แสดงได้ — หน้านี้แสดงเฉพาะรายการล่าสุด* รายการที่ 101
+  เปิดได้ทางเดียวคือกรองให้แคบ · ตอนนี้ `GET /api/employees/audit` รับ `skip` และ
+  ส่ง `total` (นับด้วย `countDocuments` · เรียง `createdAt` แล้ว `_id` ให้แต่ละหน้า
+  ไม่ซ้ำไม่หาย) · หน้าละ 50 เพดานต่อคำขอยัง 300 · การตรวจสิทธิ์ของ route ไม่ได้แตะ
+
+**ไม่ได้เพิ่มแถบ** ที่ สลิปรหัสผ่าน (ใช้คัดลอก/พิมพ์ทั้งชุด) · OT ของฉัน · รายการ OT
+รายคนของ HR · รายงานแยกแผนก · ผู้รับช่วง · แผนก · วันหยุด · รายชื่อติ๊กในทีม —
+ทุกรายการไม่ถึง 50 แถวอยู่แล้ว
+
 ### แถบเปลี่ยนหน้าเดียวทั้งแอป — คิวรออนุมัติ · ทะเบียนพนักงาน · สรุป OT ส่งบัญชี แบ่งหน้าแล้ว — 2026-09-11
 
 **ขอมาเป็นประโยคเดียว:** *"ตารางหน้า รออนุมัติ OT เพิ่ม pagination รูปแบบเดียว
@@ -8849,7 +8894,7 @@ everybody feels.
 | ข้อที่ต้องตอบ | คำตอบ | เพราะ |
 |---|---|---|
 | **ติ๊กไว้แล้วกด `›` ติ๊กยังอยู่ไหม** | **อยู่** | ติ๊กแปดใบ พลิกหน้า ติ๊กอีกสี่ แล้วกด อนุมัติ ครั้งเดียวได้สิบสอง — ดูหัวข้อถัดไป |
-| **เริ่มที่กี่แถวต่อหน้า** | **20** (เลือกได้ 10 · 20 · 50 · 100) | จอนี้อ่านเพื่อ**เคลียร์** สิบแถวคือพลิกหน้าทุกสามลายเซ็น ห้าสิบแถวคือตอนเซ็นใบสุดท้ายมองไม่เห็นติ๊กที่อยู่บนสุดแล้ว |
+| **เริ่มที่กี่แถวต่อหน้า** | **50** ตั้งแต่ 2026-10-08 — เคยเป็น "**20**" (เลือกได้ 10 · 20 · 50 · 100) | จอนี้อ่านเพื่อ**เคลียร์** สิบแถวคือพลิกหน้าทุกสามลายเซ็น ห้าสิบแถวคือตอนเซ็นใบสุดท้ายมองไม่เห็นติ๊กที่อยู่บนสุดแล้ว |
 | **กดแล้วหน้าจอขยับไหม** | **เลื่อนขึ้นหัวตาราง** | คิวอ่านจากบนลงล่างทีละแถว หน้า 4 ที่มาถึงด้วยความสูงเดิมของท้ายหน้า 3 คือการเริ่มอ่านตรงกลาง |
 | **นับเป็นหน่วยอะไร** | `รายการ` | ค่าตั้งต้นของแถบอยู่แล้ว และเป็นคำที่แถบเลือกด้านล่างใช้อยู่ (`เลือกไว้ 3 รายการ`) |
 
@@ -11318,6 +11363,10 @@ it until the scroll reaches the end.
 
 ### แผงเปลี่ยนหน้าไม่ถูกวาดในเดือนที่พอดีหน้าเดียว — 2026-08-28 รอบสาม
 
+> **ทั้งหัวข้อนี้และหัวข้อ หน้าละ 5 คน กับพับที่ 3 ข้างล่าง ถูกแทนแล้วเมื่อ
+> 2026-10-08** — `.pager-row`, `CARD_PAGE` และ `CARD_FOLD` ไม่มีแล้ว จอนี้ใช้
+> `TablePager` ทั้งสองความกว้าง ดู §แถบเปลี่ยนหน้าบรรทัดเดียว
+
 **The same band, reported a second time, and this round it goes.** Round two
 found that the "เศษ Element สีเทา" at the top bar was the pager's two disabled
 chevrons and quietened them; the next screenshot named the whole band —
@@ -11682,6 +11731,10 @@ somebody's month and withdraws the last live entry in it. `current` is
 `Math.min(page, pageCount)`, clamped at render so the empty page never exists
 for a frame, with `page` itself left alone so a list that grows back returns the
 reader where they were.
+
+> Superseded on 2026-10-08: the month now pages at both widths through the
+> shared `TablePager`, `.hr-table tbody tr.off-page` is hidden at every width
+> and restored in app/print.css, and the paragraph below is the state before.
 
 **One markup, two layouts.** The component marks which rows are off the current
 page (`off-page`) and the *stylesheet* decides whether that means anything —
@@ -14299,9 +14352,10 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2828 tests**, about 5 s, measured 2026-10-08 across 159
-  files, all green. **`policySettings` is the newest file** — every rule made a
-  setting on นโยบายการคำนวณ on 2026-10-08. It read
+- `npm test` — **2833 tests**, about 5 s, measured 2026-10-08 across 159
+  files, all green (it read "2828 tests" until the one-line pager round added
+  five cases to `tablePager`). **`policySettings` is the newest file** — every
+  rule made a setting on นโยบายการคำนวณ on 2026-10-08. It read
   "2813 tests … across 158 files" before that, and what follows was the
   newest file then: **`requestInputGuards` is the new file of the last round**
   — the twelve refusals a mistyped request is owed, written after a QA pass
