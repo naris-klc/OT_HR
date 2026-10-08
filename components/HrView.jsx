@@ -42,68 +42,39 @@ import { mayCorrectEntries } from '@/lib/entries.js';
 const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
 
 /**
- * สถานะที่นับ — the five questions this screen can be asked about a month.
+ * สถานะที่นับ — สี่ตัวเลือก เรียงตามทางที่ใบเดินผ่าน แล้วปิดด้วยทั้งหมด.
  *
- * OUT OF THE JSX AND INTO A CONSTANT because the control changed shape on
- * 2026-09-01: three `<option>` children became a `options` array handed to
- * `PickOne`. The values are the ones the route already reads and are unchanged
- * to the character, so nothing about the request this screen makes moved with
- * the list.
+ * 2026-10-08 ผู้ใช้บอกว่าห้าแถวเดิม "ซ้ำซ้อน" (สามแถวเดี่ยว + สองแถวที่เป็นแค่
+ * แถวเดี่ยวมารวมกัน) แล้วเลือกชุดนี้จาก mockup พร้อมนิยามของแต่ละคำ:
  *
- * ⚠ IT READ "the three questions" AND HELD THREE ROWS UNTIL 2026-09-11 —
- * `approved`, `approved,pending_hr` and `ALL_LIVE_STATUSES`, a list that only
- * ever WIDENED. Asked for by name that day: *เพิ่มตัวกรองสถานะ "รอ HR"*, with
- * รอหัวหน้าเท่านั้น agreed alongside it in the same answer.
+ *   · รอหัวหน้า — `pending_mgr` อย่างเดียว
+ *   · รอ HR — `approved,pending_hr` · *"มันคือความหมายเดียวกันครับ เพราะก่อนจะ
+ *     รอ HR ต้องหัวหน้าอนุมัติมาก่อนอยู่แล้ว"* — ชุดเดียวกับ `signed` ของ
+ *     นโยบายการพิมพ์
+ *   · อนุมัติแล้ว — `approved` · *"ต้องไม่มีสถานะรอใครแล้วเท่านั้น"*
+ *   · ทั้งหมด — ทุกใบที่ยังไม่ถูกปฏิเสธ และเป็นค่าที่จอเปิดมา (`DEFAULT_STATUS`)
  *
- * A SINGLE-STATUS ROW IS NOT A NARROWER VERSION OF ITS NEIGHBOURS — it is a
- * different question. The three old rows all answer *how much of this month
- * counts*; รอ HR เท่านั้น answers *which step is this month waiting on*, and
- * the screen had no way to ask it. On a month like สิงหาคม 2569 — 225 รอ HR, 73
- * รอหัวหน้า, no `approved` — the two combinations and ทั้งหมด all draw very
- * nearly the same table, and none of them says which of the 298 are HR's to
- * act on.
+ * ค่าที่ส่งไปเราต์เป็นสตริงเดิมทุกตัว ไม่ได้แตะ `reportStatuses` · เคยมีห้าแถว
+ * ("รอ HR เท่านั้น" = `pending_hr` อย่างเดียว) ตั้งแต่ 2026-09-11 ถึง 2026-10-08
+ * ประวัติอยู่ใน git ใต้ชื่อ `STATUS_FILTERS`
  *
- * SO THE ORDER IS NO LONGER NARROW-TO-WIDE, AND THAT IS THE POINT: the three
- * single statuses first, in the order a ใบ passes through them, then the two
- * combinations. Sorted by width instead, รอ HR เท่านั้น would sit between two
- * rows that both include `approved` and read as a third size of one question
- * rather than a different one.
- *
- * THE ROUTE WAS NOT TOUCHED AND DID NOT NEED TO BE. `reportStatuses` in
- * lib/reports.js keeps whatever of `REPORTABLE_STATUSES` it is handed, so
- * `pending_hr` on its own has always been a legal answer — there was simply no
- * control that could say it. The table, both CSVs and the print buttons read
- * this one string as they always have.
- *
- * WHAT THE เพดาน COLUMN DOES AT THE NEW ROWS: nothing different. It is counted
- * from every live ใบ whatever this is set to (`capEntriesByEmployee`), and the
- * new rows pay the same extra read อนุมัติแล้วเท่านั้น already paid — only
- * ทั้งหมดที่ยังไม่ถูกปฏิเสธ gets the short circuit, and it still does.
- *
- * NO "ทั้งหมด" ROW IS ADDED UNDER IT. `PickOne`'s `allLabel` names a row
- * carrying `''` that means "do not narrow", and `''` is not a สถานะที่นับ this
- * screen can hold: the widest setting here is ทั้งหมดที่ยังไม่ถูกปฏิเสธ, which
- * is the last row and a real value. See the note over `rows` in
- * components/common.jsx.
+ * ไม่มีแถว "ทั้งหมด" ของ `PickOne` (`allLabel` ที่ถือ `''`) เพราะ ทั้งหมด ของจอนี้
+ * เป็นค่าจริง — ดูโน้ตเหนือ `rows` ใน components/common.jsx
  */
 const STATUS_FILTERS = [
-  { value: 'approved', label: 'อนุมัติแล้วเท่านั้น' },
-  { value: 'pending_hr', label: 'รอ HR เท่านั้น' },
-  { value: 'pending_mgr', label: 'รอหัวหน้าเท่านั้น' },
-  { value: 'approved,pending_hr', label: 'อนุมัติแล้ว + รอ HR' },
-  { value: ALL_LIVE_STATUSES, label: 'ทั้งหมดที่ยังไม่ถูกปฏิเสธ' },
+  { value: 'pending_mgr', label: 'รอหัวหน้า' },
+  { value: 'approved,pending_hr', label: 'รอ HR' },
+  { value: 'approved', label: 'อนุมัติแล้ว' },
+  { value: ALL_LIVE_STATUSES, label: 'ทั้งหมด' },
 ];
 
 /**
- * WHAT ล้างตัวกรอง PUTS สถานะที่นับ BACK TO — the same string `useState` opens
- * with, named once so the button and the initial value cannot drift apart. It
- * is the FOURTH row of `STATUS_FILTERS`: อนุมัติแล้ว + รอ HR, which is the set
- * ตรวจสอบประจำเดือน exists to check. ("the middle row" until 2026-09-11, when
- * two single-status rows went in above it and the middle stopped being a place
- * — which is exactly the kind of description this sentence was told once
- * already not to lean on.)
+ * ค่าที่จอเปิดมา และค่าที่ ล้างตัวกรอง พากลับไป — ทั้งหมด ตั้งแต่ 2026-10-08
+ * (ผู้ใช้สั่ง *"ให้เริ่มที่ทั้งหมด"*) ซึ่งตรงกับนโยบายการพิมพ์ที่ส่งมา (`draft`
+ * ตั้งแต่ยื่นขอ) — จอกับกระดาษนับใบชุดเดียวกัน · ก่อนหน้านั้นเปิดมาที่
+ * `approved,pending_hr` (2026-09-09) และ `approved` ก่อนนั้นอีก
  */
-const DEFAULT_STATUS = 'approved,pending_hr';
+const DEFAULT_STATUS = ALL_LIVE_STATUSES;
 
 /* `CARD_PAGE` (5) AND ITS PHONE-ONLY `.pager-row` STOOD HERE UNTIL 2026-10-08.
    Below 860px the card list was paged five at a time by a pager of this
@@ -119,79 +90,45 @@ const DEFAULT_STATUS = 'approved,pending_hr';
    everybody the search matched, and both CSVs are the server's. */
 
 /**
- * คอลัมน์ รายการ — จำนวนใบทั้งเดือน แล้วบรรทัดที่บอกว่าค้างอยู่ที่ขั้นไหน.
+ * คอลัมน์ รายการ — `ที่นับ/ทั้งเดือน` แล้วไอคอนนาฬิกาเมื่อมีใบค้าง.
  *
- * ── WHAT THIS LOOKED LIKE FOR ONE ROUND, AND WHY IT WAS THROWN AWAY ─────────
+ * 2026-10-08 จาก mockup ที่ผู้ใช้เลือก: *"ให้แสดงจำนวนที่นับ/ทั้งหมด แล้วมีไอคอน
+ * เวลา เอาเม้าไปชี้แล้วแสดง tooltip ว่ารออะไรเท่าไร"*
  *
- * On 2026-09-11 this cell drew `entryCount` over three fixed slots —
- * `อนุมัติ · หัวหน้า · HR` — with a legend in the heading, zeros as `–`, and
- * the slots the filter did not count greyed out. It was reported off the screen
- * the same day: *"ผมว่าจะต้องออกแบบใหม่ครับ ดูแล้วเข้าใจยาก"*, with a picture
- * that made the two faults obvious at a glance:
+ * ── สองเลข สองฐาน แต่บอกฐานไว้ในรูปของมันเอง ──────────────────────────────
+ * เลขหน้า `/` คือ `entryCount` — ใบที่ สถานะที่นับ นับ จึงตรงกับ ชม. ในแถว
+ * เดียวกัน · เลขหลัง `/` คือทั้งเดือน (`monthStatus` ทุกใบที่ยังไม่ถูกปฏิเสธ)
+ * รอบ 2026-09-11 เคยวาดสองฐานซ้อนกันเป็น `11` ทับ `11  1` แล้วถูกตีกลับว่า
+ * "ดูแล้วเข้าใจยาก" · เศษส่วนต่างจากตรงนั้นตรงที่อ่านออกเองว่าเลขไหนเป็นส่วนของ
+ * เลขไหน ไม่ต้องมีสีเทาหรือคำอธิบายช่วย · ที่ ทั้งหมด สองเลขเท่ากัน จึงวาดเลข
+ * เดียว
  *
- *   · **TWO BASES IN ONE CELL.** A row read `11`, then `11  1` under it. The
- *     top was `entryCount`, filtered by สถานะที่นับ; the three were the whole
- *     month. Both true, and together they look like a table that cannot add up.
- *     The grey was supposed to explain the gap and instead was one more thing
- *     to decode.
- *   · **NEARLY EVERY SLOT WAS A DASH.** `อนุมัติ` is all but equal to the total
- *     on almost every row, so two thirds of the column's width and all of its
- *     legend went to restating something the reader already had.
+ * ── ใบค้างอยู่ในไอคอน ไม่ใช่บรรทัดที่สอง ──────────────────────────────────
+ * `รอหัวหน้า 1 · รอHR 3` เคยเป็นบรรทัดล่างและกินคอลัมน์ 136px · ตอนนี้เป็น
+ * นาฬิกา (`clock` ตัวเดียวกับเมนู OT) สีเดียวกับ `.chip.st-pending_mgr` และ
+ * คำอยู่ใน tooltip ร่วมของแอป (`data-tip` → `TipLayer`) · `tabIndex` ให้ Tab
+ * ถึงและเปิด tooltip ได้ด้วยคีย์บอร์ด · ไม่มีปัญหาเรื่องแตะบนมือถือ เพราะการ์ด
+ * มือถือซ่อนคอลัมน์นี้อยู่แล้ว (test/hrMonthCards.test.js)
  *
- * ── WHAT IT IS NOW ─────────────────────────────────────────────────────────
- *
- * ONE BASIS: every figure here is the person's whole month (`monthStatus`), so
- * they add up by construction. There is nothing left to grey.
- *
- * ONLY WHAT IS OUTSTANDING GETS INK. `อนุมัติ` is the resting state and is not
- * drawn at all — it is the total minus what is written. A person with nothing
- * pending gets a bare number, so a reader scanning the column sees TEXT exactly
- * on the rows that want them, and the blank rows are the answer rather than the
- * absence of one.
- *
- * STILL TWO LINES AT MOST, which is the constraint the whole column is built
- * around: the row is already two lines tall (`who-col` draws the รหัส under the
- * name), so the second is free and the third would make every row in the table
- * taller. Both pending kinds on one person share a line — `รอหัวหน้า 1 · รอHR 2`
- * — rather than taking one each.
- *
- * ⚠ THE WORDS GAINED `รอ` ON 2026-09-11, ASKED FOR IN THOSE TERMS: *"แก้ไขคำเป็น
- * `รอหัวหน้า 1` `รอHR 1`"*. `หัวหน้า 1` named a person and left the reader to
- * supply the verb; `รอหัวหน้า 1` says what the row is waiting for. It is not a
- * free rename — the shared line went from 81.6px to 109.5px measured off the
- * font file itself, which is 40px of column that has to come from somewhere.
- * The stylesheet takes it from the two columns that were measured to have it.
- *
- * ⚠ SO THIS COLUMN NO LONGER HONOURS สถานะที่นับ, alone among the figures on
- * this row. That is the เพดาน column's argument one cell over — *a
- * department's remaining allowance is not a display preference* — and it is
- * what the ask was actually about: *"แล้วใบที่ค้างจะแสดงยังไง"*. A column that
- * answers "is there anything of this person's left to do" must not go blank
- * because the reader narrowed the view.
+ * ไอคอนบอกเรื่องของทั้งเดือนเสมอ ไม่ขึ้นกับตัวกรอง — คำถามของมันคือ "คนนี้ยังมี
+ * อะไรค้างไหม" ซึ่งต้องไม่หายเพราะคนอ่านแคบตัวกรองลง
  */
 function monthCount(row) {
   const m = row.monthStatus;
   if (!m) return row.entryCount;
   const total = m.approved + m.pendingMgr + m.pendingHr;
   const waiting = [
-    m.pendingMgr > 0 && <span key="m" className="cs-m">รอหัวหน้า {m.pendingMgr}</span>,
-    m.pendingHr > 0 && <span key="h" className="cs-h">รอHR {m.pendingHr}</span>,
-  ].filter(Boolean);
+    m.pendingMgr > 0 && `รอหัวหน้า ${m.pendingMgr} ใบ`,
+    m.pendingHr > 0 && `รอ HR ${m.pendingHr} ใบ`,
+  ].filter(Boolean).join(' · ');
   return (
-    <span
-      title={`ใบทั้งเดือนของคนนี้ ${total} ใบ — อนุมัติแล้ว ${m.approved} · `
-        + `รอหัวหน้า ${m.pendingMgr} · รอฝ่ายบุคคล ${m.pendingHr}`
-        + ' · นับทุกใบที่ยังไม่ถูกปฏิเสธ ไม่ขึ้นกับสถานะที่นับ'}
-    >
-      {total}
-      {waiting.length > 0 && (
-        /* A `<div>` and not a second line of the same flow: it has to be the
-           block that `.count-status` sizes and colours, and it must never share
-           a line with the total — a row reading `12 รอหัวหน้า 1` is the two
-           numbers running together that this redesign exists to stop. */
-        <div className="count-status">
-          {waiting.length === 2 ? [waiting[0], ' · ', waiting[1]] : waiting}
-        </div>
+    <span className="count-frac">
+      {row.entryCount}
+      {row.entryCount !== total && <span className="count-of">/{total}</span>}
+      {waiting && (
+        <span className="count-wait" tabIndex={0} data-tip={waiting} aria-label={waiting}>
+          <Icon name="clock" />
+        </span>
       )}
     </span>
   );
@@ -322,34 +259,20 @@ export default function HrView({
   /** Beside `scopeParam` because the two go on the same three URLs together. */
   const deptParam = dept ? `&department=${encodeURIComponent(dept)}` : '';
   /**
-   * อนุมัติแล้ว + รอ HR — THIS SCREEN OPENS ON WHAT THE SHEET PRINTS.
+   * ทั้งหมด — THIS SCREEN OPENS ON WHAT THE SHEET PRINTS, since 2026-10-08.
    *
-   * It was `'approved'` until 2026-09-09, for this reason: "อนุมัติแล้วเท่านั้น,
-   * because this screen is what HR signs off — a total that moves when somebody
-   * withdraws a request is not a total to sign." That was true of a system whose
-   * F-HR-027 also stopped at `approved`, and it stopped being true on 2026-09-07
-   * when `formPrintScope` shipped as ตั้งแต่หัวหน้าอนุมัติ: a `pending_hr` row
-   * is ON the paper, unmarked, and ฝ่ายบุคคล confirm FROM that paper. A screen
-   * that opened one step behind the sheet it prints is the failure
-   * test/formPrintScope.test.js names in its own header — read a total here,
-   * press พิมพ์, be handed a bigger one — with the two halves swapped over.
+   * The shipped `formPrintScope` is `draft` (ตั้งแต่ยื่นขอ), which puts all
+   * three live statuses on F-HR-027, so ทั้งหมด is the setting at which a total
+   * read here is the total printed. Asked for as *"ให้เริ่มที่ทั้งหมด"*.
    *
-   * ASKED FOR IN THOSE WORDS, 2026-09-09: "ถ้าหัวหน้าอนุมัติแล้วให้ขึ้นที่หน้านี้
-   * ด้วย ใบที่มีสถานะรอ HR". สิงหาคม 2569 on this database is 225 รอ HR, 73
-   * รอหัวหน้า and NOT ONE `approved`, so the old default drew
-   * ไม่มีรายการในเดือนนี้ under a card reading มีใบรออนุมัติค้างอยู่ 298 ใบ.
+   * It opened on อนุมัติแล้ว + รอ HR from 2026-09-09 (*"ถ้าหัวหน้าอนุมัติแล้วให้
+   * ขึ้นที่หน้านี้ด้วย ใบที่มีสถานะรอ HR"*) and on `approved` before that; both
+   * moves were the same repair — a screen one step behind its own paper is the
+   * failure test/formPrintScope.test.js names in its header.
    *
-   * NOTHING ELSE MOVED. อนุมัติแล้วเท่านั้น is still the first row of
-   * `STATUS_FILTERS` and still means exactly what it meant; what changed is
-   * which of the three the screen is holding when it opens.
-   *
-   * WHAT IT COSTS is the sentence that used to be true at the default: this
-   * screen and คิวรออนุมัติ no longer lead with the same figure unless
-   * สถานะที่นับ is put back to อนุมัติแล้วเท่านั้น. The queue's headline is
-   * approved hours because a หัวหน้า has not yet decided the rest; this screen
-   * counts the step AFTER theirs, which is the step it exists to carry out.
-   * Both are right, and each says which it is showing — see the เพดาน column
-   * below, and `CapUsage` in ApprovalQueue.
+   * WHAT IT COSTS: this screen and คิวรออนุมัติ lead with the same figure only
+   * at อนุมัติแล้ว. The queue's headline is approved hours, because a หัวหน้า
+   * has not decided the rest yet. See `CapUsage` in ApprovalQueue.
    */
   const [statusFilter, setStatusFilter] = useState(DEFAULT_STATUS);
   /**
@@ -365,9 +288,9 @@ export default function HrView({
    * error and a colour that has to be decoded before they stop looking like
    * one. *"ผมว่าจะต้องออกแบบใหม่ครับ ดูแล้วเข้าใจยาก"*.
    *
-   * The repair was not a better way to show the gap — it was to remove it. The
-   * whole cell now reads from `monthStatus`, one basis, and the figures add up.
-   * See `<td className="num count-col">` below.
+   * The repair was to remove the gap. Since 2026-10-08 the cell shows both
+   * bases again, but as a fraction (`3/4`), whose shape says which number is
+   * part of which — see `monthCount`.
    */
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(null);
@@ -2089,18 +2012,13 @@ export default function HrView({
                     <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" /></th>
                     <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
                     <th className="num total-col">รวม ชม.</th>
-                    {/* ⚠ ONE WORD AGAIN. A legend reading `อนุมัติ · หัวหน้า ·
-                        HR` stood here for one round on 2026-09-11, over three
-                        fixed slots of figures. The cell names its own statuses
-                        in words now, so a key to read them by is a key to
-                        nothing — and the heading is back to the width it was.
-
-                        The `title` is where "this column ignores สถานะที่นับ"
-                        is said, because it is the one thing about this column
-                        a reader cannot work out by looking at it. */}
+                    {/* ONE WORD. The cell is `ที่นับ/ทั้งเดือน` and a clock, and
+                        the `title` says which number is which — the one thing
+                        about the column a reader cannot work out by looking at
+                        it. See `monthCount`. */}
                     <th
                       className="num count-col"
-                      title="จำนวนใบทั้งเดือนของแต่ละคน แยกส่วนที่ยังรออนุมัติ — นับทุกใบที่ยังไม่ถูกปฏิเสธ ไม่ขึ้นกับสถานะที่นับ"
+                      title="ใบที่นับตามสถานะที่นับ / ใบทั้งเดือน (ทุกใบที่ยังไม่ถูกปฏิเสธ) — นาฬิกาคือมีใบรออนุมัติ ชี้เพื่อดูว่ารอใครกี่ใบ"
                     >
                       รายการ
                     </th>

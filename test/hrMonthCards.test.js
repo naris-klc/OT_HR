@@ -234,7 +234,9 @@ test('the action column was resized when it lost a button, and แผนก got 
      nothing had been measured against. `นางสาวสสุคนธ์ ข่าค่ำ` is 128.6px
      at 14px/400 off the font file, so 152.6 with the gutters — 168 still draws
      it on one line. See test/monthCountStatus.test.js for the whole budget. */
-  assert.match(css, /\.hr-table th\.who-col \{ width: 224px; \}/);
+  /* 264 since 2026-10-08 — the 40px `count-col` gave back when its second
+     line moved into a tooltip (136 → 96). */
+  assert.match(css, /\.hr-table th\.who-col \{ width: 264px; \}/);
   /* 160 since 2026-09-11, and it was 132 — *"ปรับขนาดคอลัมน์ของตารางให้สมดุล"*. 132 was measured to hold
      แผนกบัญชีและการเงิน and did not get it, because a declared width under
      `table-layout: auto` is only honoured once the table fits; `th.cap-col`'s
