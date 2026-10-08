@@ -90,14 +90,17 @@ const BARS = [
     'กรองตามประเภท', 'กรองตามบัญชีผู้แก้ไข']],
   /* The two one-control bars, 2026-09-15 — a bar with one field on it is still
      the bar. Both were a `.field` with its label stacked over the box. */
-  ['components/App.jsx', ['ประจำเดือน']],
+  /* ใบขออนุมัติ OT ของพนักงาน: ตั้งแต่ 2026-10-08 แถบนั้นวาดโดย `PrintChrome head`
+     ใน components/common.jsx (การ์ดแถวเดียว หัวข้อ · ประจำเดือน · ปุ่มพิมพ์) —
+     ป้ายยังอยู่ใน App.jsx ส่วน `.queue-tools` อยู่ในไฟล์ที่สาม */
+  ['components/App.jsx', ['ประจำเดือน'], 'components/common.jsx'],
   ['components/EmployeeView.jsx', ['ประจำเดือน']],
 ];
 
 // ── one container ───────────────────────────────────────────────────────────
 
 test('every filter bar in the app is `.queue-tools`', () => {
-  for (const [file, labels] of BARS) {
+  for (const [file, labels, barIn = file] of BARS) {
     const src = noProse(read(file));
     /* A SECOND CLASS AFTER IT IS ALLOWED, AND ONLY A SECOND CLASS — 2026-09-14,
        with ทะเบียนพนักงาน's `roster-tools`. What this file is holding down is
@@ -111,8 +114,8 @@ test('every filter bar in the app is `.queue-tools`', () => {
        bar that is some other element with some other class. `queue-tools` has
        to be the FIRST class on it, so a screen cannot quietly make its own
        container and wear this one as a modifier. */
-    assert.match(src, /className="queue-tools(?: [a-z-]+)?"(?: style)?/,
-      `${file} ไม่ได้ใช้ .queue-tools เป็นแถบตัวกรองแล้ว`);
+    assert.match(noProse(read(barIn)), /className="queue-tools(?: [a-z-]+)?"(?: style)?/,
+      `${barIn} ไม่ได้ใช้ .queue-tools เป็นแถบตัวกรองแล้ว`);
     // The labels are what proves it is THIS screen's filters in there, and not
     // an empty bar that happens to carry the class.
     for (const label of labels) {
@@ -390,16 +393,19 @@ test('คู่มือเลิกเรียกช่องนั้นว�
   assert.ok(manual.includes('<MkField label="ประจำเดือน">'), 'ภาพจำลองไม่มีช่องประจำเดือนแล้ว');
 });
 
-test('สองจอนั้นเป็น card flush + card-head + queue-tools เหมือนจอรายงาน', () => {
-  // The shape every report screen has: the heading and its sentence on the
-  // white band, the control that decides what is on screen on the wash below.
+test('สองจอนั้นเป็น card flush + queue-tools เหมือนจอรายงาน', () => {
+  // ใบขออนุมัติ OT ของพนักงานเป็นการ์ดแถวเดียวตั้งแต่ 2026-10-08: หัวข้อ ประจำเดือน
+  // และปุ่มพิมพ์อยู่ใน `.queue-tools.print-head` ที่ `PrintChrome` วาดเมื่อได้ `head`
+  // — มันเคยเป็น card-head + queue-tools + แถวปุ่มแยก สามชั้น
   const print = noProse(read('components/App.jsx'));
   const at = print.indexOf('function MyForm()');
   const form = print.slice(at, print.indexOf('\nfunction ', at + 10));
-  assert.match(form, /<div className="card flush no-print">\s*\n\s*<div className="card-head">/);
+  assert.match(form, /<PrintForm\s+period=\{period\}\s+head=\{/);
   assert.match(form, /<div className="t">ใบขออนุมัติทำงานล่วงเวลา/);
-  assert.match(form, /<div className="queue-tools">/);
-  assert.ok(!form.includes('<h2>'), 'หัวการ์ดยังเป็น <h2> ไม่ใช่ .card-head .t');
+  assert.ok(!form.includes('<h2>'), 'หัวการ์ดยังเป็น <h2> ไม่ใช่ .t');
+  assert.ok(!form.includes('className="card'), 'MyForm วาดการ์ดของตัวเองซ้อนกับของ PrintChrome');
+  const chrome = noProse(read('components/common.jsx'));
+  assert.match(chrome, /<div className="card flush no-print">\s*\n\s*<div className="queue-tools print-head">\s*\n\s*\{head\}\s*\n\s*\{bar\}/);
 
   const emp = noProse(read('components/EmployeeView.jsx'));
   assert.match(emp, /<div className="card flush">\s*\n\s*<div className="card-head">\s*\n\s*<div style=\{\{ minWidth: 0 \}\}>/);

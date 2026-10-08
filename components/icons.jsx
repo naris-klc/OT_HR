@@ -354,7 +354,8 @@ const ICONS = {
    *   cross   ไม่อนุมัติ                        ban     ยกเลิก · ถอนใบ
    *   trash   ลบ                                key     รีเซ็ตรหัสผ่าน
    *   send    ส่งใหม่                           printer พิมพ์
-   *   reset   คืนค่าตั้งต้น
+   *   reset   คืนค่าตั้งต้น                     download บันทึก PDF · ได้ไฟล์
+   *   help    วิธีพิมพ์ · วิธีใช้
    *
    * `ban` AND `trash` ARE DIFFERENT ON PURPOSE. ยกเลิก and ถอนใบ leave the ใบ in
    * the record with a status that says so; ลบ takes a holiday or a department
@@ -400,6 +401,17 @@ const ICONS = {
     <>
       <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
       <path d="M4.25 4v3.75H8" />
+    </>
+  ),
+
+  /** บันทึก PDF — a file that simply arrives, not a dialog to walk through. */
+  download: <path d="M12 4.5v10.5M7.5 10.75 12 15.25l4.5-4.5M5 19.25h14" />,
+
+  /** วิธีพิมพ์ — the instructions folded behind a pill. */
+  help: (
+    <>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="M9.75 9.5a2.4 2.4 0 1 1 3.4 2.2c-.7.35-1.15.85-1.15 1.55M12 16.6v.1" />
     </>
   ),
 };

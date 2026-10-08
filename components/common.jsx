@@ -3221,10 +3221,23 @@ export function SheetScroll({ className, hint = '← ปัดซ้าย-ข�
  * nested in a chrome div would come unstuck the moment that div scrolled past —
  * which is exactly the moment it is wanted. Side by side, both are children of
  * the view, and the bar holds all the way down the sheet.
+ *
+ * ── ปุ่มมีไอคอน ข้อความไม่เกินสามคำ และ `head` — 2026-10-08 ─────────────────
+ *
+ * *"ปรับ ui ให้ layout จัดวางกระชับขึ้น"* เลือกแบบ B จาก mockup สามแบบ บวกไอคอน
+ * ของแบบ C และ *"ข้อความต่อปุ่ม ไม่เกิน 3 คำ"* · ปุ่มเป็น printer พิมพ์ · download
+ * บันทึก PDF · help วิธีพิมพ์ ทั้งหกจอพิมพ์พร้อมกัน เพราะความหมายเดียวต้องเป็น
+ * ไอคอนเดียวทั้งแอป
+ *
+ * `head` คือหัวข้อกับตัวกรองของจอ เมื่อส่งมา แถบปุ่มจะย้ายเข้าไปอยู่ในการ์ดใบเดียว
+ * กับมัน — `.card.flush` > `.queue-tools.print-head` แถวเดียว: หัวข้อซ้าย ตัวกรอง
+ * กับปุ่มขวา แทนที่สามชั้นเดิม (หัวการ์ด · แถบตัวกรอง · แถวปุ่ม) · ⚠ แบบนี้แถบ
+ * ไม่หนึบบนมือถือ เพราะมันอยู่ในการ์ดแล้ว (ดูย่อหน้าบน) — จอที่ใช้ `head` วันนี้คือ
+ * ใบของพนักงานเองใบเดียว ซึ่งยาวหนึ่งหน้า
  */
 export function PrintChrome({
   onClose, disabled = false, graphics = 'แถบสีหัวตาราง', hints = [], footer = null,
-  filename = null, pdf = true,
+  filename = null, pdf = true, head = null,
 }) {
   const [saving, setSaving] = React.useState(false);
   const [failed, setFailed] = React.useState('');
@@ -3319,39 +3332,55 @@ export function PrintChrome({
     canSave && {
       label: 'สองปุ่มต่างกันตรงนี้',
       text: 'พิมพ์ = เปิดกล่องพิมพ์ของเบราว์เซอร์ (เลือกบันทึกเป็น PDF ในนั้นได้) '
-        + `· บันทึกเป็น PDF = ได้ไฟล์ ${filename}.pdf ทันที ไม่ต้องผ่านกล่องพิมพ์`,
+        + `· บันทึก PDF = ได้ไฟล์ ${filename}.pdf ทันที ไม่ต้องผ่านกล่องพิมพ์`,
     },
     ...hints,
   ].filter((line) => line && line.text);
 
+  const bar = (
+    <div className="print-bar no-print" ref={barRef}>
+      <button className="btn with-icon print-go" onClick={() => window.print()} disabled={disabled}>
+        <Icon name="printer" className="btn-icon" />พิมพ์
+      </button>
+      {canSave && (
+        <button className="btn with-icon" onClick={save} disabled={disabled || saving}>
+          <Icon name="download" className="btn-icon" />{saving ? 'กำลังสร้างไฟล์…' : 'บันทึก PDF'}
+        </button>
+      )}
+      {onClose && (
+        <button className="btn ghost with-icon" onClick={onClose}>
+          <Icon name="cross" className="btn-icon" />ปิด
+        </button>
+      )}
+      {/* ฝาพับของการ์ดข้างล่าง อยู่ในแถวนี้ตามที่ขอ — และเป็น `.fold-pill` ตัวเดียว
+          กับที่ ตรวจสอบรายเดือน กับ ประกาศวันหยุด ใช้ ไม่ใช่ `.btn` ตัวที่สี่
+          ดูเหตุผลในหัวคอมโพเนนต์ · `hidden` ไม่ใช่การเรนเดอร์ตามเงื่อนไข เพราะ
+          `aria-controls` ต้องชี้ไปที่ของที่มีอยู่จริงทั้งตอนพับและตอนกาง */}
+      {lines.length > 0 && (
+        <button
+          type="button"
+          className="fold-pill"
+          aria-expanded={openHints}
+          aria-controls={hintsId}
+          onClick={() => setOpenHints((v) => !v)}
+        >
+          <Icon name="help" className="fold-pill-icon" />
+          {openHints ? 'ซ่อน ▲' : 'วิธีพิมพ์ ▼'}
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <>
-      <div className="print-bar no-print" ref={barRef}>
-        <button className="btn print-go" onClick={() => window.print()} disabled={disabled}>
-          พิมพ์
-        </button>
-        {canSave && (
-          <button className="btn" onClick={save} disabled={disabled || saving}>
-            {saving ? 'กำลังสร้างไฟล์…' : 'บันทึกเป็น PDF'}
-          </button>
-        )}
-        {onClose && <button className="btn ghost" onClick={onClose}>ปิด</button>}
-        {/* ฝาพับของการ์ดข้างล่าง อยู่ในแถวนี้ตามที่ขอ — และเป็น `.fold-pill` ตัวเดียว
-            กับที่ ตรวจสอบรายเดือน กับ ประกาศวันหยุด ใช้ ไม่ใช่ `.btn` ตัวที่สี่
-            ดูเหตุผลในหัวคอมโพเนนต์ · `hidden` ไม่ใช่การเรนเดอร์ตามเงื่อนไข เพราะ
-            `aria-controls` ต้องชี้ไปที่ของที่มีอยู่จริงทั้งตอนพับและตอนกาง */}
-        {lines.length > 0 && (
-          <button
-            type="button"
-            className="fold-pill"
-            aria-expanded={openHints}
-            aria-controls={hintsId}
-            onClick={() => setOpenHints((v) => !v)}
-          >
-            {openHints ? 'ซ่อน ▲' : 'วิธีพิมพ์ ▼'}
-          </button>
-        )}
-      </div>
+      {head ? (
+        <div className="card flush no-print">
+          <div className="queue-tools print-head">
+            {head}
+            {bar}
+          </div>
+        </div>
+      ) : bar}
 
       {failed && (
         <div className="no-print" style={{ marginBottom: 12 }}>

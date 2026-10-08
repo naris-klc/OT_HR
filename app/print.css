@@ -1209,6 +1209,17 @@
    ตัวที่ห้อยอยู่ใต้ย่อหน้าในกล่องแจ้งเตือน · ในแถวนี้มันยืนเรียงกับปุ่มบนเส้นกลาง
    เดียวกัน ระยะนั้นจะดันมันต่ำกว่าปุ่มข้าง ๆ 8px ซึ่งอ่านเป็นความผิดพลาด ไม่ใช่ลำดับ */
 .print-bar .fold-pill { margin-top: 0; }
+.fold-pill-icon { width: 14px; height: 14px; flex: none; }
+
+/* ── `PrintChrome head` — หัวข้อ ตัวกรอง และปุ่มพิมพ์ในการ์ดแถวเดียว (2026-10-08)
+   แทนสามชั้นเดิมบนจอ ใบขออนุมัติ OT ของพนักงาน (MyForm ใน components/App.jsx) ·
+   หัวข้อกินที่ที่เหลือและห่อได้ ตัวกรองกับปุ่มชิดขวา · ไม่มีเส้นใต้แถบ เพราะไม่มี
+   อะไรอยู่ใต้มันในการ์ด */
+.print-head { align-items: center; border-bottom: 0; }
+.print-head-t { flex: 1 1 260px; min-width: 0; }
+.print-head-t .t { font: 600 15px/1.3 var(--sans); }
+.print-head-t .hint { margin: 2px 0 0; }
+.print-head > .print-bar { margin-bottom: 0; }
 
 /* A card rather than a right-aligned paragraph, and one line per instruction.
    The four sentences used to run together into one grey block at the end of a
@@ -1476,6 +1487,14 @@
      same, so the general one has to come first or it wins. */
   .print-bar .btn { flex: none; }
   .print-bar .print-go { flex: 1; }
+  /* ในการ์ด (`head`) แถบไม่หนึบและไม่ยื่นออกขอบ — มันเป็นแถวสุดท้ายของการ์ด
+     ช่องเดือนกับแถวปุ่มเต็มความกว้างคนละบรรทัด */
+  .print-head > .print-bar {
+    position: static; flex: 1 1 100%;
+    margin: 0; padding: 0;
+    background: none; box-shadow: none; border-bottom: 0;
+  }
+  .print-head > .field { flex: 1 1 100%; }
 }
 
 /* ══ กระดาษเปล่า: เหลือแต่ตาราง ══════════════════════════════════════════════
