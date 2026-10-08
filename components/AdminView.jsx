@@ -36,6 +36,7 @@ import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
 // derived from the whole policy rather than from the row it is printed on, so
 // the sentence under one dropdown is computed from the values in the others.
 import { inertReason, INERT_KEYS } from '@/lib/policyInert.js';
+import { policyReading, policyExample } from '@/lib/policyReading.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { searchPeople, personMatches } from '@/lib/personSearch.js';
 /* ตำแหน่ง · แผนก · บทบาท — which rows the three boxes leave, and what the boxes
@@ -6393,7 +6394,7 @@ const POLICY_FIELDS = [
     section: 1,
     key: 'coreHours', keys: ['coreStartMinute', 'coreEndMinute'], time: true,
     label: 'เวลาทำงานปกติ',
-    hint: 'ในช่วงนี้ของวันทำงานปกติไม่ใช่ OT · วันหยุดใช้ช่วงนี้แบ่ง “ในเวลางาน / นอกเวลางาน” ในกลุ่ม อัตรา OT '
+    hint: 'วันหยุดใช้ช่วงนี้แบ่ง “ในเวลางาน / นอกเวลางาน” '
       + '· ใบเหมารายวันและ “8 ชม. แรก” ของวันเกิดคิดจากความยาวช่วงนี้ลบพักเที่ยง',
   },
   {
@@ -6406,7 +6407,7 @@ const POLICY_FIELDS = [
   {
     section: 1,
     key: 'weekendDays', days: true, label: 'วันหยุดประจำสัปดาห์',
-    hint: 'วันที่เลือกเป็นวันหยุดของทุกคน คิดอัตราวันหยุด · วันหยุดตามประกาศยังจัดการที่หน้า วันหยุดบริษัท เหมือนเดิม',
+    hint: 'วันหยุดตามประกาศยังจัดการที่หน้า วันหยุดบริษัท เหมือนเดิม',
   },
   {
     section: 1,
@@ -6440,14 +6441,11 @@ const POLICY_FIELDS = [
     section: 2,
     key: 'holidayOuterRate', num: true, label: 'วันหยุด — นอกเวลางาน',
     options: [[3, '×3 (ค่าเริ่มต้น)'], [1.5, '×1.5']],
-    hint: 'ตัวอย่างตามค่าเริ่มต้น: เสาร์ 05:00–20:00 หักพักเที่ยง = ×1.5 8 ชม. + ×3 6 ชม.',
   },
   {
     section: 2,
     key: 'noBreakRate', label: 'วันที่ติ๊กไม่พักเที่ยง',
     options: [['clock', 'ตามอัตราวันหยุดข้างบน (ค่าเริ่มต้น)'], ['all15', '×1.5 ทั้งวัน']],
-    hint: 'ตัวอย่าง เสาร์ 05:00–20:00 ติ๊กไม่พักเที่ยง — ตามอัตราวันหยุด: ×1.5 9 ชม. + ×3 6 ชม. '
-      + '· ×1.5 ทั้งวัน: ×1.5 15 ชม.',
   },
   {
     section: 3,
@@ -6458,10 +6456,8 @@ const POLICY_FIELDS = [
       ['nearest', 'ปัดเข้าหาค่าใกล้ที่สุด'],
       ['exact', 'คิดตามจริงเป็นทศนิยม — ไม่ปัดเศษ'],
     ],
-    hint: 'ปัดทีละกี่นาทีตั้งได้ในแถวถัดไป '
-      + '· เลือก “คิดตามจริง” แล้วระบบจะไม่ปัดเลย และไม่อ่านค่าบล็อกนาทีในแถวถัดไป '
-      + '(ค่าที่ตั้งไว้ยังอยู่ กลับมาเลือกปัดลง/ขึ้น/ใกล้ที่สุดเมื่อไรก็ใช้ค่าเดิม) '
-      + '· ปัดแยกทีละช่องอัตรา ไม่ได้ปัดที่ยอดรวมแล้วเกลี่ยกลับ ',
+    hint: 'ปัดแยกทีละช่องอัตรา ไม่ได้ปัดที่ยอดรวมแล้วเกลี่ยกลับ '
+      + '· เลือก “คิดตามจริง” แล้วระบบไม่อ่านค่าบล็อกนาทีในแถวถัดไป (ค่าที่ตั้งไว้ยังอยู่)',
   },
   {
     section: 3,
@@ -6473,8 +6469,7 @@ const POLICY_FIELDS = [
       [30, 'ทุก 30 นาที (ครึ่งชั่วโมง — ค่าเริ่มต้น)'],
       [60, 'ทุก 60 นาที (ชั่วโมงเต็ม)'],
     ],
-    hint: 'ไม่มีผลเมื่อวิธีการปัดเศษข้างบนคือ “คิดตามจริงเป็นทศนิยม” '
-      + '· ชั่วโมงถูกเก็บเป็นทศนิยม 2 ตำแหน่ง — 15, 30 และ 60 นาทีลงตัวพอดี ',
+    hint: 'ชั่วโมงถูกเก็บเป็นทศนิยม 2 ตำแหน่ง — 15, 30 และ 60 นาทีลงตัวพอดี',
     /**
      * The half of that note that was about 5 and 10, moved out from under the
      * question and put under the answer, where it is shown only when 5 or 10 is
@@ -6527,21 +6522,14 @@ const POLICY_FIELDS = [
       [15, 'เหลืออีกไม่เกิน 15 นาที ปัดขึ้นให้'],
     ],
     /**
-     * The worked example is on the shipped block (30) and stays a fixed
-     * sentence, unlike the inert note under the row — because a hint says what
-     * the CONTROL does, and it has to be readable by somebody who has not
-     * chosen anything yet. What it must not do is state the live block as if it
-     * were the rule; "บล็อก 30 นาที" appears here inside the word ตัวอย่าง, and
-     * the row's own reason underneath is the thing that reads the live policy.
+     * The worked example on the shipped block (30) was in this hint until
+     * 2026-10-08. It is the คำอธิบาย's example box now — lib/policyReading.js,
+     * run through the engine on the LIVE block and grace — so the hint keeps
+     * only what is always true of the control.
      */
-    hint: 'ทำ OT เกือบครบบล็อกแล้วให้ปัดขึ้นเป็นบล็อกเต็ม '
-      + '— ตัวอย่างบนบล็อก 30 นาที ตั้งผ่อนปรน 5 นาที: ทำ 29 นาที ได้ 0.5 ชม. · ทำ 55 นาที ได้ 1 ชม. '
-      + 'ส่วน 24 นาทียังได้ 0 เพราะยังไม่เข้าเขตผ่อนปรน '
-      + '· ฝั่งลบไม่ต้องตั้ง — ที่ยังไม่ถึงเขตนี้ก็ปัดลงตามเดิมอยู่แล้ว ข้อนี้เพิ่มอย่างเดียวไม่เคยลด '
-      + '· อ่านเฉพาะเมื่อวิธีการปัดเศษข้างบนคือ “ปัดลงทั้งหมด” '
-      + '· ผ่อนปรนครึ่งบล็อกพอดี ให้ผลเท่ากับ “ปัดเข้าหาค่าใกล้ที่สุด” ทุกนาที '
-      + '· ⚠ ข้อนี้ขยับเส้นที่ระบบปฏิเสธงานสั้น ๆ ด้วย — ปัดลง 30 นาทีเคยปฏิเสธทุกอย่างที่ต่ำกว่า 30 นาที '
-      + 'ผ่อนปรน 10 นาทีทำให้เส้นนั้นเหลือ 20 นาที ควรทบทวน “เวลาขั้นต่ำในการเริ่มนับ OT” ข้างล่างพร้อมกัน ',
+    hint: 'ข้อนี้เพิ่มอย่างเดียวไม่เคยลด '
+      + '· ผ่อนปรนครึ่งบล็อกพอดีให้ผลเท่ากับ “ปัดเข้าหาค่าใกล้ที่สุด” '
+      + '· ⚠ ขยับเส้นที่ระบบปฏิเสธงานสั้น ๆ ด้วย ควรทบทวน “เวลาขั้นต่ำในการเริ่มนับ OT” พร้อมกัน',
     /**
      * Two traps, and neither is the inert note's job.
      *
@@ -6580,12 +6568,8 @@ const POLICY_FIELDS = [
       [30, 'ต้องทำอย่างน้อย 30 นาที'],
       [60, 'ต้องทำอย่างน้อย 60 นาที'],
     ],
-    hint: 'ทำ OT ไม่ถึงเวลานี้ ระบบมองเป็น 0 ทันที ไม่นำไปปัดเศษและไม่บันทึกใบ '
-      + '— ตั้งไว้ 30 นาที ทำ 25 นาทีจะไม่ถูกนับ ส่วน 35 นาทีจะเข้ากระบวนการปัดเศษต่อตามนโยบาย '
-      + '· วัดจากนาที OT หลังหักเวลาพัก ก่อนปัดเศษ และวัดทั้งใบรวมกัน ไม่ได้แยกทีละช่องอัตรา '
-      + '· คนละข้อกับ “ต่ำกว่าขั้นต่ำ 1 ชม.” ข้างล่าง — ข้อนี้ถามว่ามี OT ไหม ข้อนั้นถามว่า OT ที่มีสั้นเกินไปแล้วจะทำอย่างไร '
-      + 'ใบที่ถูกตัดด้วยข้อนี้จะไม่ถูกปัดขึ้นเป็น 1 ชม. และไม่ติดธง เพราะไม่มี OT ให้ปัด '
-      + '· เมื่อคำนวณใบใหม่ ใบที่เหลือ 0 ชม. จะถูกข้ามและรายงานว่าไม่สำเร็จ โดยยังคงชั่วโมงเดิมไว้',
+    hint: 'วัดจากนาที OT หลังหักพัก ก่อนปัดเศษ และวัดทั้งใบรวมกัน '
+      + '· คนละข้อกับ “ต่ำกว่าขั้นต่ำ 1 ชม.” — ข้อนี้ถามว่ามี OT ไหม ข้อนั้นถามว่า OT ที่สั้นเกินไปจะทำอย่างไร',
   },
   {
     section: 3,
@@ -6603,11 +6587,7 @@ const POLICY_FIELDS = [
       ['sheet', 'ต่อใบ — รวมทุกช่องก่อนเทียบกับขั้นต่ำ (ค่าเริ่มต้น)'],
       ['bucket', 'ต่อช่อง — เทียบขั้นต่ำแยกทีละช่องอัตรา'],
     ],
-    hint: 'มีผลเฉพาะใบที่คาบเกี่ยวมากกว่าหนึ่งช่องอัตรา เช่น ศุกร์ดึกข้ามไปเสาร์ '
-      + 'ใบที่อยู่ช่องเดียวได้ผลเหมือนกันทั้งสองแบบ '
-      + '· ต่อช่องจะวัดใบเดียวหลายครั้ง ช่องที่สั้นกว่าขั้นต่ำจะถูกจัดการตามค่า “ต่ำกว่าขั้นต่ำ” ข้างบน '
-      + '— ติดธงทีละช่อง (รับตามจริง) ปัดขึ้นทีละช่อง (ปัดขึ้น) หรือไม่รับทั้งใบ (ไม่รับรายการ) '
-      + '· เปลี่ยนเป็นต่อช่องแล้ว ถ้าค่าข้างบนคือปัดขึ้นหรือไม่รับ ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยน',
+    hint: 'มีผลเฉพาะใบที่คาบเกี่ยวมากกว่าหนึ่งช่องอัตรา ใบที่อยู่ช่องเดียวได้ผลเหมือนกันทั้งสองแบบ',
   },
   {
     section: 3,
@@ -6616,11 +6596,7 @@ const POLICY_FIELDS = [
       [true, '17:00 (นับเต็ม 3 ชม. สำหรับ 17:00–20:00)'],
       [false, '17:01 (17:00–20:00 เหลือ 2 ชม. 59 นาที)'],
     ],
-    hint: 'ค่าเริ่มต้น 17:00 คืออ่าน “17.01” บนแบบฟอร์มว่าเป็นคำย่อของ “หลัง 17:00” '
-      + '· เลือก 17:01 คือถือตามตัวอักษร นาที 17:00–17:01 ไม่ใช่ OT '
-      + 'ทำให้ 17:00–20:00 เหลือ 2 ชม. 59 นาที และเมื่อปัดเศษ 30 นาทีแบบปัดลงจะเหลือ 2.5 ชม. '
-      + '· วันหยุดใช้เส้นแบ่งเดียวกัน นาทีนั้นจะค้างอยู่ในช่อง ×1.5 วันหยุด ไม่เข้าช่อง ×3 '
-      + '· ไม่กระทบเส้น 08:00 ตอนเช้า — OT ก่อนเข้างานยังนับถึง 08:00 เท่าเดิม ',
+    hint: 'วันหยุดใช้เส้นแบ่งเดียวกัน · ไม่กระทบเส้น 08:00 ตอนเช้า',
   },
   {
     section: 4,
@@ -6629,8 +6605,7 @@ const POLICY_FIELDS = [
       [true, 'ใช่ — วันเกิดที่ตรงจันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น'],
       [false, 'ไม่ — วันเกิดเป็นวันทำงานปกติ (ค่าเริ่มต้น)'],
     ],
-    hint: 'วันเกิดที่ตรงเสาร์–อาทิตย์หรือวันหยุดบริษัทอยู่แล้ว ไม่มีผลเพิ่ม '
-      + '· พนักงานที่ยังไม่มีวันเกิดในระบบจะขึ้นเตือนในหน้าตรวจสอบประจำเดือน',
+    hint: 'พนักงานที่ยังไม่มีวันเกิดในระบบจะขึ้นเตือนในหน้าตรวจสอบประจำเดือน',
   },
   {
     section: 4,
@@ -6647,15 +6622,13 @@ const POLICY_FIELDS = [
       ['clock', 'ตามนาฬิกา เหมือนวันหยุด (ค่าเริ่มต้น)'],
       ['worked', 'ตามชั่วโมงที่ทำ — 8 ชม. แรก ×1.5 ที่เหลือ ×3'],
     ],
-    hint: 'ตัวอย่าง วันเกิด 05:00–17:00 — ตามนาฬิกา: 05:00–08:00 ×3 · 08:00–17:00 ×1.5 '
-      + '· ตามชั่วโมงที่ทำ: 05:00–14:00 ×1.5 · 14:00–17:00 ×3 '
-      + '· “8 ชม.” คือเวลาทำงานปกติลบพักเที่ยง ย้ายตามกลุ่ม 1',
+    hint: '“8 ชม.” คือเวลาทำงานปกติลบพักเที่ยง ย้ายตามกลุ่ม 1',
   },
   {
     section: 4,
     key: 'birthdayOnHoliday', label: 'วันเกิดที่ตรงเสาร์–อาทิตย์หรือวันหยุดบริษัท',
     options: [['birthday', 'ใช้กฎวันเกิด (ค่าเริ่มต้น)'], ['holiday', 'ใช้กฎวันหยุดทั่วไป']],
-    hint: 'ใช้กฎวันหยุดทั่วไป = วันนั้นไม่สนวิธีแบ่งของวันเกิด และช่องไม่พักเที่ยงขึ้นตามปกติ',
+    hint: 'ใช้กฎวันหยุดทั่วไป = ไม่สนวิธีแบ่งของวันเกิด และช่องไม่พักเที่ยงขึ้นตามปกติ',
   },
 
   /* “ฝ่ายบุคคลบันทึก OT ให้จากรายการวันเกิด” (`hrDirectApproveBirthday`) was a
@@ -6689,8 +6662,7 @@ const POLICY_FIELDS = [
       ['clock', 'นับจากชั่วโมงทำงานจริง (OT วันหยุด 2 ชม. = นับ 2 ชม.)'],
       ['weighted', 'นับจากชั่วโมงคูณอัตรา OT (OT วันหยุด 3x ทำ 2 ชม. = นับ 6 ชม.)'],
     ],
-    hint: 'กำหนดเกณฑ์การนับชั่วโมง OT เพื่อเช็กการชนเพดานรายสัปดาห์/รายเดือน '
-      + '(ไม่มีผลต่อการคำนวณเงินค่า OT ที่จ่ายจริง)',
+    hint: 'ใช้เช็กเพดานรายสัปดาห์/รายเดือนเท่านั้น ไม่มีผลต่อเงินค่า OT ที่จ่ายจริง',
   },
   {
     section: 5,
@@ -6701,19 +6673,14 @@ const POLICY_FIELDS = [
       [6, 'เสาร์ – ศุกร์'],
     ],
     hint: 'ไม่กระทบชั่วโมงในช่องใดเลย เปลี่ยนแล้วไม่มีการคำนวณใหม่ '
-      + '· เปลี่ยนเฉพาะว่าชั่วโมงถูกนับรวมเข้าสัปดาห์ไหนเมื่อเทียบกับเพดาน '
-      + '· งานที่ข้ามเที่ยงคืนถูกแบ่งตามวันที่ของแต่ละช่วง ไม่ได้นับทั้งใบเข้าสัปดาห์ที่เริ่มงาน '
-      + '· ธงบนรายการที่บันทึกไว้แล้วยังเป็นค่าที่อ่านตอนยื่น จนกว่าจะมีการคำนวณใหม่',
+      + '· งานที่ข้ามเที่ยงคืนถูกแบ่งตามวันที่ของแต่ละช่วง',
   },
   {
     section: 5,
     key: 'hrSummaryBasis', open: 12, label: 'ช่อง OT ×1.5 / ×3 ในใบฟอร์ม',
     options: [['raw', 'ชั่วโมงดิบ ยังไม่คูณ'], ['multiplied', 'คูณอัตราแล้ว']],
-    hint: 'ตัวอย่าง: ทำ OT วันปกติ 2 ชม. — “ชั่วโมงดิบ” พิมพ์ 2.00 ลงช่อง ×1.5 (ฝ่ายบัญชีคูณ 1.5 เอง) '
-      + 'ส่วน “คูณอัตราแล้ว” พิมพ์ 3.00 · ทำ OT วันหยุดนอกเวลา 2 ชม. ช่อง ×3 จะเป็น 2.00 หรือ 6.00 ตามลำดับ '
-      + '· เปลี่ยนเฉพาะตัวเลขที่พิมพ์ลงใบ F-HR-027 และไฟล์ส่งบัญชี ชั่วโมงที่ระบบเก็บไว้ไม่ขยับ '
-      + 'และไม่มีการคำนวณใบใดใหม่ · หัวคอลัมน์ในไฟล์ CSV บอกไว้ทุกครั้งว่าเป็นแบบใด '
-      + 'แต่ใบที่พิมพ์ไปแล้วยังเป็นแบบเดิม — เปลี่ยนกลางเดือนแล้วพิมพ์ซ้ำ ตัวเลขบนใบสองใบจะไม่เท่ากัน',
+    hint: 'เปลี่ยนเฉพาะตัวเลขที่พิมพ์ลงใบ F-HR-027 และไฟล์ส่งบัญชี ชั่วโมงที่ระบบเก็บไว้ไม่ขยับ '
+      + '· ใบที่พิมพ์ไปแล้วยังเป็นแบบเดิม',
   },
   {
     section: 5,
@@ -6760,7 +6727,7 @@ const POLICY_FIELDS = [
      * src/config/policy.js. The block heading above already says the group
      * changes no hours.
      */
-    hint: 'กำหนดข้อมูลที่จะนำมาแสดงในใบขออนุมัติ OT (F-HR-027) เมื่อสั่งพิมพ์เอกสาร',
+    hint: 'กำหนดข้อมูลที่จะนำมาแสดงในใบขออนุมัติ OT (F-HR-027) เมื่อสั่งพิมพ์',
     /**
      * WHAT EACH ANSWER IS FOR, all four at once, because this row is a choice
      * between them rather than a switch. A note that appeared only under the
@@ -6814,7 +6781,7 @@ const POLICY_FIELDS = [
     key: 'replayApproved', bool: true, label: 'เปลี่ยนนโยบายแล้วคำนวณใบใหม่',
     options: [[true, 'รวมใบที่อนุมัติแล้ว (ค่าเริ่มต้น)'], [false, 'เฉพาะใบที่รออนุมัติ']],
     hint: 'ทั้งสองแบบ ใบที่วันทำงานอยู่ก่อนวันเริ่มใช้ยังคิดตามกฎเดิม '
-      + '· มีผลกับการบันทึกครั้งถัดไป เปลี่ยนข้อนี้เองไม่คำนวณอะไร',
+      + '· เปลี่ยนข้อนี้เองไม่คำนวณอะไร',
   },
 
   {
@@ -6872,8 +6839,9 @@ const POLICY_FIELDS = [
      * dates and the window. The block heading above already says the group
      * changes no hours.
      */
-    hint: 'กำหนดระยะเวลาสูงสุดที่พนักงานยื่น OT ล่วงหน้าได้ '
-      + '(ตั้งเป็น 0 เพื่อไม่อนุญาตให้ยื่นล่วงหน้า)',
+    // The hint read 'กำหนดระยะเวลาสูงสุดที่พนักงานยื่น OT ล่วงหน้าได้ (ตั้งเป็น 0
+    // เพื่อไม่อนุญาตให้ยื่นล่วงหน้า)' until 2026-10-08. The sentence under the
+    // title says the same thing now (lib/policyReading.js), so it has none.
     /**
      * Against ไม่จำกัด only, and it is a warning rather than a refusal because
      * "we roster months ahead" is an answer HR is entitled to give.
@@ -6914,8 +6882,7 @@ const POLICY_FIELDS = [
     // The parenthesis read '— ตั้งแต่ยกเลิกการปิดงวด นี่คือตัวคุมย้อนหลังตัวเดียว
     // ที่เหลือ' until 2026-09-14, when the row below arrived. It is still the
     // only backward limit on FILING; it stopped being the only backward limit.
-    hint: 'กำหนดระยะเวลาย้อนหลังที่พนักงานยื่น OT ได้นับจากวันที่ทำ '
-      + '(“ไม่จำกัด” = ย้อนหลังได้ไม่จำกัด — คุมเฉพาะการยื่น ส่วนการแก้ไขและถอนใบอยู่แถวถัดไป)',
+    hint: 'คุมเฉพาะการยื่น ส่วนการแก้ไขและถอนใบอยู่แถวถัดไป',
     /**
      * On EVERY number, not on one end. The row above warns only about ไม่จำกัด,
      * because its other answers refuse nothing that exists. Every number here
@@ -6962,8 +6929,7 @@ const POLICY_FIELDS = [
       [10, 'ถึงวันที่ 10 ของเดือนถัดไป'],
       [15, 'ถึงวันที่ 15 ของเดือนถัดไป'],
     ],
-    hint: 'นับจากงวดของใบ ไม่ใช่จากวันที่กด — ใบของเดือน ส.ค. แก้ไขหรือยกเลิกได้ถึงวันที่ที่เลือกในเดือน ก.ย. '
-      + '(ฝ่ายบุคคลและผู้ดูแลระบบไม่ติดข้อนี้) · วันที่ที่เลือกยังกดได้ทั้งวัน',
+    hint: 'นับจากงวดของใบ ไม่ใช่จากวันที่กด · ฝ่ายบุคคลและผู้ดูแลระบบไม่ติดข้อนี้ · วันที่ที่เลือกยังกดได้ทั้งวัน',
     /**
      * THREE CLAUSES BECAUSE THERE ARE THREE CONSEQUENCES, and two of them
      * cannot be worked out from the label.
@@ -6990,9 +6956,7 @@ const POLICY_FIELDS = [
       ['except', 'ทุกตำแหน่ง ยกเว้นที่เลือกไว้'],
       ['all', 'ทุกตำแหน่ง'],
     ],
-    hint: 'ช่องติ๊ก “เหมารายวัน (นับ 8 ชม. ต่อวัน)” บนฟอร์มบันทึก OT '
-      + 'จะแสดงกับตำแหน่งไหนบ้าง — ใช้ทั้งฟอร์มที่พนักงานยื่นเอง ฟอร์มที่หัวหน้ายื่นแทน '
-      + 'และกล่องแก้ไขชั่วโมงของฝ่ายบุคคลในหน้ารออนุมัติ OT',
+    hint: 'ช่องติ๊ก “เหมารายวัน (นับ 8 ชม. ต่อวัน)” บนฟอร์มบันทึก OT ฟอร์มยื่นแทน และกล่องแก้ไขของฝ่ายบุคคล',
     optionHints: {
       only: 'ตำแหน่งที่จ้างแบบเหมารายวันเท่านั้นที่เห็นช่องนี้ — ตั้งต้นคือ เจ้าหน้าที่บริการ ตามที่ฝ่ายบุคคลระบุไว้ 08/09/2569',
       except: 'ทุกตำแหน่งเห็นช่องนี้ ยกเว้นตำแหน่งที่เลือกไว้ในข้อถัดไป',
@@ -7013,9 +6977,7 @@ const POLICY_FIELDS = [
     section: 7,
     key: 'flatDailyPositions', positions: true,
     label: 'ตำแหน่งของช่องเหมารายวัน',
-    hint: 'เลือกได้หลายตำแหน่ง · รายชื่อมาจากตำแหน่งที่มีอยู่จริงในทะเบียนพนักงาน '
-      + 'จึงไม่มีตำแหน่งที่พิมพ์ผิดให้เลือก · ตำแหน่งที่ยังถูกเลือกไว้แต่ไม่มีพนักงานคนไหนถืออยู่แล้ว '
-      + 'จะยังอยู่ในรายการและติ๊กค้างไว้ ไม่หายไปเงียบ ๆ เพราะคนลาออก',
+    hint: 'เลือกได้หลายตำแหน่ง รายชื่อมาจากทะเบียนพนักงาน',
   },
   {
     section: 7,
@@ -7026,8 +6988,7 @@ const POLICY_FIELDS = [
       ['workDays', 'เฉพาะวันทำงาน'],
       ['all', 'ทุกวัน'],
     ],
-    hint: 'วันหยุดในข้อนี้อ่านจากปฏิทินวันหยุดบริษัทและวันเสาร์อาทิตย์ตามที่ตั้งไว้ในระบบ '
-      + '· ไม่นับสวัสดิการวันเกิด เพราะเป็นวันหยุดของคนคนเดียว และหน้าจอไม่ได้ถือวันเกิดของใครไว้',
+    hint: 'วันหยุดในข้อนี้อ่านจากปฏิทินวันหยุดบริษัทและวันหยุดประจำสัปดาห์ · ไม่นับวันเกิด',
     optionHints: {
       offDays: 'วันที่ทั้งบริษัทหยุด แล้วมีคนถูกเรียกมาทำงานทั้งวัน — ตามที่ฝ่ายบุคคลระบุไว้ 16/09/2569',
       workDays: 'วันทำงานปกติเท่านั้น',
@@ -7046,8 +7007,7 @@ const POLICY_FIELDS = [
       ['only', 'เฉพาะตำแหน่งที่เลือกไว้'],
       ['all', 'ทุกตำแหน่ง'],
     ],
-    hint: 'ช่องติ๊ก “ไม่พักเที่ยง” บนฟอร์มบันทึก OT จะแสดงกับตำแหน่งไหนบ้าง '
-      + '· ติ๊กแล้วระบบจะไม่หักชั่วโมงพักกลางวันออกจากใบนั้น',
+    hint: 'ติ๊กแล้วระบบไม่หักชั่วโมงพักกลางวันออกจากใบนั้น',
     optionHints: {
       except: 'ตั้งต้นคือยกเว้น เจ้าหน้าที่บริการ ตามที่ฝ่ายบุคคลระบุไว้ 16/09/2569 — วันของตำแหน่งนี้ถูกจ้างทั้งวันอยู่แล้ว จึงไม่มีคำถามเรื่องชั่วโมงพัก',
       only: 'เฉพาะตำแหน่งที่เลือกไว้ในข้อถัดไปเท่านั้นที่เห็นช่องนี้',
@@ -7058,9 +7018,7 @@ const POLICY_FIELDS = [
     section: 7,
     key: 'noBreakPositions', positions: true,
     label: 'ตำแหน่งของช่องไม่พักเที่ยง',
-    hint: 'เลือกได้หลายตำแหน่ง · รายชื่อมาจากตำแหน่งที่มีอยู่จริงในทะเบียนพนักงาน '
-      + 'จึงไม่มีตำแหน่งที่พิมพ์ผิดให้เลือก · ตำแหน่งที่ยังถูกเลือกไว้แต่ไม่มีพนักงานคนไหนถืออยู่แล้ว '
-      + 'จะยังอยู่ในรายการและติ๊กค้างไว้ ไม่หายไปเงียบ ๆ เพราะคนลาออก',
+    hint: 'เลือกได้หลายตำแหน่ง รายชื่อมาจากทะเบียนพนักงาน',
   },
   {
     section: 7,
@@ -7071,8 +7029,7 @@ const POLICY_FIELDS = [
       ['workDays', 'เฉพาะวันทำงาน'],
       ['all', 'ทุกวัน'],
     ],
-    hint: 'บนวันทำงานปกติ ช่องนี้เป็นคำถามเกี่ยวกับชั่วโมงที่ไม่มีใครทำงานคร่อมอยู่ '
-      + '— เย็นวันอังคาร 17:00–20:00 ไม่ผ่านเที่ยง ติ๊กแล้วไม่มีอะไรขยับ',
+    hint: 'วันทำงานปกติ เย็น 17:00–20:00 ไม่ผ่านเที่ยง ติ๊กแล้วไม่มีอะไรขยับ',
     optionHints: {
       offDays: 'วันที่ทั้งบริษัทหยุด ซึ่งเป็นวันเดียวที่คนทำงานคร่อมเที่ยงจริง — ตามที่ฝ่ายบุคคลระบุไว้ 08/09/2569',
       workDays: 'วันทำงานปกติเท่านั้น',
@@ -7086,8 +7043,7 @@ const POLICY_FIELDS = [
       ['hide', 'ซ่อน — หักพักเที่ยงเสมอ (ค่าเริ่มต้น)'],
       ['scope', 'แสดงตามข้อ “ช่องไม่พักเที่ยง แสดงในวันแบบใด”'],
     ],
-    hint: 'ซ่อนบนฟอร์มยื่นแทนด้วย ช่องที่หายไปจึงบอกหัวหน้าว่ามีคนในใบเกิดวันนั้น '
-      + '· ข้อนี้เปลี่ยนชั่วโมงด้วย: ซ่อนแล้วติ๊กที่ค้างอยู่ไม่ถูกนับ',
+    hint: 'ซ่อนบนฟอร์มยื่นแทนด้วย · ซ่อนแล้วติ๊กที่ค้างอยู่ไม่ถูกนับ',
   },
 ];
 
@@ -7232,28 +7188,26 @@ function coerce(field, raw) {
 }
 
 /**
- * ค่าที่ใช้อยู่ — the one line of ANSWER a row shows without being asked.
+ * The one line of ANSWER a row shows without being asked — what the rule in
+ * force DOES, in one plain sentence (lib/policyReading.js).
  *
  * THE CUT ON THIS PAGE IS MADE BY CONTENT, NOT BY LINES. A row stands at its
- * question and at this sentence: what the rule is set to, in the words the
- * dropdown uses. Everything behind it — what the question means, what each
- * option is for — is one fold, opened once, by whoever came to change that row.
+ * question and at this sentence. Everything behind it — the worked example,
+ * what the question means, what each option is for — is one fold, opened once,
+ * by whoever came to change that row.
  *
- * IT READ ITS VALUE OFF AN HR_UNCONFIRMED ITEM UNTIL 2026-09-08, which meant it
- * appeared only on the six rows that list covered. The list is gone and the
- * line stays, because the line was never about the sign-off: it now reads the
- * live policy through `optionLabel`, so every row that has a dropdown has one.
- *
- * The same words as the control in the opposite column, on purpose. They are
- * the same answer, and a reader coming down the left column should not have to
- * cross to find out what it currently is.
+ * IT READ "ค่าที่ใช้อยู่: <option label>" UNTIL 2026-10-08 — the same words as
+ * the control in the opposite column, so the answer was printed twice and said
+ * nothing the dropdown did not. แบบ B, approved on a mockup that day, says what
+ * the answer does instead: "เศษที่ไม่ครบ 30 นาที ตัดทิ้ง", not "ปัดลงทั้งหมด".
+ * Muted (`.inert`) when another row has switched the rule off.
  */
 function PolicyReading({ field, value, policy }) {
-  const said = optionLabel(field, value, policy);
+  const said = policyReading(field.key, value, policy);
   if (!said) return null;
   return (
-    <div className="hint" style={{ marginTop: 5 }}>
-      ค่าที่ใช้อยู่: <strong>{said}</strong>
+    <div className={`hint policy-reading${said.inert ? ' inert' : ''}`} style={{ marginTop: 5 }}>
+      {said.text}
     </div>
   );
 }
@@ -7594,7 +7548,10 @@ function Policy({ user }) {
              of the nineteen rules explain neither themselves nor their options.
              It counted a third thing — ที่มาของค่าที่ใช้อยู่, off the withdrawn
              HR_UNCONFIRMED list — until 2026-09-08. */
-          const detail = Boolean(f.hint || f.optionHints || f.open);
+          /* The worked example for the answer on screen — 2026-10-08, and a
+             row that has one has a คำอธิบาย even with no hint. */
+          const example = policyExample(f.key, shown, proposed);
+          const detail = Boolean(example || f.hint || f.optionHints || f.open);
           /* คำอธิบาย — the toggle sits after the title since 2026-10-08 and
              opens under the answer line. It was a Disclosure reading อ่านต่อ
              below that line until then. */
@@ -7633,9 +7590,9 @@ function Policy({ user }) {
                   {/* THE ANSWER, THEN ONE FOLD — 2026-09-07, and the shape this
                       page settled on after three in a day.
 
-                      A row stands at its question and at ค่าที่ใช้อยู่, and
+                      A row stands at its question and at its one sentence, and
                       everything else about it — what the question means and
-                      what each option is for — is behind one อ่านต่อ under that
+                      what each option is for — is behind one คำอธิบาย under that
                       line. It had TWO folds before, one over this line and one
                       under it, so a reader met two buttons per row before
                       reaching the sentence most visits to this page are for.
@@ -7646,6 +7603,14 @@ function Policy({ user }) {
                   <PolicyReading field={f} value={shown} policy={proposed} />
                   {detail && (
                     <div id={helpId} className="policy-detail" hidden={!explainedOpen}>
+                      {/* First, because it is the answer worked through: what
+                          the value on screen does to one session. */}
+                      {example && (
+                        <div className="policy-example">
+                          <div className="policy-example-head">ตัวอย่างตามค่าที่ใช้อยู่</div>
+                          {example.map((line) => <div key={line} className="policy-example-line">{line}</div>)}
+                        </div>
+                      )}
                       {/* The requirements' own question number, which the ข้อ
                           column printed until 2026-10-08. */}
                       {f.open && (
@@ -7774,7 +7739,7 @@ function Policy({ user }) {
                          holding nine Thai job titles wraps to four lines in a
                          column that is half a row wide, and what a reader needs
                          off the closed control is which rule is in force —
-                         ค่าที่ใช้อยู่ in the left column carries the full list. */
+                         the sentence in the left column carries the full list. */
                       summary={(rows2) => (rows2.length <= 3
                         ? rows2.map((r) => r.label).join(' · ')
                         : `${rows2.length} ตำแหน่ง`)}
@@ -7870,8 +7835,9 @@ function Policy({ user }) {
  * A ROW WITHOUT `options` IS A LIST OF ตำแหน่ง — `positions: true`, the two rows
  * added on 2026-09-16. Its value is an array and there is no fixed vocabulary to
  * look it up in, so the answer is the names themselves, in the order they were
- * chosen. This is read by three things that must agree: ค่าที่ใช้อยู่ under the
- * question, the closed control, and the ยืนยันการเปลี่ยนกฎ dialog's `เก่า → ใหม่`.
+ * chosen. This is read by two things that must agree: the closed control and the
+ * ยืนยันการเปลี่ยนกฎ dialog's `เก่า → ใหม่`. The sentence under the question read
+ * it too until 2026-10-08; it is lib/policyReading.js now.
  */
 function optionLabel(field, value, policy) {
   if (field.time) {
@@ -7885,11 +7851,9 @@ function optionLabel(field, value, policy) {
   const options = fieldOptions(field, policy);
   if (!options) {
     const list = Array.isArray(value) ? value : [];
-    // "ไม่ได้เลือกไว้" AND NOT AN EMPTY STRING: `PolicyReading` draws nothing on
-    // a falsy label, and a row whose answer is "none" would then be the one row
-    // on the page with no ค่าที่ใช้อยู่ line — which reads as a page fault
-    // rather than as an answer. Under 'only' it is also the answer that turns
-    // the tick off for everybody, so it has to be legible.
+    // "ไม่ได้เลือกไว้" AND NOT AN EMPTY STRING: the dialog's เก่า → ใหม่ would
+    // otherwise print an arrow from nothing. Under 'only' it is also the answer
+    // that turns the tick off for everybody, so it has to be legible.
     return list.length ? list.join(' · ') : 'ไม่ได้เลือกไว้';
   }
   const found = options.find(([v]) => String(v) === String(value));
