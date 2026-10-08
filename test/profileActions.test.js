@@ -286,7 +286,7 @@ test('the press carries which card it meant, and stops carrying it on the way ou
 test('the card scrolls itself into view, and only when it was asked for', () => {
   const code = sourceOf(PROFILE);
   assert.match(code, /jump=\{jumpTo === 'password'\}/);
-  assert.match(code, /export function ChangePassword\(\{ onDone, pending = false, jump = false \}\)/);
+  assert.match(code, /export function ChangePassword\(\{ onDone, pending = false, jump = false, children = null \}\)/);
   // The guard is the whole of "only when asked": this component is mounted by
   // every visit to the page, including the ones nothing sent.
   assert.match(code, /if \(!jump\) return;/);

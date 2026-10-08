@@ -5859,26 +5859,36 @@ td > .approver-line { margin-top: 5px; }
 /* ══ profile ═════════════════════════════════════════════════════════════ */
 
 /* ข้อมูลส่วนตัว, read-only. A description list rather than a table: it is one
-   person's facts, not rows to compare.
-
-   Flex rather than grid, for the same reason as `.fact-grid` further down — a
-   grid fixes the number of columns from the card width, and seven facts in a
-   five-column grid left the last row with two cells and three empty tracks.
-   The hairlines are the container's background showing through a 1px gap, so
-   "empty track" rendered as a grey box stretching to the end of the row. Flex
-   has no tracks: `flex: 1 1 210px` lets however many facts land on a row share
-   that row's whole width, so every row ends flush. */
+   person's facts, not rows to compare. Four facts in two columns under the
+   name; the name, รหัสพนักงาน and ตำแหน่ง are the card's header. */
 .profile-facts {
-  display: flex; flex-wrap: wrap; gap: 1px; margin-top: 4px;
-  background: var(--line); border: 1px solid var(--line);
-  border-radius: var(--radius-sm); overflow: hidden;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px;
+  margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--line);
 }
-.profile-facts > div { flex: 1 1 210px; background: var(--card); padding: 12px 14px; }
 .profile-facts dt {
   font: 600 11px/1 var(--mono); letter-spacing: .09em;
-  color: var(--muted); text-transform: uppercase; margin-bottom: 6px;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 4px;
 }
-.profile-facts dd { font: 500 15px/1.35 var(--sans); color: var(--ink); margin: 0; }
+.profile-facts dd { font: 500 15px/1.35 var(--sans); color: var(--ink); margin: 0; overflow-wrap: anywhere; }
+.profile-note { margin: 12px 0 0; }
+
+/* Two columns from 861px (the app's own breakpoint), one below it. `minmax(0, 1fr)`
+   so a long department name cannot push a column wider than its half. */
+.profile-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.profile-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (max-width: 860px) { .profile-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.profile-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.profile-id .avatar { width: 44px; height: 44px; font-size: 15px; }
+.profile-id h2 { margin: 0; overflow-wrap: anywhere; }
+.profile-id .hint { margin: 0; }
+
+/* ธีม: the heading and the three buttons share one row, the heading allowed to
+   shrink and wrap — the buttons never are. */
+.profile-theme { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.profile-theme h2 { margin: 0; }
+
+.profile-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-self: stretch; }
 
 /* ── ข้อมูลส่วนตัว's cards breathe wider than the app's ──────────────────────
    18px is the app's card padding and it is right for the screens it was set
@@ -5928,8 +5938,9 @@ td > .approver-line { margin-top: 5px; }
 /* Stacked, not the app's usual side-by-side .row: the three password boxes are
    a sequence to work down, and side by side they invite typing into the wrong
    one. Capped so the fields do not stretch across a desktop card. */
-.profile-form { display: flex; flex-direction: column; gap: 14px; max-width: 380px; margin-top: 4px; }
+.profile-form { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
 .profile-form .btn { align-self: flex-start; }
+.profile-submit .profile-actions { width: 100%; }
 
 /* The button and the line under it are one thing, not two rows of the form —
    7px apart like a field and its note, rather than the 14px that separates
