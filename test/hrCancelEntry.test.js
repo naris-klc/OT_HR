@@ -403,7 +403,8 @@ test('the dialog no longer warns about a waiting request', () => {
 test('the dialog is declared once and hangs over the editor as well as the table', () => {
   assert.match(hrEntries, /const cancelDialog = cancelling && \(/);
   assert.equal((hrEntries.match(/\{cancelDialog\}/g) || []).length, 2);
-  assert.equal((hrEntries.match(/<Modal\b/g) || []).length, 1);
+  // Two since 2026-10-08: this one, and BatchApproveModal's own.
+  assert.equal((hrEntries.match(/<Modal\b/g) || []).length, 2);
 });
 
 /** Coming back to a form over a row that no longer exists is a form whose
