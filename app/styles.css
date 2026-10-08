@@ -7703,6 +7703,23 @@ td > .approver-line { margin-top: 5px; }
   }
 }
 .entry-mark .chip { white-space: normal; text-align: left; }
+
+/* ── อนุมัติหลายรายการ ใน รายการ OT รายคน — 2026-10-08 ─────────────────────
+   The tick column and the green band are `th.check` / `.batch-bar` as on
+   คิวรออนุมัติ. Two things are this screen's own: `.batch-bar` is
+   `display: none` below 861px for that queue's sake (it has a phone bar of its
+   own), and this screen has none — so `.entry-bar` takes it back, in flow like
+   ตรวจสอบประจำเดือน's; and on a card the tick-box sits at the card's top edge
+   as a 22px target. */
+.batch-bar.entry-bar { position: static; margin-top: 12px; border-radius: var(--radius-sm); }
+.peek-list input[type='checkbox'] { flex: none; accent-color: var(--green); }
+@media (max-width: 860px) {
+  .batch-bar.entry-bar { display: flex; padding: 10px 12px; gap: 8px; }
+  .batch-bar.entry-bar .count-label { flex-basis: 100%; }
+  .entry-table.stack-table tbody td.check { display: block; width: auto; text-align: left; padding: 2px 0 0; }
+  .entry-table.stack-table tbody td.check::before { content: none; }
+  .entry-table.stack-table tbody td.check input { width: 22px; height: 22px; }
+}
 /* TWO CHIPS CAN LAND HERE SINCE 2026-09-04, and before that no two ever could:
    `เหมารายวัน` and `เวลาไม่ตรงกับสแกน` are mutually exclusive by construction,
    so the cell never needed to say what sits between two pills. `ไม่ได้สแกนเข้า

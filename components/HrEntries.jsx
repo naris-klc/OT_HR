@@ -6,15 +6,18 @@ import {
   Alert, CancelledMark, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, Modal, ProxyMark,
   RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
-  RowAction, StatusChip, editsOf, trailOf,
+  RowAction, ShowMore, StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail, isProxyFiled } from '@/lib/entries.js';
-import { describeBreaches, OVER_CEILING_REASON_APPROVE } from '@/lib/caps.js';
-import { SCAN_MATCH_TOLERANCE_MINUTES, summariseScanChecks } from '@/lib/scanMatch.js';
+import {
+  describeBreaches, OVER_CEILING_REASON_APPROVE, OVER_CEILING_REASON_SAY, overCeilingApproveHead,
+} from '@/lib/caps.js';
+import { SCAN_MATCH, SCAN_MATCH_TOLERANCE_MINUTES, summariseScanChecks } from '@/lib/scanMatch.js';
 import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
 import OtForm from './OtForm.jsx';
 import { useBackHandler } from './nav.jsx';
+import { useToast } from './Toast.jsx';
 
 /**
  * Why อนุมัติ is dead on this row, in one sentence — `''` when it is live.
@@ -55,6 +58,132 @@ function whyNotApprovable(entry) {
   if (entry.status === 'rejected') return 'ใบนี้ถูกไม่อนุมัติแล้ว ไม่มีอะไรให้อนุมัติ';
   if (entry.status === 'cancelled') return 'ใบนี้ถูกยกเลิกแล้ว ไม่มีอะไรให้อนุมัติ';
   return 'อนุมัติใบนี้จากหน้านี้ไม่ได้';
+}
+
+/**
+ * อนุมัติหลายใบในรอบเดียว — the stop between a tick and payroll, for ONE person's
+ * month. Asked for 2026-10-08 (*เพิ่มการอนุมัติหลายรายการในหน้านี้*).
+ *
+ * NOT `ConfirmModal` FROM components/ApprovalQueue.jsx, for the reason
+ * components/MonthConfirm.jsx gives: that one is not exported and is drawn for a
+ * queue of other people's ใบ. The ceiling WORDING is not copied — it is read
+ * from `lib/caps.js`, which is what test/monthBatchApprove.test.js pins for the
+ * two dialogs that already exist.
+ *
+ * TWO DOORS, ONE SHEET. The tick-boxes pass `choosable={false}` (the choice was
+ * made in the table); the header button passes `true` and the reader picks here.
+ *
+ * ไม่ได้สแกน IS A WARNING AND NOT A BLOCK — asked for in those words. The row is
+ * approvable on its own already, so the sheet says how many and which, once.
+ */
+function BatchApproveModal({ entries, choosable, busy, onClose, onConfirm }) {
+  const [chosen, setChosen] = useState(() => new Set(entries.map((e) => e._id)));
+  const [why, setWhy] = useState('');
+  const sel = entries.filter((e) => chosen.has(e._id));
+  const total = sel.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
+  const capped = sel.filter((e) => e.decide?.needsReason);
+  const unscanned = sel.filter((e) => e.scanCheck?.state === SCAN_MATCH.NO_SCAN);
+  const ready = sel.length > 0 && (capped.length === 0 || why.trim().length > 0);
+  const flip = (id) => setChosen((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  return (
+    <Modal
+      title={sel.length > 1 ? `อนุมัติ ${sel.length} รายการ` : 'อนุมัติรายการนี้'}
+      subtitle="รายการที่อนุมัติแล้วจะเข้าสู่รายงานส่งออกทันที"
+      onClose={onClose}
+      footer={(
+        <>
+          <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
+          <button
+            className="btn"
+            disabled={busy || !ready}
+            onClick={() => onConfirm(sel, capped.length ? why.trim() : null)}
+          >
+            {sel.length > 1 ? `ยืนยันอนุมัติทั้งหมด (${sel.length} รายการ)` : 'ยืนยันการอนุมัติ'}
+          </button>
+        </>
+      )}
+    >
+      <div className="split">
+        <div className="box"><div className="k">จำนวนรายการ</div><div className="v">{sel.length}</div></div>
+        <div className="box total"><div className="k">รวมชั่วโมง OT</div><div className="v">{hours(total)}</div></div>
+      </div>
+
+      {unscanned.length > 0 && (
+        <Alert kind="warn" mark={false}>
+          <strong>⚠️ {unscanned.length} รายการไม่ได้สแกนนิ้วในวันนั้น</strong>
+          {' '}— ยังอนุมัติได้ แต่ไม่มีหลักฐานการสแกนรองรับ
+          <ShowMore
+            as="ul"
+            className="alert-list"
+            items={unscanned}
+            render={(e) => (
+              <li key={e._id}>{thaiDate(e.workDate)} · {e.startTime}–{e.endTime}</li>
+            )}
+          />
+        </Alert>
+      )}
+
+      {capped.length > 0 && (
+        <Alert kind="warn" mark={false}>
+          <strong>⚠️ {overCeilingApproveHead(capped.length)}</strong>
+          <ShowMore
+            as="ul"
+            className="alert-list"
+            items={capped}
+            render={(e) => (
+              <li key={e._id}>
+                {thaiDate(e.workDate)} ·
+                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก'}
+              </li>
+            )}
+          />
+          <div className="say">{OVER_CEILING_REASON_SAY}</div>
+        </Alert>
+      )}
+
+      {capped.length > 0 && (
+        <div className="field" style={{ marginTop: 12 }}>
+          <div className="field-head">
+            <label htmlFor="batch-why">เหตุผลที่อนุมัติทั้งที่เกินเพดาน *</label>
+          </div>
+          <textarea
+            id="batch-why"
+            rows={2}
+            value={why}
+            placeholder="เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมด่วน · ปิดงบสิ้นเดือน"
+            onChange={(ev) => setWhy(ev.target.value)}
+          />
+          <div className="field-note">
+            ต้องกรอกเหตุผลก่อนจึงจะอนุมัติได้
+            {sel.length > 1 && ' · เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้'}
+          </div>
+        </div>
+      )}
+
+      <ul className="peek-list">
+        {entries.map((e) => (
+          <li key={e._id}>
+            {choosable && (
+              <input
+                type="checkbox"
+                checked={chosen.has(e._id)}
+                onChange={() => flip(e._id)}
+                aria-label={`เลือก ${thaiDate(e.workDate)}`}
+              />
+            )}
+            <span className="who">{dayAbbr(e.workDate)}{thaiDate(e.workDate)}</span>
+            <span className="when">{e.startTime}–{e.endTime}</span>
+            <span className="num">{hours(e.totals?.otHours)} ชม.</span>
+          </li>
+        ))}
+      </ul>
+    </Modal>
+  );
 }
 
 /**
@@ -125,6 +254,10 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
    * impossible. It is also what lets one press open all of them.
    */
   const [open, setOpen] = useState(() => new Set());
+  const [picked, setPicked] = useState(() => new Set());
+  const [batch, setBatch] = useState(null); // { list, choosable }
+  const [progress, setProgress] = useState(null);
+  const toast = useToast();
 
   async function load() {
     try {
@@ -194,6 +327,53 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
    * rule with a test on it does not quietly become an `if` somebody edits.
    */
   const scanCounts = summariseScanChecks(entries || []);
+
+  /**
+   * The rows this reader can approve from here — `decide.ok`, the server's own
+   * verdict, so a row that would answer 409 is never on a tick-box. Empty for a
+   * reader without `mayEdit`, who gets neither the column nor the button.
+   */
+  const approvable = mayEdit ? (entries || []).filter((e) => e.decide?.ok) : [];
+  const chosenRows = approvable.filter((e) => picked.has(e._id));
+  const pickedHours = chosenRows.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
+  const allPicked = approvable.length > 0 && chosenRows.length === approvable.length;
+  const togglePick = (id) => setPicked((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const toggleAllPicks = () => setPicked(allPicked ? new Set() : new Set(approvable.map((e) => e._id)));
+
+  /**
+   * One request per ใบ, in order — the API has no bulk endpoint, the same
+   * answer คิวรออนุมัติ gives. A row that fails is named; the rest still went.
+   */
+  async function approveBatch(list, note) {
+    setBatch(null);
+    setBusy(true);
+    setError('');
+    setProgress({ done: 0, total: list.length });
+    const failed = [];
+    for (const e of list) {
+      try {
+        await api.post(`/entries/${e._id}/approve`, note ? { note } : undefined);
+      } catch (err) {
+        failed.push(`${thaiDate(e.workDate)} — ${err.message}`);
+      }
+      setProgress((p) => ({ ...p, done: p.done + 1 }));
+    }
+    setProgress(null);
+    setPicked(new Set());
+    await load();
+    setBusy(false);
+    if (failed.length < list.length) {
+      onChanged?.();
+      toast(`อนุมัติ ${list.length - failed.length} รายการเรียบร้อยแล้ว — เข้าสู่รายงานส่งออกแล้ว`);
+    }
+    if (failed.length) {
+      setError(`ทำรายการไม่สำเร็จ ${failed.length} รายการ: ${failed.join(' · ')}`);
+    }
+  }
 
   /**
    * Computed from the rows on screen rather than fetched.
@@ -406,6 +586,15 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
             {employee.code} · {periodLabel(period)}
           </div>
         </div>
+        {approvable.length > 0 && (
+          <button
+            className="btn"
+            disabled={busy}
+            onClick={() => setBatch({ list: approvable, choosable: true })}
+          >
+            อนุมัติที่รอ HR ({approvable.length})
+          </button>
+        )}
         <button className="btn ghost" onClick={onClose}>กลับไปสรุปรายเดือน</button>
       </div>
 
@@ -468,6 +657,32 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
               : 'เดือนนี้ยังไม่มีรายการใดถูกแก้ไขหรือคำนวณใหม่'}
           </span>
         </div>
+
+        {chosenRows.length > 0 && (
+          <div className="batch-bar entry-bar no-print">
+            <div className="count-label">
+              เลือกไว้ <strong>{chosenRows.length}</strong> รายการ
+              <span className="sub">รวม {hours(pickedHours)} ชม.</span>
+            </div>
+            <button
+              className="btn sm"
+              disabled={busy}
+              onClick={() => setBatch({ list: chosenRows, choosable: false })}
+            >
+              อนุมัติที่เลือก ({chosenRows.length})
+            </button>
+            <button className="link" disabled={busy} onClick={() => setPicked(new Set())}>
+              ยกเลิกการเลือก
+            </button>
+          </div>
+        )}
+
+        {progress && (
+          <div className="batch-progress">
+            <div className="bar"><i style={{ width: `${(progress.done / progress.total) * 100}%` }} /></div>
+            <span>กำลังดำเนินการ {progress.done} / {progress.total}</span>
+          </div>
+        )}
 
         {/* WHAT THE CHIPS IN THE จาก–ถึง COLUMN MEAN, said BEFORE the reader
             meets one — and, more importantly, said on a month that has no chips
@@ -567,6 +782,17 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
           <table className="stack-table entry-table">
             <thead>
               <tr>
+                {approvable.length > 0 && (
+                  <th className="check">
+                    <input
+                      type="checkbox"
+                      checked={allPicked}
+                      ref={(el) => { if (el) el.indeterminate = chosenRows.length > 0 && !allPicked; }}
+                      onChange={toggleAllPicks}
+                      aria-label="เลือกทั้งหมด"
+                    />
+                  </th>
+                )}
                 <th>วันที่</th>
                 {/* THE THIRD COLUMN THAT NEEDS A WIDTH, and it needed one most.
                     This cell stopped being a pair of times on 2026-09-04: it
@@ -616,7 +842,24 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                 const closed = ['rejected', 'cancelled'].includes(e.status);
                 return (
                   <React.Fragment key={e._id}>
-                  <tr>
+                  <tr className={picked.has(e._id) ? 'picked' : undefined}>
+                    {approvable.length > 0 && (
+                      <td className="check">
+                        <span
+                          className="act-tip"
+                          data-tip={e.decide?.ok ? undefined : 'เลือกไม่ได้'}
+                          data-tip-why={e.decide?.ok ? undefined : whyNotApprovable(e)}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={picked.has(e._id)}
+                            disabled={!e.decide?.ok || busy}
+                            onChange={() => togglePick(e._id)}
+                            aria-label={`เลือก ${thaiDate(e.workDate)}`}
+                          />
+                        </span>
+                      </td>
+                    )}
                     {/* The date is the card's heading — how a row is found.
                         FOUR INLINE GREYS LEFT THIS FILE ON 2026-08-26 and became
                         the two classes the rest of the app already draws a second
@@ -957,7 +1200,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           column it counted leaves a phantom cell at the end of
                           the drawer row, which no test would catch and every
                           reader would see. */}
-                      <td colSpan={9}>
+                      <td colSpan={approvable.length > 0 ? 10 : 9}>
                         <div className="audit-drawer">
                           <strong>ประวัติการแก้ไข</strong>
                           {/* Size, colour and spacing are all in
@@ -1033,6 +1276,15 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
         </ul>
       </div>
       {cancelDialog}
+      {batch && (
+        <BatchApproveModal
+          entries={batch.list}
+          choosable={batch.choosable}
+          busy={busy}
+          onClose={() => setBatch(null)}
+          onConfirm={approveBatch}
+        />
+      )}
     </div>
   );
 }

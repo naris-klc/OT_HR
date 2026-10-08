@@ -183,7 +183,7 @@ test('the word is อนุมัติ on both screens that sign the same ใ�
 test('a ceiling row still owes a sentence here, and it is the same sentence', () => {
   // Imported from lib/caps.js, never typed out — the same protection
   // components/MonthConfirm.jsx keeps for the batch dialog.
-  assert.match(list, /import \{ describeBreaches, OVER_CEILING_REASON_APPROVE \} from '@\/lib\/caps\.js';/);
+  assert.match(list, /describeBreaches, OVER_CEILING_REASON_APPROVE, OVER_CEILING_REASON_SAY, overCeilingApproveHead,\n\} from '@\/lib\/caps\.js';/);
   assert.match(list, /window\.prompt\(\[\s*\n\s*OVER_CEILING_REASON_APPROVE,/);
   // Cancelling, or an empty line, cancels the approval — the route would refuse
   // it anyway, and a reader should not learn a rule by watching a request fail.

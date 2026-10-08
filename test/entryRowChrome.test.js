@@ -776,10 +776,13 @@ test('จาก–ถึง has a width, and its floor is a pixel one', () => {
 test('the drawer spans exactly the columns the header declares', () => {
   const head = jsx.slice(jsx.indexOf('<thead>'), jsx.indexOf('</thead>'));
   const columns = (head.match(/<th[\s>/]/g) || []).length;
-  assert.equal(columns, 9, 'the table is nine columns wide since 2026-09-04');
-  const span = /<td colSpan=\{(\d+)\}>/.exec(code);
+  // Nine since 2026-09-04, ten when the tick column is drawn (2026-10-08 —
+  // only for a reader who can approve, so the drawer's span follows it).
+  assert.equal(columns, 10, 'nine columns + the optional tick column');
+  const span = /<td colSpan=\{approvable\.length > 0 \? (\d+) : (\d+)\}>/.exec(code);
   assert.ok(span, 'the drawer must span the row');
-  assert.equal(Number(span[1]), columns, 'colSpan and the header disagree');
+  assert.equal(Number(span[1]), columns, 'colSpan with the tick column and the header disagree');
+  assert.equal(Number(span[2]), columns - 1, 'colSpan without it and the header disagree');
 });
 
 /**
@@ -859,4 +862,26 @@ test('ไม่พักเที่ยง ขึ้นเป็นไฮไล�
   assert.ok(print.includes('[ไม่พักเที่ยง]'));
   assert.ok(!print.includes('cell-flag'));
   assert.ok(!read('app/print.css').includes('cell-flag'));
+});
+
+// ── อนุมัติหลายรายการ (2026-10-08) ──────────────────────────────────────────
+
+test('batch approve: two doors, one sheet, and the ceiling words come from lib/caps.js', () => {
+  // A — tick-boxes and a green band; C — a button on the heading.
+  assert.match(code, /<th className="check">/);
+  assert.match(code, /<td className="check">/);
+  assert.match(code, /setBatch\(\{ list: chosenRows, choosable: false \}\)/);
+  assert.match(code, /setBatch\(\{ list: approvable, choosable: true \}\)/);
+  // Only what the server says is approvable can be ticked, and only for mayEdit.
+  assert.match(code, /const approvable = mayEdit \? \(entries \|\| \[\]\)\.filter\(\(e\) => e\.decide\?\.ok\) : \[\];/);
+  // One request per ใบ, the same answer คิวรออนุมัติ gives.
+  assert.match(code, /await api\.post\(`\/entries\/\$\{e\._id\}\/approve`, note \? \{ note \} : undefined\);/);
+  // ไม่ได้สแกน warns and does not block: it never feeds `ready`.
+  const modal = code.slice(code.indexOf('function BatchApproveModal'), code.indexOf('export default function HrEntries'));
+  assert.match(modal, /SCAN_MATCH\.NO_SCAN/);
+  assert.match(modal, /const ready = sel\.length > 0 && \(capped\.length === 0 \|\| why\.trim\(\)\.length > 0\);/);
+  assert.match(modal, /overCeilingApproveHead\(capped\.length\)/);
+  assert.equal((modal.match(/<textarea/g) || []).length, 1);
+  // The bar is drawn on a phone too: `.batch-bar` is display:none there.
+  assert.match(css, /\.batch-bar\.entry-bar \{ display: flex;/);
 });
