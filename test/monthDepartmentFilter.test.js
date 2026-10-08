@@ -410,10 +410,12 @@ test('every sentence that could be read as the whole company names the แผน
 test('the notices cannot outlive the department they were counted over', () => {
   // Every count `MonthAlerts` draws is the server's, over the narrowed month.
   assert.match(hrView, /key=\{`\$\{period\}\|\$\{statusFilter\}\|\$\{dept\}`\}/);
-  // The page and the fold are claims about a list this replaces wholesale.
+  // The page is a claim about a list this replaces wholesale. It read "The page
+  // and the fold" until 2026-10-08, when the fold went with the phone's own
+  // pager and `pageSize` joined the list with the shared band.
   assert.match(
     hrView,
-    /setPage\(1\);\s*setShowAllCards\(false\);\s*\}, \[period, statusFilter, dept, query, onlyFlagged\]\);/,
+    /setPage\(1\);\s*\}, \[period, statusFilter, dept, query, onlyFlagged, pageSize\]\);/,
   );
   // AND SO IS ดูเฉพาะคนที่ต้องตรวจ, which is why it is released by the same
   // three. It narrows by `compare.people` — a list the server rebuilds for

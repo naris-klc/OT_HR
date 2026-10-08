@@ -7,8 +7,8 @@ import {
   EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
 } from '@/lib/accessLog.js';
 import {
-  Alert, Empty, Field, Modal, PickOne, ClearButton, TablePager, TipButton, useScrollEdge,
-  useKeptFetch, usePageReset,
+  Alert, Empty, Field, Modal, PickOne, ClearButton, PAGE_SIZE, TablePager, TipButton, useScrollEdge,
+  pageQuery, pageWindow, serverRows, useKeptFetch, usePageClamp, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
 
@@ -522,9 +522,13 @@ function Compliance() {
    * NOTHING IS BEHIND A FOLD, which is the property the route's own header
    * insists on. A cut list has rows below it reachable by nothing; a paged one
    * has every row on some page, with the total printed under the table.
+   *
+   * `PAGE_SIZE` (50) AND NOT 10, since 2026-10-08 — one opening size for every
+   * paged table, and a quarter of 50 rows or fewer is not paged at all. See
+   * `PAGER_FROM`.
    */
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
 
   const params = useMemo(() => {
     const p = new URLSearchParams();
@@ -571,7 +575,8 @@ function Compliance() {
      button that no longer exists, and this is a different mechanism on a
      different table. */
   const all = data?.rows || [];
-  const shown = all.slice((page - 1) * pageSize, page * pageSize);
+  const win = pageWindow(page, pageSize, all.length);
+  const shown = all.slice(win.from, win.to);
 
   return (
     <div className="card">
@@ -742,9 +747,9 @@ function Compliance() {
 
           <TablePager
             label="การใช้สิทธิ์พิเศษ"
-            page={page}
+            page={win.at}
             pageSize={pageSize}
-            total={data.total}
+            total={all.length}
             onPage={setPage}
             onPageSize={setPageSize}
           />
@@ -818,9 +823,14 @@ function LogList({
    * send it as an upper bound on every later page, so a visit pages through one
    * snapshot. It is a change to what the ENDPOINT is being asked for, not to
    * this band, and it wants its own decision — ask before building it.
+   *
+   * `PAGE_SIZE` (50) AND NOT 10, since 2026-10-08, and `pageQuery` builds the
+   * request: page 1 always asks for at least `PAGER_FROM` rows, so a filter that
+   * narrows the log to 30 rows shows all 30 under no band rather than ten of
+   * them with the rest unreachable. See `pageQuery` and `serverRows`.
    */
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
 
   const narrowed = useMemo(
     () => Object.entries(filters).some(([, v]) => v),
@@ -851,12 +861,13 @@ function LogList({
     if (filters.ip) p.set('ip', filters.ip);
     if (filters.from) p.set('from', filters.from);
     if (filters.to) p.set('to', filters.to);
-    p.set('limit', String(pageSize));
+    const { skip, limit } = pageQuery(page, pageSize);
+    p.set('limit', String(limit));
     /* Omitted on page 1 rather than sent as `skip=0`, so the request the screen
        makes on arrival is byte-for-byte the one it made before this existed —
        and so the URL in บันทึกระบบ's own record of itself does not gain a
        parameter that says nothing. */
-    if (page > 1) p.set('skip', String((page - 1) * pageSize));
+    if (skip > 0) p.set('skip', String(skip));
     return p.toString();
   }, [tab, filters, page, pageSize]);
 
@@ -875,6 +886,12 @@ function LogList({
      the page press, and resetting on it would make › a button that goes to
      page 2 and comes straight back. See `usePageReset`. */
   usePageReset(setPage, [tab, filters, pageSize]);
+  /* A page the reply says no longer exists — a list that fell to 50 rows or
+     fewer under a reader on page 3 — goes back to the last one there is, which
+     with no band is page 1 and its whole list. */
+  const win = pageWindow(page, pageSize, data?.total || 0);
+  usePageClamp(setPage, page, data ? win.at : page);
+  const records = data ? serverRows(data.records, data.total, pageSize) : [];
 
   const download = () => {
     const p = new URLSearchParams();
@@ -1049,7 +1066,7 @@ function LogList({
                 </tr>
               </thead>
               <tbody>
-                {data.records.map((r) => (
+                {records.map((r) => (
                   <tr key={r.id} onClick={() => setOpen(r)} className="clickable">
                     <td data-label="เวลา" className="log-when">{atShort(r.at)}</td>
                     <td data-label="บัญชีผู้ใช้งาน">
@@ -1140,7 +1157,7 @@ function LogList({
               under the table and the rows in it are one read. */}
           <TablePager
             label="บันทึกระบบ"
-            page={page}
+            page={win.at}
             pageSize={pageSize}
             total={data.total}
             onPage={setPage}

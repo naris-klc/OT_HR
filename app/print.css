@@ -1673,6 +1673,9 @@
      must not hand accounting a sheet with the first fifty people missing. The
      band itself is `no-print`, so nothing on paper claims a page at all. */
   .acct-table tbody tr.off-page { display: table-row !important; }
+  /* ตรวจสอบประจำเดือน the same way since 2026-10-08, when its table began
+     paging at both widths through the shared band — the month prints whole. */
+  .hr-table tbody tr.off-page { display: table-row !important; }
 
   /* ⚠ AND tfoot IS FORCED BACK TO A NORMAL ROW GROUP, which is the one rule
      here that goes against the browser's default rather than with it.

@@ -28,7 +28,7 @@ import {
   FlatDailyMark, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, Section, SegmentList, ShowMore,
   SignatureFacts,
-  StatusChip, TablePager, TeamMark, editsOf, shownWarnings, usePageReset,
+  PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
@@ -561,7 +561,7 @@ export default function ApprovalQueue({
    * stood at 946 that day, so the notice was on the screen every morning and
    * the press was a step taken every time — asked to go, in so many words:
    * *โหลดทั้งหมดไปเลยได้มั้ย ux มันดูไม่สะดวกกับผู้ใช้งาน*. Paging is in the
-   * browser (`pageRows`), so the table draws the same 20 rows either way; what
+   * browser (`pageRows`), so the table draws the same page either way; what
    * grows is the one reply. The notice stays for a queue over `MAX_LIST_LIMIT`,
    * where nothing on this screen can bring the rest back.
    */
@@ -807,10 +807,12 @@ export default function ApprovalQueue({
    * and no `.is-paged` fade: the rows the next page needs are already in hand
    * and the slice is synchronous.
    *
-   * 20 AND NOT 10. This screen is read to be CLEARED. Ten rows puts a page turn
-   * between every third signature; fifty leaves the ticks at the top out of
-   * sight by the time the last one is made. 10 · 20 · 50 · 100 are all on the
-   * box — `PAGE_SIZES`, the same four every other table in the app offers.
+   * `PAGE_SIZE` (50) SINCE 2026-10-08. It read "20 AND NOT 10. This screen is
+   * read to be CLEARED. Ten rows puts a page turn between every third
+   * signature; fifty leaves the ticks at the top out of sight by the time the
+   * last one is made" until then, when the user set one opening size for every
+   * table and asked that a list of 50 or fewer not be paged at all (see
+   * `PAGER_FROM`). 10 · 20 · 50 · 100 are all still on the box.
    *
    * ⚠ A PAGE IS NOT A FILTER, AND ON THIS SCREEN THAT IS THE WHOLE RULE.
    * `pageRows` decides ONE thing — which rows the table draws. เลือกทั้งหมด,
@@ -827,7 +829,7 @@ export default function ApprovalQueue({
    * and it is why a page turn keeps a selection while ค้นหา empties it.
    */
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   /**
    * THE FILTERS, NOT THE DATA. `load()` runs again after every signature and
    * after every batch, and a reset keyed on `entries` would throw a reader who
@@ -835,15 +837,15 @@ export default function ApprovalQueue({
    * undoing itself.
    */
   usePageReset(setPage, [q, dept, per, st, applicant, pageSize]);
-  const pageCount = Math.max(1, Math.ceil(shown.length / pageSize));
   /**
-   * CLAMPED BEFORE THE SLICE, not only in the sentence. `TablePager` clamps
-   * what it PRINTS; an unclamped slice under it is an empty table beneath a
-   * band reading หน้า 4 / 2 — which is exactly what approving the last row of
-   * the last page would draw, on a screen whose whole job is emptying itself.
+   * CLAMPED BEFORE THE SLICE, not only in the sentence — `pageWindow` does it.
+   * An unclamped slice is an empty table beneath a band reading หน้า 4 / 2,
+   * which is exactly what approving the last row of the last page would draw,
+   * on a screen whose whole job is emptying itself. It also hands back every
+   * row when the pile is 50 or fewer and the band is not drawn.
    */
-  const at = Math.min(Math.max(page, 1), pageCount);
-  const pageRows = shown.slice((at - 1) * pageSize, at * pageSize);
+  const win = pageWindow(page, pageSize, shown.length);
+  const pageRows = shown.slice(win.from, win.to);
 
   /**
    * ถัดไป PUTS THE READER AT THE TOP OF THE NEW PAGE, and this is one of the
@@ -2279,16 +2281,16 @@ export default function ApprovalQueue({
           same fact the sentence below is placed out here for — and controls
           inside it would begin off the left edge of what the reader can see.
 
-          DRAWN WHENEVER THERE ARE ROWS, INCLUDING WHEN THEY FIT ON ONE PAGE.
-          `แสดง 1–7 จากทั้งหมด 7 รายการ` with both chevrons dead is a statement
-          about the queue and takes one line to make; a band that appears only
-          past row 21 is a control the reader has to discover at the worst
-          moment to discover it. Withheld on NONE, where the two panels below
+          DRAWN ONLY PAST 50 ROWS SINCE 2026-10-08 — `TablePager` withholds
+          itself at `PAGER_FROM` or fewer and `pageWindow` hands the table every
+          row. This read "DRAWN WHENEVER THERE ARE ROWS, INCLUDING WHEN THEY FIT
+          ON ONE PAGE" until then; the user asked for the opposite with the
+          redrawn band. Withheld on NONE as before, where the two panels below
           have already said what the emptiness means, and withheld while the
           list has not arrived, for the reason the table itself is.
 
-          `page={at}` and not `page={page}` — the clamped one, so the band and
-          the slice under it can never name different pages.
+          `page={win.at}` and not `page={page}` — the clamped one, so the band
+          and the slice under it can never name different pages.
 
           `no-print`, the same mark `.queue-mobile-bar` carries: a dropdown and
           two chevrons are a way of asking for more rows, and paper has already
@@ -2301,7 +2303,7 @@ export default function ApprovalQueue({
           <TablePager
             className="flush-pager queue-pager no-print"
             label={queueName}
-            page={at}
+            page={win.at}
             pageSize={pageSize}
             total={shown.length}
             onPage={goPage}

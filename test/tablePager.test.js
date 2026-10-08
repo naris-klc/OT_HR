@@ -30,18 +30,21 @@ import { dirname, join } from 'node:path';
  * ─────────────────────────────────────────────────────────────────────────────
  * ONE COMPONENT FOR BOTH, AND WHAT IT IS NOT
  *
- * `TablePager` is drawn under SIX tables, and this file reads all of them:
+ * `TablePager` is drawn under EIGHT tables, and this file reads all of them:
  * the two on บันทึกประวัติระบบ (§1–8), ประวัติเวอร์ชันนโยบาย (§9),
- * คิวรออนุมัติ (§11), ทะเบียนพนักงาน (§12) and สรุป OT ส่งบัญชี (§13). It read
- * "both tables" until 2026-09-11, when the queue took one — the sentence had
- * already outlived ประวัติเวอร์ชันนโยบาย — then "FOUR" and "FIVE" as the
- * roster and the accounting sheet followed it the same afternoon.
+ * คิวรออนุมัติ (§11), ทะเบียนพนักงาน (§12), สรุป OT ส่งบัญชี (§13),
+ * ตรวจสอบประจำเดือน and ประวัติการแก้ทะเบียน (§14). It read "both tables"
+ * until 2026-09-11, then "FOUR", "FIVE" and "SIX" as the queue, the roster and
+ * the accounting sheet took one, and "SIX" until 2026-10-08.
  *
- * `HrView`'s `.pager-row` is the one pager deliberately NOT folded into it:
- * that one is a `<td>` inside a `<tbody>`, `display: none` above 860px, laid
- * out as a two-row grid for a 280px card. What all of them share is the VOICE —
- * `‹`, `หน้า A / B`, `แสดง n–m จาก T รายการ`, a 38px square — and they share it
- * by naming the same classes, not by one component drawing every case.
+ * `HrView`'s `.pager-row` WAS the one pager deliberately not folded in — a
+ * `<td>` inside a `<tbody>`, phone-only, for a 280px card — until 2026-10-08,
+ * when the band was redrawn as one slim line (mockup option B, chosen by the
+ * user) that fits a card at either width, and that screen took it too.
+ *
+ * AND THE SAME DAY: A LIST OF 50 ROWS OR FEWER IS NOT PAGED (§0). The band is
+ * withheld and every row is drawn — except on ประวัติเวอร์ชันนโยบาย, which
+ * keeps it (`always`).
  *
  * Run with: npm test
  */
@@ -73,6 +76,79 @@ const band = css.slice(
   css.indexOf('/* ── the list itself ─'),
 );
 
+/* `common.jsx` evaluated for the three pure helpers, so the rule is tested by
+   running it and not only by reading it. Sliced out of the file and handed to
+   `Function` — the module itself imports React and cannot load under node. */
+const helperSrc = commonCode.slice(
+  commonCode.indexOf('export const PAGER_FROM'),
+  commonCode.indexOf('export const SHORT_PAGE_SIZES'),
+).replace(/export /g, '');
+// eslint-disable-next-line no-new-func
+const { pageWindow, pageQuery, serverRows, pageList, PAGER_FROM } = new Function(
+  `${helperSrc}; return { pageWindow, pageQuery, serverRows, pageList, PAGER_FROM };`,
+)();
+
+// ── 0. fifty rows or fewer are not paged ────────────────────────────────────
+
+test('a list of 50 or fewer draws no band and every row', () => {
+  /**
+   * Asked for on 2026-10-08 with the redrawn band. It only holds if a hidden
+   * band can never leave rows hidden, so the window is EVERY row whenever the
+   * band is withheld — whatever the page-size box was left at, and whatever
+   * page the state still names.
+   */
+  assert.equal(PAGER_FROM, 50);
+  assert.deepEqual(pageWindow(3, 10, 50), { paged: false, at: 1, pageCount: 1, from: 0, to: 50 });
+  assert.deepEqual(pageWindow(1, 10, 0), { paged: false, at: 1, pageCount: 1, from: 0, to: 0 });
+  // Fifty-one is paged, and the page is clamped.
+  assert.deepEqual(pageWindow(9, 50, 51), { paged: true, at: 2, pageCount: 2, from: 50, to: 51 });
+  assert.deepEqual(pageWindow(2, 10, 77), { paged: true, at: 2, pageCount: 8, from: 10, to: 20 });
+  // The band makes the SAME test before drawing anything.
+  const pager = commonCode.slice(
+    commonCode.indexOf('export function TablePager('),
+    commonCode.indexOf('export function usePageReset('),
+  );
+  assert.match(pager, /const win = pageWindow\(page, pageSize, total, always\);\s*if \(!win\.paged\) return null;/);
+  assert.match(commonCode, /export const PAGE_SIZE = 50;/);
+});
+
+test('no caller cuts its own page — every slice goes through pageWindow', () => {
+  // The two lines every caller used to write for itself are the way a hidden
+  // band could leave rows hidden; one helper is the way it cannot.
+  for (const f of ['components/LogSystem.jsx', 'components/ApprovalQueue.jsx',
+    'components/AdminView.jsx', 'components/AccountingView.jsx', 'components/HrView.jsx']) {
+    const code = strip(read(f));
+    assert.ok(!/\.slice\(\(\w+ - 1\) \* pageSize/.test(code), `${f} cuts a page by hand again`);
+    assert.ok(!/Math\.ceil\([\w.]+ \/ pageSize\)/.test(code), `${f} counts its own pages again`);
+    assert.match(code, /pageWindow\(/, `${f} pages without pageWindow`);
+  }
+});
+
+test('a server page asks for 50 on page 1, so a short list arrives whole', () => {
+  // A reader who left the box at 10 and then narrowed the list to 30 gets no
+  // band — and without this, ten rows with twenty unreachable.
+  assert.deepEqual(pageQuery(1, 10), { skip: 0, limit: 50 });
+  assert.deepEqual(pageQuery(1, 100), { skip: 0, limit: 100 });
+  assert.deepEqual(pageQuery(3, 10), { skip: 20, limit: 10 });
+  const rows = Array.from({ length: 50 }, (_, i) => i);
+  assert.equal(serverRows(rows, 30, 10).length, 50, 'a short list was cut to the page size');
+  assert.equal(serverRows(rows, 120, 10).length, 10, 'a long list showed more than a page');
+});
+
+test('the page numbers: first, last, current ± 1, and … only for two or more', () => {
+  assert.deepEqual(pageList(1, 1), [1]);
+  assert.deepEqual(pageList(1, 5), [1, 2, '…', 5]);
+  assert.deepEqual(pageList(5, 9), [1, '…', 4, 5, 6, '…', 9]);
+  // A gap of exactly one page is that page — `1 … 3` would hide one button
+  // behind a glyph the same width.
+  assert.deepEqual(pageList(4, 9), [1, 2, 3, 4, 5, '…', 9]);
+  assert.deepEqual(pageList(9, 9), [1, '…', 8, 9]);
+  assert.deepEqual(pageList(2, 3), [1, 2, 3]);
+  // The current page is marked for a screen reader and filled green.
+  assert.match(common, /aria-current=\{p === at \? 'page' : undefined\}/);
+  assert.match(band, /\.table-pager \.btn\.pager-num\[aria-current='page'\],[^{]*\{\s*background: var\(--green\); border-color: var\(--green\); color: var\(--on-fill\);/);
+});
+
 // ── 1. the band, and the rule that separates it from the table ──────────────
 
 test('the pager is one component, and both tables on the screen draw it', () => {
@@ -93,7 +169,8 @@ test('a hairline closes the table above it, with air on both sides of the rule',
   // reader scrolling to the bottom of the table meets a dropdown.
   assert.match(band, /border-top: 1px solid var\(--line\)/,
     'the band floats under the table with nothing saying the table ended');
-  assert.match(band, /padding-top: 12px/);
+  // 6px since 2026-10-08 — the band is one 42px line; it read "12px" over two.
+  assert.match(band, /padding-top: 6px/);
   assert.match(band, /margin-top: 8px/);
   // A token, never a fixed grey: `border-slate-200` would be a light-theme
   // hairline drawn on ธีมมืด, which is the one place it cannot be seen.
@@ -110,18 +187,14 @@ test('the two halves are laid out as two halves', () => {
 
 // ── 2. จำนวนรายการต่อหน้า ────────────────────────────────────────────────────
 
-test('the four sizes are 10 · 20 · 50 · 100, and บันทึกประวัติระบบ opens on ten', () => {
+test('the four sizes are 10 · 20 · 50 · 100, and every table opens on 50', () => {
   assert.match(commonCode, /export const PAGE_SIZES = \[10, 20, 50, 100\];/);
-  // Both tables HERE open on the first of them. A log opened on 100 would be
-  // the un-paged table it replaced on the first paint.
-  //
-  // WHICH SIZE A TABLE OPENS ON IS THE SCREEN'S CHOICE, not the kit's: the list
-  // offered is the same four everywhere. คิวรออนุมัติ opens on 20 because it is
-  // read to be emptied rather than searched (§11), and ทะเบียนพนักงาน on the
-  // same 20 because the way a register is read is by searching it (§12).
-  assert.equal(logsCode.match(/useState\(10\)/g)?.length, 2,
-    'a table opens on some other page size than the one the selector lists first');
-  assert.equal(logsCode.match(/const \[pageSize, setPageSize\] = useState\(10\);/g)?.length, 2);
+  // IT READ "บันทึกประวัติระบบ opens on ten" UNTIL 2026-10-08, and the opening
+  // size was each screen's choice (10 here, 20 on the queue and the roster, 50
+  // on the accounting sheet). The user set one size the day the band was
+  // redrawn: `PAGE_SIZE`, which is also where paging begins (`PAGER_FROM`).
+  assert.equal(logsCode.match(/const \[pageSize, setPageSize\] = useState\(PAGE_SIZE\);/g)?.length, 2);
+  assert.ok(!/useState\(10\)/.test(logsCode), 'a log table opens on ten again');
 });
 
 test('it is a PickOne and never a <select>', () => {
@@ -142,11 +215,11 @@ test('it is a PickOne and never a <select>', () => {
   // `aria-labelledby` is clipped out of the picture and kept in the document.
   assert.match(pager, /hideLabel/);
   assert.match(pager, /จำนวน\$\{unit\}ต่อหน้า/);
-  assert.match(pager, /แสดง<\/span>/);
-  // `{unit}ต่อหน้า`, not the literal `รายการต่อหน้า` it read until 2026-09-08:
-  // ประวัติเวอร์ชันนโยบาย counts เวอร์ชัน, and a row there is a rule set
-  // somebody can name rather than an item in a list. See `unit`.
-  assert.match(pager, /\{unit\}ต่อหน้า<\/span>/);
+  // `[50 ▾] ต่อหน้า` since 2026-10-08, after the range that already names the
+  // unit. It read `แสดง [10 ▾] {unit}ต่อหน้า` until then, with the unit inside
+  // the phrase; on one line the unit is said once, in the range.
+  assert.match(pager, /<span className="pager-word">ต่อหน้า<\/span>/);
+  assert.ok(!/แสดง<\/span>/.test(pager), 'the box went back to a sentence of its own');
 });
 
 test('the unit is a word the caller supplies, and รายการ is only the default', () => {
@@ -173,7 +246,8 @@ test('the box is sized for a figure, not for a Thai department name', () => {
   // holding the string "10"; `--field-h` is 46px, which beside two 38px
   // squares makes the footer read as a form to fill in.
   assert.match(band, /\.table-pager \.pager-size-pick \{[^}]*flex: none/);
-  assert.match(band, /\.table-pager \.pager-size-pick \.pick-one \{[^}]*min-height: 38px/);
+  // 30 since 2026-10-08, beside 30px squares; it read "38px" beside 38px ones.
+  assert.match(band, /\.table-pager \.pager-size-pick \.pick-one \{[^}]*min-height: 30px/);
   // Mono and tabular, because 10 · 20 · 50 · 100 is a column of figures —
   // `.pick-one .val` is SANS by default because it usually holds Thai.
   assert.match(band, /\.table-pager \.pager-size-pick \.pick-one \.val \{[^}]*var\(--mono\)/);
@@ -181,21 +255,26 @@ test('the box is sized for a figure, not for a Thai department name', () => {
 
 // ── 3. where the reader is, and the two presses that move them ──────────────
 
-test('both sentences are drawn — where in the list, and which page', () => {
-  assert.match(common, /แสดง <strong>\{from\}–\{to\}<\/strong> จากทั้งหมด <strong>\{total\.toLocaleString\('th-TH'\)\}<\/strong> \{unit\}/);
-  assert.match(common, /หน้า <strong>\{at\}<\/strong> \/ <strong>\{pageCount\}<\/strong>/);
-  // Announced when they change, because pressing › moves the reader and what a
+test('where in the list, and which page', () => {
+  // ONE LINE SINCE 2026-10-08: `1–50 จาก 214 คน`. It read `แสดง 1–10 จากทั้งหมด
+  // 24 รายการ` over `หน้า 1 / 3` until then; the page is now the filled number
+  // on a wide screen and `‹ [3] / 5 ›` on a phone.
+  assert.match(common, /<strong>\{from\}–\{to\}<\/strong> จาก <strong>\{total\.toLocaleString\('th-TH'\)\}<\/strong> \{unit\}/);
+  assert.match(common, /<span className="pager-of">\/ \{pageCount\}<\/span>/);
+  // Announced when it changes, because pressing › moves the reader and what a
   // screen reader has to say afterwards is where they now are.
-  assert.match(common, /<div className="pager-say" aria-live="polite">/);
+  assert.match(common, /<span className="pager-range" aria-live="polite">/);
 });
 
 test('the range counts from 1, is inclusive, and says 0 on an empty list', () => {
+  // The arithmetic lives in `pageWindow` since 2026-10-08 (§0), shared with
+  // every caller's slice.
   assert.match(commonCode, /const pageCount = Math\.max\(1, Math\.ceil\(total \/ pageSize\)\);/);
   assert.match(commonCode, /const at = Math\.min\(Math\.max\(page, 1\), pageCount\);/);
-  // `แสดง 1–0` is what a bare `(at - 1) * pageSize + 1` prints on an empty
-  // list, and it is the sentence a reader takes as a bug in the count.
-  assert.match(commonCode, /const from = total === 0 \? 0 : \(at - 1\) \* pageSize \+ 1;/);
-  assert.match(commonCode, /const to = Math\.min\(at \* pageSize, total\);/);
+  // `1–0` is what a bare `(at - 1) * pageSize + 1` prints on an empty list,
+  // and it is the sentence a reader takes as a bug in the count.
+  assert.match(commonCode, /const from = total === 0 \? 0 : win\.from \+ 1;/);
+  assert.match(commonCode, /return \{ paged, at, pageCount, from, to: Math\.min\(from \+ pageSize, total\) \};/);
 });
 
 test('the ends are disabled, not hidden, and they do not fade', () => {
@@ -219,7 +298,8 @@ test('the ends are disabled, not hidden, and they do not fade', () => {
   // Three classes, so it beats `.btn.sm` and `.btn:disabled` on specificity
   // rather than on where it happens to sit in the sheet — the defeat
   // `.dept-menu` took four times over and `.log-more` took once.
-  assert.match(band, /\.table-pager \.btn\.pager-step \{[^}]*width: 38px/);
+  // 30px since 2026-10-08; it read "38px" while the band was two lines tall.
+  assert.match(band, /\.table-pager \.btn\.pager-step \{[^}]*width: 30px/);
 });
 
 test('a chevron carries its word, and the word names which table', () => {
@@ -241,7 +321,8 @@ test('การใช้สิทธิ์พิเศษ cuts its page in the b
    * one period.
    */
   assert.match(logsCode, /const all = data\?\.rows \|\| \[\];/);
-  assert.match(logsCode, /const shown = all\.slice\(\(page - 1\) \* pageSize, page \* pageSize\);/);
+  assert.match(logsCode, /const win = pageWindow\(page, pageSize, all\.length\);/);
+  assert.match(logsCode, /const shown = all\.slice\(win\.from, win\.to\);/);
   assert.match(logsCode, /\{shown\.map\(\(r, i\) => \(/);
   assert.ok(!/\{data\.rows\.map\(/.test(logsCode),
     'the compliance table is drawing every row again — the pager under it counts pages nobody sees');
@@ -250,13 +331,19 @@ test('การใช้สิทธิ์พิเศษ cuts its page in the b
 });
 
 test('the traffic list asks the server for one page', () => {
-  assert.match(logsCode, /p\.set\('limit', String\(pageSize\)\);/);
-  assert.match(logsCode, /if \(page > 1\) p\.set\('skip', String\(\(page - 1\) \* pageSize\)\);/);
-  // Never sliced in the browser: the endpoint answers with a page of the rows
+  // Through `pageQuery` since 2026-10-08: page 1 asks for at least 50, so a
+  // log that turns out short arrives whole under no band (§0).
+  assert.match(logsCode, /const \{ skip, limit \} = pageQuery\(page, pageSize\);/);
+  assert.match(logsCode, /p\.set\('limit', String\(limit\)\);/);
+  assert.match(logsCode, /if \(skip > 0\) p\.set\('skip', String\(skip\)\);/);
+  // Never FILTERED in the browser: the endpoint answers with a page of the rows
   // that MATCH, so narrowing one here would search ten records and report
-  // "never happened" for anything older.
-  assert.ok(!/data\.records\.slice\(/.test(logsCode),
+  // "never happened" for anything older. `serverRows` only trims page 1's
+  // over-read back to the page size.
+  assert.ok(!/data\.records\.(slice|filter)\(/.test(logsCode),
     'a page of the log is being cut again in the browser — it is already one page');
+  assert.match(logsCode, /serverRows\(data\.records, data\.total, pageSize\)/);
+  assert.match(logsCode, /usePageClamp\(setPage, page, data \? win\.at : page\);/);
 });
 
 test('page 1 is the request this screen always made', () => {
@@ -344,17 +431,26 @@ test('a filter change puts the reader back on page 1', () => {
 
 // ── 7. the phone ────────────────────────────────────────────────────────────
 
-test('below 560px the halves stack and the arrows grow to 44px', () => {
-  const phone = css.slice(css.indexOf('@media (max-width: 560px) {\n  .table-pager {'));
+test('below 860px the numbers give way to ‹ [3] / 5 › on 44px targets', () => {
+  /**
+   * IT READ "below 560px the halves stack and the arrows grow to 44px" UNTIL
+   * 2026-10-08. The redrawn band switches at the app's main line instead, the
+   * width below which the app reads as a phone (docs/design.md §6), and the
+   * numbered list is what gives way: the same buttons with every number but
+   * the current one hidden, so there is one list of controls, not two.
+   */
+  const phone = css.slice(css.indexOf('@media (max-width: 860px) {\n  .table-pager {'));
   const block = phone.slice(0, phone.indexOf('\n}'));
-  assert.match(block, /\.table-pager \{[^}]*flex-direction: column/);
-  // The arrows stay at the right edge: they are pressed repeatedly and belong
-  // nearest the thumb, while the size is chosen once on arrival.
-  assert.match(block, /\.table-pager \.pager-controls \{[^}]*justify-content: flex-end/);
-  assert.match(block, /\.table-pager \.btn\.pager-step \{[^}]*width: 44px/);
-  // And the box goes with them — a 38px control beside two 44px squares is the
-  // one shape that reads as a mistake rather than as a choice.
+  assert.ok(block.length > 100, 'the phone block for the band moved');
+  assert.match(block, /\.table-pager \.pager-say \{[^}]*flex-basis: 100%/);
+  assert.match(block, /\.table-pager \.btn\.pager-num:not\(\[aria-current='page'\]\),\s*\.table-pager \.pager-gap \{ display: none; \}/);
+  assert.match(block, /\.table-pager \.pager-of \{\s*display: inline;/);
+  assert.match(block, /\.table-pager \.btn\.pager-num \{ width: 44px; min-width: 44px; height: 44px; \}/);
+  // And the box goes with them — a 30px control beside 44px squares is the one
+  // shape that reads as a mistake rather than as a choice.
   assert.match(block, /\.table-pager \.pager-size-pick \.pick-one \{[^}]*min-height: 44px/);
+  // No breakpoint of its own: 560 went with the old band.
+  assert.ok(!/@media \(max-width: 560px\) \{\s*\.table-pager/.test(css));
 });
 
 // ── 8. pressing › does not move the page ────────────────────────────────────
@@ -472,7 +568,7 @@ test('ประวัติเวอร์ชันนโยบาย pages, and
    * its own result, and would say so on nine rows out of ten that have one
    * sitting a page away.
    */
-  assert.match(adminCode, /const shown = versions\.slice\(\(at - 1\) \* pageSize, at \* pageSize\);/);
+  assert.match(adminCode, /const shown = versions\.slice\(win\.from, win\.to\);/);
   assert.match(adminCode, /\{shown\.map\(\(v\) => \(/);
   assert.ok(!/\{versions\.map\(\(v\) => \(/.test(adminCode),
     'the table draws every version again — the pager under it counts pages nobody sees');
@@ -482,12 +578,18 @@ test('ประวัติเวอร์ชันนโยบาย pages, and
     'the endpoint learnt to skip — that breaks the diff on the first row of every page');
 });
 
-test('the page is clamped before the slice, not only in the sentence', () => {
-  // `TablePager` clamps what it PRINTS. An unclamped slice under it is an empty
-  // table beneath a pager reading หน้า 4 / 2.
-  assert.match(adminCode, /const pageCount = Math\.max\(1, Math\.ceil\(versions\.length \/ pageSize\)\);/);
-  assert.match(adminCode, /const at = Math\.min\(Math\.max\(page, 1\), pageCount\);/);
-  assert.match(adminCode, /page=\{at\}/);
+test('the page is clamped before the slice, and this band is always drawn', () => {
+  // `pageWindow` clamps. An unclamped slice is an empty table beneath a pager
+  // reading หน้า 4 / 2.
+  //
+  // `true` — `always` — AND THIS IS THE ONE TABLE THAT PASSES IT (2026-10-08).
+  // Every other band is withheld at 50 rows or fewer; this list never reaches
+  // 50 and is paged at 5 · 10 · 20 to be read, so the user kept it.
+  assert.match(adminCode, /const win = pageWindow\(page, pageSize, versions\.length, true\);/);
+  const tag = adminCode.slice(adminCode.indexOf('label="ประวัติเวอร์ชันนโยบาย"') - 200);
+  assert.match(tag.slice(0, 600), /\balways\b/);
+  assert.match(adminCode, /page=\{win\.at\}/);
+  assert.equal(adminCode.match(/\balways\n/g)?.length, 1, 'a second table opted out of the 50-row rule');
 });
 
 test('the band closes the section, with the wider gap that asks for', () => {
@@ -520,7 +622,8 @@ test('a page change here scrolls nothing either', () => {
   // The file's other two are accounted for: the roving highlight inside an open
   // dropdown — `block: 'nearest'` on a list row, not the page — and the
   // roster's own landing, which §12 pins to the handler.
-  assert.equal(adminCode.match(/scrollIntoView/g)?.length, 2);
+  // THREE since 2026-10-08: ประวัติการแก้ทะเบียน's landing joined them (§14).
+  assert.equal(adminCode.match(/scrollIntoView/g)?.length, 3);
   assert.match(adminCode, /listRef\.current\?\.querySelector\('\[data-active="1"\]'\)\?\.scrollIntoView\(\{ block: 'nearest' \}\)/);
   // Nothing empties the table on a page press: the slice is synchronous and
   // `load()` is not in the path at all.
@@ -600,12 +703,13 @@ const queueCode = strip(queue);
 test('the queue draws the shared band, once, from the shared kit', () => {
   assert.equal(queueCode.match(/<TablePager\b/g)?.length, 1,
     'คิวรออนุมัติ draws more than one band — one table has one foot');
-  assert.match(queueCode, /^\s*StatusChip, TablePager, TeamMark, editsOf, shownWarnings, usePageReset,$/m,
+  assert.match(queueCode, /^\s*PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,$/m,
     'the pager is not imported from ./common.jsx — a second copy is how two bands begin to disagree');
   // No `sizes` prop: this table is offered the same four as every other one.
   assert.ok(!/<TablePager[\s\S]*?sizes=/.test(queueCode),
     'the queue narrowed its own size list — 10 · 20 · 50 · 100 is the app\'s answer');
-  assert.match(queueCode, /const \[pageSize, setPageSize\] = useState\(20\);/);
+  // `PAGE_SIZE` (50) since 2026-10-08; it read `useState(20)` until then.
+  assert.match(queueCode, /const \[pageSize, setPageSize\] = useState\(PAGE_SIZE\);/);
 });
 
 test('the page decides the rows and nothing else — A PAGE IS NOT A FILTER', () => {
@@ -644,10 +748,9 @@ test('the reset is the filters, never the queue itself', () => {
 test('the page is clamped before the slice here too', () => {
   // Approving the last row of the last page is the ordinary end of this screen,
   // and an unclamped slice draws an empty table under หน้า 4 / 3 for it.
-  assert.match(queueCode, /const pageCount = Math\.max\(1, Math\.ceil\(shown\.length \/ pageSize\)\);/);
-  assert.match(queueCode, /const at = Math\.min\(Math\.max\(page, 1\), pageCount\);/);
-  assert.match(queueCode, /const pageRows = shown\.slice\(\(at - 1\) \* pageSize, at \* pageSize\);/);
-  assert.match(queueCode, /page=\{at\}/);
+  assert.match(queueCode, /const win = pageWindow\(page, pageSize, shown\.length\);/);
+  assert.match(queueCode, /const pageRows = shown\.slice\(win\.from, win\.to\);/);
+  assert.match(queueCode, /page=\{win\.at\}/);
 });
 
 test('the band is drawn on one page, and withheld on none and on not-yet', () => {
@@ -707,8 +810,10 @@ test('the band brings its own inset, because .card.flush has none', () => {
    */
   assert.match(queueCode, /className="flush-pager queue-pager no-print"/,
     'the band prints — a dropdown asking for more rows, on paper that already has them all');
-  assert.match(band, /\.table-pager\.flush-pager \{ padding: 12px 18px 16px; \}/);
-  assert.match(band, /\.table-pager\.flush-pager \{ padding: 12px 12px 16px; \}/);
+  // `6px 18px 8px` / `6px 12px 10px` since the band became one line on
+  // 2026-10-08; they read "12px 18px 16px" and "12px 12px 16px" until then.
+  assert.match(band, /\.table-pager\.flush-pager \{ padding: 6px 18px 8px; \}/);
+  assert.match(band, /\.table-pager\.flush-pager \{ padding: 6px 12px 10px; \}/);
   // AND ONE DECLARATION IS STILL THE QUEUE'S ALONE: its rows are cards at phone
   // width and `.queue-table tbody` already leaves 12px under the last of them,
   // so the band gives its own margin back. `.acct-table` is still a table down
@@ -759,11 +864,12 @@ test('the roster draws the shared band, once, and asks for no sizes of its own',
   assert.ok(roster.length > 1000, 'the slice for Employees came out empty — the anchors moved');
   assert.equal(roster.match(/<TablePager\b/g)?.length, 1,
     'ทะเบียนพนักงาน draws more than one band — one table has one foot');
-  assert.match(adminCode, /^\s*ClearButton, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,$/m,
+  assert.match(adminCode, /^\s*ClearButton, PAGE_SIZE, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,$/m,
     'the pager is not imported from ./common.jsx — a second copy is how two bands begin to disagree');
   assert.ok(!/<TablePager[\s\S]*?sizes=/.test(roster),
     'the roster narrowed its own size list — 10 · 20 · 50 · 100 is the app\'s answer');
-  assert.match(roster, /const \[pageSize, setPageSize\] = useState\(20\);/);
+  // `PAGE_SIZE` (50) since 2026-10-08; it read `useState(20)` until then.
+  assert.match(roster, /const \[pageSize, setPageSize\] = useState\(PAGE_SIZE\);/);
   // คน, not รายการ: a row is a person, and the bar above it counts in คน.
   assert.match(roster, /unit="คน"/);
   assert.match(roster, /label="ทะเบียนพนักงาน"/);
@@ -776,7 +882,7 @@ test('the page is cut out of the search result, and the bar still counts the reg
    */
   assert.equal(roster.match(/pageRows/g)?.length, 2,
     'something other than the table reads pageRows — a count or an empty state now means "on this page"');
-  assert.match(roster, /const pageRows = shown\.slice\(\(at - 1\) \* pageSize, at \* pageSize\);/);
+  assert.match(roster, /const pageRows = shown\.slice\(win\.from, win\.to\);/);
   assert.match(roster, /\{pageRows\.map\(\(p\) => \(/);
   // THE TWO SENTENCES, AND THEY ARE NOT THE SAME SENTENCE. The bar's is
   // filtered-of-register; the band's is page-of-filtered.
@@ -799,9 +905,8 @@ test('the reset is the search, never the register', () => {
 });
 
 test('the page is clamped before the slice here too', () => {
-  assert.match(roster, /const pageCount = Math\.max\(1, Math\.ceil\(shown\.length \/ pageSize\)\);/);
-  assert.match(roster, /const at = Math\.min\(Math\.max\(page, 1\), pageCount\);/);
-  assert.match(roster, /page=\{at\}/);
+  assert.match(roster, /const win = pageWindow\(page, pageSize, shown\.length\);/);
+  assert.match(roster, /page=\{win\.at\}/);
 });
 
 test('the band is withheld on a search that matched nobody', () => {
@@ -870,13 +975,13 @@ const printCss = read('app/print.css');
 test('the sheet draws the shared band, once, per company', () => {
   assert.equal(acctCode.match(/<TablePager\b/g)?.length, 1,
     'more than one band in this file — each company sheet draws the one inside itself');
-  assert.match(acctCode, /^\s*RateHead, TablePager, UnaccountedHours, usePageReset,$/m,
+  assert.match(acctCode, /^\s*PAGE_SIZE, RateHead, TablePager, UnaccountedHours, pageWindow, usePageReset,$/m,
     'the pager is not imported from ./common.jsx');
   assert.ok(!/<TablePager[\s\S]*?sizes=/.test(acctCode),
     'the sheet narrowed its own size list — 10 · 20 · 50 · 100 is the app\'s answer');
   // 50: a month is usually one page, so the band mostly reports the length of
   // the list rather than cutting it.
-  assert.match(acctCode, /const \[pageSize, setPageSize\] = useState\(50\);/);
+  assert.match(acctCode, /const \[pageSize, setPageSize\] = useState\(PAGE_SIZE\);/);
   assert.match(acctCode, /unit="คน"/);
   // The label names the company, because บริษัท · ทั้งหมด draws two of these.
   // It read `สรุป OT ส่งบัญชี · ${company.shortTh}` until 2026-09-14, when the word
@@ -890,7 +995,10 @@ test('⚠ the page is a class on a row, never a slice — the sheet prints whole
   assert.ok(!/\.slice\(/.test(acctCode),
     'a slice appeared in สรุป OT ส่งบัญชี — Ctrl+P would print one page of the month');
   assert.match(acctCode, /\{company\.rows\.map\(\(row, i\) => \(/);
-  assert.match(acctCode, /className=\{i >= from && i < from \+ pageSize \? undefined : 'off-page'\}/);
+  // `win.to` and not `from + pageSize` since 2026-10-08: on a month of 50 or
+  // fewer the window is every row and the band is withheld, so no row may be
+  // marked off a page nobody can turn to.
+  assert.match(acctCode, /className=\{i >= win\.from && i < win\.to \? undefined : 'off-page'\}/);
   // Screen hides it; paper does not.
   assert.match(css, /\.acct-table tbody tr\.off-page \{ display: none; \}/);
   assert.match(printCss, /\.acct-table tbody tr\.off-page \{ display: table-row !important; \}/);
@@ -918,9 +1026,8 @@ test('the reset is keyed on the data here, and that is the right answer on this 
    * mean a different list, and page 3 of it is not where the reader was.
    */
   assert.match(acctCode, /usePageReset\(setPage, \[periods\.join\(','\), company\.rows\.length, pageSize\]\);/);
-  assert.match(acctCode, /const pageCount = Math\.max\(1, Math\.ceil\(company\.rows\.length \/ pageSize\)\);/);
-  assert.match(acctCode, /const at = Math\.min\(Math\.max\(page, 1\), pageCount\);/);
-  assert.match(acctCode, /page=\{at\}/);
+  assert.match(acctCode, /const win = pageWindow\(page, pageSize, company\.rows\.length\);/);
+  assert.match(acctCode, /page=\{win\.at\}/);
 });
 
 test('ถัดไป lands on the sheet that was pressed, not on the report', () => {
@@ -944,4 +1051,48 @@ test('บริษัทที่ N is gone from the head, and the prop with it'
   assert.match(acctCode, /function CompanySheet\(\{ company, periods \}\)/);
   assert.match(acctCode, /<CompanySheet key=\{c\.key\} company=\{c\} periods=\{periods\} \/>/);
   assert.ok(!/findIndex/.test(acctCode), 'the index is still being computed for nobody');
+});
+
+// ── 14. ตรวจสอบประจำเดือน and ประวัติการแก้ทะเบียน — 2026-10-08 ───────────────
+
+test('ตรวจสอบประจำเดือน draws the shared band, not one of its own', () => {
+  // Its phone-only `.pager-row` and the fold at three are gone; the detail is
+  // pinned in test/hrMonthCards.test.js.
+  const hr = strip(read('components/HrView.jsx'));
+  assert.equal(hr.match(/<TablePager\b/g)?.length, 1);
+  assert.match(hr, /label="ตรวจสอบประจำเดือน"/);
+  assert.ok(!/pager-row|pager-step/.test(hr), 'the screen draws chevrons of its own again');
+  assert.ok(!/\.hr-table tbody tr\.pager-row/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'the old phone pager’s rules came back');
+});
+
+test('ประวัติการแก้ทะเบียน is paged by the server, so nothing is cut at 100', () => {
+  /**
+   * IT WAS THE NEWEST 100 RECORDS AND A `hasMore` FLAG until 2026-10-08, and the
+   * screen said `หน้านี้แสดงเฉพาะรายการล่าสุด` — record 101 was reachable only by
+   * narrowing a filter. Now the route counts the filter and skips, the way
+   * /api/logs does, and the screen pages through `TablePager`.
+   */
+  const auditRoute = read('app/api/employees/audit/route.js');
+  assert.match(auditRoute, /const skip = Math\.max\(0, Math\.trunc\(Number\(q\.skip\) \|\| 0\)\);/);
+  assert.match(auditRoute, /EmployeeAudit\.countDocuments\(filter\)/);
+  assert.match(auditRoute, /\.sort\(\{ createdAt: -1, _id: -1 \}\)/,
+    'the order is not total — a tie in createdAt can hide a row between two pages');
+  assert.match(auditRoute, /\.skip\(skip\)/);
+  assert.match(auditRoute, /^ {4}total,$/m);
+  assert.ok(!/hasMore/.test(strip(auditRoute)), 'the route went back to a window with a flag');
+  assert.match(auditRoute, /capFor\(q\.limit, MAX_LIMIT, DEFAULT_LIMIT\)/);
+
+  const audit = adminCode.slice(adminCode.indexOf('function RosterAudit()'), adminCode.indexOf('function ResetPassword'));
+  assert.ok(audit.length > 1000, 'the slice for RosterAudit came out empty — the anchors moved');
+  assert.equal(audit.match(/<TablePager\b/g)?.length, 1);
+  assert.match(audit, /label="ประวัติการแก้ทะเบียน"/);
+  assert.match(audit, /pageQuery\(page, pageSize\)/);
+  assert.match(audit, /useKeptFetch\(/);
+  assert.match(audit, /serverRows\(data\.records, data\.total, pageSize\)/);
+  assert.match(audit, /usePageReset\(setPage, \[filters, pageSize\]\);/);
+  assert.ok(!/hasMore|เฉพาะรายการล่าสุด|setRecords\(null\)/.test(audit),
+    'the cut-at-100 notice or the emptying loader came back');
+  // Memoised, or TrailList's fold reset fires on every render.
+  assert.match(audit, /const records = React\.useMemo\(/);
 });

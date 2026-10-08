@@ -11,7 +11,7 @@ import { zeroRowReason } from '@/lib/otMode.js';
 import { cyclePeriods, cycleTag, shortMonth } from '@/lib/accountingCycle.js';
 import {
   Alert, BirthdayNote, Empty, ExportMenu, OverCeilingFigure, OverCeilingNote, PickOne,
-  RateHead, TablePager, UnaccountedHours, usePageReset,
+  PAGE_SIZE, RateHead, TablePager, UnaccountedHours, pageWindow, usePageReset,
 } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -417,13 +417,14 @@ function CompanySheet({ company, periods }) {
    * it was never built from the rows at all, and the two chips in the head
    * count `totals`.
    *
-   * 50 AND NOT 20. A month is usually one page — twenty-three people had OT in
-   * the month this was built against — so the band mostly says `แสดง 1–23
-   * จากทั้งหมด 23 คน` and stays out of the way; the months it does cut are the
-   * ones nobody wanted to scroll anyway.
+   * 50 AND NOT 20 — `PAGE_SIZE`, which every paged table opens on since
+   * 2026-10-08. A month is usually one page — twenty-three people had OT in the
+   * month this was built against — and since that day a month of 50 or fewer
+   * draws no band at all (`PAGER_FROM`). It read "so the band mostly says
+   * `แสดง 1–23 จากทั้งหมด 23 คน` and stays out of the way" until then.
    */
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   /**
    * KEYED ON THE DATA HERE, WHICH IS THE OPPOSITE OF คิวรออนุมัติ'S ANSWER —
    * and the difference is that nothing on this screen edits a row. The rows
@@ -434,9 +435,9 @@ function CompanySheet({ company, periods }) {
    * count moving.
    */
   usePageReset(setPage, [periods.join(','), company.rows.length, pageSize]);
-  const pageCount = Math.max(1, Math.ceil(company.rows.length / pageSize));
-  const at = Math.min(Math.max(page, 1), pageCount);
-  const from = (at - 1) * pageSize;
+  /* `from`/`to` off `pageWindow`, which is every row when the band is
+     withheld — so a short month can never be left with rows marked off-page. */
+  const win = pageWindow(page, pageSize, company.rows.length);
 
   /**
    * ถัดไป lands at the top of THIS sheet's table — there are two of them on
@@ -543,7 +544,7 @@ function CompanySheet({ company, periods }) {
                 {company.rows.map((row, i) => (
                   <tr
                     key={row.employee.id}
-                    className={i >= from && i < from + pageSize ? undefined : 'off-page'}
+                    className={i >= win.from && i < win.to ? undefined : 'off-page'}
                   >
                     <td className="who-col">
                       {row.employee.name}
@@ -657,7 +658,7 @@ function CompanySheet({ company, periods }) {
             className="flush-pager no-print"
             label={`รายงาน OT การเงิน · ${company.shortTh}`}
             unit="คน"
-            page={at}
+            page={win.at}
             pageSize={pageSize}
             total={company.rows.length}
             onPage={goPage}
