@@ -26,7 +26,8 @@ import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
   Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
-  RateHead, ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, ShowMore, SignatureFacts,
+  RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, Section, SegmentList, ShowMore,
+  SignatureFacts,
   StatusChip, TablePager, TeamMark, editsOf, shownWarnings, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -2245,26 +2246,22 @@ export default function ApprovalQueue({
                            * gets. The row's own press guard skips both.
                            */
                           <>
-                            <button
-                              className="btn sm with-icon act-icon"
+                            <RowAction
+                              icon="tick"
+                              label={verb}
+                              tone="go"
+                              name={e.employee?.name}
                               disabled={busy}
                               onClick={() => setConfirming([e])}
-                              aria-label={`${verb} — ${e.employee?.name}`}
-                              title={verb}
-                            >
-                              <Icon name="tick" className="btn-icon" />
-                              <span className="btn-word">{verb}</span>
-                            </button>
-                            <button
-                              className="btn ghost danger sm with-icon act-icon"
+                            />
+                            <RowAction
+                              icon="cross"
+                              label="ไม่อนุมัติ"
+                              tone="stop"
+                              name={e.employee?.name}
                               disabled={busy}
                               onClick={() => setRejecting([e])}
-                              aria-label={`ไม่อนุมัติ — ${e.employee?.name}`}
-                              title="ไม่อนุมัติ"
-                            >
-                              <Icon name="cross" className="btn-icon" />
-                              <span className="btn-word">ไม่อนุมัติ</span>
-                            </button>
+                            />
                           </>
                         )}
                       </div>
@@ -3925,15 +3922,9 @@ function WhoName({ name }) {
  */
 function WatchActions({ note, verb }) {
   return (
-    <span className="act-watch" title={note} aria-label={note} role="note">
-      <button className="btn sm with-icon act-icon" disabled aria-hidden="true">
-        <Icon name="tick" className="btn-icon" />
-        <span className="btn-word">{verb}</span>
-      </button>
-      <button className="btn ghost danger sm with-icon act-icon" disabled aria-hidden="true">
-        <Icon name="cross" className="btn-icon" />
-        <span className="btn-word">ไม่อนุมัติ</span>
-      </button>
+    <span className="act-watch">
+      <RowAction icon="tick" label={verb} tone="go" why={note} />
+      <RowAction icon="cross" label="ไม่อนุมัติ" tone="stop" why={note} />
     </span>
   );
 }

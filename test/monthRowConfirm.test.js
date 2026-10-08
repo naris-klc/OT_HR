@@ -100,18 +100,20 @@ test('every row gets an อนุมัติ — green where the verdict says y
    * one press meant reading every cell. One shape in two states can be scanned.
    */
   assert.match(list, /&scan=check&decide=check/);
-  assert.match(list, /\{mayEdit && \(e\.decide\?\.ok \? \(/);
+  // ONE `RowAction` in two states since 2026-10-08 — `why` is empty where the
+  // verdict says yes, and setting it is what disables the square.
+  assert.match(list, /why=\{e\.decide\?\.ok \? '' : whyNotApprovable\(e\)\}/);
   assert.match(list, /onClick=\{\(\) => confirmEntry\(e\)\}/);
 
   // GREEN IS PLAIN `.btn`, which is the filled one — `btn ghost` is the white
   // card and would be neither green nor obviously the row's main act. The dead
   // one is the SAME class plus `disabled`, so the browser's own state does the
   // colour and no rule in this app has to name a second grey.
-  const from = list.indexOf('{mayEdit && (e.decide?.ok');
+  // `tone="go"` is RowAction's filled green — `ghost` is left off for it alone.
+  const from = list.indexOf('{mayEdit && (\n');
   const block = list.slice(from, list.indexOf('{!mayEdit ? null : closed', from));
-  assert.match(block, /<button\s+className="btn sm with-icon"\s+onClick=/);
-  assert.match(block, /<button className="btn sm with-icon" disabled aria-hidden="true">/);
-  assert.ok(!block.includes('btn ghost'), 'the approve button went back to a ghost');
+  assert.match(block, /<RowAction\s+icon="tick"\s+tone="go"/);
+  assert.match(read('components/common.jsx'), /tone === 'go' \? '' : 'ghost',/);
   assert.equal((block.match(/อนุมัติ/g) || []).length >= 2, true);
 
   // ⚠ AND IT IS `mayEdit`-GATED NOW, which is the one gate it GAINED. It read
@@ -136,11 +138,15 @@ test('a dead อนุมัติ carries its reason on the wrapper, because th
    * answer while only SOME rows could be refused. It is not the answer once
    * every row carries the button: the words would be the odd cell out.
    */
-  assert.match(list, /<span\s+className="act-why"\s+title=\{whyNotApprovable\(e\)\}\s+aria-label=\{whyNotApprovable\(e\)\}\s+role="note"\s*>/);
-  // The wrapper is the hover target and needs a box of its own; without this it
-  // is a text box round a flex child and sits off the row's baseline.
+  // This cell's own `.act-why` span until 2026-10-08; `RowAction`'s `.act-tip`
+  // since, shared by every table — the wrapper carries the tooltip, the
+  // `role="note"` and the box, and the dead button lets the pointer through.
+  const common = read('components/common.jsx');
+  assert.match(common, /role=\{why \? 'note' : undefined\}/);
+  assert.match(common, /aria-label=\{why \? `\$\{label\} — \$\{why\}` : undefined\}/);
   const css = read('app/styles.css');
-  assert.match(css, /\.entry-actions \.act-why \{ display: inline-flex; flex: none; \}/);
+  assert.match(css, /\.act-tip \{ display: inline-flex; \}/);
+  assert.match(css, /\.act-tip \.btn:disabled \{ pointer-events: none; \}/);
 
   /**
    * ── FOUR SENTENCES FOR THE FOUR STATUSES THE ROUTE DOES NOT JUDGE ─────────
@@ -170,7 +176,8 @@ test('the word is อนุมัติ on both screens that sign the same ใ�
   assert.ok(!list.includes("ยืนยัน{e.decide"), 'ยืนยัน came back as a button label');
   assert.ok(!list.includes('>ยืนยันไม่ได้</span>'), 'the old refusal sentence is still drawn');
   assert.match(list, /\? 'ใบนี้เกินเพดาน — ต้องระบุเหตุผลก่อนอนุมัติ'/);
-  assert.match(list, /: 'อนุมัติใบนี้ · จะเข้าสู่รายงานส่งออกทันที'\}/);
+  // The tooltip's second line under the word อนุมัติ since 2026-10-08.
+  assert.match(list, /: 'จะเข้าสู่รายงานส่งออกทันที'\}/);
 });
 
 test('a ceiling row still owes a sentence here, and it is the same sentence', () => {
@@ -181,7 +188,7 @@ test('a ceiling row still owes a sentence here, and it is the same sentence', ()
   // Cancelling, or an empty line, cancels the approval — the route would refuse
   // it anyway, and a reader should not learn a rule by watching a request fail.
   assert.match(list, /if \(!note \|\| !note\.trim\(\)\) return;/);
-  assert.match(list, /อนุมัติ\{e\.decide\.needsReason \? ' \*' : ''\}/);
+  assert.match(list, /e\.decide\.needsReason \? 'อนุมัติ \*' : 'อนุมัติ'/);
 });
 
 test('settling a row re-reads the month behind this screen', () => {

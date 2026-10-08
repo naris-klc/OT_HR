@@ -6,7 +6,7 @@ import {
   Alert, CancelledMark, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, Modal, ProxyMark,
   RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
-  StatusChip, editsOf, trailOf,
+  RowAction, StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail, isProxyFiled } from '@/lib/entries.js';
 import { describeBreaches, OVER_CEILING_REASON_APPROVE } from '@/lib/caps.js';
@@ -14,7 +14,6 @@ import { SCAN_MATCH_TOLERANCE_MINUTES, summariseScanChecks } from '@/lib/scanMat
 import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
 import OtForm from './OtForm.jsx';
-import Icon from './icons.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /**
@@ -565,7 +564,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
         <div className="table-wrap">
           {/* `stack-table` + `data-label` is the phone layout every plain list in
               the app shares — see app/styles.css. */}
-          <table className="stack-table">
+          <table className="stack-table entry-table">
             <thead>
               <tr>
                 <th>วันที่</th>
@@ -710,7 +709,11 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                         <div className="entry-mark"><ProxyMark entry={e} /></div>
                       )}
                       {lastEdit && (
-                        <div className="entry-mark">
+                        <div
+                          className="entry-mark"
+                          data-tip={`โดย ${lastEdit.byName || '—'}`}
+                          data-tip-why={lastEdit.note || undefined}
+                        >
                           <EditedMark entry={e} />
                           <div className="cell-sub th">
                             โดย {lastEdit.byName || '—'}
@@ -827,15 +830,11 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           cell to find the press they came for. One shape in two
                           states is a column that can be scanned.
 
-                          THE SENTENCE DID NOT GO AWAY, it moved to the wrapper's
-                          `title` — see `whyNotApprovable`, which is where all of
-                          them are written now. It hangs on the SPAN and not on
-                          the button because a disabled button dispatches no
-                          pointer events, so its own `title` never opens; the
-                          hover lands on the ancestor. `role="note"` and
-                          `aria-label` carry the same sentence to a reader who
-                          cannot hover, and the dead button is `aria-hidden` so
-                          it is not announced as an offer.
+                          THE SENTENCE DID NOT GO AWAY, it moved to the tooltip
+                          — see `whyNotApprovable`, which is where all of them
+                          are written now, and `RowAction`'s `why`, which hangs
+                          it on a wrapper because a disabled button dispatches
+                          no pointer events.
 
                           ⚠ STILL NOTHING AT ALL FOR A READER WHO CANNOT
                           CORRECT, which is `mayEdit` and is the one gate this
@@ -854,32 +853,29 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           route's `decide` gate are the same `mayCorrectEntries`
                           answer, so this adds no rule — it just names the one
                           the server was already applying. */}
-                      {mayEdit && (e.decide?.ok ? (
-                        <button
-                          className="btn sm with-icon"
-                          onClick={() => confirmEntry(e)}
-                          title={e.decide.needsReason
+                      {mayEdit && (
+                        <RowAction
+                          icon="tick"
+                          tone="go"
+                          label={e.decide?.ok && e.decide.needsReason ? 'อนุมัติ *' : 'อนุมัติ'}
+                          why={e.decide?.ok ? '' : whyNotApprovable(e)}
+                          hint={e.decide?.needsReason
                             ? 'ใบนี้เกินเพดาน — ต้องระบุเหตุผลก่อนอนุมัติ'
-                            : 'อนุมัติใบนี้ · จะเข้าสู่รายงานส่งออกทันที'}
-                        >
-                          <Icon name="check" className="btn-icon" />
-                          อนุมัติ{e.decide.needsReason ? ' *' : ''}
-                        </button>
-                      ) : (
-                        <span
-                          className="act-why"
-                          title={whyNotApprovable(e)}
-                          aria-label={whyNotApprovable(e)}
-                          role="note"
-                        >
-                          <button className="btn sm with-icon" disabled aria-hidden="true">
-                            <Icon name="check" className="btn-icon" />
-                            อนุมัติ
-                          </button>
-                        </span>
-                      ))}
+                            : 'จะเข้าสู่รายงานส่งออกทันที'}
+                          onClick={() => confirmEntry(e)}
+                        />
+                      )}
+                      {/* ⚠ แก้ไขไม่ได้ WAS A SENTENCE HERE UNTIL 2026-10-08.
+                          With every row action an icon square, four words were
+                          wider than the two controls they stood in for, and the
+                          app's rule since 2026-09-11 is a control that cannot
+                          be pressed is DISABLED with its reason, not removed
+                          (docs/design.md §5). The reason is the status. */}
                       {!mayEdit ? null : closed ? (
-                        <span className="cell-sub th">แก้ไขไม่ได้</span>
+                        <>
+                          <RowAction icon="pencil" label="แก้ไข" why="แก้ไขไม่ได้ — ใบนี้ไม่อนุมัติหรือยกเลิกแล้ว" />
+                          <RowAction icon="ban" label="ยกเลิก" tone="stop" why="ใบนี้ไม่อนุมัติหรือยกเลิกแล้ว" />
+                        </>
                       ) : (
                         /* TWO ACTIONS ON THE ROW SINCE 2026-09-15, and they are
                            the pair `editPermission` and `cancelPermission` draw
@@ -888,17 +884,12 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                            refused on the same `closed`, which is why they share
                            this branch rather than each testing for themselves.
 
-                           The pencil is what makes แก้ไข findable at a glance in
-                           a card of eight grey lines — see `.btn.with-icon`, and
-                           `pencil` in components/icons.jsx for why it is drawn
-                           rather than typed as ✏️. `trash` beside it for the
-                           same reason, and because the two words alone are five
-                           Thai characters apart. */
+                           The icons are the app's dictionary in
+                           components/icons.jsx. ยกเลิก wore `trash` until
+                           2026-10-08 and wears `ban` now: the ใบ stays in the
+                           record as ยกเลิก, it is not deleted. */
                         <>
-                          <button className="btn ghost sm with-icon" onClick={() => setEditing(e)}>
-                            <Icon name="pencil" className="btn-icon" />
-                            แก้ไข
-                          </button>
+                          <RowAction icon="pencil" label="แก้ไข" onClick={() => setEditing(e)} />
                           {/* `ยกเลิก` AND NOT `ยกเลิกใบ` — asked for in those
                               words. It is the word the employee's own press
                               carries on their screen, and this is the same act
@@ -910,14 +901,13 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                               destroys, and that press is in the dialog this one
                               opens. A filled red button in a table cell would
                               read as the row's main action, which it is not. */}
-                          <button
-                            className="btn ghost danger sm with-icon"
+                          <RowAction
+                            icon="ban"
+                            label="ยกเลิก"
+                            tone="stop"
+                            hint="ต้องระบุเหตุผล และชั่วโมงจะถูกตัดออกจากรายงาน"
                             onClick={() => { setCancelling(e); setCancelNote(''); }}
-                            title="ยกเลิกใบนี้ — ต้องระบุเหตุผล และชั่วโมงจะถูกตัดออกจากรายงาน"
-                          >
-                            <Icon name="trash" className="btn-icon" />
-                            ยกเลิก
-                          </button>
+                          />
                         </>
                       )}
                       {/* Reconciling a month against the signed paper means
@@ -937,21 +927,19 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           besides (134px against 57). Two controls on the row,
                           and the eye went to the dead one.
 
-                          It was always a STATEMENT about the row rather than an
-                          offer, and it is drawn as one now — in `.cell-sub.th`,
-                          the same voice as แก้ไขไม่ได้ a few lines up, which
-                          this cell has used for exactly this all along. */}
-                      {hasAuditTrail(e) ? (
-                        <button
-                          className={open.has(e._id) ? 'btn ghost sm on' : 'btn ghost sm'}
-                          onClick={() => toggle(e._id)}
-                          aria-expanded={open.has(e._id)}
-                        >
-                          {open.has(e._id) ? 'ซ่อนข้อมูลเดิม' : 'ดูข้อมูลเดิม'}
-                        </button>
-                      ) : (
-                        <span className="cell-sub th">ไม่มีประวัติการแก้ไข</span>
-                      )}
+                          It was a sentence — `.cell-sub.th`, ไม่มีประวัติการแก้ไข
+                          — from then until 2026-10-08, when the row's controls
+                          became icon squares and the sentence became the widest
+                          thing in the cell. It is a disabled `history` icon now,
+                          with the sentence as its reason. */}
+                      <RowAction
+                        icon="history"
+                        label={open.has(e._id) ? 'ซ่อนข้อมูลเดิม' : 'ดูข้อมูลเดิม'}
+                        why={hasAuditTrail(e) ? '' : 'ไม่มีประวัติการแก้ไข'}
+                        on={open.has(e._id)}
+                        aria-expanded={open.has(e._id)}
+                        onClick={() => toggle(e._id)}
+                      />
                       </span>
                     </td>
                   </tr>

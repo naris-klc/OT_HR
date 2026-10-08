@@ -473,20 +473,16 @@ test('ทุกแถวที่ตัดสินไม่ได้ โชว�
   // ปุ่มทั้งสองปิดที่ตัว element และไม่มี handler อยู่ข้างหลังเลย
   const acts = code.slice(code.indexOf('function WatchActions'));
   const body = acts.slice(0, acts.indexOf('\n}'));
-  assert.equal((body.match(/ disabled\b/g) || []).length, 2, 'ปุ่มใดปุ่มหนึ่งยังกดได้อยู่');
+  /* ตั้งแต่ 2026-10-08 ทั้งคู่เป็น `RowAction` ที่ใส่ `why={note}` — การใส่ `why`
+     คือสิ่งที่ปิดปุ่ม และประโยคไปแขวนที่ตัวห่อ `.act-tip` (ปุ่มที่ disabled ไม่ส่ง
+     pointer event) พร้อม `role="note"` · คำยังอยู่ใน `.btn-word` ของ RowAction
+     ให้การ์ดบนมือถืออ่านออก */
+  assert.equal((body.match(/why=\{note\}/g) || []).length, 2, 'ปุ่มใดปุ่มหนึ่งยังกดได้อยู่');
   assert.ok(!/onClick/.test(body), 'ปุ่มที่ปิดไว้ยังมี handler ผูกอยู่');
   // ไอคอนคู่เดียวกับปุ่มจริงบนแถวที่ตัดสินได้ ไม่ใช่ภาพชุดใหม่
-  assert.ok(body.includes('<Icon name="tick"') && body.includes('<Icon name="cross"'), 'ไอคอนไม่ตรงกับปุ่มจริง');
-  // คำยังอยู่ใน `.btn-word` เพื่อให้การ์ดบนมือถืออ่านออก เหมือนปุ่มจริงทุกใบ
-  assert.ok(body.includes('<span className="btn-word">{verb}</span>'), 'การ์ดบนมือถือจะเหลือแต่ไอคอนเปล่า');
-  assert.ok(body.includes('<span className="btn-word">ไม่อนุมัติ</span>'));
-
-  /* ประโยคแขวนอยู่ที่ตัวห่อ ไม่ใช่ที่ปุ่ม — ปุ่มที่ disabled ไม่ส่ง pointer event
-     ทูลทิปของตัวมันเองจึงไม่เคยเปิด ตัวห่อจึงรับทั้ง `title` และคู่ `role="note"`
-     + `aria-label` ที่ `WatchMark` เคยถือไว้ */
-  assert.ok(body.includes('<span className="act-watch" title={note} aria-label={note} role="note">'),
-    'ประโยคบอกเหตุอ่านไม่ได้บนจอตั้งโต๊ะ ที่ `.own-note` ถูกซ่อน');
-  assert.equal((body.match(/aria-hidden="true"/g) || []).length, 2, 'ปุ่มที่ตายแล้วยังถูกอ่านออกเสียงทีละใบ');
+  assert.ok(body.includes('icon="tick"') && body.includes('icon="cross"'), 'ไอคอนไม่ตรงกับปุ่มจริง');
+  assert.ok(body.includes('label={verb}') && body.includes('label="ไม่อนุมัติ"'), 'การ์ดบนมือถือจะเหลือแต่ไอคอนเปล่า');
+  assert.ok(body.includes('<span className="act-watch">'));
 
   // และกล่องนั้นมีที่ทางของมันจริงในสองความกว้าง
   assert.match(css, /\.act-watch \{ display: inline-flex; gap: 6px; flex: none; \}/);

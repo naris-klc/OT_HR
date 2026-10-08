@@ -524,7 +524,8 @@ test('the row carries the word รายละเอียด without nesting a 
   const cell = mine.slice(mine.indexOf('<div className="row-actions">'));
   assert.match(
     cell.slice(0, cell.indexOf('</div>')),
-    /<button\s+className="btn ghost sm"\s+onClick=\{\(\) => setDetailId\(e\._id\)\}\s*>\s*รายละเอียด\s*<\/button>/,
+    // An icon square with its word in the tooltip since 2026-10-08 (RowAction).
+    /<RowAction icon="eye" label="รายละเอียด" onClick=\{\(\) => setDetailId\(e\._id\)\} \/>/,
     'ตารางเต็มไม่มีปุ่มรายละเอียด หรือมันไม่ได้มาก่อนปุ่มอื่นในแถว',
   );
 });

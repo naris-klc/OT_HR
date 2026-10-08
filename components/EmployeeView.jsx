@@ -6,7 +6,7 @@ import {
   ApprovalSteps, ApproverLine, BirthdayWelfareMark, CancelledMark, CapCard, StatusChip, Alert,
   BucketSplit, ConfirmDialog, Empty, EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead,
   ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, editsOf, stamp,
-  trailOf,
+  trailOf, RowAction,
 } from './common.jsx';
 import { approvalSteps } from '@/lib/approverLine.js';
 import {
@@ -649,12 +649,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               reviewer's queue: the nine columns of this table
                               are a sideways scroll on a phone, and this is
                               where the ones that do not fit are. */}
-                          <button
-                            className="btn ghost sm"
-                            onClick={() => setDetailId(e._id)}
-                          >
-                            รายละเอียด
-                          </button>
+                          <RowAction icon="eye" label="รายละเอียด" onClick={() => setDetailId(e._id)} />
                           {/* Only while nobody has signed it. Once the manager
                               approves, the hours carry a decision and the row is
                               HR's to correct. That is not the same as "while it
@@ -662,7 +657,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               this person's behalf — see awaitingFirstSignature. */}
                           {!past(e) && awaitingFirstSignature(e) && (
                             <>
-                              <button className="btn ghost sm" onClick={() => setEditing(e)}>แก้ไข</button>
+                              <RowAction icon="pencil" label="แก้ไข" onClick={() => setEditing(e)} />
                               {/* RED, AND AN OUTLINE — asked for on 2026-09-18
                                   for this button and ถอนใบ below it. They are
                                   the two presses on this row that END the
@@ -672,12 +667,12 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                                   press inside the dialog that actually does it,
                                   which is the same division ยกเลิกใบ uses on
                                   ตรวจสอบประจำเดือน. */}
-                              <button
-                                className="btn ghost danger sm"
+                              <RowAction
+                                icon="ban"
+                                label="ยกเลิก"
+                                tone="stop"
                                 onClick={() => { setCancelling(e); setCancelNote(''); }}
-                              >
-                                ยกเลิก
-                              </button>
+                              />
                             </>
                           )}
                           {/* After the first signature — and it says ถอนใบ
@@ -689,12 +684,12 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               button the server would refuse teaches the
                               employee to distrust the screen. */}
                           {!past(e) && withdrawEligibility(user, e).ok && (
-                            <button
-                              className="btn ghost danger sm"
+                            <RowAction
+                              icon="ban"
+                              label="ถอนใบ"
+                              tone="stop"
                               onClick={() => { setAsking(e); setAskReason(''); }}
-                            >
-                              ถอนใบ
-                            </button>
+                            />
                           )}
                           {/* THE SENTENCE THAT STANDS WHERE THE THREE WERE.
                               A SENTENCE AND NOT A GREY BUTTON, and the app
@@ -745,20 +740,16 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               The right is spent once — see refileState. */}
                           {refileState(e) === 'open' && (
                             <span className="refile-offer">
-                              <button className="btn ghost sm" onClick={() => setReusing(e)}>
-                                ส่งใหม่
-                              </button>
+                              <RowAction icon="send" label="ส่งใหม่" onClick={() => setReusing(e)} />
                               <span className="warn">สิทธิ์ยื่นแก้ตัวครั้งสุดท้าย</span>
                             </span>
                           )}
                           {refileState(e) === 'used' && (
-                            <button
-                              className="btn ghost sm"
-                              disabled
-                              title="คำขอนี้ใช้สิทธิ์ส่งใหม่ไปแล้ว — ดูคำขอที่ยื่นแทนได้ในตารางนี้"
-                            >
-                              ส่งใหม่แล้ว
-                            </button>
+                            <RowAction
+                              icon="send"
+                              label="ส่งใหม่แล้ว"
+                              why="คำขอนี้ใช้สิทธิ์ส่งใหม่ไปแล้ว — ดูคำขอที่ยื่นแทนได้ในตารางนี้"
+                            />
                           )}
                           {/* The replacement was refused too. No third attempt —
                               a fresh OT request starts from a blank form. */}
@@ -770,12 +761,12 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               a filing this person did not make. On the rest a
                               button that opens "ยื่นคำขอ" alone is noise. */}
                           {(editsOf(e).length > 0 || e.refiledFrom || isProxyFiled(e)) && (
-                            <button
-                              className="btn ghost sm"
+                            <RowAction
+                              icon="history"
+                              label={showHistory === e._id ? 'ซ่อนข้อมูลเดิม' : 'ข้อมูลเดิม'}
+                              on={showHistory === e._id}
                               onClick={() => setShowHistory(showHistory === e._id ? null : e._id)}
-                            >
-                              {showHistory === e._id ? 'ซ่อนข้อมูลเดิม' : 'ข้อมูลเดิม'}
-                            </button>
+                            />
                           )}
                         </div>
                       </td>

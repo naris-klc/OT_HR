@@ -497,9 +497,10 @@ test('ตั้งรหัสใหม่ is disabled on one’s own row, and s
   assert.match(code, /const mayReset = \(row\) => mayEdit\(row\) && !isSelf\(row\)/);
   const start = code.indexOf('act-security');
   assert.ok(start > 0, 'the reset button changed shape');
-  const button = code.slice(start, code.indexOf('</button>', start));
-  assert.match(button, /disabled=\{!mayReset\(p\)\}/);
-  assert.match(button, /RESET_LOCK/);
+  // A `RowAction` since 2026-10-08: `why` is what disables it, and the lock
+  // sentence is the why.
+  const button = code.slice(start, code.indexOf('/>', start));
+  assert.match(button, /why=\{mayReset\(p\) \? '' : RESET_LOCK\[/);
   // แก้ไข is deliberately NOT narrowed the same way: correcting one's own job
   // title stays an ordinary save. Only the password button is refused.
   assert.match(code, /const mayEdit = \(row\) => isAdmin \|\| row\.role !== 'admin'/);

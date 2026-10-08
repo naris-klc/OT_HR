@@ -289,8 +289,17 @@ test('the dialog outranks every other layer, the toast included', () => {
    *
    * The pair is named rather than a ceiling being raised: a THIRD layer over a
    * dialog still has to come here and make this argument.
+   *
+   * ── THE THIRD CAME ON 2026-10-08: `.tip-bubble` ─────────────────────────
+   * `TipLayer`'s tooltip, which carries the word of every `RowAction`. It is
+   * drawn into `document.body` for the same reason `.pop` is, and a row action
+   * inside a dialog would have its word behind the dialog at any number below
+   * it. It cannot be the defect this test guards against at all: it is
+   * `pointer-events: none`, so it takes no press of any kind — that is pinned
+   * below — and it closes on the first press anywhere.
    */
-  const ABOVE_THE_DIALOG = ['.pop', '.pop-scrim'];
+  const ABOVE_THE_DIALOG = ['.pop', '.pop-scrim', '.tip-bubble'];
+  assert.match(rule('.tip-bubble'), /pointer-events: none;/);
   for (const sel of ABOVE_THE_DIALOG) {
     assert.ok(layerOf(sel) > backdrop, `${sel} อยู่ใต้กล่องโต้ตอบ — จะเปิดในกล่องแล้วมองไม่เห็น`);
   }

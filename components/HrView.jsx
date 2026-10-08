@@ -8,7 +8,7 @@ import {
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
   Alert, ClearButton, Empty, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
-  ShowMore,
+  RowAction, ShowMore,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -2604,10 +2604,11 @@ export default function HrView({
                             beside พิมพ์ rather than instead of it.
 
                             THE LABEL IS NOT LOST. `aria-label` carries the full
-                            wording for a screen reader, `title` puts it back
-                            under a desktop pointer, and `.act-label` is drawn
-                            again below 860px where this cell is the foot of a
-                            person's card rather than a column of a table. The
+                            wording for a screen reader, the tooltip puts it back
+                            under a desktop pointer, and the word is drawn again
+                            below 860px where this cell is the foot of a
+                            person's card rather than a column of a table — all
+                            three are `RowAction`'s since 2026-10-08. The
                             same trade the pager's chevrons made on 2026-08-26,
                             on this screen, for the same reason. */}
                         <div className="row row-actions">
@@ -2653,57 +2654,40 @@ export default function HrView({
                               carries, because two controls doing one act must
                               not explain themselves differently.
 
-                              ⚠ THE `title` IS ON THE WRAPPER AND NOT ON THE
+                              ⚠ THE REASON IS ON THE WRAPPER AND NOT ON THE
                               BUTTON. A disabled button never opens its own
                               tooltip, so a reason written on it is a reason
                               nobody reads — which is the whole failure §5.2's
-                              `title` exists to prevent. `.act-watch` on
-                              คิวรออนุมัติ learnt this the same way; `.act-sign`
-                              is the same box for the same reason. */}
+                              tooltip exists to prevent. It was this cell's own
+                              `.act-sign` span until 2026-10-08; `RowAction`'s
+                              `why` is the same box, shared by every table. */}
                           {showPickCol && (
-                            <span
-                              className="act-sign"
-                              title={pickable(row)
-                                ? `ยืนยันรายการทั้งเดือนของคนนี้ (${row.approvable.count} ใบ)`
-                                : whyNotPickable(row)}
-                            >
-                              <button
-                                className="btn sm icon-btn"
-                                disabled={!pickable(row)}
-                                onClick={() => {
-                                  setPicked(new Set([String(row.employee._id)]));
-                                  setConfirming(true);
-                                }}
-                                aria-label={`ยืนยันรายการทั้งเดือน — ${row.employee.name}`}
-                              >
-                                <Icon name="tick" />
-                                {/* ⚠ NO "ยืนยัน 0 ใบ" — the count is dropped
-                                    rather than printed as a zero, since
-                                    2026-09-11 when this button started being
-                                    drawn on rows with nothing to confirm. A
-                                    quantity of none reads as a template that
-                                    failed to fill itself in, and the reason is
-                                    already on the wrapper's `title`. The
-                                    desktop shows the icon alone either way —
-                                    `.act-label` is drawn below 860px, where
-                                    this cell is the foot of a card. */}
-                                <span className="act-label">
-                                  {row.approvable?.count
-                                    ? `ยืนยัน ${row.approvable.count} ใบ`
-                                    : 'ยืนยัน'}
-                                </span>
-                              </button>
-                            </span>
+                            /* ⚠ NO "ยืนยัน 0 ใบ" — the count is dropped rather
+                               than printed as a zero, since 2026-09-11 when this
+                               button started being drawn on rows with nothing to
+                               confirm. A quantity of none reads as a template
+                               that failed to fill itself in, and the reason is
+                               already in the tooltip. */
+                            <RowAction
+                              icon="tick"
+                              tone="go"
+                              label={row.approvable?.count
+                                ? `ยืนยัน ${row.approvable.count} ใบ`
+                                : 'ยืนยัน'}
+                              why={pickable(row) ? '' : whyNotPickable(row)}
+                              name={`ยืนยันรายการทั้งเดือน — ${row.employee.name}`}
+                              onClick={() => {
+                                setPicked(new Set([String(row.employee._id)]));
+                                setConfirming(true);
+                              }}
+                            />
                           )}
-                          <button
-                            className="btn ghost sm icon-btn"
+                          <RowAction
+                            icon="printer"
+                            label="พิมพ์ F-HR-027"
+                            name={`ใบขออนุมัติ OT — ${row.employee.name}`}
                             onClick={() => setPrinting({ employeeId: row.employee._id })}
-                            aria-label={`พิมพ์ใบขออนุมัติ OT (F-HR-027) — ${row.employee.name}`}
-                            title="พิมพ์ใบขออนุมัติ OT (F-HR-027)"
-                          >
-                            <Icon name="printer" />
-                            <span className="act-label">พิมพ์ F-HR-027</span>
-                          </button>
+                          />
                         </div>
                       </td>
                     </tr>

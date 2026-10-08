@@ -321,6 +321,68 @@ const ICONS = {
       <path d="M10.25 10.5v5.5M13.75 10.5v5.5" />
     </>
   ),
+
+  /*
+   * ── THE ROW ACTIONS, ONE PICTURE PER MEANING ───────────────────────────────
+   *
+   * Added 2026-10-08 when every per-row button in the app became an icon with
+   * its word in a tooltip (`RowAction` in components/common.jsx). The rule the
+   * user set is ONE MEANING, ONE ICON, APP-WIDE — so this is a dictionary, not
+   * a palette. Before drawing a glyph for a new button, find its meaning here:
+   *
+   *   pencil  แก้ไข · แก้ไขชั่วโมง            eye     รายละเอียด · ดูข้อมูล
+   *   history ดูประวัติ · ข้อมูลเดิม           tick    อนุมัติ · ยืนยัน
+   *   cross   ไม่อนุมัติ                        ban     ยกเลิก · ถอนใบ
+   *   trash   ลบ                                key     รีเซ็ตรหัสผ่าน
+   *   send    ส่งใหม่                           printer พิมพ์
+   *   reset   คืนค่าตั้งต้น
+   *
+   * `ban` AND `trash` ARE DIFFERENT ON PURPOSE. ยกเลิก and ถอนใบ leave the ใบ in
+   * the record with a status that says so; ลบ takes a holiday or a department
+   * out of the system. HR's ยกเลิก wore the bin until this change, which drew
+   * the two as the same act.
+   */
+
+  /** ดูประวัติ — a clock with its hand turned back. */
+  history: (
+    <>
+      <path d="M3.75 12a8.25 8.25 0 1 0 2.4-5.8" />
+      <path d="M3.5 3.75v3.5H7" />
+      <path d="M12 7.75V12l3 1.75" />
+    </>
+  ),
+
+  /** รีเซ็ตรหัสผ่าน */
+  key: (
+    <>
+      <circle cx="8" cy="15.5" r="4.25" />
+      <path d="M11 12.5 19.75 3.75M16.5 7l2.5 2.5M14.25 9.25l2 2" />
+    </>
+  ),
+
+  /** ยกเลิก · ถอนใบ — ends the request, keeps the record. */
+  ban: (
+    <>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="M6.2 6.2l11.6 11.6" />
+    </>
+  ),
+
+  /** ส่งใหม่ */
+  send: (
+    <>
+      <path d="M20.5 3.5 10 14" />
+      <path d="M20.5 3.5 14 20.5l-4-6.5-6.5-4z" />
+    </>
+  ),
+
+  /** คืนค่าตั้งต้น — the arrow alone, without `history`'s hand. */
+  reset: (
+    <>
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+      <path d="M4.25 4v3.75H8" />
+    </>
+  ),
 };
 
 /**

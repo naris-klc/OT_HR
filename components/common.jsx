@@ -2698,6 +2698,142 @@ export function TipButton({ text, of, open, onToggle, glyph = '?' }) {
 }
 
 /**
+ * One per-row action: a 32px icon square above 860px, icon and word below it.
+ *
+ * Asked for on 2026-10-08, option A of the row-actions mockup: every button in
+ * a table's จัดการ column becomes an icon, its word moves into a tooltip, and
+ * the same meaning wears the same icon on every screen — the dictionary is the
+ * comment over `history` in components/icons.jsx. Before this the roster's
+ * three words took 280px of every row, and HR's per-person table spent more
+ * width on four buttons than on the work they act on.
+ *
+ * THE WORD IS STILL IN THE BUTTON (`.btn-word`). Above 860px it is hidden the
+ * way a caption is — out of sight, not out of the accessibility tree — and on a
+ * phone, where nothing hovers, it is drawn beside the icon again.
+ *
+ * `hint` is a second line for a button that CAN be pressed — what it will do
+ * that the word does not say (อนุมัติ * on a ใบ over its ceiling).
+ *
+ * `why` IS THE REASON IT CANNOT BE PRESSED, and setting it is what disables the
+ * button. The tooltip reads it under the word. A disabled button fires no
+ * pointer events, so the tooltip hangs on the wrapper (`data-tip`), which is
+ * also where `role="note"` gives the sentence to a screen reader.
+ *
+ * `tone`: 'go' is the filled green of the row's one decision, 'stop' the red
+ * outline of a press that ends something (ไม่อนุมัติ · ยกเลิก · ถอนใบ · ลบ).
+ * `name` goes into `aria-label` so forty rows do not read as forty "แก้ไข".
+ */
+export function RowAction({
+  icon, label, why = '', hint = '', tone = '', name = '', on = false, className = '', disabled,
+  ...props
+}) {
+  const cls = [
+    'btn', 'sm', 'act-icon',
+    tone === 'go' ? '' : 'ghost',
+    tone === 'stop' ? 'danger' : '',
+    on ? 'on' : '',
+    className,
+  ].filter(Boolean).join(' ');
+  return (
+    <span
+      className="act-tip"
+      data-tip={label}
+      data-tip-why={why || hint || undefined}
+      role={why ? 'note' : undefined}
+      aria-label={why ? `${label} — ${why}` : undefined}
+    >
+      <button
+        type="button"
+        className={cls}
+        disabled={!!why || disabled}
+        aria-label={name ? `${label} — ${name}` : label}
+        aria-pressed={on || undefined}
+        {...props}
+      >
+        <Icon name={icon} className="btn-icon" />
+        <span className="btn-word">{label}</span>
+      </button>
+    </span>
+  );
+}
+
+/**
+ * The tooltip every `[data-tip]` on the page shares — mounted once, in App.
+ *
+ * ONE LAYER AND NOT ONE PER BUTTON: a table of forty rows would otherwise hold
+ * a hundred and twenty idle listeners. It listens on the document and draws one
+ * bubble into `document.body`, position fixed, so a `.table-wrap` that scrolls
+ * sideways cannot clip it the way it clips anything placed inside it.
+ *
+ * NOT THE NATIVE `title`: that waits about a second, never opens on keyboard
+ * focus, and never opens on a disabled button at all. This opens after 250ms of
+ * hover, at once on `:focus-visible`, and closes on scroll, Escape or a press.
+ */
+export function TipLayer() {
+  const [tip, setTip] = React.useState(null);
+  const box = React.useRef(null);
+
+  React.useEffect(() => {
+    let timer;
+    const at = (el) => setTip({
+      label: el.dataset.tip, why: el.dataset.tipWhy || '', r: el.getBoundingClientRect(),
+    });
+    const close = () => { clearTimeout(timer); setTip(null); };
+    const hit = (e) => (e.target instanceof Element ? e.target.closest('[data-tip]') : null);
+    const over = (e) => {
+      const el = hit(e);
+      if (!el) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => at(el), 250);
+    };
+    const out = (e) => {
+      const el = hit(e);
+      if (el && !el.contains(e.relatedTarget)) close();
+    };
+    const focus = (e) => {
+      const el = hit(e);
+      if (el && e.target.matches(':focus-visible')) at(el);
+    };
+    const key = (e) => { if (e.key === 'Escape') close(); };
+    const on = [
+      [document, 'mouseover', over], [document, 'mouseout', out],
+      [document, 'focusin', focus], [document, 'focusout', close],
+      [document, 'pointerdown', close], [document, 'keydown', key],
+      [window, 'scroll', close, true],
+    ];
+    on.forEach(([t, ev, fn, cap]) => t.addEventListener(ev, fn, cap));
+    return () => {
+      clearTimeout(timer);
+      on.forEach(([t, ev, fn, cap]) => t.removeEventListener(ev, fn, cap));
+    };
+  }, []);
+
+  // Above the control and centred on it, held 8px inside the window; below it
+  // when there is no room above.
+  React.useLayoutEffect(() => {
+    const el = box.current;
+    if (!el || !tip) return;
+    const { r } = tip;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const x = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8));
+    const y = r.top - h - 8 < 8 ? r.bottom + 8 : r.top - h - 8;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.classList.add('shown');
+  }, [tip]);
+
+  if (!tip || typeof document === 'undefined') return null;
+  return createPortal(
+    <div ref={box} className="tip-bubble" role="tooltip">
+      {tip.label}
+      {tip.why && <small>{tip.why}</small>}
+    </div>,
+    document.body,
+  );
+}
+
+/**
  * อ่านต่อ — สองบรรทัดแรก แล้วที่เหลือพับไว้.
  *
  * ── THE RULE, SETTLED 2026-09-07 AFTER THREE SHAPES IN ONE DAY ─────────────

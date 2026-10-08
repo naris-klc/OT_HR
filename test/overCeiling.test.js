@@ -410,8 +410,9 @@ test('ปุ่ม อนุมัติเกินเพดาน ไม่เ
    */
   const decide = queue.slice(queue.lastIndexOf('<div className="row-actions">'));
   const cell = decide.slice(0, decide.indexOf('</div>'));
-  assert.equal((cell.match(/<button/g) || []).length, 2, 'อนุมัติ · ไม่อนุมัติ');
-  assert.match(cell, /\{verb\}/);
+  // `RowAction` since 2026-10-08.
+  assert.equal((cell.match(/<RowAction\b/g) || []).length, 2, 'อนุมัติ · ไม่อนุมัติ');
+  assert.match(cell, /label=\{verb\}/);
   assert.match(cell, /ไม่อนุมัติ/);
   assert.doesNotMatch(cell, /รายละเอียด/, 'ปุ่มรายละเอียดกลับมาอยู่บนแถวอีกแล้ว');
   // และปุ่มยืนยันบนแถวเปิดกล่องเสมอ ไม่เคยยิงตรง — กล่องคือที่ที่เหตุผลถูกขอ
