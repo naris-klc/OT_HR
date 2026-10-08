@@ -1277,7 +1277,6 @@ export function FlatDailyMark({ entry }) {
           The row is not left without evidence: `ScanDayPunches` prints the
           day's own scan times underneath, as it does on every row that has any.
           What is gone is the arithmetic against a claim this row never made. */}
-      <div className="cell-sub th">{FLAT_DAILY_SAY}</div>
     </>
   );
 }
@@ -5194,4 +5193,48 @@ export function ExportMenu({ items, disabled = false, label = 'พิมพ์ /
       )}
     </>
   );
+}
+
+/**
+ * A name that may take a second line, but only at the space before the นามสกุล.
+ *
+ * WHY IT IS NOT LEFT TO THE BROWSER. `white-space: normal` alone stops the
+ * overlap this cell was reported for on 2026-09-10, and then breaks the name
+ * in the wrong place: Chrome fills the line greedily and Thai carries a break
+ * opportunity between EVERY pair of words, spaces or no spaces — so
+ * "นางสาวพรพรรณ บุญเรือง" came out as "นางสาวพรพรรณ บุญ" over "เรือง", with the
+ * surname cut in half and the space left sitting in the middle of line one.
+ * Measured in the built app at 1440: six of the six wrapped names broke inside
+ * the surname, not one at the space.
+ *
+ * NEITHER `word-break: keep-all` NOR `line-break: strict` MOVES IT. Both were
+ * tried against the same rows in the same run; the break points did not
+ * change by one character. They speak for CJK, and Thai is not in the classes
+ * they name — a CSS-only answer to this does not exist today.
+ *
+ * SO THE TOKENS ARE MADE UNBREAKABLE AND THE SPACES ARE LEFT ALONE. Each word
+ * goes in `.nb`, which is the class the employee code beside it already uses
+ * for the same reason, and the plain spaces between them are the only break
+ * opportunities left in the cell. A name with two spaces — a นามสกุล like
+ * "ณ อยุธยา" — therefore keeps both of them as places it may break.
+ *
+ * THE ONE THING THIS CAN STILL DO IS OVERFLOW, and the width is chosen so it
+ * cannot: no token on the roster is wider than the cell (the widest is
+ * "นางสาวฟ้าประทาน", 115.4px against 144 at the table's floor). A single word
+ * a quarter longer than any name on this roster today would paint over วันที่
+ * again — see the block in app/styles.css, which is where that budget is kept.
+ */
+export function WhoName({ name }) {
+  const words = String(name || '').split(' ').filter(Boolean);
+  /* THE SPACES ARE OUTSIDE THE SPANS, which is the whole mechanism. A space
+     inside an `.nb` span is a space that may not be broken at, and the cell
+     would be back to one unbreakable line. They are plain text nodes of the
+     `.who-name` block, whose `white-space` is `normal`.
+
+     The index is the only key these have, and it is a stable one: the array is
+     rebuilt whenever the name changes, and is never sorted or spliced. */
+  return words.flatMap((word, i) => [
+    ...(i ? [' '] : []),
+    <span key={i} className="nb">{word}</span>,
+  ]);
 }

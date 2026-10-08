@@ -5619,8 +5619,8 @@ underneath in the quiet voice … and every one of them ends — ยังได
 ตามเดิม”** until later the same day: the shortfall was withdrawn from flat rows
 altogether on 2026-09-07 — see the fix below the table.
 
-**Under the chip, on every flat row, the rule itself**: `FLAT_DAILY_SAY` —
-**พนักงานเหมารายวัน — นับ 8 ชั่วโมงเป็น OT ×1.5 ไม่ว่าจะอยู่นานแค่ไหน**. That line
+**The rule itself is the chip's tooltip, not a line under it** (since 2026-10-08 — it read "Under the chip, on every flat row" until then): `FLAT_DAILY_SAY` —
+**พนักงานเหมารายวัน — นับ 8 ชั่วโมงเป็น OT ×1.5 ไม่ว่าจะอยู่นานแค่ไหน**. The tooltip
 is unconditional, and it has to be: the rate column beside it reads `8.00`
 against times that may say five hours or twelve, which on any other row would
 mean the entry failed to compute. Drawn only where a scan disagreed — which is

@@ -651,7 +651,7 @@ test('ป้ายเขียวและคำกำกับใต้ป้�
   // compare.
   const mark = common.slice(common.indexOf('export function FlatDailyMark'));
   const body = mark.slice(0, mark.indexOf('\n}'));
-  assert.match(body, /<div className="cell-sub th">\s*\{FLAT_DAILY_SAY\}/);
+  assert.doesNotMatch(body, /\{FLAT_DAILY_SAY\}<\/div>/);
   // …and nothing is appended to it. The row still shows the day's raw punches
   // through `ScanDayPunches`; what is gone is arithmetic against a claim a flat
   // day never made.

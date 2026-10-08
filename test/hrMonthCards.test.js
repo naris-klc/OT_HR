@@ -91,7 +91,7 @@ test('the desktop table is still a table, cell for cell', () => {
   // The card is made in the stylesheet. The moment a second markup appears —
   // a phone branch in the JSX — the two layouts can disagree about a month.
   const head = hrView.slice(hrView.indexOf('<table className="hr-table">'), hrView.indexOf('<tbody>'));
-  for (const col of ['who-col', 'dept-col', 'rate-col', 'total-col', 'count-col',
+  for (const col of ['who-col', 'rate-col', 'total-col', 'count-col',
     'edits-col', 'cap-col', 'act-col']) {
     assert.ok(head.includes(col), `the desktop head lost ${col}`);
   }
@@ -115,15 +115,15 @@ test('name, code and สะสม / เพดาน — and the seven columns th
   // The code sits under the name in the same cell, on both layouts — and the
   // name takes the app's own stand-in when the roster has none, so a card is
   // never headed by a blank line with a code under it.
-  assert.match(hrView, /\{row\.employee\.name \|\| '—'\}[\s\S]{0,200}\{row\.employee\.code\}/);
+  assert.match(hrView, /<WhoName name=\{row\.employee\.name \|\| '—'\} \/>[\s\S]{0,300}\{row\.employee\.code\}[\s\S]{0,120}\{row\.department\?\.nameTh/);
   assert.match(phone, /\.hr-table tbody td\.who-col \{/);
   assert.match(phone, /\.hr-table tbody td\.cap-col \{/);
   assert.match(phone, /content: 'สะสม \/ เพดาน'/);
 
   // Hidden by name rather than by a blanket rule with exceptions, so an
   // eleventh column shows up on a phone instead of silently disappearing.
-  const hidden = phone.slice(phone.indexOf('.hr-table tbody td.dept-col,'));
-  for (const col of ['dept-col', 'rate-col', 'count-col', 'edits-col', 'pad-col']) {
+  const hidden = phone.slice(phone.indexOf('.hr-table tbody td.rate-col,'));
+  for (const col of ['rate-col', 'count-col', 'edits-col', 'pad-col']) {
     assert.ok(hidden.slice(0, 300).includes(`.hr-table tbody td.${col}`), `${col} is not accounted for`);
   }
 });
@@ -234,12 +234,12 @@ test('the action column was resized when it lost a button, and แผนก got 
      nothing had been measured against. `นางสาวสสุคนธ์ ข่าค่ำ` is 128.6px
      at 14px/400 off the font file, so 152.6 with the gutters — 168 still draws
      it on one line. See test/monthCountStatus.test.js for the whole budget. */
-  assert.match(css, /\.hr-table th\.who-col \{ width: 168px; \}/);
+  assert.match(css, /\.hr-table th\.who-col \{ width: 224px; \}/);
   /* 160 since 2026-09-11, and it was 132 — *"ปรับขนาดคอลัมน์ของตารางให้สมดุล"*. 132 was measured to hold
      แผนกบัญชีและการเงิน and did not get it, because a declared width under
      `table-layout: auto` is only honoured once the table fits; `th.cap-col`'s
      shared 224 was taking the room back out of the one column that wraps. */
-  assert.match(css, /\.hr-table th\.dept-col \{ width: 160px; \}/);
+  assert.doesNotMatch(css, /\.hr-table th\.dept-col/, 'แผนก is a line of พนักงาน now, not a column');
   // 140 since 2026-09-11 รอบสอง, and it was "152" — the other twelve of that
   // 40px. `รวมรออนุมัติ 45 / 40` measures 107.2px, wanting 131.2 with the
   // gutters, so 140 still keeps 9px over the longest line it holds.
@@ -247,7 +247,7 @@ test('the action column was resized when it lost a button, and แผนก got 
   // Thai wraps by dictionary, so the cell needs `normal` or the shared `th`
   // nowrap holds the heading while the cell still breaks — a column sized by
   // neither of the two things in it.
-  assert.match(css, /\.hr-table td\.dept-col \{ white-space: normal; \}/);
+  assert.match(css, /\.hr-table td\.who-col \.who-name,\s*\.hr-table td\.who-col \.cell-sub \{ white-space: normal; \}/);
   // All four scoped: the queue's own crowd of columns is measured against the
   // shared rules and is not touched.
   assert.match(css, /th\.who-col \{ width: 168px; \}/);

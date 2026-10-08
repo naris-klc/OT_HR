@@ -114,7 +114,7 @@ test('every derived value is declared after the one it reads', () => {
     // `showBatchBar` reads `canPick` too and landed beside it on 2026-09-11,
     // when the column stopped disappearing and the bar kept doing so.
     ['const canPick = React.useMemo', 'const showBatchBar = mayCorrect'],
-    ['const showPickCol = mayCorrect', 'const colCount = 10 +'],
+    ['const showPickCol = mayCorrect', 'const colCount = 9 +'],
   ];
   for (const [first, second] of chain) {
     assert.ok(

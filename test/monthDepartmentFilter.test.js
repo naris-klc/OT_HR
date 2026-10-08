@@ -398,7 +398,7 @@ test('every sentence that could be read as the whole company names the แผน
   // …and the unnarrowed case keeps the sentence it always had.
   assert.match(hrView, /<Empty>ไม่มีรายการในเดือนนี้<\/Empty>/);
   // THE TOTAL ROW, in the แผนก column of the row that totals the แผนก column.
-  assert.match(hrView, /<td className="dept-col">\{deptName \|\| ''\}<\/td>/);
+  assert.match(hrView, /\{deptName && <div className="cap-sub">\{deptName\}<\/div>\}/);
   // And `deptName` is resolved from the list, not from a row — a month with no
   // rows in it still has to be able to say whose month it is empty of.
   assert.match(
