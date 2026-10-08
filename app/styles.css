@@ -6476,6 +6476,7 @@ td > .approver-line { margin-top: 5px; }
   font: 500 13.5px/1.2 var(--sans); white-space: nowrap;
   transition: background .15s ease, color .15s ease;
 }
+.seg button .seg-icon { width: 16px; height: 16px; flex: none; }
 .seg button:hover { background: var(--green-tint); color: var(--green-dark); }
 .seg button.active { background: var(--green); color: var(--on-fill); }
 .seg button.active:hover { background: var(--green-lift); color: var(--on-fill); }
