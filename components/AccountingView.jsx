@@ -232,6 +232,46 @@ export default function AccountingView() {
           </div>
         </div>
 
+        {/* ในการ์ด ระหว่างหัวการ์ดกับแถบตัวกรอง — ที่เดียวกับ ตรวจสอบประจำเดือน
+            และ รออนุมัติ OT (ขอมา 2026-10-08) · เคยลอยอยู่ใต้การ์ด */}
+        {/* ── กล่องแจ้งเตือนของหน้า ─────────────────────────────────────────
+            2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): โหลดไม่สำเร็จ · ใบที่ไม่มีเจ้าของ
+            · ค้างอนุมัติ · รายการซ้ำ เคยเป็นกล่องแยกสี่กล่องซ้อนกัน ตอนนี้เป็นแถว
+            ในกล่องเดียว เรียงตามความร้ายแรงเอง (แดง → ส้ม) */}
+        <NoticeStack id="accounting">
+          {error && <NoticeRow tone="error" title={error} />}
+
+          {/* Outranks the backlog notice: a month with requests still in the
+              queue is unfinished, a month with hours nobody can see is wrong. */}
+          <UnaccountedHours unaccounted={data?.unaccounted} />
+
+          {pending?.count > 0 && (
+            <NoticeRow
+              tone="warn"
+              title={`${periods.length > 1 ? 'งวดนี้' : 'เดือนนี้'}ค้างอนุมัติ ${pending.count} รายการ (${hours(pending.hours)} ชม.) ไม่ถูกนับในสรุปนี้`}
+              detail={`ของพนักงาน ${pending.employees} คน · ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนส่งการเงิน`}
+              /* ── แยกเดือนเมื่อเป็นงวดสองเดือน ────────────────────────────────
+                 ยอดรวมอย่างเดียวส่งคนไปเปิดคิวผิดเดือนได้ครึ่งหนึ่งของเวลา และคิว
+                 เป็นของ *เดือน* เสมอ ไม่มีหน้าไหนเปิดคิวสองเดือนพร้อมกัน · จำนวนคน
+                 ไม่ถูกพูดถึงตรงนี้โดยตั้งใจ: คนที่ค้างทั้งสองเดือนคือคนเดียว และ
+                 ยอดข้างบนนับจากยูเนียนแล้ว ส่วนบรรทัดนี้เป็นเรื่องของ *ใบ* */
+              more={periods.length > 1 && (
+                <div>{pending.months.map((m) => `${periodLabel(m.period)} ${m.count} รายการ`).join(' · ')}</div>
+              )}
+            />
+          )}
+
+          {/* The sheet counts one filing per session. Saying so beats letting
+              accounting find the difference between this and the raw queue. */}
+          {data?.supersededCount > 0 && (
+            <NoticeRow
+              tone="warn"
+              title={`ไม่นับ ${data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม`}
+              detail="วันและเวลาเดียวกันถูกกรอกซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุด"
+            />
+          )}
+        </NoticeStack>
+
         {/* The filter bar — บริษัท, ประจำเดือน and the tick-box, on the wash,
             in the queue's own container. The tick-box is a filter and belongs
             here: it decides which people have a row, which is the same kind of
@@ -311,44 +351,6 @@ export default function AccountingView() {
           </label>
         </div>
       </div>
-
-      {/* ── กล่องแจ้งเตือนของหน้า ─────────────────────────────────────────
-          2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): โหลดไม่สำเร็จ · ใบที่ไม่มีเจ้าของ
-          · ค้างอนุมัติ · รายการซ้ำ เคยเป็นกล่องแยกสี่กล่องซ้อนกัน ตอนนี้เป็นแถว
-          ในกล่องเดียว เรียงตามความร้ายแรงเอง (แดง → ส้ม) */}
-      <NoticeStack id="accounting">
-        {error && <NoticeRow tone="error" title={error} />}
-
-        {/* Outranks the backlog notice: a month with requests still in the
-            queue is unfinished, a month with hours nobody can see is wrong. */}
-        <UnaccountedHours unaccounted={data?.unaccounted} />
-
-        {pending?.count > 0 && (
-          <NoticeRow
-            tone="warn"
-            title={`${periods.length > 1 ? 'งวดนี้' : 'เดือนนี้'}ค้างอนุมัติ ${pending.count} รายการ (${hours(pending.hours)} ชม.) ไม่ถูกนับในสรุปนี้`}
-            detail={`ของพนักงาน ${pending.employees} คน · ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนส่งการเงิน`}
-            /* ── แยกเดือนเมื่อเป็นงวดสองเดือน ────────────────────────────────
-               ยอดรวมอย่างเดียวส่งคนไปเปิดคิวผิดเดือนได้ครึ่งหนึ่งของเวลา และคิว
-               เป็นของ *เดือน* เสมอ ไม่มีหน้าไหนเปิดคิวสองเดือนพร้อมกัน · จำนวนคน
-               ไม่ถูกพูดถึงตรงนี้โดยตั้งใจ: คนที่ค้างทั้งสองเดือนคือคนเดียว และ
-               ยอดข้างบนนับจากยูเนียนแล้ว ส่วนบรรทัดนี้เป็นเรื่องของ *ใบ* */
-            more={periods.length > 1 && (
-              <div>{pending.months.map((m) => `${periodLabel(m.period)} ${m.count} รายการ`).join(' · ')}</div>
-            )}
-          />
-        )}
-
-        {/* The sheet counts one filing per session. Saying so beats letting
-            accounting find the difference between this and the raw queue. */}
-        {data?.supersededCount > 0 && (
-          <NoticeRow
-            tone="warn"
-            title={`ไม่นับ ${data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม`}
-            detail="วันและเวลาเดียวกันถูกกรอกซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุด"
-          />
-        )}
-      </NoticeStack>
 
       {!data ? (
         <div className="card"><Empty>กำลังโหลด…</Empty></div>
