@@ -285,6 +285,8 @@ test('ประจำเดือน and ค้นหา are one row, above the 
        between the controls and the rows those controls decide.
      · Since 2026-09-11 it is a child of `.month-notices`, a band between
        `.card-head` and `.queue-tools`. `.month-strip` no longer exists.
+     · Since 2026-10-08 that band is the page's `NoticeStack` — the one notice
+       box the whole app uses — in the same place.
 
      WHAT OVERTURNED THE SECOND ARRANGEMENT was the screenshot that followed it:
      *"มันดูแปลกแยกไม่กลมกลืน อยากให้กลมกลืนเป็นส่วนเดียวกันเหมือนส่วนหัวของหน้า
@@ -296,7 +298,7 @@ test('ประจำเดือน and ค้นหา are one row, above the 
      table, and it is still above the table — it is read on the way in rather
      than on the way past. What it stopped being is a block between two things
      that belong together. */
-  const notices = hrView.indexOf('<div className="month-notices no-print">');
+  const notices = hrView.indexOf('<NoticeStack id="month">');
   assert.ok(notices > cardHead && notices < find, 'สรุปสถานะงวด is not a band between the head and the bar');
   assert.ok(status > notices && status < find, 'สรุปสถานะงวด left the notices band');
   assert.ok(!/className="month-strip/.test(hrView), 'the strip above the card came back');
@@ -331,7 +333,7 @@ test('ประจำเดือน and ค้นหา are one row, above the 
 test('every block on this screen is a section of one card', () => {
   const panel = hrView.indexOf('<div className="card flush month-panel">');
   const head = hrView.indexOf('<div className="card-head">');
-  const notices = hrView.indexOf('<div className="month-notices no-print">');
+  const notices = hrView.indexOf('<NoticeStack id="month">');
   const drawer = hrView.indexOf('<ScanImport period={period}');
   const bar = hrView.indexOf('<div className="queue-tools">');
   const list = hrView.indexOf('<div className="month-card">');
@@ -367,34 +369,23 @@ test('ScanImport is a drawer in that card and not a card of its own', () => {
 });
 
 test('the notices band takes itself off the page when there is nothing to say', () => {
-  // ⚠ `:empty` AND NOT A CONDITION IN THE JSX. All four children render `null`
-  // when they have nothing to say and JSX leaves no whitespace between
-  // expressions, so a settled, compared month leaves the element childless. A
-  // condition in the component would be this screen's SECOND opinion about when
-  // `MonthAlerts` has something to say, and the day the two disagree is the day
-  // a notice exists that nobody draws. `.month-notes:empty` in the phone block
-  // is the same mechanism and predates this.
-  assert.match(css, /\.month-notices:empty \{ display: none; \}/);
-  // The children's own stacking margins are zeroed — three of the four carry
-  // them from the days they floated on the page, and in a flex column those
-  // would stack with the gap AND with each other.
-  assert.match(css, /\.month-notices > \* \{ margin: 0; \}/);
-  // ⚠ IT WAS THREE BOXES IN A FLEX COLUMN WITH `gap: 10px`, AND NO FILL, UNTIL
-  // 2026-10-08. The band is ONE box now (mockup A) and the children are rows:
-  // they give up their own ground, border and radius, and the band takes the
-  // amber when any row is amber.
-  assert.match(css, /\.month-notices \{\r?\n  display: flex; flex-direction: column;\r?\n/);
-  assert.match(css, /\.month-notices > \* \+ \* \{ border-top: 1px solid var\(--line-soft\); \}/);
-  assert.match(css, /\.month-notices:has\(\.warn\) \{ background: var\(--amber-bg\); border-color: var\(--amber-line\); \}/);
-  const rows = css.slice(css.indexOf('.month-notices .box:is('));
-  assert.match(rows.slice(0, rows.indexOf('}')), /background: transparent; border: 0; border-radius: 0;/);
-  // …and `.scan-compare` gave up the margin it carried for the days it floated.
+  /* ⚠ `.month-notices:empty` จนถึง 2026-10-08 — วันนั้นแถบนี้กลายเป็น `NoticeStack`
+     ของระบบแจ้งเตือนเดียวทั้งแอป · เหตุผลเดิมยังเป็นของเดิม: ไม่มีเงื่อนไขใน JSX
+     ว่าเมื่อไรกล่องว่าง ลูกทุกตัวคืน `null` เมื่อไม่มีอะไรจะพูด และกล่องนับแถว
+     ที่วาดจริงเอง — เงื่อนไขในหน้าจะเป็นความเห็นที่สองว่าเมื่อไร `MonthAlerts`
+     มีเรื่อง และวันที่สองความเห็นไม่ตรงกันคือวันที่มีแจ้งเตือนที่ไม่มีใครวาด */
+  assert.match(hrView, /<NoticeStack id="month">\s*\{\/\*/);
+  assert.match(css, /^\.notice-stack\.is-empty \{ display: none; \}/m);
+  const kit = read('components/common.jsx');
+  assert.match(kit, /\$\{all\.length \? '' : ' is-empty'\}/);
+  // แถบเดิมและการถอดพื้นของลูกหายไปทั้งหมด ไม่ใช่แค่ไม่มีใครใส่คลาส
+  assert.ok(!/^\.month-notices/m.test(css), 'กฎของแถบเดิมยังอยู่');
   assert.ok(!css.includes('.scan-compare { margin: 0 0 10px; }'), 'the compare card is spacing itself again');
 });
 
 test('the scan drawer is opened from the card head, with the card’s other verbs', () => {
   const from = hrView.indexOf('{data && <span className="chip muted">');
-  const block = hrView.slice(from, hrView.indexOf('<div className="month-notices', from));
+  const block = hrView.slice(from, hrView.indexOf('<NoticeStack id="month"', from));
   assert.ok(block.includes('className="btn ghost sm scan-toggle"'), 'ไฟล์สแกน is not on the card head');
   assert.ok(block.indexOf('scan-toggle') < block.indexOf('<ExportMenu'), 'ไฟล์สแกน is under พิมพ์ / ส่งออก');
   // `readsScans` — the pair the route enforces and the same one that decides the

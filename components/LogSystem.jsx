@@ -7,7 +7,8 @@ import {
   EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
 } from '@/lib/accessLog.js';
 import {
-  Alert, Empty, Field, Modal, PickOne, ClearButton, PAGE_SIZE, TablePager, TipButton, useScrollEdge,
+  Alert, Empty, Field, Modal, NoticeRow, NoticeStack, PickOne, ClearButton, PAGE_SIZE, TablePager, TipButton,
+  useScrollEdge,
   pageQuery, pageWindow, serverRows, useKeptFetch, usePageClamp, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -252,13 +253,17 @@ function Overview({ onOpenTab, onFilter }) {
             throat-clearing (มีการ, ตรวจสอบ→ดู) and two negations spelt the
             long way (ไม่ได้ล็อก→ไม่ล็อก, จะหน่วง→หน่วง). The count is the
             headline now, which is what the other seven banners in that group
-            do and what this one was doing in prose. */}
-        {noisyLogins && (
-          <Alert kind="warn">
-            <strong>เข้าสู่ระบบไม่สำเร็จ {data.failedLogins} ครั้งใน {data.windowDays} วันที่ผ่านมา</strong>
-            {' '}— ดูรายการ “รหัสที่ถูกลองแล้วไม่ผ่าน” ด้านล่าง · ระบบไม่ล็อกบัญชี แต่หน่วงเวลา
-          </Alert>
-        )}
+            do and what this one was doing in prose.
+            แถวหนึ่งใน `NoticeStack` ตั้งแต่ 2026-10-08 — ระบบแจ้งเตือนเดียวทั้งแอป */}
+        <NoticeStack id="log-login">
+          {noisyLogins && (
+            <NoticeRow
+              tone="warn"
+              title={`เข้าสู่ระบบไม่สำเร็จ ${data.failedLogins} ครั้งใน ${data.windowDays} วันที่ผ่านมา`}
+              detail="ดู “รหัสที่ถูกลองแล้วไม่ผ่าน” ด้านล่าง · ระบบไม่ล็อกบัญชี แต่หน่วงเวลา"
+            />
+          )}
+        </NoticeStack>
       </div>
 
       <div className="card">
@@ -672,7 +677,23 @@ function Compliance() {
         </div>
       </div>
 
-      {error && <Alert kind="error">{error}</Alert>}
+      {/* ระบบแจ้งเตือนเดียวทั้งแอป (2026-10-08): ข้อผิดพลาดตอนโหลดกับแถว
+          “ไม่มีเหตุผล” อยู่ในกล่องเดียวกันเหนือตาราง
+          A row with no reason on it is a finding, and it is stated before the
+          table rather than left to be spotted while scrolling one. Four of the
+          six kinds cannot be performed without a reason, so this is normally
+          zero. */}
+      <NoticeStack id="log-exceptions">
+        {error && <NoticeRow tone="error" title={error} />}
+        {data?.withoutReason > 0 && (
+          <NoticeRow
+            tone="warn"
+            title={`${data.withoutReason} รายการไม่มีเหตุผลบันทึกไว้`}
+            detail="อาจเกิดก่อนระบบบังคับให้ระบุเหตุผล หรือเป็นประเภทที่ไม่บังคับ"
+            more="ประเภทที่ไม่บังคับ: ตั้งรหัสผ่านใหม่ · เซ็นแทนหัวหน้าจากสคริปต์"
+          />
+        )}
+      </NoticeStack>
       {!data && !error && <Empty>กำลังโหลด…</Empty>}
 
       {/* A quarter with no exceptions is the ordinary outcome and has to READ
@@ -688,18 +709,6 @@ function Compliance() {
 
       {data?.total > 0 && (
         <>
-          {/* A row with no reason on it is a finding, and it is stated before
-              the table rather than left to be spotted while scrolling one. Four
-              of the six kinds cannot be performed without a reason, so this is
-              normally zero. */}
-          {data.withoutReason > 0 && (
-            <Alert kind="warn" tight>
-              {data.withoutReason} รายการไม่มีเหตุผลบันทึกไว้
-              {' — '}อาจเป็นรายการที่เกิดก่อนระบบจะบังคับให้ระบุเหตุผล
-              หรือเป็นประเภทที่ไม่ได้บังคับ (ตั้งรหัสผ่านใหม่ · เซ็นแทนหัวหน้าจากสคริปต์)
-            </Alert>
-          )}
-
           {/* `card-list` says what this wrap holds below 860px: cards, not a
               table pushed sideways. Six columns, two of them whole sentences,
               do not go on a 360px screen in any arrangement — see `.cmp-table`

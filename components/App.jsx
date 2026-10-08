@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
-import { Alert, AlertFold, PasswordInput, TipButton, TipLayer } from './common.jsx';
+import { Alert, NoticeRow, NoticeStack, PasswordInput, TipButton, TipLayer } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { ToastHost } from './Toast.jsx';
@@ -156,26 +156,20 @@ export default function App() {
  */
 function PasswordReminder({ onOpenProfile }) {
   /*
-   * พับเหลือแถวเดียว ตั้งแต่ 2026-09-15 — และใบนี้พับได้เสมอ ไม่ว่าจอจะกว้าง
-   * แค่ไหน เพราะปุ่มคือของที่ซ่อนได้ต่อให้ประโยคจบในแถวเดียว (`useOneLine`)
+   * แถวเดียวใน `NoticeStack` ของหน้าแรก ตั้งแต่ 2026-10-08 — ระบบแจ้งเตือนเดียว
+   * ทั้งแอป. It was an `AlertFold` from 2026-09-15; the stack's ซ่อน and the
+   * row's ▾ replace its own fold.
    *
-   * ปุ่มอยู่ใน `actions` ไม่ใช่ใน `children` เพื่อให้มันไม่ถูกวาดเลยตอนพับ
-   * แทนที่จะถูก `overflow: hidden` ตัดออกจากสายตา — ปุ่มที่ตาไม่เห็นแต่แท็บ
-   * ไปเจอและโปรแกรมอ่านจออ่านออก คือปุ่มที่ซ่อนไม่สำเร็จ
-   *
-   * ประโยคเตือนไม่หายไปไหนในสถานะไหน: พับอยู่ก็ยังอ่านได้ว่ารหัสที่ใช้อยู่คือ
-   * รหัสที่คนอื่นทราบ ซึ่งเป็นสาเหตุที่กล่องนี้ยังไม่มี ✕ ให้ปิด — พับไม่ใช่ปิด
+   * ยังไม่มี ✕ ให้ปิด: ประโยคเตือนเป็นเงื่อนไข ไม่ใช่การยืนยัน มันหายเมื่อรหัสผ่าน
+   * เปลี่ยน ซึ่งคือสิ่งที่ปุ่มมีไว้ทำ · ซ่อนทั้งกล่องได้ แต่แถบหัวยังบอกว่าซ่อนไว้
    */
   return (
-    <AlertFold
-      kind="warn"
-      of="คำเตือนเรื่องรหัสผ่าน"
-      actions={<button className="btn ghost" onClick={onOpenProfile}>เปลี่ยนรหัสผ่าน</button>}
-    >
-      <strong>คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่</strong>
-      {' '}— รหัสนี้คือรหัสพนักงานของคุณ ซึ่งมีคนอื่นทราบด้วย
-      {' '}แนะนำให้เปลี่ยนเป็นรหัสผ่านของคุณเองเมื่อสะดวก
-    </AlertFold>
+    <NoticeRow
+      tone="warn"
+      title="คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่"
+      detail="รหัสนี้คือรหัสพนักงานของคุณ ซึ่งมีคนอื่นทราบด้วย · แนะนำให้เปลี่ยนเมื่อสะดวก"
+      action={<button className="btn ghost sm" onClick={onOpenProfile}>เปลี่ยนรหัสผ่าน</button>}
+    />
   );
 }
 
@@ -1858,6 +1852,46 @@ function Shell({ session, onRefresh, onLogout }) {
   }, [noteOpen]);
   const initials = (user.code || '').replace(/[^A-Za-z0-9]/g, '').slice(-2).toUpperCase();
 
+  /*
+   * สถานะการสำรองข้อมูล — บนหน้าแรกของ ฝ่ายบุคคล และ admin เท่านั้น
+   *
+   * On the landing tab and nowhere else. A missed backup is a standing
+   * condition rather than an event: it is equally true on every screen,
+   * and repeating it on each of them is how a warning becomes furniture
+   * — which is exactly what happened to the line the scheduled task has
+   * written to backups/backup.log every night since 18 August. The
+   * first screen after login is where it is read rather than scrolled
+   * past.
+   *
+   * Renders nothing for the other roles, and nothing at all while the
+   * nightly job is doing its work — including when the only copy is on
+   * the same disk as the database, which the endpoint still reports
+   * and this strip stopped announcing on 2026-08-24. What is left is a
+   * job that failed. See components/BackupBanner.jsx; there is no
+   * green state either.
+   */
+  /*
+   * คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ — ทุกบทบาท
+   *
+   * THE ONLY PLACE THIS IS SAID, since ตั้งรหัสผ่านของคุณ was deleted
+   * on 2026-09-04. Every account carrying the flag now signs straight
+   * into the shell, so a person whose password is their own
+   * รหัสพนักงาน — a value printed on every ใบ OT — meets this strip or
+   * meets nothing.
+   *
+   * On the landing tab, the same rule the strip above and the
+   * announcement below follow: a standing condition drawn on every
+   * screen becomes furniture.
+   */
+  // แถวของกล่อง `home` ที่ไม่ใช่ประกาศวันหยุด — ตัวแปรเดียว เพราะบนหน้า OT ของฉัน
+  // มันต้องเข้าไปอยู่ในกล่องของ EmployeeView (2026-10-08 ระบบแจ้งเตือนเดียวทั้งแอป)
+  const homeNotices = (
+    <>
+      <BackupBanner user={user} />
+      {user.mustChangePassword && <PasswordReminder onOpenProfile={openPasswordChange} />}
+    </>
+  );
+
   return (
     <BackProvider register={register}>
     <div className={`shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
@@ -2084,46 +2118,12 @@ function Shell({ session, onRefresh, onLogout }) {
         <main>
           <div className="page">
             {/*
-              สถานะการสำรองข้อมูล — บนหน้าแรกของ ฝ่ายบุคคล และ admin เท่านั้น
-
-              On the landing tab and nowhere else. A missed backup is a standing
-              condition rather than an event: it is equally true on every screen,
-              and repeating it on each of them is how a warning becomes furniture
-              — which is exactly what happened to the line the scheduled task has
-              written to backups/backup.log every night since 18 August. The
-              first screen after login is where it is read rather than scrolled
-              past.
-
-              Renders nothing for the other roles, and nothing at all while the
-              nightly job is doing its work — including when the only copy is on
-              the same disk as the database, which the endpoint still reports
-              and this strip stopped announcing on 2026-08-24. What is left is a
-              job that failed. See components/BackupBanner.jsx; there is no
-              green state either.
+              กล่องแจ้งเตือนของหน้าแรก — `NoticeStack id="home"` ตั้งแต่ 2026-10-08,
+              ระบบแจ้งเตือนเดียวทั้งแอป. These were three boxes in three styles
+              (two `AlertFold`s and the green `.announce`), each in its own
+              `padding: 0 18px` wrapper; the stack carries its own margins and
+              sorts the rows by tone itself.
             */}
-            {tab === home && (
-              <div style={{ padding: '0 18px' }}>
-                <BackupBanner user={user} />
-              </div>
-            )}
-            {/*
-              คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ — ทุกบทบาท
-
-              THE ONLY PLACE THIS IS SAID, since ตั้งรหัสผ่านของคุณ was deleted
-              on 2026-09-04. Every account carrying the flag now signs straight
-              into the shell, so a person whose password is their own
-              รหัสพนักงาน — a value printed on every ใบ OT — meets this strip or
-              meets nothing.
-
-              On the landing tab, the same rule the strip above and the
-              announcement below follow: a standing condition drawn on every
-              screen becomes furniture.
-            */}
-            {tab === home && user.mustChangePassword && (
-              <div style={{ padding: '0 18px' }}>
-                <PasswordReminder onOpenProfile={openPasswordChange} />
-              </div>
-            )}
             {/*
               ประกาศวันหยุดบริษัท — ทุกบทบาท ไม่ใช่แค่พนักงาน
 
@@ -2146,13 +2146,21 @@ function Shell({ session, onRefresh, onLogout }) {
               employee screens can say WHICH month they are showing and pass it
               (page back to July and the banner announces July), and this mount
               has no month picker to read. Whoever lands here gets today's.
+              The other rows travel with it — `notices` below — so that tab
+              still has ONE box, not two stacked.
             */}
             {tab === home && home !== 'mine' && (
-              <div style={{ padding: '0 18px' }}>
+              <NoticeStack id="home">
+                {homeNotices}
                 <HolidayBanner />
-              </div>
+              </NoticeStack>
             )}
-            {tab === 'mine' && <EmployeeView user={user} onChanged={refreshCounts} openSignal={formSignal} />}
+            {tab === 'mine' && (
+              <EmployeeView
+                user={user} onChanged={refreshCounts} openSignal={formSignal}
+                notices={tab === home ? homeNotices : null}
+              />
+            )}
             {/* ONE LIST AGAIN SINCE 2026-09-03. This was `QueueTabs` — ใบรอยืนยัน
                 beside วันเกิดรอตรวจ — and with the birthday pile gone the
                 wrapper was a tab bar with one tab in it. components/QueueTabs.jsx

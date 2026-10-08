@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { periodLabel, companyLabel } from '@/lib/api.js';
-import { Alert } from './common.jsx';
+import { NoticeRow } from './common.jsx';
 import { SCAN_BADGE } from '@/lib/scanMatch.js';
 
 /**
@@ -99,14 +99,8 @@ export default function ScanCompareCard({
    * to decide.
    */
   importOpen = false,
-  /**
-   * The tally and the caveat under it are behind ONE control shared with the
-   * rest of the month's notice box (2026-10-08, mockup A) — `detailOpen` is that
-   * control's state, owned by HrView so `MonthAlerts` opens with it. With no
-   * `onToggleDetail` the card is on its own and draws everything, as before.
-   */
-  detailOpen = false,
-  onToggleDetail = null,
+  /* `detailOpen` / `onToggleDetail` ถูกถอด 2026-10-08 — ตัวนับอยู่หลัง ▾ ของ
+     `NoticeRow` แถวนี้เอง ไม่ได้เปิดพร้อมแจ้งเตือนเดือนอีกแล้ว */
 }) {
   /**
    * A month still loading claims nothing. The state this card exists to name is
@@ -156,165 +150,59 @@ export default function ScanCompareCard({
    * card exists to prevent, and it is the only clause here that carries new
    * information rather than restating the headline.
    */
+  /* ── แถวในกล่องแจ้งเตือนของหน้า — 2026-10-08 ─────────────────────────────
+
+     เคยเป็น `Alert` ที่วาด ⚠/✓ เองพร้อมปุ่ม ดูรายละเอียด ของตัวเองที่เปิดพร้อม
+     แจ้งเตือนเดือน · ตอนนี้เป็น `NoticeRow` ใน `NoticeStack` ของหน้า: หัวเรื่องมี
+     ตัวเลข ตัวนับหกช่องอยู่หลัง ▾ ของแถว · ชื่อเดือนออกจากหัวเรื่อง เพราะหัวการ์ด
+     ข้างบนบอกเดือนอยู่แล้ว ข้อความทุกคำที่ HR ตกลงไว้ 2026-09-07 ยังอยู่ครบ */
+  const importBtn = onOpenImport && !importOpen && (
+    <button type="button" className="btn ghost sm" onClick={onOpenImport}>
+      นำเข้าไฟล์สแกน
+    </button>
+  );
+
   if (!punchCount) {
-    // Nothing to point at while the thing being pointed at is open — see
-    // `importOpen`. The drawer one line below says the same thing and holds the
-    // button that answers it.
     if (importOpen) return null;
     return (
-      <div className="scan-compare no-print">
-        <Alert kind="info" mark={false}>
-          <div className="scan-line">
-            <span>
-              <strong>ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ</strong>
-              {' — '}<strong>ไม่ได้แปลว่าทุกแถวตรง</strong> · ยืนยันได้ตามปกติ
-            </span>
-            {onOpenImport && (
-              <button type="button" className="btn ghost sm" onClick={onOpenImport}>
-                นำเข้าไฟล์สแกน
-              </button>
-            )}
-          </div>
-        </Alert>
-      </div>
+      <NoticeRow
+        tone="info"
+        title="ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ"
+        detail="ไม่ได้แปลว่าทุกแถวตรง · ยืนยันได้ตามปกติ"
+        action={importBtn}
+      />
     );
   }
 
-  // Punches are in but the comparison has not been asked for or came back
-  // empty-handed. Nothing honest to say, so nothing is said.
   if (!counts) return null;
 
   const checked = counts.checked || 0;
   const agreed = Math.max(0, checked - (counts.mismatch || 0));
 
   return (
-    <div className="scan-compare no-print">
-      <Alert kind={counts.mismatch ? 'warn' : 'ok'} mark={false}>
-        {/* ── ⚠ FIVE BLOCKS BECAME TWO ROWS — 2026-09-11 ─────────────────
-
-            *"ปรับการแจ้งเตือนตามภาพให้กระชับด้วย แต่ยังได้ใจความครบถ้วน …
-            ปรับให้เหลือไม่เกิน 1-2 แถวเป็นอันดับแรก"*. It was a title row, a
-            headline row, the tally, a caveat paragraph and a button on a row of
-            its own — five blocks for one answer.
-
-            THE TITLE AND THE HEADLINE WERE ALWAYS ONE SENTENCE. *ผลเทียบกับ
-            ไฟล์สแกนนิ้วมือ · สิงหาคม 2569* names the question and *⚠ ต้องตรวจ
-            10 แถว* answers it; they sat in two blocks because the title row was
-            built as a `space-between` flex that never got a second item. Read
-            together they are the row, and `.scan-line` — the same row state 1
-            uses — puts the one control this card has at the end of it.
-
-            `.scan-big` KEEPS ITS SIZE. It is 15px against the 13px around it
-            because it is the figure somebody scans the screen for; inlining it
-            after a `<strong>` of the same weight changes where it sits, not how
-            loud it is. */}
-        <div className="scan-line">
-          <span>
-            <strong>ผลเทียบกับไฟล์สแกนนิ้วมือ · {periodLabel(period)}</strong>
-            {' — '}
-            {counts.mismatch > 0 ? (
-              <>
-                <span className="scan-big warn">⚠ ต้องตรวจ {counts.mismatch} แถว</span>
-                <span className="hint">{' '}({flagged} คน จาก {compare.entryCount} ใบ)</span>
-              </>
-            ) : (
-              <span className="scan-big ok">✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน</span>
-            )}
-            {onToggleDetail && (
-              <>
-                {' '}
-                <button
-                  type="button"
-                  className="link"
-                  aria-expanded={detailOpen}
-                  onClick={onToggleDetail}
-                >
-                  {detailOpen ? 'ซ่อนรายละเอียด ▴' : 'ดูรายละเอียด ▾'}
-                </button>
-              </>
-            )}
-          </span>
-          {/* THE PRESS THAT TURNS A NUMBER INTO A PLACE TO STAND, and it is at
-              the end of the sentence that holds the number now rather than on a
-              row of its own. It narrows the table below rather than listing
-              names here: the list of names was what this card printed until
-              2026-09-10 and it capped at twelve, which on a month with thirty
-              flagged people names less than half of them and offers no way to
-              the rest.
-
-              A TOGGLE AND NOT A ONE-WAY TRIP — pressing it again is the way
-              back, and ล้างตัวกรอง releases it too, because a filter the filter
-              bar does not know about is how somebody comes to believe this
-              month has eleven employees in it. */}
-          {onToggleFlagged && flagged > 0 && (
-            <button
-              type="button"
-              className={onlyFlagged ? 'btn ghost sm on' : 'btn ghost sm'}
-              onClick={onToggleFlagged}
-              aria-pressed={onlyFlagged}
-            >
-              {onlyFlagged
-                ? 'แสดงทุกคนในเดือนนี้'
-                : `ดูเฉพาะคนที่ต้องตรวจ (${flagged} คน)`}
-            </button>
-          )}
-        </div>
-
-        {/* ── ⚠ WHAT THESE NUMBERS ARE NOT ABOUT — 2026-09-11 ──────────────
-            A month can arrive half-imported: ไพรมัส's file in and เดมเทค's
-            still on somebody's desktop. Since this round those rows are dropped
-            before the comparison instead of coming back as `ไม่มีสแกน` (see
-            `compareMonthAgainstScans`), which is right for the table — but it
-            leaves this card describing HALF A MONTH in a voice that sounds like
-            all of it. `✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน` over an unread payroll
-            is precisely the misreading this card was built to prevent, one
-            company wide instead of one month wide.
-
-            SO IT IS SAID HERE, ABOVE THE BREAKDOWN, in both states — the green
-            one needs it more than the amber one. `ยืนยันได้ตามปกติ` is §5.3
-            again and carries the same weight it carries in state 1: this is not
-            a gate, it is a thing left to do. */}
-        {notImported.length > 0 && (
-          <div className="scan-line" style={{ margin: '6px 0 0' }}>
-            <span>
-              ⚠ งวดนี้<strong>ยังไม่ได้นำเข้าไฟล์สแกนของ
-                {' '}{notImported.map(companyLabel).join(' และ ')}</strong>
-              {' — '}แถวของบริษัทนั้นยังไม่ได้ถูกเทียบกับอะไร และไม่ได้นับอยู่ในตัวเลขข้างล่าง
-              {' · '}ยืนยันได้ตามปกติ
-            </span>
-            {/* The sentence stays whatever the drawer is doing — it names
-                which half of the month these numbers are not about. The BUTTON
-                goes while the drawer is open: it opens what is open. */}
-            {onOpenImport && !importOpen && (
-              <button type="button" className="btn ghost sm" onClick={onOpenImport}>
-                นำเข้าไฟล์สแกน
-              </button>
-            )}
-          </div>
+    <>
+      <NoticeRow
+        tone={counts.mismatch ? 'warn' : 'ok'}
+        title={counts.mismatch > 0
+          ? `เทียบไฟล์สแกนแล้ว — ต้องตรวจ ${counts.mismatch} แถว`
+          : 'เทียบไฟล์สแกนแล้ว — ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน'}
+        detail={counts.mismatch > 0 ? `${flagged} คน จาก ${compare.entryCount} ใบ` : null}
+        /* กดแล้วตารางข้างล่างเหลือเฉพาะคนที่ต้องตรวจ — กดซ้ำคือทางกลับ และ
+           ล้างตัวกรอง ก็ปล่อยมันด้วย */
+        action={onToggleFlagged && flagged > 0 && (
+          <button
+            type="button"
+            className={onlyFlagged ? 'btn ghost sm on' : 'btn ghost sm'}
+            onClick={onToggleFlagged}
+            aria-pressed={onlyFlagged}
+          >
+            {onlyFlagged ? 'แสดงทุกคนในเดือนนี้' : `ดูเฉพาะคนที่ต้องตรวจ (${flagged} คน)`}
+          </button>
         )}
-        {/* THE CAVEAT IS THE LAST ITEM OF THE TALLY, NOT A PARAGRAPH UNDER IT.
-
-            *เกินเวลา และ เหมารายวัน เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ* is a
-            sentence ABOUT two of the six figures beside it, and `.scan-tally`
-            is a wrapping flex row — so as an item it lands on the same line
-            whenever there is room and takes its own when there is not, which is
-            what a paragraph under the row could never do.
-
-            ⚠ NOTHING IN IT WAS CUT. Both clauses are the ones HR settled on
-            2026-09-07 (*ข้อเท็จจริง ป้ายเทา ไม่นับกองที่ต้องตรวจ*) and the line
-            that says this comparison restates no hours. They are `.quiet`, like
-            the two figures they qualify, for the same reason: a screen that
-            folds facts into the errand count is a screen whose errand count
-            nobody trusts. */}
-        {(detailOpen || !onToggleDetail) && (
+        more={(
           <div className="scan-tally">
             <span><strong>{counts.short}</strong> {SCAN_BADGE.SHORT}</span>
             <span><strong>{counts.startOff}</strong> {SCAN_BADGE.START_OFF}</span>
-            {/* THE GLOSS CAME OFF WITH THE REWORD. It read `{SCAN_BADGE.NO_SCAN}
-                (ไม่มีสแกนนิ้ว)` until 2026-09-11, because `ไม่ตรง` on its own did
-                not say WHICH thing failed to agree and the parenthesis was
-                carrying the whole meaning. `ไม่ได้สแกน` is the gloss, so keeping
-                it would print the same sentence twice. */}
             <span><strong>{counts.noScan}</strong> {SCAN_BADGE.NO_SCAN}</span>
             <span className="quiet"><strong>{counts.overTime}</strong> {SCAN_BADGE.OVER}</span>
             <span className="quiet"><strong>{counts.flatDaily}</strong> เหมารายวัน</span>
@@ -327,7 +215,17 @@ export default function ScanCompareCard({
             </span>
           </div>
         )}
-      </Alert>
-    </div>
+      />
+      {/* เดือนที่นำเข้าไฟล์ไม่ครบทุกบริษัท — ตัวเลขข้างบนเป็นของครึ่งเดือน จึงต้อง
+          บอกว่าครึ่งไหนยังไม่ถูกเทียบ ทั้งตอนเหลืองและตอนเขียว */}
+      {notImported.length > 0 && (
+        <NoticeRow
+          tone="info"
+          title={`ยังไม่ได้นำเข้าไฟล์สแกนของ ${notImported.map(companyLabel).join(' และ ')}`}
+          detail="แถวของบริษัทนั้นยังไม่ถูกเทียบ และไม่นับในผลเทียบ · ยืนยันได้ตามปกติ"
+          action={importBtn}
+        />
+      )}
+    </>
   );
 }

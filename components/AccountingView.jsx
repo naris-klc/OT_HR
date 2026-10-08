@@ -10,7 +10,7 @@ import {
 import { zeroRowReason } from '@/lib/otMode.js';
 import { cyclePeriods, cycleTag, shortMonth } from '@/lib/accountingCycle.js';
 import {
-  Alert, BirthdayNote, Empty, ExportMenu, OverCeilingFigure, OverCeilingNote, PickOne,
+  BirthdayNote, Empty, ExportMenu, NoticeRow, NoticeStack, OverCeilingFigure, OverCeilingNote, PickOne,
   PAGE_SIZE, RateHead, TablePager, UnaccountedHours, pageWindow, usePageReset,
 } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
@@ -312,42 +312,43 @@ export default function AccountingView() {
         </div>
       </div>
 
-      {error && <Alert kind="error">{error}</Alert>}
+      {/* ── กล่องแจ้งเตือนของหน้า ─────────────────────────────────────────
+          2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): โหลดไม่สำเร็จ · ใบที่ไม่มีเจ้าของ
+          · ค้างอนุมัติ · รายการซ้ำ เคยเป็นกล่องแยกสี่กล่องซ้อนกัน ตอนนี้เป็นแถว
+          ในกล่องเดียว เรียงตามความร้ายแรงเอง (แดง → ส้ม) */}
+      <NoticeStack id="accounting">
+        {error && <NoticeRow tone="error" title={error} />}
 
-      {/* Above the backlog notice, because it outranks it: a month with
-          requests still in the queue is unfinished, a month with hours nobody
-          can see is wrong. */}
-      <UnaccountedHours unaccounted={data?.unaccounted} />
+        {/* Outranks the backlog notice: a month with requests still in the
+            queue is unfinished, a month with hours nobody can see is wrong. */}
+        <UnaccountedHours unaccounted={data?.unaccounted} />
 
-      {pending?.count > 0 && (
-        <div className="box warn no-print">
-          {periods.length > 1 ? 'งวดนี้' : 'เดือนนี้'}ยังมีรายการค้างอนุมัติ {pending.count} รายการ
-          {' '}ของพนักงาน {pending.employees} คน
-          {' '}({hours(pending.hours)} ชม.) ซึ่ง<strong>ไม่ถูกนับ</strong>ในสรุปนี้ —
-          {' '}ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนส่งการเงิน
-          {/* ── แยกเดือนเมื่อเป็นงวดสองเดือน ────────────────────────────────
-              ยอดรวมอย่างเดียวส่งคนไปเปิดคิวผิดเดือนได้ครึ่งหนึ่งของเวลา และคิว
-              เป็นของ *เดือน* เสมอ ไม่มีหน้าไหนเปิดคิวสองเดือนพร้อมกัน · จำนวนคน
-              ไม่ถูกพูดถึงตรงนี้โดยตั้งใจ: คนที่ค้างทั้งสองเดือนคือคนเดียว และ
-              ยอดข้างบนนับจากยูเนียนแล้ว ส่วนบรรทัดนี้เป็นเรื่องของ *ใบ* */}
-          {periods.length > 1 && (
-            <div style={{ marginTop: 4 }}>
-              {pending.months.map((m) => `${periodLabel(m.period)} ${m.count} รายการ`).join(' · ')}
-            </div>
-          )}
-        </div>
-      )}
+        {pending?.count > 0 && (
+          <NoticeRow
+            tone="warn"
+            title={`${periods.length > 1 ? 'งวดนี้' : 'เดือนนี้'}ค้างอนุมัติ ${pending.count} รายการ (${hours(pending.hours)} ชม.) ไม่ถูกนับในสรุปนี้`}
+            detail={`ของพนักงาน ${pending.employees} คน · ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนส่งการเงิน`}
+            /* ── แยกเดือนเมื่อเป็นงวดสองเดือน ────────────────────────────────
+               ยอดรวมอย่างเดียวส่งคนไปเปิดคิวผิดเดือนได้ครึ่งหนึ่งของเวลา และคิว
+               เป็นของ *เดือน* เสมอ ไม่มีหน้าไหนเปิดคิวสองเดือนพร้อมกัน · จำนวนคน
+               ไม่ถูกพูดถึงตรงนี้โดยตั้งใจ: คนที่ค้างทั้งสองเดือนคือคนเดียว และ
+               ยอดข้างบนนับจากยูเนียนแล้ว ส่วนบรรทัดนี้เป็นเรื่องของ *ใบ* */
+            more={periods.length > 1 && (
+              <div>{pending.months.map((m) => `${periodLabel(m.period)} ${m.count} รายการ`).join(' · ')}</div>
+            )}
+          />
+        )}
 
-      {/* The sheet counts one filing per session. Saying so beats letting
-          accounting find the difference between this and the raw queue. */}
-      {data?.supersededCount > 0 && (
-        <div
-          className="box warn no-print"
-          title="เมื่อมีการกรอกวันและเวลาเดียวกันซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุดเป็นชั่วโมง OT"
-        >
-          ไม่นับ {data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม
-        </div>
-      )}
+        {/* The sheet counts one filing per session. Saying so beats letting
+            accounting find the difference between this and the raw queue. */}
+        {data?.supersededCount > 0 && (
+          <NoticeRow
+            tone="warn"
+            title={`ไม่นับ ${data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม`}
+            detail="วันและเวลาเดียวกันถูกกรอกซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุด"
+          />
+        )}
+      </NoticeStack>
 
       {!data ? (
         <div className="card"><Empty>กำลังโหลด…</Empty></div>

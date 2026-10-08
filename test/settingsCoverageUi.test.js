@@ -147,19 +147,29 @@ test('the roster is fetched once, above the section that draws the table', () =>
 
 // ── 1 · the two ways out are not equals ──────────────────────────────────────
 
-test('the repair that closes the warning is the filled button; the stand-in is not', () => {
+test('the repair that closes the warning is the row\'s button; the stand-in is not', () => {
   // ผู้รับช่วงอนุมัติ clears the queue and leaves the department exactly as
   // uncovered — the banner is still there tomorrow. Two identical ghosts made
   // that a fork with no default.
+  //
+  // It was a filled `.btn` beside a ghost in `.alert-actions` until 2026-10-08.
+  // Since ระบบแจ้งเตือนเดียวทั้งแอป a `NoticeRow` has one button: the repair is
+  // the row's `action`, the stand-in a link inside `more` — still a hierarchy.
   const code = sourceOf(SETTINGS);
-  const block = code.slice(code.indexOf('<div className="alert-actions">'));
-  const actions = block.slice(0, block.indexOf('</div>'));
+  const start = code.indexOf('function SigningCoverage(');
+  const body = code.slice(start, code.indexOf('function capNote(', start));
+  const action = body.slice(body.indexOf('action={'), body.indexOf('more={'));
+  const more = body.slice(body.indexOf('more={'));
 
-  assert.match(actions, /className="btn sm" onClick=\{\(\) => onGo\('employees'\)\}/);
-  assert.match(actions, /className="btn ghost sm" onClick=\{\(\) => onGo\('delegation'\)\}/);
-  // Both still reachable in one press — a hierarchy, not a removal.
-  assert.match(actions, /ไปที่หน้าพนักงานเพื่อตั้งค่าสิทธิ์ ↗/);
-  assert.match(actions, /ตั้งผู้รับช่วงอนุมัติ/);
+  assert.match(action, /onClick=\{\(\) => onGo\('employees'\)\}/);
+  assert.match(action, /ไปที่หน้าพนักงานเพื่อตั้งค่าสิทธิ์ ↗/);
+  assert.match(more, /className="link" onClick=\{\(\) => onGo\('delegation'\)\}/);
+  // Both still reachable — a hierarchy, not a removal.
+  assert.match(more, /ตั้งผู้รับช่วงอนุมัติ/);
+
+  // And it is an error row inside the page's stack — one that cannot be hidden.
+  assert.match(body, /<NoticeRow\s+tone="error"/);
+  assert.match(code, /<NoticeStack id="departments">[\s\S]*?<SigningCoverage /);
 
   // The label carries the destination now, so the sentence that used to sit
   // above the two buttons repeating them is gone.
@@ -174,7 +184,8 @@ test('the banner says "some department", once, and lets the table say which', ()
   // the codes of everybody stranded — at the top of a screen, growing downwards
   // into the table that answers the same question by being read.
   const code = sourceOf(SETTINGS);
-  assert.match(code, /<strong>บางแผนกยังไม่มีหัวหน้าเซ็นอนุมัติครอบคลุมทุกบริษัท<\/strong>/);
+  // The title of a `NoticeRow` since 2026-10-08 (was a `<strong>` in an `Alert`).
+  assert.match(code, /title="บางแผนกยังไม่มีหัวหน้าเซ็นอนุมัติครอบคลุมทุกบริษัท"/);
 
   const start = code.indexOf('function SigningCoverage(');
   const body = code.slice(start, code.indexOf('function Departments(', start));
@@ -189,7 +200,7 @@ test('the banner says "some department", once, and lets the table say which', ()
   // and the cost is the only reason anybody presses either button.
   assert.match(body, /ค้างที่ “รอหัวหน้า”/);
 
-  // And no ⚠ in the text: `.alert.error` draws its own mark to the left of it.
+  // And no ⚠ in the text: the row draws its own mark to the left of it.
   assert.ok(!/⚠/.test(body), 'the banner has a second warning mark in its text');
 });
 

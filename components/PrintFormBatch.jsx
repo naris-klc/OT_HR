@@ -4,7 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 import { FORM_PRINT_SCOPE_SAY } from '@/lib/reports.js';
-import { Alert, Empty, PrintChrome, SheetScroll, ShowMore } from './common.jsx';
+import {
+  Empty, NoticeRow, NoticeStack, PrintChrome, SheetScroll, ShowMore,
+} from './common.jsx';
 import { f027Chrome, F027Sheet, narrowedByPolicy, sheetQuery } from './PrintForm.jsx';
 
 /**
@@ -137,33 +139,34 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
         </div>
       )}
 
-      {failed.length > 0 && (
-        <div className="no-print" style={{ marginBottom: 12 }}>
-          <Alert kind="error">
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>
-              เตรียมใบไม่สำเร็จ {failed.length} คน — ไม่มีใบของคนเหล่านี้ในชุดที่พิมพ์
-            </div>
-            <ShowMore
-              items={failed}
-              unit="คน"
-              render={(f) => (
-                <div key={f.employee._id} style={{ fontSize: 12.5 }}>
-                  {f.employee.code} · {f.employee.name} — {f.message}
-                </div>
-              )}
-            />
-            <div style={{ fontSize: 12, marginTop: 4 }}>
-              ให้พิมพ์ทีละคนจากปุ่ม “พิมพ์ F-HR-027” ในแถวของพนักงาน หรือลองใหม่อีกครั้ง
-            </div>
-          </Alert>
-        </div>
-      )}
+      {/* 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): ใบที่โหลดไม่สำเร็จกับสรุปหมายเหตุ
+          ของทั้งชุดเป็นแถวในกล่องแจ้งเตือนกล่องเดียว แทนกล่องแดงกับกล่องสรุปที่ซ้อนกัน
 
-      {/* Collected above the stack rather than left beside the sheet each one
+          Collected above the stack rather than left beside the sheet each one
           belongs to. In a bundle nobody scrolls forty pages looking for the
           warnings, and a warning between two sheets reads as though it belongs
           to the sheet below it. A month with nothing to say renders nothing. */}
-      <NoticeDigest forms={forms || []} asked={status} />
+      <NoticeStack id="print-batch">
+        {failed.length > 0 && (
+          <NoticeRow
+            tone="error"
+            title={`เตรียมใบไม่สำเร็จ ${failed.length} คน — ไม่มีใบของคนเหล่านี้ในชุดที่พิมพ์`}
+            detail="พิมพ์ทีละคนจากปุ่ม “พิมพ์ F-HR-027” ในแถวของพนักงาน หรือลองใหม่อีกครั้ง"
+            more={(
+              <ShowMore
+                items={failed}
+                unit="คน"
+                render={(f) => (
+                  <div key={f.employee._id} style={{ fontSize: 12.5 }}>
+                    {f.employee.code} · {f.employee.name} — {f.message}
+                  </div>
+                )}
+              />
+            )}
+          />
+        )}
+        <NoticeDigest forms={forms || []} asked={status} />
+      </NoticeStack>
 
       <SheetScroll className="f027-screen">
         {(forms || []).map((form, i) => (
@@ -188,7 +191,7 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
 }
 
 /**
- * What the whole bundle has to say, as ONE box — never one box per person.
+ * What the whole bundle has to say, as one row per kind — never one per person.
  *
  * The notices used to be `FormNotices` rendered once per sheet, which is right for
  * a single print and wrong for forty. Each person can raise up to four of them;
@@ -198,13 +201,16 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
  * ever knew about its own page.
  *
  * So the digest counts SHEETS first and names people second. The counts are
- * always visible; the names sit behind ดูรายละเอียด, because "which 3 of 40" is
- * a question you ask after you know there are 3. `<details>` rather than state:
- * the list reloads underneath this whenever the month or สถานะที่นับ changes,
- * and an open/closed flag in state is a thing that can end up describing a list
- * that no longer exists.
+ * the row titles and always visible; the names sit behind the row's ▾, because
+ * "which 3 of 40" is a question you ask after you know there are 3.
  *
- * NOT gone from the app — a single print still shows the per-sheet blocks in
+ * 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): เคยเป็นกล่อง `.notice-digest` ใบเดียว
+ * ที่ใช้สีของเรื่องที่ดังที่สุด กับรายชื่อทุกกลุ่มใต้ `<details>` อันเดียว ·
+ * ตอนนี้แต่ละเรื่องเป็น `NoticeRow` ของมันเองใน `NoticeStack` ของหน้า สีจึงเป็น
+ * ของแต่ละแถว (ส้มไม่ถูกลดเป็นฟ้าอีกต่อไปโดยไม่ต้องคิดเรื่องนี้) และรายชื่อ
+ * อยู่หลัง ▾ ของแถวนั้น
+ *
+ * NOT gone from the app — a single print still shows the per-sheet rows in
  * full beside the one sheet they belong to, where there is room and no question
  * about whose page it is. This is the same information for the case where there
  * are forty of them.
@@ -213,7 +219,6 @@ const DIGEST_KINDS = [
   {
     key: 'pending',
     level: 'warn',
-    label: 'ยังไม่อนุมัติ',
     rows: (form) => form.pending || [],
     title: (sheets, rows) => `พบใบที่มีรายการยังไม่อนุมัติ ${sheets} ใบ · ${rows} รายการ`,
   },
@@ -229,28 +234,24 @@ const DIGEST_KINDS = [
      */
     key: 'notPrinted',
     level: 'warn',
-    label: 'ชั่วโมงหลังเที่ยงคืนที่ไม่ได้พิมพ์',
     rows: (form) => form.notPrinted || [],
     title: (sheets, rows) => `พบใบที่ไม่ได้พิมพ์ชั่วโมงหลังเที่ยงคืน ${sheets} ใบ · ${rows} ช่วง`,
   },
   {
     key: 'hidden',
     level: 'warn',
-    label: 'ซ่อนรายการที่ซ้ำช่วงเวลาเดิม',
     rows: (form) => form.hidden || [],
     title: (sheets, rows) => `พบใบที่มีรายการซ้ำช่วงเวลาเดิมถูกซ่อน ${sheets} ใบ · ${rows} รายการ`,
   },
   {
     key: 'unmarked',
     level: 'info',
-    label: 'รอ HR ยืนยัน',
     rows: (form) => form.unmarked || [],
     title: (sheets, rows) => `พบเอกสารรอ HR ยืนยันทั้งหมด ${sheets} ใบ · ${rows} รายการ`,
   },
   {
     key: 'acting',
     level: 'info',
-    label: 'ผู้บันทึกหรือผู้อนุมัติแทน',
     rows: (form) => form.acting || [],
     title: (sheets, rows) => `พบใบที่มีผู้บันทึกหรือผู้อนุมัติแทน ${sheets} ใบ · ${rows} รายการ`,
   },
@@ -270,37 +271,33 @@ const datesOf = (rows) => [...new Set(rows.map((r) => r.workDate))]
   .join(' · ');
 
 /**
- * One kind's names under ดูรายละเอียด — the first few, and more on request.
+ * One kind's names behind its row's ▾ — the first few, and more on request.
  *
  * A department of twenty-one with everything still in the queue opened into a
  * wall: twenty-one people, each with up to twenty dates, several screens of
  * amber before the first sheet (2026-09-10). This is where `ShowMore` in
  * common.jsx started; it is now the app's one rule for a long list in a notice.
  *
- * It resets on `forms`, not on the list's length — the digest's own comment
- * warns about a flag outliving the list it described, and a new month can
- * come back with the same number of people in it.
+ * It resets on `forms`, not on the list's length — the list reloads whenever
+ * the month or สถานะที่นับ changes, and a new month can come back with the
+ * same number of people in it.
  */
 function FoldGroup({ kind, sheets, forms }) {
   return (
-    <div className="notice-fold-group">
-      <div className="k">{kind.label} · {sheets.length} คน</div>
-      <ShowMore
-        as={React.Fragment}
-        items={sheets}
-        unit="คน"
-        resetOn={forms}
-        render={({ form, rows }, i) => (
-          // Keyed by position: two people can share a name, and a roster
-          // with two shapes of employee code (PM-0620 / PM00511) is not
-          // something to build a react key out of.
-          <div key={`${kind.key}-${i}`} className="l">
-            {form.employee.code} · {form.employee.name} — {rows.length} รายการ
-            {' · '}{datesOf(rows)}
-          </div>
-        )}
-      />
-    </div>
+    <ShowMore
+      items={sheets}
+      unit="คน"
+      resetOn={forms}
+      render={({ form, rows }, i) => (
+        // Keyed by position: two people can share a name, and a roster
+        // with two shapes of employee code (PM-0620 / PM00511) is not
+        // something to build a react key out of.
+        <div key={`${kind.key}-${i}`} style={{ fontSize: 12.5 }}>
+          {form.employee.code} · {form.employee.name} — {rows.length} รายการ
+          {' · '}{datesOf(rows)}
+        </div>
+      )}
+    />
   );
 }
 
@@ -320,40 +317,25 @@ function NoticeDigest({ forms, asked = '' }) {
    * names under it would be the same sentence forty times.
    */
   const narrowed = forms.some((form) => narrowedByPolicy(form, asked));
-  if (!groups.length && !narrowed) return null;
-
-  // The box takes the loudest tone in it. An amber notice quietened to blue
-  // because a blue one was counted beside it would be a downgrade nobody asked
-  // for, on the two kinds that bear on whether a sheet may be signed at all.
-  const level = groups.some(({ kind }) => kind.level === 'warn') ? 'warn' : 'info';
 
   return (
-    <div className="no-print notice-digest">
-      <Alert kind={level}>
-        {groups.map(({ kind, sheets }) => (
-          <div key={kind.key} style={{ fontWeight: 600 }}>
-            {kind.title(sheets.length, sheets.reduce((n, s) => n + s.rows.length, 0))}
-          </div>
-        ))}
+    <>
+      {groups.map(({ kind, sheets }) => (
+        <NoticeRow
+          key={kind.key}
+          tone={kind.level}
+          title={kind.title(sheets.length, sheets.reduce((n, s) => n + s.rows.length, 0))}
+          more={<FoldGroup kind={kind} sheets={sheets} forms={forms} />}
+        />
+      ))}
 
-        {narrowed && (
-          <div style={{ fontSize: 12.5, marginTop: groups.length ? 4 : 0 }}>
-            ทั้งชุดพิมพ์เฉพาะรายการ
-            {FORM_PRINT_SCOPE_SAY[forms[0]?.printScope] || 'ตามนโยบาย'}
-            {' '}ตามนโยบายการพิมพ์ใบขออนุมัติ OT ในตั้งค่าระบบ
-            — ไม่ได้ใช้ “สถานะที่นับ” ที่เลือกไว้ ยอดบนใบจึงน้อยกว่ายอดในตารางได้
-          </div>
-        )}
-
-        {groups.length > 0 && (
-          <details className="notice-fold">
-            <summary>ดูรายละเอียด</summary>
-            {groups.map(({ kind, sheets }) => (
-              <FoldGroup key={kind.key} kind={kind} sheets={sheets} forms={forms} />
-            ))}
-          </details>
-        )}
-      </Alert>
-    </div>
+      {narrowed && (
+        <NoticeRow
+          tone="info"
+          title={`ทั้งชุดพิมพ์เฉพาะรายการ${FORM_PRINT_SCOPE_SAY[forms[0]?.printScope] || 'ตามนโยบาย'}`}
+          detail="ตามนโยบายการพิมพ์ใบขออนุมัติ OT ในตั้งค่าระบบ ไม่ใช่ “สถานะที่นับ” ที่เลือกไว้ · ยอดบนใบจึงน้อยกว่าในตารางได้"
+        />
+      )}
+    </>
   );
 }

@@ -7,7 +7,9 @@ import { printName } from '@/lib/printFile.js';
 // accounting paper, both report screens and accounting.csv print.
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
-import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from './common.jsx';
+import {
+  Alert, NoticeStack, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours,
+} from './common.jsx';
 
 /**
  * สรุปชั่วโมงทำ OT แยกแผนก — the departmental sheet, cell for cell.
@@ -122,9 +124,10 @@ export default function DepartmentPrint({ period, onClose }) {
 
       {/* On the screen above the sheets, never on the paper — see
           AccountingPrint.jsx. */}
-      <UnaccountedHours unaccounted={data.unaccounted} />
-
-      <PendingNotice count={data.pending?.count} />
+      <NoticeStack id="department-print">
+        <UnaccountedHours unaccounted={data.unaccounted} />
+        <PendingNotice count={data.pending?.count} />
+      </NoticeStack>
 
       <SheetScroll className="otdept-screen">
         {departments.length === 0 ? (

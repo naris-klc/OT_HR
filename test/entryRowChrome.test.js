@@ -464,13 +464,16 @@ test('the notice under the name has one place, whether or not there is a notice'
   // warning and 16px down on one that did not. HR reads this screen one
   // employee after the next, and a block that moves between them is a
   // difference the eye reports every time.
-  assert.match(jsx, /<div className="entry-notice">\s*\n\s*<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>\s*\n\s*<\/div>/);
+  // ⚠ `<div className="entry-notice">` จนถึง 2026-10-08 — ตอนนี้ช่องนี้คือ
+  // `NoticeStack` ของหน้า (ระบบแจ้งเตือนเดียวทั้งแอป) ซึ่งหายไปทั้งก้อนเมื่อไม่มีแถว
+  assert.match(jsx, /<NoticeStack id="entries" className="entry-notice">\s*\n\s*<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>\s*\n\s*<\/NoticeStack>/);
 
   // THE WRAPPER CARRIES NO MARGIN AND THE NOTICE INSIDE IT CARRIES 16, so an
   // empty slot is zero pixels tall and there is no `:empty` rule to get right.
   // Asserted as a negative too: a margin on the wrapper would put 16px of air
   // under the name of every employee who has no warning.
-  assert.match(rule('.entry-notice > .alert'), /margin: 16px 0 0;/);
+  assert.match(rule('.notice-stack.entry-notice'), /margin: 16px 0 0;/);
+  assert.match(css, /^\.notice-stack\.is-empty \{ display: none; \}/m);
   assert.ok(!/^\.entry-notice \{/m.test(css), 'the slot took a box of its own');
   // The same figure the scan row below it takes, which is what makes the two
   // gaps one gap repeated rather than two numbers that happen to be close.

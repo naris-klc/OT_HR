@@ -27,7 +27,7 @@ import {
   Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, Section, SegmentList, ShowMore,
-  SignatureFacts,
+  NoticeRow, NoticeStack, SignatureFacts,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -1280,9 +1280,9 @@ export default function ApprovalQueue({
           use — it is about the rules every figure on this card was computed
           under, so it is read before the rows and not alongside one of them.
           Renders nothing unless the rules have drifted. */}
-      <div style={{ padding: '0 18px' }}>
+      {/* กล่องแจ้งเตือนของคิว — ระบบเดียวทั้งแอป (2026-10-08) */}
+      <NoticeStack id="queue">
         <PolicyDriftBanner user={user} onOpenPolicy={onOpenPolicy} />
-      </div>
 
       {/*
         Standing in for somebody, said once at the top with the dates on it.
@@ -1292,7 +1292,7 @@ export default function ApprovalQueue({
         window while it is open is what makes its closing legible.
       */}
       {holding.length > 0 && (
-        <div style={{ padding: '0 18px' }}>
+        <>
           {/* ── ONE SENTENCE SINCE 2026-09-18, AND IT IS THE DATES ──────────
               It ran to four clauses: who handed the queue over and until when ·
               how many of the rows below are theirs · that an approval is
@@ -1312,11 +1312,11 @@ export default function ApprovalQueue({
               and the only difference is what is missing from it. Naming the
               dates while they are open is what makes their closing legible, and
               no row can carry that: it is a fact about the reader. */}
-          <Alert kind="info">
-            <strong>รับช่วงอนุมัติแทน</strong>{' '}
-            {holding.map((d) => `${d.from?.name} ถึง ${thaiDate(d.toDate)}`).join(' · ')}
-          </Alert>
-        </div>
+          <NoticeRow
+            tone="info"
+            title={`รับช่วงอนุมัติแทน ${holding.map((d) => `${d.from?.name} ถึง ${thaiDate(d.toDate)}`).join(' · ')}`}
+          />
+        </>
       )}
 
       {/*
@@ -1331,27 +1331,25 @@ export default function ApprovalQueue({
         state where a reviewer can finish the queue and be wrong about it.
       */}
       {cut && (
-        <div style={{ padding: '0 18px' }}>
-          <Alert kind="error">
-            <strong>แสดง {cut.shown} จาก {cut.total} รายการ</strong>
-            {' '}— รายการที่ไม่ได้แสดงคือใบที่<strong>ค้างนานที่สุด</strong>
-            {' '}และตัวกรองด้านล่างเห็นเฉพาะรายการที่แสดงอยู่
-            {/*
-              The month and department dropdowns are NOT offered as a way out
-              of this. They filter the rows already in hand, so narrowing one
-              cannot bring a hidden row back — telling somebody to "เลือกเดือน
-              ให้แคบลง" here would be advice that quietly does nothing. Working
-              the queue down is the only answer left.
-
-              ⚠ IT ENDED IN A โหลดทั้งหมด LINK UNTIL 2026-10-08, shown while the
-              list in hand was under `MAX_LIST_LIMIT`. Every load asks for that
-              maximum now (see `cut`), so this notice only appears when the
-              server has nothing more to give and the link had nothing to do.
-            */}
-            {' · คิวยาวเกินกว่าจะโหลดในครั้งเดียว — ทยอยอนุมัติแล้วรายการที่เหลือจะขึ้นมาเอง'}
-          </Alert>
-        </div>
+        <NoticeRow
+          tone="error"
+          title={`แสดง ${cut.shown} จาก ${cut.total} รายการ`}
+          detail="รายการที่ไม่ได้แสดงคือใบที่ค้างนานที่สุด และตัวกรองด้านล่างเห็นเฉพาะรายการที่แสดงอยู่ · คิวยาวเกินกว่าจะโหลดในครั้งเดียว — ทยอยอนุมัติแล้วรายการที่เหลือจะขึ้นมาเอง"
+        />
       )}
+      {/*
+        The month and department dropdowns are NOT offered as a way out
+        of this. They filter the rows already in hand, so narrowing one
+        cannot bring a hidden row back — telling somebody to "เลือกเดือน
+        ให้แคบลง" here would be advice that quietly does nothing. Working
+        the queue down is the only answer left.
+
+        ⚠ IT ENDED IN A โหลดทั้งหมด LINK UNTIL 2026-10-08, shown while the
+        list in hand was under `MAX_LIST_LIMIT`. Every load asks for that
+        maximum now (see `cut`), so this notice only appears when the
+        server has nothing more to give and the link had nothing to do.
+      */}
+      </NoticeStack>
 
       {/* ── filter bar ─────────────────────────────────────────────────────── */}
       {/*

@@ -7,7 +7,7 @@ import {
 } from '@/lib/api.js';
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
-  Alert, ClearButton, Empty, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
+  Alert, ClearButton, Empty, NoticeRow, NoticeStack, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
   PAGE_SIZE, RowAction, ShowMore, TablePager, WhoName, pageWindow,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -15,11 +15,9 @@ import { PickMonth } from './PickDate.jsx';
 import { personMatches } from '@/lib/personSearch.js';
 // components/birthdayActions.jsx — the two answers to a birthday row, one pop-up
 // each — was deleted on 2026-09-03 with everything that opened it.
-// `PolicyVersionBanner` is NOT among these any more. This screen draws that
-// warning as a line in `MonthAlerts` from the same `policyVersionNotice()` the
-// banner renders; the banner itself is still what ตรวจสอบใบของพนักงาน opens
-// (components/HrEntries.jsx), which is why it is still a component.
-import { policyVersionNotice } from './PolicyVersion.jsx';
+// `PolicyVersionBanner` เป็นแถวหนึ่งใน `MonthAlerts` — ตัวเดียวกับที่
+// ตรวจสอบใบของพนักงาน (components/HrEntries.jsx) ใช้ (2026-10-08)
+import { PolicyVersionBanner } from './PolicyVersion.jsx';
 import PeriodStatus from './PeriodStatus.jsx';
 import ScanImport from './ScanImport.jsx';
 import ScanCompareCard from './ScanCompareCard.jsx';
@@ -553,9 +551,6 @@ export default function HrView({
    * The hint under the table that explains that about ค้นหา covers this too.
    */
   const [onlyFlagged, setOnlyFlagged] = useState(false);
-  // ONE control for the month's notice box — the scan tally and the policy list
-  // open together (2026-10-08, mockup A).
-  const [noticesOpen, setNoticesOpen] = useState(false);
 
   /**
    * ── ใครถูกติ๊กไว้ — a Set of EMPLOYEE ids, not entry ids ──────────────────
@@ -1359,7 +1354,7 @@ export default function HrView({
           เดียวกันเหมือนส่วนหัวของหน้า รออนุมัติ ot"*, and the count is what made
           it true: this screen was FIVE stacked blocks (MonthAlerts ·
           ScanCompareCard · `.month-strip` · the ScanImport card · this panel)
-          next to a queue that is one. See `.month-notices` below.
+          next to a queue that is one. See the `NoticeStack` below.
 
           ONLY ABOVE 860px. Below it the table is one card per person on the
           page's own ground, and a card holding forty cards is a forty-first
@@ -1544,9 +1539,12 @@ export default function HrView({
             the one about to sign them*) is satisfied by any position above the
             table — which this is. What decides the order among the three is that
             งวด and ผลเทียบ answer *may this month be signed at all*, while the
-            digest is a list of things to know while signing it. AND IT IS THE
-            ONLY ONE A READER CAN CLOSE (`alertsDismissed`), so it goes last:
-            dismissing the first of three leaves a hole between two that stay.
+            digest is a list of things to know while signing it.
+
+            ตั้งแต่ 2026-10-08 ทั้งหมดเป็นแถวใน `NoticeStack` — ระบบแจ้งเตือนเดียว
+            ทั้งแอป (components/common.jsx) · ปุ่ม ซ่อน ที่หัวกล่องซ่อนได้ทุกแถว
+            ยกเว้นแถวแดง · ลำดับบนจอเรียงตามระดับ (แดง → เหลือง → ฟ้า) ไม่ใช่ตาม
+            ลำดับในโค้ด
 
             ABOVE `.queue-tools` AND NOT UNDER THE TABLE. Both of the first two
             are checks a reader makes BEFORE they trust a total — *is anything
@@ -1555,17 +1553,11 @@ export default function HrView({
             What changed is not the reading order; it is that they are now inside
             the card they are about, instead of stacked on the page above it.
 
-            `:empty` IS WHAT MAKES THE BLOCK DISAPPEAR, not a count in here. All
-            four children render `null` when they have nothing to say, and JSX
-            leaves no whitespace between expressions — so a settled, compared
-            month with no notices leaves this `<div>` with no child nodes at all
-            and the stylesheet takes it off the page, band, hairline and all. A
-            condition here would be this screen's second opinion about when
-            `MonthAlerts` has something to say, and the day the two disagree is
-            the day a notice exists that nobody draws.
-
-            `no-print` because none of it is part of any sheet. */}
-        <div className="month-notices no-print">
+            ไม่มีเงื่อนไขในนี้ว่าเมื่อไรกล่องว่าง — ลูกทุกตัวคืน `null` เมื่อไม่มีอะไร
+            จะพูด และ `NoticeStack` นับแถวที่วาดจริงเอง ไม่มีแถว = ไม่มีกล่อง
+            เงื่อนไขในนี้จะเป็นความเห็นที่สองว่าเมื่อไรมีเรื่อง และวันที่สองความเห็น
+            ไม่ตรงกันคือวันที่มีแจ้งเตือนที่ไม่มีใครวาด */}
+        <NoticeStack id="month">
           {/* THE งวด HEADLINE, WITHOUT THE `actions` IT USED TO CARRY. The scan
               toggle rode on this component's own row while the row was the only
               thing on the page that could hold it; it is on `.card-head` now,
@@ -1595,17 +1587,13 @@ export default function HrView({
                  2026-09-11 screenshot caught: two controls that open a drawer,
                  stacked above the drawer, open. */
               importOpen={scanOpen}
-              detailOpen={noticesOpen}
-              onToggleDetail={() => setNoticesOpen((v) => !v)}
             />
           )}
 
           {/* KEYED ON ALL THREE NARROWINGS, so nothing it counted can outlive
               the month, the สถานะที่นับ or the แผนก it was counted over. The
               key is what re-mounts it; `MonthAlerts` returns null when it finds
-              nothing, and the dismissal is deliberately NOT in its state (see
-              `alertsDismissed`) so a reader who closed it stays closed across
-              the remount.
+              nothing.
 
               `dept` is not decoration in that list: every count this draws — the
               missing วันเกิด, the policy spread, ยืนยันโดย HR n ใบ — is the
@@ -1613,19 +1601,14 @@ export default function HrView({
           {data && (
             <MonthAlerts
               key={`${period}|${statusFilter}|${dept}`}
-              periodName={periodLabel(period)}
               policy={data.policy}
               hrVerifiedCount={data.hrVerifiedCount}
               rowAction={openRowLabel(mayCorrect)}
-              /* The scan row owns the shared ดูรายละเอียด whenever it has a
-                 tally to open; without one this notice keeps its own. */
-              shared={readsScans && !!scan?.punchCount && !!scan?.compare?.counts}
-              open={noticesOpen}
             />
           )}
 
-          {error && <Alert kind="error">{error}</Alert>}
-        </div>
+          {error && <NoticeRow tone="error" title={error} />}
+        </NoticeStack>
 
         {/* ── ลิ้นชักนำเข้าไฟล์สแกน — IN THE CARD, BETWEEN THE NOTICES AND THE
                BAR ────────────────────────────────────────────────────────────
@@ -2825,207 +2808,41 @@ export default function HrView({
 }
 
 /**
- * DISMISSED UNTIL THE PAGE IS RELOADED — and deliberately not in React state.
+ * แจ้งเตือนของตัวเดือนเอง — สองแถวใน `NoticeStack` ของหน้า (2026-10-08).
  *
- * `MonthAlerts` is remounted by its `key` on every change of month or
- * สถานะที่นับ, which is what stops an open panel describing a month that has
- * gone. State inside it would be cleared by exactly the same remount, so the ✕
- * would last until the next press of the period box and no longer — which is
- * the thing that was asked not to happen. A module-level flag outlives the
- * component, outlives leaving this tab and coming back, and dies with the
- * document: "จนกว่าจะ Refresh หน้าใหม่", said in the only place that means it.
+ * เคยเป็นกล่องของตัวเองที่นับ พับ และปิดด้วย ✕ ได้ (`alertsDismissed`) ตอนนี้
+ * กล่องของหน้าเป็นคนซ่อนทั้งหมดได้ที่ปุ่มเดียว ตัวนี้จึงเหลือแค่บอกว่ามีเรื่องอะไร
  *
- * NOT `sessionStorage`, which is the other obvious home and is the wrong one:
- * it survives the reload, so a dismissal made in August would still be in force
- * the next morning with a different month on screen.
- *
- * WHAT DISMISSING IS ALLOWED TO DO. It closes the strip; it does not make the
- * notices unreachable. In its place comes `แสดงแจ้งเตือน (n)` — a text button
- * on one line, counting what is behind it and recounted from the month on
- * screen, so a different month's different warning is visible as a different
- * number without anything reappearing in front of anybody. The rows keep their
- * own chips throughout: this hides sentences, never marks.
- */
-let alertsDismissed = false;
-
-/**
- * ONE PANEL, WHOLE — the notices about the month itself, counted, named and
- * opened INSIDE the box that counts them.
- *
- * Two of these can be on screen at once and both are tall: the policy warning
- * names every version in the month and says what to do about it, and
- * อนุมัติชั้นเดียว explains a signature that is missing on purpose. Left as two
- * panels they were 340px at 360×780 — most of a phone screen spent above the
- * search box, before a row of the month had been reached.
- *
- * The first attempt at this counted them on a strip and then rendered the two
- * ORIGINAL panels under it, which is worse than what it replaced: three boxes
- * instead of two, and the strip repeating what the first box then said again.
- * So the panels are gone from this screen and what opens is a LIST — one item
- * per notice, inside the same box.
- *
- * WHAT AN ITEM IS: a heading, the figures, and one sentence. Not the panel's
- * paragraph, and not the heading alone either. `ตรวจก่อนเซ็นรับรอง` is the
- * whole reason the policy notice exists, and a list that dropped it would be a
- * tidier screen that had stopped saying the thing it is for. Every word of both
- * comes from the notice's own module — `policyVersionNotice()` for one, the
- * literal below for the other — so nothing here is a second copy of a wording
- * kept somewhere else.
- *
- * THE COLLAPSED LINE carries each notice's label, not a bare total: "2 ข้อความ"
- * alone would make a reader open it to find out whether either of them matters,
- * which is the fold costing more than it saves. It goes away when the list is
- * open, because the list's own headings are those same words.
- *
- * THE COLOUR IS THE WORST OF THEM. A box that stands for an amber warning and a
- * blue note has to look like the amber one, or the fold has quietly downgraded
- * a warning by folding it.
- *
- * ONE CONTROL FOR THE WHOLE THING: ดูรายละเอียด ▼ / ซ่อน ▲, and the ✕. Nothing
- * inside the list folds again — a second `ดูรายละเอียด` two levels down is a
- * reader asking which of them they just pressed.
- *
- * WHAT IS NOT HERE. The notes under the table — superseded filings, missing
- * วันเกิด — stay where they are. They are footnotes to figures that have been
- * read, not warnings to read before starting, and pulling them up would make
- * this count a number about two unrelated things.
+ * - กฎการคำนวณคนละชุด — `PolicyVersionBanner` ตัวเดียวกับที่ HrEntries ใช้ ทุกคำมา
+ *   จาก `policyVersionNotice()` สองหน้าจึงพูดเดือนเดียวกันไม่ต่างกัน
+ * - HR อนุมัติชั้นเดียว — สีฟ้า เพราะไม่มีอะไรผิด มันคือตัวเลขเดียวที่หัวหน้าหา
+ *   ที่มาไม่เจอ: ชั่วโมงทีมขึ้นแต่คิวไม่เคยดัง
  */
 function MonthAlerts({
-  periodName, policy, hrVerifiedCount,
+  policy, hrVerifiedCount,
   /**
-   * What the row button below this notice is called on THIS reader's screen —
-   * "ดู / แก้ไขรายการ" for ฝ่ายบุคคล and ผู้ดูแลระบบ, "ดูรายการ" for everybody
-   * else. Passed in rather than written out, because a notice that says press X
-   * when the button says Y is a dead end for the one person following it.
+   * ชื่อปุ่มในแถวของคนอ่านคนนี้ — "ดู / แก้ไขรายการ" หรือ "ดูรายการ" ·
+   * แจ้งเตือนที่บอกให้กด X ตอนที่ปุ่มเขียนว่า Y คือทางตัน
    */
   rowAction,
-  /** `shared`: the scan row above holds the one ดูรายละเอียด; `open` is its state. */
-  shared = false, open: sharedOpen = false,
 }) {
-  const [ownOpen, setOwnOpen] = useState(false);
-  const open = shared ? sharedOpen : ownOpen;
-  const [shut, setShut] = useState(alertsDismissed);
-
-  const notices = [];
-  // Every word of it — whether there is anything to say, how loud, the version
-  // list and the sentence — from the notice's own module. `HrEntries` still
-  // draws the full panel from the same call, so the two screens cannot end up
-  // wording one month differently.
-  const pv = policyVersionNotice(policy);
-  if (pv) {
-    notices.push({
-      key: 'policy', kind: pv.kind, label: pv.label, figures: pv.figures, say: pv.say,
-    });
-  }
-  if (hrVerifiedCount > 0) {
-    notices.push({
-      key: 'hr-verified',
-      // INFO and not amber: nothing here is wrong. What it is, is the one figure
-      // a หัวหน้า could not otherwise account for — their team's hours went up
-      // and their queue never rang, because ฝ่ายบุคคล settled a birthday from
-      // the scan record in one act.
-      kind: 'info',
-      label: `HR อนุมัติชั้นเดียว ${hrVerifiedCount} รายการ`,
-      figures: 'ติดป้าย “HR ตรวจสแกนนิ้ว”',
-      // One line, like the policy notice above it. What went was the sentence
-      // about the empty signature box in the history — which is what
-      // "ไม่ผ่านหัวหน้างาน" already predicts, and which is spelled out in
-      // README §"One signature, and the trail says so" for whoever needs it.
-      // What stayed is the fact and where to go and look.
-      say: (
-        <>
-          บันทึกและอนุมัติในขั้นตอนเดียว <strong>ไม่ผ่านหัวหน้างาน</strong> ·
-          {' '}เปิดดูที่ “{rowAction}” ของพนักงาน
-        </>
-      ),
-    });
-  }
-
-  if (!notices.length) return null;
-
-  if (shut) {
-    return (
-      <div className="alerts-recall">
-        <button
-          type="button"
-          className="link"
-          onClick={() => { alertsDismissed = false; setShut(false); }}
-        >
-          {`แสดงแจ้งเตือนของ ${periodName} (${notices.length})`}
-        </button>
-      </div>
-    );
-  }
-
-  // warn beats info beats ok — see THE COLOUR IS THE WORST OF THEM above.
-  const kind = ['warn', 'info', 'ok'].find((k) => notices.some((n) => n.kind === k));
-
   return (
-    <Alert kind={kind} tight onClose={() => { alertsDismissed = true; setShut(true); }}>
-      {/* ── ⚠ THE HEADING JOINED THE LABELS — 2026-09-11 ──────────────────
-          *"ปรับให้เหลือไม่เกิน 1-2 แถวเป็นอันดับแรก"*. The heading was a block of
-          its own above this flow, so a shut panel was two rows and an open one
-          four. It is the first phrase of the same sentence now: shut, this
-          panel is ONE row; open, it is that row and the list.
-
-          `· N ข้อความ` ONLY WHEN N IS MORE THAN ONE. On a month with a single
-          notice the count is a fact the reader can see — the label is right
-          there beside it — and "1 ข้อความ" beside one message is the screen
-          counting out loud for its own benefit.
-
-          THE MONTH BY NAME, because this sits above the box that sets it.
-          "เดือนนี้" was answered by the period picker when this was two inches
-          under it; from the top of the card it is a question.
-
-          THE LABELS AND THE BUTTON IN ONE FLOW, not one block each. The button
-          is a 44px touch target and the labels wrap to two lines of Thai at
-          360px; stacked, that is 44px of panel spent on a row holding one
-          control. Inline, the button lands at the end of the wrapped text and
-          the panel loses a whole row.
-
-          Shut only for the labels: open, the list's own headings are those same
-          words, and a screen that says them twice fourteen pixels apart is a
-          screen a reader has to check for a difference that is not there. */}
-      <div className="alerts-say">
-        {/* ONE ROW IN THE SHARED BOX (2026-10-08): the box is the heading now, so
-            this is only the labels — what each notice is about — and the press
-            that opens them, unless the scan row above already holds that press. */}
-        {!open && <span>{notices.map((n) => n.label).join(' · ')}</span>}
-        {open && <strong className="alerts-head">{`แจ้งเตือนของ ${periodName}`}</strong>}
-        {!shared && (
-          <button
-            type="button"
-            className="fold-pill"
-            aria-expanded={open}
-            onClick={() => setOwnOpen((v) => !v)}
-          >
-            {open ? 'ซ่อน ▲' : 'ดูรายละเอียด ▼'}
-          </button>
-        )}
-      </div>
-      {/* ⚠ ONE ITEM IS ONE FLOW SINCE 2026-09-11, AND IT WAS TWO BLOCKS — the
-          statement and its figures on one line, the instruction in brackets on
-          a line of its own below it. The pair was already written to run
-          together for the first half of that reason ("กฎการคำนวณคนละชุด:
-          เวอร์ชัน 10 (1 ใบ) · เวอร์ชัน 1 (19 ใบ)", one statement and not two
-          blocks); this finishes the argument. An instruction in brackets is
-          marked as guidance about the words before it BY THE BRACKETS, which
-          is what they were introduced for — a block of its own was the same
-          claim made twice, and it cost every item a line.
-
-          It wraps to a second line when it is long, which is a wrap and not a
-          row: the bullet is what says where the next item starts. */}
-      {open && (
-        <ul className="alerts-list">
-          {notices.map((n) => (
-            <li key={n.key}>
-              <strong>{n.label}</strong>: {n.figures}
-              {' '}<span className="say">({n.say})</span>
-            </li>
-          ))}
-        </ul>
+    <>
+      <PolicyVersionBanner spread={policy} />
+      {hrVerifiedCount > 0 && (
+        <NoticeRow
+          tone="info"
+          title={`HR อนุมัติชั้นเดียว ${hrVerifiedCount} รายการ`}
+          detail={(
+            <>
+              บันทึกและอนุมัติในขั้นตอนเดียว <strong>ไม่ผ่านหัวหน้างาน</strong> ·
+              {' '}เปิดดูที่ “{rowAction}” ของพนักงาน
+            </>
+          )}
+          more="ติดป้าย “HR ตรวจสแกนนิ้ว”"
+        />
       )}
-    </Alert>
+    </>
   );
 }
 

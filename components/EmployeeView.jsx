@@ -6,7 +6,7 @@ import {
   ApprovalSteps, ApproverLine, BirthdayWelfareMark, CancelledMark, CapCard, StatusChip, Alert,
   BucketSplit, ConfirmDialog, Empty, EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead,
   ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, editsOf, stamp,
-  trailOf, RowAction,
+  trailOf, RowAction, NoticeStack,
 } from './common.jsx';
 import { approvalSteps } from '@/lib/approverLine.js';
 import {
@@ -20,7 +20,13 @@ import { PickMonth } from './PickDate.jsx';
 import { useBackHandler } from './nav.jsx';
 import { usePolicy } from './policyContext.jsx';
 
-export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
+/**
+ * `notices` — the other rows of the landing tab's `NoticeStack` (backup,
+ * password), passed in by App.jsx when this screen IS the landing tab. They
+ * join the holiday row here so the screen has one notice box, not two stacked
+ * (2026-10-08, ระบบแจ้งเตือนเดียวทั้งแอป).
+ */
+export default function EmployeeView({ user, onChanged, openSignal = 0, notices = null }) {
   /**
    * วันตัดของงวด — the copy /auth/me sent at sign-in, same as the date picker's.
    *
@@ -175,8 +181,11 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
             rate columns the hours land in, and this is the screen where the
             date is being chosen. `currentPeriod()` and not the dashboard's
             `period` — there is no month picker here, and the form's own default
-            date is today. */}
-        <HolidayBanner />
+            date is today. In a `NoticeStack` since 2026-10-08. */}
+        <NoticeStack id="employee-home">
+          {notices}
+          <HolidayBanner />
+        </NoticeStack>
         {error && <Alert kind="error">{error}</Alert>}
         {/* `editing` corrects the stored row in place; `template` files a new
             request from an old one. Same fields, different write.
@@ -256,8 +265,12 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
           is that it is read BEFORE anything is filed, and a notice that moves
           down the page whenever something else goes wrong is one somebody
           learns to look past. It follows the month the dashboard is showing, so
-          paging back to July announces July. */}
-      <HolidayBanner period={period} />
+          paging back to July announces July. In a `NoticeStack` since
+          2026-10-08, with the landing tab's other rows when there are any. */}
+      <NoticeStack id="employee-home">
+        {notices}
+        <HolidayBanner period={period} />
+      </NoticeStack>
       {error && <Alert kind="error">{error}</Alert>}
 
       {/* ── hero ─────────────────────────────────────────────────────────── */}

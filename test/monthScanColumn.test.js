@@ -143,38 +143,18 @@ test('a month with no scan file says so, and does not look like a clean month', 
   // the other means nobody has imported the file. Only this sentence separates
   // them.
   assert.match(card, /if \(!punchCount\) \{/);
-  assert.match(card, /<strong>ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ<\/strong>/);
-  // The one clause that could not be cut when the block became a row: it is the
-  // misreading the card exists to prevent, and the only part of the sentence
-  // that is not a restatement of the headline.
-  assert.match(card, /<strong>ไม่ได้แปลว่าทุกแถวตรง<\/strong>/);
-
-  /* ⚠ IT WAS FOUR LINES AND A 16px HEADLINE UNTIL 2026-09-11 — this asserted
-     `<div className="scan-none">…` and `.scan-none { font: 600 16px/1.35 … }`.
-     Asked for in three words: *"ปรับอีกครับ กระชับให้เป็นแถวเดียว"*.
-
-     THE REQUIREMENT DID NOT CHANGE, only what satisfies it. The size was picked
-     while this card floated on the page as a block of its own; inside
-     `.month-notices` it is one line among งวด…ยังเปิดอยู่ and MonthAlerts, and a
-     16px shout there is not louder than its neighbours — it is a different size
-     from them, which reads as the thing that does not belong. What separates the
-     two states is that the sentence is drawn at all, in bold, beside the button
-     that fixes it. */
+  /* ⚠ ตั้งแต่ 2026-10-08 ประโยคนี้เป็น `NoticeRow` ในกล่องแจ้งเตือนของหน้า (ระบบ
+     เดียวทั้งแอป) — เคยเป็น `<strong>` สองก้อนใน `.scan-line` ของ `<Alert>` ·
+     สิ่งที่ยึดยังเป็นของเดิม: ประโยคนี้ถูกวาด เป็นหัวเรื่องตัวหนา และคำที่ตัด
+     ไม่ได้ยังอยู่ */
+  const none = card.slice(card.indexOf('if (!punchCount) {'), card.indexOf('if (!counts) return null;'));
+  assert.match(none, /title="ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ"/);
+  // The one clause that could not be cut: it is the misreading the card exists
+  // to prevent, and the only part that is not a restatement of the headline.
+  assert.match(none, /ไม่ได้แปลว่าทุกแถวตรง/);
+  assert.match(none, /action=\{importBtn\}/);
   assert.ok(!/className="scan-none"/.test(card), 'the headline block came back');
-  // ⚠ ANCHORED AT THE START OF A LINE. Both dead rules are quoted in the notes
-  // that explain them — in this file and in the stylesheet — and an unanchored
-  // match finds the explanation instead of the code. AGENTS.md counts five of
-  // those. `.chip.scan-none` further down the stylesheet is a different thing
-  // and is deliberately not matched by this.
   assert.ok(!/^\s*\.scan-none \{/m.test(css), 'a bare .scan-none rule came back');
-  assert.match(card, /<div className="scan-line">/);
-  assert.match(css, /^\.scan-line \{\r?\n  display: flex; align-items: center; justify-content: space-between;/m);
-  // The button never shrinks under its own label on a wide screen, and takes a
-  // 44px line of its own below 640px rather than being squeezed beside a wrapped
-  // sentence.
-  assert.match(css, /^\.scan-line \.btn \{ flex: none; \}/m);
-  const narrow = css.slice(css.indexOf('@media (max-width: 640px) {', css.indexOf('.scan-line {')));
-  assert.match(narrow.slice(0, narrow.indexOf('\n}')), /\.scan-line \.btn \{ flex: 1 1 100%; min-height: 44px; \}/);
 
   // AND IT DOES NOT BLOCK ANYTHING — §5.3. The comparison points at rows; it
   // does not hold a gate. A month whose file arrives late is not a month that
@@ -210,7 +190,7 @@ test('ปุ่ม นำเข้าไฟล์สแกน ไม่ซ้ำ
   assert.match(hrView, /importOpen=\{scanOpen\}/);
   assert.match(card, /importOpen = false,/);
   assert.match(card, /if \(importOpen\) return null;/);
-  assert.match(card, /\{onOpenImport && !importOpen && \(/);
+  assert.match(card, /const importBtn = onOpenImport && !importOpen && \(/);
   // ชิปบนหัวการ์ดยังอยู่ — มันคือทางเข้าที่มีทุกสถานะ รวมถึงเดือนที่ทุกแถวตรง
   // และเป็นทางเดียวที่ ปิด ลิ้นชักได้
   assert.match(hrView, /className="btn ghost sm scan-toggle"/);
@@ -388,23 +368,23 @@ test('แถวของบริษัทนั้นขึ้นเทา ย�
 });
 
 test('การ์ดผลเทียบต้องบอกว่าตัวเลขของมันไม่ได้พูดถึงใคร', () => {
-  /* ราคาของการตัดคือการ์ดต้องพูดว่ามันตัดอะไรไป · `✓ ทุกแถวที่เทียบได้ตรงกับ
+  /* ราคาของการตัดคือการ์ดต้องพูดว่ามันตัดอะไรไป · `ทุกแถวที่เทียบได้ตรงกับ
      ไฟล์สแกน` ทับอยู่บนเดือนที่อีกบริษัทไม่ได้ถูกอ่านเลย คือการอ่านผิดแบบเดียวกับ
      ที่การ์ดใบนี้มีไว้กันตั้งแต่แรก เพียงแต่กว้างเท่าบริษัทแทนที่จะเท่าเดือน */
   assert.match(card, /const notImported = compare\?\.notImported \|\| \[\];/);
   assert.match(card, /notImported\.map\(companyLabel\)\.join\(' และ '\)/);
   assert.match(card, /ยังไม่ได้นำเข้าไฟล์สแกนของ/);
-  assert.match(card, /ไม่ได้นับอยู่ในตัวเลขข้างล่าง/);
+  assert.match(card, /ไม่นับในผลเทียบ/);
 
   // §5.3 พูดด้วยคำเดิมที่สถานะ 1 ใช้ — ไม่ใช่ประตู แต่เป็นงานที่ยังไม่เสร็จ
   const line = card.slice(card.indexOf('notImported.length > 0 &&'));
-  assert.match(line.slice(0, line.indexOf('</div>')), /ยืนยันได้ตามปกติ/);
+  assert.match(line.slice(0, line.indexOf('/>')), /ยืนยันได้ตามปกติ/);
 
-  // เหนือรายการตัวเลข ไม่ใช่ใต้ — คนอ่านต้องรู้ขอบเขตก่อนอ่านตัวเลข
-  assert.ok(
-    card.indexOf('notImported.length > 0 &&') < card.indexOf('<div className="scan-tally">'),
-    'คำเตือนอยู่ใต้ตัวเลขที่มันกำกับ',
-  );
+  /* ⚠ "เหนือรายการตัวเลข" จนถึง 2026-10-08 — ตอนนี้เป็นแถวของตัวเอง เห็นได้โดย
+     ไม่ต้องกด ส่วนตัวเลขหกช่องอยู่หลัง ▾ ของแถวผลเทียบ คนอ่านจึงเจอขอบเขตก่อน
+     เจอตัวเลขเสมอ */
+  assert.match(line, /<NoticeRow\s+tone="info"/);
+  assert.match(card, /more=\{\(\s*<div className="scan-tally">/);
 });
 
 test('a row the machine agrees with says so — green, and never left blank', () => {
@@ -594,29 +574,23 @@ test('ลิ้นชัก ไฟล์สแกนนิ้วมือ กร
   }
 });
 
-test('การ์ดผลเทียบเหลือสองแถว — หัวข้อกับคำตอบเป็นประโยคเดียว และคำกำกับเป็นชิ้นสุดท้ายของแถวตัวเลข', () => {
-  /* *"ปรับการแจ้งเตือนตามภาพให้กระชับด้วย … ปรับให้เหลือไม่เกิน 1-2 แถวเป็นอันดับแรก"* (11 ก.ย. 2569) · เดิมเป็นห้าก้อน: แถวหัวข้อ · แถวคำตอบ · แถวตัวเลข
-     · ย่อหน้าคำกำกับ · และปุ่มบนแถวของตัวเอง — ห้าก้อนสำหรับคำตอบเดียว */
-
-  // หัวข้อกับคำตอบเป็นประโยคเดียวบน `.scan-line` แถวเดียวกับที่สถานะแรกใช้
+test('การ์ดผลเทียบเหลือแถวเดียว — หัวเรื่องถือตัวเลข และคำกำกับเป็นชิ้นสุดท้ายของแถวตัวเลข', () => {
+  /* *"ปรับให้เหลือไม่เกิน 1-2 แถวเป็นอันดับแรก"* (11 ก.ย. 2569) · และ 2026-10-08
+     เหลือแถวเดียวในกล่องแจ้งเตือนของหน้า: หัวเรื่องคือคำตอบพร้อมตัวเลข ปุ่มเดียว
+     ของการ์ดเป็น `action` และตัวนับอยู่หลัง ▾ (`more`) · ชื่อเดือนออกจากหัวเรื่อง
+     เพราะหัวการ์ดบอกอยู่แล้ว */
   const body2 = card.slice(card.indexOf('if (!counts) return null;'));
-  const upto = body2.slice(0, body2.indexOf('<div className="scan-tally">'));
-  assert.match(upto, /<div className="scan-line">/);
-  assert.match(upto, /<strong>ผลเทียบกับไฟล์สแกนนิ้วมือ · \{periodLabel\(period\)\}<\/strong>/);
-  assert.match(upto, /className="scan-big warn">⚠ ต้องตรวจ \{counts\.mismatch\} แถว/);
-  assert.match(upto, /className="scan-big ok">✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน/);
-  // และปุ่มเดียวของการ์ดอยู่ท้ายประโยคที่ถือตัวเลขนั้น
-  assert.match(upto, /onToggleFlagged && flagged > 0 && \(/);
+  assert.match(body2, /tone=\{counts\.mismatch \? 'warn' : 'ok'\}/);
+  assert.match(body2, /`เทียบไฟล์สแกนแล้ว — ต้องตรวจ \$\{counts\.mismatch\} แถว`/);
+  assert.match(body2, /'เทียบไฟล์สแกนแล้ว — ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน'/);
+  assert.match(body2, /action=\{onToggleFlagged && flagged > 0 && \(/);
   assert.ok(!css.includes('.scan-head { margin: 6px 0 0; }'), 'ก้อนหัวข้อเดิมยังอยู่ในสไตล์ชีต');
 
-  /* ⚠ คำกำกับเป็นชิ้นสุดท้ายของแถวตัวเลข ไม่ใช่ย่อหน้าใต้แถว
-     `.scan-tally` เป็นแถว flex ที่ตัดบรรทัดได้ การเป็นชิ้นหนึ่งในนั้นทำให้มันลงบรรทัด
-     เดียวกันเมื่อมีที่ และกินบรรทัดของตัวเองเมื่อไม่มี ซึ่งย่อหน้าทำแบบนั้นไม่ได้ */
+  /* ⚠ คำกำกับเป็นชิ้นสุดท้ายของแถวตัวเลข ไม่ใช่ย่อหน้าใต้แถว */
   const tally = card.slice(card.indexOf('<div className="scan-tally">'));
   const tallyEnd = tally.slice(0, tally.indexOf('</div>'));
   assert.match(tallyEnd, /เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ/);
   assert.match(tallyEnd, /ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน/);
-  // เป็น `.quiet` เหมือนสองตัวเลขที่มันกำกับ ด้วยเหตุผลเดียวกัน
   assert.match(tallyEnd, /<span className="quiet">/);
 
   // ⚠ ตัวเลขทั้งหกตัวและจำนวนคน/ใบ ยังอยู่ครบ — "กระชับ" ไม่ใช่ "ตัดออก"

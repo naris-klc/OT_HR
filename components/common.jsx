@@ -217,112 +217,158 @@ export const foldClick = (folded, toggle, head = '.alert-fold-row') => (e) => {
   toggle();
 };
 
+/* `useOneLine` และ `AlertFold` — กล่องแถวเดียวที่กดกางของหน้าแรก (2026-09-15)
+   ถูกถอด 2026-10-08 เมื่อสามกล่องนั้นเป็น `NoticeRow` ทั้งหมด · `foldClick`
+   ข้างบนยังอยู่ เพราะโน้ตเกินเพดานใช้ */
+
 /**
- * แถวเดียวก่อน ที่เหลือกดกาง — สำหรับกล่องที่ยืนอยู่บนหน้าแรกทุกวัน.
+ * กล่องแจ้งเตือนของหน้า — ระบบเดียวทั้งแอป สั่งไว้ 2026-10-08
  *
- * ── ทำไม alert ถึงพับได้ ทั้งที่กฎเดิมห้าม ────────────────────────────────
+ * *"ให้เช็คทั้ง app วาง design system สำหรับแบนเนอร์ และการแจ้งเตือนใหม่ แล้วใช้
+ * รูปแบบเดียวกันทั้ง app"* — ผู้ใช้เลือกจาก mockup: หน้าตาแบบ A (หนึ่งเรื่องหนึ่งแถว
+ * ในกล่องเดียว) พื้นสีตามระดับแบบ C และปุ่ม ซ่อน/แสดง ทั้งกล่องที่แถบหัว (แบบ 1)
+ * แทน × รายแถว · กติกาเต็มอยู่ที่ docs/design.md §5.1
  *
- * `Disclosure` ข้างบนเขียนไว้ว่า alert ถูกอ่านตอนที่มันขึ้น ไม่งั้นไม่ถูกอ่าน
- * และนั่นยังจริง — สิ่งที่เปลี่ยนเมื่อ 2026-09-15 คือหน้าแรกของฝ่ายบุคคลมี
- * กล่องแบบนี้ยืนพร้อมกันสามใบ (สำรองข้อมูล · รหัสผ่านที่ตั้งให้ · ประกาศ
- * วันหยุด) รวมกันสูงเกือบเต็มจอมือถือ ก่อนถึงคิวที่คนเปิดหน้านี้มาทำ
- *
- * ที่ต่างจากการซ่อนทั้งใบคือ **ประโยคยังอยู่บนจอเสมอ** หัวข้อและคำต่อเท่าที่
- * แถวเดียวรับไหวถูกวาดครบ ตัดท้ายด้วย … ที่บอกว่ายังมีต่อ — คนที่ไม่กดก็ยัง
- * รู้ว่าสำรองข้อมูลเก่ากว่า 24 ชั่วโมง สิ่งที่หายคือรายละเอียดท้ายประโยค
- * ไม่ใช่ตัวเตือน และไม่มีสถานะไหนในนี้ที่วาดน้อยกว่าหนึ่งประโยค
- *
- * ── ลูกศรต้องมีของให้ซ่อนจริง ─────────────────────────────────────────────
- *
- * วัดจากของจริงว่าประโยคล้นแถวแรกไหม (`scrollWidth` เทียบ `clientWidth`) ไม่ใช่
- * นับตัวอักษรและไม่ใช่ดู breakpoint — สตริงเดียวกันจบในแถวเดียวบนจอ 1440 และ
- * ล้นสามรอบบนจอ 360 กล่องที่มีปุ่มข้างในพับได้เสมอ เพราะปุ่มคือของที่ซ่อนได้
- * ต่อให้ประโยคจะสั้นแค่ไหน
- *
- * `> 2` ไม่ใช่ `> 0` ด้วยเหตุผลเดียวกับ `Disclosure`: ที่ zoom ส่วนใหญ่ความ
- * กว้างจริงเป็นเศษพิกเซล
- *
- * **หยุดวัดตอนกาง** ตอนนั้น nowrap ถูกถอด ประโยคไหลหลายแถว scrollWidth เท่า
- * clientWidth พอดี ถ้ายังวัดต่อคำตอบจะกลายเป็น "ไม่มีอะไรถูกซ่อน" แล้วลูกศร
- * จะหายไปจากนิ้วที่เพิ่งกดมัน `cut` จึงค้างค่าล่าสุดไว้
- *
- * ── ไม่จำว่าใครพับอะไรไว้ ─────────────────────────────────────────────────
- *
- * ไม่มี `localStorage` ในทางนี้ สั่งไว้ 2026-09-15 และเป็นเหตุผลเดียวกับที่
- * `ot-holiday-fold` ถูกถอดออกไปเมื่อ 2026-09-11: ประกาศที่คนกดปิดครั้งเดียว
- * แล้วหายตลอดไปคือประกาศที่ไม่ได้ประกาศ ทุกครั้งที่เปิดหน้าใหม่ทุกใบพับ และ
- * ทุกใบยังพูดประโยคของมันออกมา
- *
- * `watch` คือเนื้อในของแถว — ส่ง `children` มาก็พอ วัดใหม่เมื่อข้อความเปลี่ยน
- * `ResizeObserver` รับกรณีหน้าต่างเปลี่ยนความกว้าง แต่ข้อความที่ยาวขึ้นในกล่อง
- * ขนาดเดิมไม่ทำให้กล่องเปลี่ยนขนาด จึงไม่มีอะไรไปสะกิดมัน
+ * - แจ้งเตือนที่ค้างบนหน้า = `NoticeRow` ใน `NoticeStack` เสมอ ไม่ว่าหน้านั้นจะมี
+ *   กี่เรื่อง · แถวเรียง ร้ายแรง → ต้องทำ → ควรรู้ ด้วย CSS `order` ผู้เรียกไม่ต้องเรียง
+ * - ซ่อนทั้งกล่องได้ ยกเว้นแถว `error` ที่ซ่อนไม่ได้ · ตอนซ่อนยังเหลือแถบหัวบอก
+ *   ว่าซ่อนไว้กี่เรื่อง จึงไม่ขัดกับกติกา 2026-09-15 ("ประกาศที่
+ *   กดปิดแล้วหายตลอดไปคือประกาศที่ไม่ได้ประกาศ")
+ * - จำการซ่อนไว้ใน `localStorage` ต่อกล่อง พร้อมหัวเรื่องของทุกแถวตอนกดซ่อน ·
+ *   หัวเรื่องเปลี่ยน (174 ใบ → 180 ใบ) หรือมีเรื่องใหม่ = กล่องกลับมาแสดงเอง
+ * - ข้อความใต้ช่องกรอกและในหน้าต่างยืนยันยังเป็น `Alert` · ผลสำเร็จหลังกดปุ่มเป็น toast
  */
-export function useOneLine({ actions = false, of = '', watch } = {}) {
-  const id = React.useId();
-  const [open, setOpen] = React.useState(false);
-  const [cut, setCut] = React.useState(false);
-  const ref = React.useRef(null);
+const NoticeCtx = React.createContext(null);
+const NOTICE_MARK = { error: '!', warn: '!', info: 'i', ok: '✓' };
+const NOTICE_RANK = { error: 0, warn: 1, info: 2, ok: 3 };
 
+export function NoticeStack({ id, children, className = '' }) {
+  const [rows, setRows] = React.useState({});
+  const [stored, setStored] = React.useState(null);
+  const key = `ot-notice-hide:${id}`;
+
+  // อ่านหลัง mount — ฝั่ง server ไม่มี localStorage และ HTML แรกต้องตรงกัน
   React.useEffect(() => {
-    const el = ref.current;
-    if (!el || open) return undefined;
-    const read = () => setCut(el.scrollWidth - el.clientWidth > 2);
-    read();
-    const ro = new ResizeObserver(read);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [open, watch]);
+    try { setStored(window.localStorage.getItem(key)); } catch { /* ไม่มีที่เก็บ = ไม่จำ */ }
+  }, [key]);
 
-  const foldable = cut || actions;
-  const folded = foldable && !open;
-  const toggle = () => setOpen((v) => !v);
-  const label = `${folded ? 'กาง' : 'ย่อ'}ข้อความ${of ? ` — ${of}` : ''}`;
+  const ctx = React.useMemo(() => ({
+    set: (k, info) => setRows((r) => (
+      r[k] && r[k].tone === info.tone && r[k].sig === info.sig ? r : { ...r, [k]: info })),
+    drop: (k) => setRows((r) => {
+      if (!(k in r)) return r;
+      const next = { ...r }; delete next[k]; return next;
+    }),
+  }), []);
 
-  /* ▲/▼ ไม่มี `onClick` ของตัวเอง: Enter หรือ Space บนปุ่มคือคลิกที่ลอยขึ้นไป
-     ถึง `foldClick` บนกล่อง ถ้าใส่ทั้งสองที่จะสลับสองรอบแล้วดูเหมือนไม่ทำงาน */
-  const arrow = foldable ? (
-    <button
-      type="button"
-      className="alert-fold"
-      aria-expanded={!folded}
-      aria-controls={id}
-      aria-label={label}
-      title={label}
-    >
-      {folded ? '▼' : '▲'}
-    </button>
-  ) : null;
+  const all = Object.values(rows).sort((a, b) => NOTICE_RANK[a.tone] - NOTICE_RANK[b.tone]);
+  const hideable = all.filter((r) => r.tone !== 'error');
+  const sig = hideable.map((r) => `${r.tone}:${r.sig}`).sort().join('|');
+  const hidden = !!sig && stored === sig;
 
-  return { id, ref, arrow, folded, foldable, toggle };
+  function toggle() {
+    const next = hidden ? null : sig;
+    setStored(next);
+    try {
+      if (next) window.localStorage.setItem(key, next);
+      else window.localStorage.removeItem(key);
+    } catch { /* ซ่อนได้แค่ในหน้านี้ */ }
+  }
+
+  return (
+    <NoticeCtx.Provider value={ctx}>
+      <div
+        className={`notice-stack no-print${hidden ? ' is-hidden' : ''}${all.length ? '' : ' is-empty'}${className ? ` ${className}` : ''}`}
+        role="region" aria-label="แจ้งเตือน"
+      >
+        {all.length > 0 && (
+          <div className="notice-head">
+            {hidden && (
+              <span className="notice-dots" aria-hidden="true">
+                {hideable.map((r, i) => <span key={i} className={`notice-ic ${r.tone}`}>{NOTICE_MARK[r.tone]}</span>)}
+              </span>
+            )}
+            <span className="notice-count">
+              {hidden ? `ซ่อนแจ้งเตือนไว้ ${hideable.length} เรื่อง` : `แจ้งเตือน ${all.length} เรื่อง`}
+            </span>
+            {hideable.length > 0 && (
+              <button type="button" className="link notice-hide" onClick={toggle} aria-expanded={!hidden}>
+                {hidden ? 'แสดง ▾' : 'ซ่อน ▴'}
+              </button>
+            )}
+          </div>
+        )}
+        {children}
+      </div>
+    </NoticeCtx.Provider>
+  );
 }
 
 /**
- * `Alert` ที่พับเหลือแถวเดียว — สามกล่องบนหน้าแรกใช้ร่วมกัน.
+ * หนึ่งเรื่องในกล่อง: ไอคอน · หัวเรื่อง (มีตัวเลข) · รายละเอียดสั้น · ปุ่มทำต่อ · ▾
  *
- * `actions` คือปุ่มของกล่อง แยกจาก `children` เพราะมันหายตอนพับและประโยคไม่หาย
- * ปุ่มที่ถูก `overflow: hidden` ตัดทิ้งยังอยู่ใน DOM — กดด้วยแท็บไปเจอได้ และ
- * โปรแกรมอ่านจออ่านออก ทั้งที่ตาไม่เห็น การไม่วาดมันเลยจึงเป็นคนละเรื่องกับ
- * การวาดแล้วตัด
+ * จอคอม: แถวเดียว รายละเอียดที่ยาวถูกตัดด้วย … กดแถวหรือ ▾ เพื่ออ่านเต็ม
+ * มือถือ (≤860px): เห็นแค่หัวเรื่อง รายละเอียดและปุ่มอยู่หลัง ▾ — CSS เป็นคนสลับ
+ * ปุ่มทำต่อจึงถูกวาดสองที่ (ในแถว และในส่วนที่กาง) แต่แสดงทีละที่เท่านั้น
  *
- * ประโยคกลับกัน: อยู่ใน DOM ครบทุกคำในทุกสถานะ สิ่งที่ตัดคือภาพ ไม่ใช่ข้อความ
+ * `title` ต้องเป็นประโยคที่บอกเรื่องได้ในตัว — ข้อความของมันคือสิ่งที่กล่องจำไว้
+ * ตอนซ่อน ตัวเลขในหัวเรื่องเปลี่ยนเมื่อไร กล่องก็กลับมาแสดง
  */
-export function AlertFold({
-  kind = 'warn', of = '', actions = null, children,
+export function NoticeRow({
+  tone = 'info', title, detail = null, action = null, more = null, className = '',
 }) {
-  const { id, ref, arrow, folded, toggle } = useOneLine({ actions: !!actions, of, watch: children });
+  const ctx = React.useContext(NoticeCtx);
+  const k = React.useId();
+  const titleRef = React.useRef(null);
+  const [open, setOpen] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    if (!ctx) return;
+    ctx.set(k, { tone, sig: (titleRef.current?.textContent || '').trim() });
+  });
+  React.useLayoutEffect(() => () => ctx?.drop(k), [ctx, k]);
+
+  const foldable = !!(detail || more || action);
+  const flip = () => setOpen((v) => !v);
   return (
-    <Alert kind={kind} onClick={foldClick(folded, toggle)}>
-      <div className="alert-fold-row">
-        <div id={id} ref={ref} className={`alert-fold-text${folded ? ' one-line' : ''}`}>
-          {children}
+    <div className={`notice-row ${tone}${open ? ' open' : ''}${className ? ` ${className}` : ''}`}>
+      <div
+        className="notice-line"
+        onClick={foldable ? (e) => {
+          // ปุ่มและลิงก์ในแถวทำงานของมันเอง · การลากเลือกข้อความไม่ใช่การกด
+          if (e.target.closest('button, a, input, label')) return;
+          if (window.getSelection?.().toString()) return;
+          flip();
+        } : undefined}
+      >
+        <span className={`notice-ic ${tone}`} aria-hidden="true">{NOTICE_MARK[tone]}</span>
+        <div className="notice-text">
+          <strong ref={titleRef} className="notice-title">{title}</strong>
+          {detail && <span className="notice-detail">{detail}</span>}
         </div>
-        {arrow}
+        {(action || foldable) && (
+          <div className="notice-acts">
+            {action && <span className="notice-act">{action}</span>}
+            {foldable && (
+              <button
+                type="button" className={`link notice-tg${more ? '' : ' phone-only'}`}
+                onClick={flip} aria-expanded={open}
+                aria-label={open ? 'ซ่อนรายละเอียด' : 'ดูรายละเอียด'}
+              >
+                <span className="notice-tg-text">{open ? 'ซ่อนรายละเอียด ▴' : 'ดูรายละเอียด ▾'}</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
-      {/* `.alert-actions` ของเดิม — แถวปุ่มใต้ประโยคที่ AdminView ใช้อยู่แล้ว
-          ระยะห่างและการ wrap จึงเป็นค่าเดียวกันทั้งแอป ไม่ใช่สองค่าที่ค่อยๆ
-          เพี้ยนจากกัน */}
-      {actions && !folded && <div className="alert-actions">{actions}</div>}
-    </Alert>
+      {open && (detail || more || action) && (
+        <div className="notice-body">
+          {detail && <div className="notice-body-detail">{detail}</div>}
+          {more}
+          {action && <div className="notice-body-act">{action}</div>}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -336,31 +382,35 @@ export function AlertFold({
  * reports to each other — all of them short by the same amount.
  *
  * So the count comes out of the report itself (`unaccounted`) and is printed
- * here rather than inferred. `kind="error"` and not the amber the other two
+ * here rather than inferred. `tone="error"` and not the amber the other two
  * notices use: a backlog means the month is not finished, which is ordinary,
  * and a superseded filing means the system did its job. This means hours exist
  * that nobody can see, which is a database inconsistency and not a workflow
- * state.
+ * state — and an error row is the one a `NoticeStack` will not let anyone hide.
  *
- * `no-print` on every screen that uses it. It is a message to whoever is
- * holding the screen, not a line on a sheet accounting files — and a sheet
- * printed while this is showing is a sheet that should not be filed at all.
+ * 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): เคยเป็น `.box error no-print` ของมันเอง
+ * ตอนนี้เป็น `NoticeRow` แถวหนึ่งในกล่องแจ้งเตือนของหน้าที่เรียก — ผู้เรียกต้อง
+ * วางมันไว้ใน `NoticeStack` · ตารางรหัสใบย้ายไปอยู่หลัง ▾ (`more`) · พร็อพ `hint`
+ * ถูกถอด เพราะไม่มีผู้เรียกคนไหนปิดมัน
+ *
+ * Screen only, on every screen that uses it — `NoticeStack` is `no-print`. It
+ * is a message to whoever is holding the screen, not a line on a sheet
+ * accounting files — and a sheet printed while this is showing is a sheet that
+ * should not be filed at all.
  */
-export function UnaccountedHours({ unaccounted, hint = true }) {
+export function UnaccountedHours({ unaccounted }) {
   // Above the early return: a hook is called on every render or on none.
   const more = useShowMore(unaccounted?.entries);
   if (!unaccounted?.count) return null;
 
+  const cell = { padding: '2px 10px 2px 0' };
   return (
-    <div className="box error no-print">
-      <strong>
-        มี {unaccounted.count} ใบ ({hours(unaccounted.hours)} ชม.) ที่ไม่ถูกนับในสรุปนี้
-      </strong>
-      {' '}— ใบเหล่านี้อ้างถึงพนักงานที่หาไม่พบในระบบ จึงไม่มีแถวให้ลง
-      {hint && (
+    <NoticeRow
+      tone="error"
+      title={<>{unaccounted.count} ใบ ({hours(unaccounted.hours)} ชม.) ไม่ถูกนับในสรุปนี้</>}
+      detail="ใบอ้างถึงพนักงานที่หาไม่พบในระบบ ยอดรวมทุกช่องจึงขาดไปเท่านี้ ทั้งที่ตัวเลขยังตรงกันเอง · อย่าเพิ่งส่งบัญชี"
+      more={(
         <div className="say">
-          ยอดรวมทุกช่องในใบนี้จะ<strong>ขาดไปเท่าจำนวนนั้น</strong> ทั้งที่ตัวเลขทุกตัวยังตรงกันเอง
-          {' '}· อย่าเพิ่งส่งบัญชี
           {/*
             Said outright, because the alternative is worse than saying
             nothing. There is no screen in this system that can re-point an
@@ -370,10 +420,10 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
             looking for a button that does not exist, and a warning that cannot
             be acted on is one that gets dismissed by the second month.
           */}
-          <div style={{ marginTop: 4 }}>
+          <div>
             <strong>แก้ในหน้าจอไม่ได้</strong> — ใบ OT ผูกกับพนักงานตอนยื่นครั้งเดียว
-            {' '}ไม่มีหน้าไหนเปลี่ยนเจ้าของใบได้ ต้องให้ผู้ดูแลระบบแก้ที่ฐานข้อมูล
-            {' '}· ชื่อผู้ยื่นด้านล่างมาจากประวัติในใบเอง จึงยังอ่านได้แม้ทะเบียนพนักงานจะหายไปแล้ว
+            {' '}ต้องให้ผู้ดูแลระบบแก้ที่ฐานข้อมูล
+            {' '}· ชื่อผู้ยื่นมาจากประวัติในใบเอง จึงยังอ่านได้แม้ทะเบียนพนักงานหายไปแล้ว
           </div>
           {/*
             What to hand the person who does that. `employeeId` is the dangling
@@ -387,7 +437,7 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
               <thead>
                 <tr>
                   {['ผู้ยื่น (จากประวัติใบ)', 'วันที่', 'แผนก', 'ชม.', 'รหัสใบ (_id)', 'อ้างถึงรหัสภายใน'].map((h) => (
-                    <th key={h} style={{ textAlign: 'left', padding: '2px 10px 2px 0', fontWeight: 600 }}>
+                    <th key={h} style={{ ...cell, textAlign: 'left', fontWeight: 600 }}>
                       {h}
                     </th>
                   ))}
@@ -400,16 +450,12 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
                         without opening the database. The name is a copy taken
                         when the request was filed, so it survives the employee
                         record going missing. */}
-                    <td style={{ padding: '2px 10px 2px 0' }}>
-                      <strong>{e.filedBy?.name || '—'}</strong>
-                    </td>
-                    <td style={{ padding: '2px 10px 2px 0' }}>{e.workDate || '—'}</td>
-                    <td style={{ padding: '2px 10px 2px 0' }}>{e.department || '—'}</td>
-                    <td style={{ padding: '2px 10px 2px 0' }}>{hours(e.otHours)}</td>
-                    <td style={{ padding: '2px 10px 2px 0', fontFamily: 'monospace' }}>{e.id}</td>
-                    <td style={{ padding: '2px 10px 2px 0', fontFamily: 'monospace' }}>
-                      {e.employeeId || '—'}
-                    </td>
+                    <td style={cell}><strong>{e.filedBy?.name || '—'}</strong></td>
+                    <td style={cell}>{e.workDate || '—'}</td>
+                    <td style={cell}>{e.department || '—'}</td>
+                    <td style={cell}>{hours(e.otHours)}</td>
+                    <td style={{ ...cell, fontFamily: 'monospace' }}>{e.id}</td>
+                    <td style={{ ...cell, fontFamily: 'monospace' }}>{e.employeeId || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -418,7 +464,7 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
           {more.controls}
         </div>
       )}
-    </div>
+    />
   );
 }
 
@@ -3342,9 +3388,9 @@ export function PrintChrome({
  * it is a component rather than markup in both files is that the two copies
  * have to keep saying the same thing: a sheet sent to accounting is read as the
  * month, and if these rows are missing from it the figure is short by however
- * many hours they are. It sits above the paper and never on it (`no-print`) —
- * the sheet is the form, and a warning printed into it would be a different
- * document.
+ * many hours they are. It sits above the paper and never on it (a row in a
+ * `NoticeStack`, which is `no-print`) — the sheet is the form, and a warning
+ * printed into it would be a different document.
  *
  * NOT the same notice as `FormNotices` on F-HR-027 (components/PrintForm.jsx),
  * which reports pending rows that ARE counted. Opposite meaning, so deliberately
@@ -3357,14 +3403,13 @@ export function PrintChrome({
 export function PendingNotice({ count }) {
   if (!count) return null;
 
+  // 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): เคยเป็นแถบ `.print-warn` ของมันเอง
+  // ตอนนี้เป็นแถว warn ในกล่องแจ้งเตือนของหน้าพิมพ์ — ผู้เรียกวางไว้ใน `NoticeStack`
   return (
-    <div className="print-warn no-print">
-      {/* Decoration, not information: the sentence beside it already says
-          ค้างอนุมัติ, and a screen reader announcing “warning sign” before it
-          adds a word, not a fact. */}
-      <span className="print-warn-mark" aria-hidden="true">⚠️</span>
-      <span>มีรายการค้างอนุมัติ {count} รายการ (จะไม่ถูกนับรวมในใบนี้)</span>
-    </div>
+    <NoticeRow
+      tone="warn"
+      title={`ค้างอนุมัติ ${count} รายการ ไม่ถูกนับรวมในใบนี้`}
+    />
   );
 }
 
