@@ -191,6 +191,24 @@ function Overview({ onOpenTab, onFilter }) {
 
   return (
     <>
+      {/* แจ้งเตือนอยู่บนสุดของหน้า เหนือการ์ด — แบบหน้าบันทึก OT (สั่งไว้ 2026-10-08) */}
+      {/* ⚠ THE FIGURE WAS NOT BOLD, AND THE SENTENCE RAN FOUR CLAUSES —
+          until 2026-09-14. One deck all along, so nothing moved between
+          decks here: what กอง ก's answer cost this notice is two words of
+          throat-clearing (มีการ, ตรวจสอบ→ดู) and two negations spelt the
+          long way (ไม่ได้ล็อก→ไม่ล็อก, จะหน่วง→หน่วง). The count is the
+          headline now, which is what the other seven banners in that group
+          do and what this one was doing in prose.
+          แถวหนึ่งใน `NoticeStack` ตั้งแต่ 2026-10-08 — ระบบแจ้งเตือนเดียวทั้งแอป */}
+      <NoticeStack id="log-login">
+        {noisyLogins && (
+          <NoticeRow
+            tone="warn"
+            title={`เข้าสู่ระบบไม่สำเร็จ ${data.failedLogins} ครั้งใน ${data.windowDays} วันที่ผ่านมา`}
+            detail="ดู “รหัสที่ถูกลองแล้วไม่ผ่าน” ด้านล่าง · ระบบไม่ล็อกบัญชี แต่หน่วงเวลา"
+          />
+        )}
+      </NoticeStack>
       <div className="card">
         <h2>ภาพรวม {data.windowDays} วันล่าสุด</h2>
 
@@ -247,23 +265,6 @@ function Overview({ onOpenTab, onFilter }) {
           />
         </div>
 
-        {/* ⚠ THE FIGURE WAS NOT BOLD, AND THE SENTENCE RAN FOUR CLAUSES —
-            until 2026-09-14. One deck all along, so nothing moved between
-            decks here: what กอง ก's answer cost this notice is two words of
-            throat-clearing (มีการ, ตรวจสอบ→ดู) and two negations spelt the
-            long way (ไม่ได้ล็อก→ไม่ล็อก, จะหน่วง→หน่วง). The count is the
-            headline now, which is what the other seven banners in that group
-            do and what this one was doing in prose.
-            แถวหนึ่งใน `NoticeStack` ตั้งแต่ 2026-10-08 — ระบบแจ้งเตือนเดียวทั้งแอป */}
-        <NoticeStack id="log-login">
-          {noisyLogins && (
-            <NoticeRow
-              tone="warn"
-              title={`เข้าสู่ระบบไม่สำเร็จ ${data.failedLogins} ครั้งใน ${data.windowDays} วันที่ผ่านมา`}
-              detail="ดู “รหัสที่ถูกลองแล้วไม่ผ่าน” ด้านล่าง · ระบบไม่ล็อกบัญชี แต่หน่วงเวลา"
-            />
-          )}
-        </NoticeStack>
       </div>
 
       <div className="card">
@@ -589,6 +590,25 @@ function Compliance() {
   const shown = all.slice(win.from, win.to);
 
   return (
+    <>
+    {/* แจ้งเตือนอยู่บนสุดของหน้า เหนือการ์ด — แบบหน้าบันทึก OT (สั่งไว้ 2026-10-08) */}
+    {/* ระบบแจ้งเตือนเดียวทั้งแอป (2026-10-08): ข้อผิดพลาดตอนโหลดกับแถว
+        “ไม่มีเหตุผล” อยู่ในกล่องเดียวกันเหนือตาราง
+        A row with no reason on it is a finding, and it is stated before the
+        table rather than left to be spotted while scrolling one. Four of the
+        six kinds cannot be performed without a reason, so this is normally
+        zero. */}
+    <NoticeStack id="log-exceptions">
+      {error && <NoticeRow tone="error" title={error} />}
+      {data?.withoutReason > 0 && (
+        <NoticeRow
+          tone="warn"
+          title={`${data.withoutReason} รายการไม่มีเหตุผลบันทึกไว้`}
+          detail="อาจเกิดก่อนระบบบังคับให้ระบุเหตุผล หรือเป็นประเภทที่ไม่บังคับ"
+          more="ประเภทที่ไม่บังคับ: ตั้งรหัสผ่านใหม่ · เซ็นแทนหัวหน้าจากสคริปต์"
+        />
+      )}
+    </NoticeStack>
     <div className="card">
       {/* `.form-head` and the 17px circle are the app's own — the same control
           บันทึก OT แทนพนักงาน puts beside its heading, with the `i` glyph
@@ -669,23 +689,6 @@ function Compliance() {
         />
       </div>
 
-      {/* ระบบแจ้งเตือนเดียวทั้งแอป (2026-10-08): ข้อผิดพลาดตอนโหลดกับแถว
-          “ไม่มีเหตุผล” อยู่ในกล่องเดียวกันเหนือตาราง
-          A row with no reason on it is a finding, and it is stated before the
-          table rather than left to be spotted while scrolling one. Four of the
-          six kinds cannot be performed without a reason, so this is normally
-          zero. */}
-      <NoticeStack id="log-exceptions">
-        {error && <NoticeRow tone="error" title={error} />}
-        {data?.withoutReason > 0 && (
-          <NoticeRow
-            tone="warn"
-            title={`${data.withoutReason} รายการไม่มีเหตุผลบันทึกไว้`}
-            detail="อาจเกิดก่อนระบบบังคับให้ระบุเหตุผล หรือเป็นประเภทที่ไม่บังคับ"
-            more="ประเภทที่ไม่บังคับ: ตั้งรหัสผ่านใหม่ · เซ็นแทนหัวหน้าจากสคริปต์"
-          />
-        )}
-      </NoticeStack>
       {!data && !error && <Empty>กำลังโหลด…</Empty>}
 
       {/* A quarter with no exceptions is the ordinary outcome and has to READ
@@ -780,6 +783,7 @@ function Compliance() {
         </>
       )}
     </div>
+    </>
   );
 }
 

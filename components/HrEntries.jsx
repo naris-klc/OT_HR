@@ -579,6 +579,37 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
   }
 
   return (
+    <>
+    {/* แจ้งเตือนอยู่บนสุดของหน้า เหนือการ์ด — แบบหน้าบันทึก OT (สั่งไว้ 2026-10-08) */}
+    {/* THE NOTICE SLOT — one place under the employee's name, whether or
+        not there is anything to put in it.
+
+        Most months have no policy warning, so this element is empty on
+        most people, and until 2026-08-26 that meant the first thing under
+        the heading sat 12px down on the months that DID have one and 16px
+        down on the months that did not. Four pixels is not the point: the
+        point is that HR read this screen one employee after another, and
+        the block under the heading moving between them is a difference the
+        eye reports as "something changed" every single time.
+
+        The wrapper carries no margin of its own and the notice inside it
+        carries 16 — the same figure `.scan-row` takes — so an empty slot is
+        zero pixels tall and contributes nothing, and a full one puts the
+        bar exactly as far below the banner as the banner is below the
+        heading. NOT a reserved height: the banner is two lines on one month
+        and four on another, so there is no one number to hold open, and
+        holding open the tallest would put a void under the name of every
+        ordinary employee to spare the eye a jump it only sees when moving
+        between two people.
+
+        `onGoMonthly` is `onClose`: the screen the warning names is the screen
+        this one was opened from, so leaving is arriving. Passed rather than
+        wired inside the banner, because `MonthAlerts` draws the same notice
+        ON ตรวจสอบรายเดือน and a link back to where you already are is
+        worse than no link — it passes nothing and gets a plain sentence. */}
+    <NoticeStack id="entries">
+      <PolicyVersionBanner spread={spread} onGoMonthly={onClose} />
+    </NoticeStack>
     <div className="card">
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
@@ -607,35 +638,6 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
         <Empty>ไม่มีรายการในเดือนนี้</Empty>
       ) : (
         <>
-        {/* THE NOTICE SLOT — one place under the employee's name, whether or
-            not there is anything to put in it.
-
-            Most months have no policy warning, so this element is empty on
-            most people, and until 2026-08-26 that meant the first thing under
-            the heading sat 12px down on the months that DID have one and 16px
-            down on the months that did not. Four pixels is not the point: the
-            point is that HR read this screen one employee after another, and
-            the block under the heading moving between them is a difference the
-            eye reports as "something changed" every single time.
-
-            The wrapper carries no margin of its own and the notice inside it
-            carries 16 — the same figure `.scan-row` takes — so an empty slot is
-            zero pixels tall and contributes nothing, and a full one puts the
-            bar exactly as far below the banner as the banner is below the
-            heading. NOT a reserved height: the banner is two lines on one month
-            and four on another, so there is no one number to hold open, and
-            holding open the tallest would put a void under the name of every
-            ordinary employee to spare the eye a jump it only sees when moving
-            between two people.
-
-            `onGoMonthly` is `onClose`: the screen the warning names is the screen
-            this one was opened from, so leaving is arriving. Passed rather than
-            wired inside the banner, because `MonthAlerts` draws the same notice
-            ON ตรวจสอบรายเดือน and a link back to where you already are is
-            worse than no link — it passes nothing and gets a plain sentence. */}
-        <NoticeStack id="entries" className="entry-notice">
-          <PolicyVersionBanner spread={spread} onGoMonthly={onClose} />
-        </NoticeStack>
 
         {/* WHAT THE CHIPS IN THE จาก–ถึง COLUMN MEAN, said BEFORE the reader
             meets one — and, more importantly, said on a month that has no chips
@@ -1294,5 +1296,6 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
         />
       )}
     </div>
+    </>
   );
 }

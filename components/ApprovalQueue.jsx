@@ -1156,6 +1156,81 @@ export default function ApprovalQueue({
 
   return (
     <>
+    {/* แจ้งเตือนอยู่บนสุดของหน้า เหนือการ์ด — แบบหน้าบันทึก OT (สั่งไว้ 2026-10-08) */}
+    {/* Directly under the heading, in the same gutter the error alerts below
+        use — it is about the rules every figure on this card was computed
+        under, so it is read before the rows and not alongside one of them.
+        Renders nothing unless the rules have drifted. */}
+    {/* กล่องแจ้งเตือนของคิว — ระบบเดียวทั้งแอป (2026-10-08) */}
+    <NoticeStack id="queue">
+      <PolicyDriftBanner user={user} onOpenPolicy={onOpenPolicy} />
+
+    {/*
+      Standing in for somebody, said once at the top with the dates on it.
+      A stand-in whose window shut yesterday and a stand-in who never had one
+      both see the same queue — their own — and the only difference is what
+      is missing from it, which is not something anybody notices. Naming the
+      window while it is open is what makes its closing legible.
+    */}
+    {holding.length > 0 && (
+      <>
+        {/* ── ONE SENTENCE SINCE 2026-09-18, AND IT IS THE DATES ──────────
+            It ran to four clauses: who handed the queue over and until when ·
+            how many of the rows below are theirs · that an approval is
+            recorded as ทำแทน (`DELEGATED_APPROVAL_RECORDED`) · and that the
+            real หัวหน้า may still sign at any time.
+
+            Three of those moved into the row's own pop-up with the merge of
+            the three approval queues, and the reason is where each one is
+            READ. The count is on every row already, as the green ป้าย; the
+            other two are things somebody needs at the moment they are about
+            to press a button, which is inside the pop-up and not on a notice
+            they scrolled past. The pop-up is also what a phone can read —
+            this notice has no hover and neither does a `title`.
+
+            WHAT COULD NOT MOVE IS THE WINDOW. A stand-in whose window shut
+            yesterday and one who never had a queue both see the same screen,
+            and the only difference is what is missing from it. Naming the
+            dates while they are open is what makes their closing legible, and
+            no row can carry that: it is a fact about the reader. */}
+        <NoticeRow
+          tone="info"
+          title={`รับช่วงอนุมัติแทน ${holding.map((d) => `${d.from?.name} ถึง ${thaiDate(d.toDate)}`).join(' · ')}`}
+        />
+      </>
+    )}
+
+    {/*
+      ABOVE the filter bar, because it is about the filter bar as much as the
+      table: every dropdown below is built from the rows that arrived, so a
+      cut list is one whose แผนก and เดือน options are themselves incomplete.
+      Read before the filters are trusted, not after.
+
+      `kind="error"` and not the amber the notices around it use. A backlog is
+      ordinary and a policy drift is a question; this says the number on the
+      badge and the number of rows on screen are different, which is the one
+      state where a reviewer can finish the queue and be wrong about it.
+    */}
+    {cut && (
+      <NoticeRow
+        tone="error"
+        title={`แสดง ${cut.shown} จาก ${cut.total} รายการ`}
+        detail="รายการที่ไม่ได้แสดงคือใบที่ค้างนานที่สุด และตัวกรองด้านล่างเห็นเฉพาะรายการที่แสดงอยู่ · คิวยาวเกินกว่าจะโหลดในครั้งเดียว — ทยอยอนุมัติแล้วรายการที่เหลือจะขึ้นมาเอง"
+      />
+    )}
+    {/*
+      The month and department dropdowns are NOT offered as a way out
+      of this. They filter the rows already in hand, so narrowing one
+      cannot bring a hidden row back — telling somebody to "เลือกเดือน
+      ให้แคบลง" here would be advice that quietly does nothing. Working
+      the queue down is the only answer left.
+
+      ⚠ IT ENDED IN A โหลดทั้งหมด LINK UNTIL 2026-10-08, shown while the
+      list in hand was under `MAX_LIST_LIMIT`. Every load asks for that
+      maximum now (see `cut`), so this notice only appears when the
+      server has nothing more to give and the link had nothing to do.
+    */}
+    </NoticeStack>
     <div className="card flush">
       <div className="card-head">
         <div>
@@ -1275,81 +1350,6 @@ export default function ApprovalQueue({
           )}
         </div>
       </div>
-
-      {/* Directly under the heading, in the same gutter the error alerts below
-          use — it is about the rules every figure on this card was computed
-          under, so it is read before the rows and not alongside one of them.
-          Renders nothing unless the rules have drifted. */}
-      {/* กล่องแจ้งเตือนของคิว — ระบบเดียวทั้งแอป (2026-10-08) */}
-      <NoticeStack id="queue">
-        <PolicyDriftBanner user={user} onOpenPolicy={onOpenPolicy} />
-
-      {/*
-        Standing in for somebody, said once at the top with the dates on it.
-        A stand-in whose window shut yesterday and a stand-in who never had one
-        both see the same queue — their own — and the only difference is what
-        is missing from it, which is not something anybody notices. Naming the
-        window while it is open is what makes its closing legible.
-      */}
-      {holding.length > 0 && (
-        <>
-          {/* ── ONE SENTENCE SINCE 2026-09-18, AND IT IS THE DATES ──────────
-              It ran to four clauses: who handed the queue over and until when ·
-              how many of the rows below are theirs · that an approval is
-              recorded as ทำแทน (`DELEGATED_APPROVAL_RECORDED`) · and that the
-              real หัวหน้า may still sign at any time.
-
-              Three of those moved into the row's own pop-up with the merge of
-              the three approval queues, and the reason is where each one is
-              READ. The count is on every row already, as the green ป้าย; the
-              other two are things somebody needs at the moment they are about
-              to press a button, which is inside the pop-up and not on a notice
-              they scrolled past. The pop-up is also what a phone can read —
-              this notice has no hover and neither does a `title`.
-
-              WHAT COULD NOT MOVE IS THE WINDOW. A stand-in whose window shut
-              yesterday and one who never had a queue both see the same screen,
-              and the only difference is what is missing from it. Naming the
-              dates while they are open is what makes their closing legible, and
-              no row can carry that: it is a fact about the reader. */}
-          <NoticeRow
-            tone="info"
-            title={`รับช่วงอนุมัติแทน ${holding.map((d) => `${d.from?.name} ถึง ${thaiDate(d.toDate)}`).join(' · ')}`}
-          />
-        </>
-      )}
-
-      {/*
-        ABOVE the filter bar, because it is about the filter bar as much as the
-        table: every dropdown below is built from the rows that arrived, so a
-        cut list is one whose แผนก and เดือน options are themselves incomplete.
-        Read before the filters are trusted, not after.
-
-        `kind="error"` and not the amber the notices around it use. A backlog is
-        ordinary and a policy drift is a question; this says the number on the
-        badge and the number of rows on screen are different, which is the one
-        state where a reviewer can finish the queue and be wrong about it.
-      */}
-      {cut && (
-        <NoticeRow
-          tone="error"
-          title={`แสดง ${cut.shown} จาก ${cut.total} รายการ`}
-          detail="รายการที่ไม่ได้แสดงคือใบที่ค้างนานที่สุด และตัวกรองด้านล่างเห็นเฉพาะรายการที่แสดงอยู่ · คิวยาวเกินกว่าจะโหลดในครั้งเดียว — ทยอยอนุมัติแล้วรายการที่เหลือจะขึ้นมาเอง"
-        />
-      )}
-      {/*
-        The month and department dropdowns are NOT offered as a way out
-        of this. They filter the rows already in hand, so narrowing one
-        cannot bring a hidden row back — telling somebody to "เลือกเดือน
-        ให้แคบลง" here would be advice that quietly does nothing. Working
-        the queue down is the only answer left.
-
-        ⚠ IT ENDED IN A โหลดทั้งหมด LINK UNTIL 2026-10-08, shown while the
-        list in hand was under `MAX_LIST_LIMIT`. Every load asks for that
-        maximum now (see `cut`), so this notice only appears when the
-        server has nothing more to give and the link had nothing to do.
-      */}
-      </NoticeStack>
 
       {/* ── filter bar ─────────────────────────────────────────────────────── */}
       {/*

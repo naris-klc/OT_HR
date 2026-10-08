@@ -108,6 +108,26 @@ export default function DepartmentView() {
           (*"ตอนนี้แต่ละหน้าใช้ ui สไตล์ไม่สม่ำเสมอกันเลย"*, 2026-09-10) and for
           why `.head-split` and `.action-row` left the app rather than being
           balanced one more time. */}
+      {/* แจ้งเตือนอยู่บนสุดของหน้า เหนือการ์ด — แบบหน้าบันทึก OT (สั่งไว้ 2026-10-08) */}
+      {/* 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): เรื่องที่ค้างบนหน้านี้เป็นแถวใน
+          กล่องแจ้งเตือนกล่องเดียว แทนกล่องแยกที่ซ้อนกัน */}
+      <NoticeStack id="department">
+        {error && <NoticeRow tone="error" title={error} />}
+
+        {/* Same report, same shortfall: this sheet regroups the very rows สรุป
+            OT ส่งบัญชี prints, so an entry that reached no row there reaches
+            none here either — and every department total is short with nothing
+            on the page saying so. */}
+        <UnaccountedHours unaccounted={data?.unaccounted} />
+
+        {data?.pending?.count > 0 && (
+          <NoticeRow
+            tone="warn"
+            title={`เดือนนี้ค้างอนุมัติ ${data.pending.count} รายการ (${hours(data.pending.hours)} ชม.) ไม่ถูกนับในสรุปนี้`}
+            detail={`ของพนักงาน ${data.pending.employees} คน · ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนสรุปแผนก`}
+          />
+        )}
+      </NoticeStack>
       <div className="card flush no-print">
         <div className="card-head">
           <div style={{ minWidth: 0 }}>
@@ -165,28 +185,6 @@ export default function DepartmentView() {
             />
           </div>
         </div>
-
-        {/* ในการ์ด ระหว่างหัวการ์ดกับแถบตัวกรอง — ที่เดียวกับ ตรวจสอบประจำเดือน
-            และ รออนุมัติ OT (ขอมา 2026-10-08) · เคยลอยอยู่ใต้การ์ด */}
-        {/* 2026-10-08 (ระบบแจ้งเตือนเดียวทั้งแอป): เรื่องที่ค้างบนหน้านี้เป็นแถวใน
-            กล่องแจ้งเตือนกล่องเดียว แทนกล่องแยกที่ซ้อนกัน */}
-        <NoticeStack id="department">
-          {error && <NoticeRow tone="error" title={error} />}
-
-          {/* Same report, same shortfall: this sheet regroups the very rows สรุป
-              OT ส่งบัญชี prints, so an entry that reached no row there reaches
-              none here either — and every department total is short with nothing
-              on the page saying so. */}
-          <UnaccountedHours unaccounted={data?.unaccounted} />
-
-          {data?.pending?.count > 0 && (
-            <NoticeRow
-              tone="warn"
-              title={`เดือนนี้ค้างอนุมัติ ${data.pending.count} รายการ (${hours(data.pending.hours)} ชม.) ไม่ถูกนับในสรุปนี้`}
-              detail={`ของพนักงาน ${data.pending.employees} คน · ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนสรุปแผนก`}
-            />
-          )}
-        </NoticeStack>
 
         <div className="queue-tools">
           {/* แผนก then ประจำเดือน, in that order and in one place, the way

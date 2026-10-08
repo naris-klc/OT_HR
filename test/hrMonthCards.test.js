@@ -681,14 +681,17 @@ test('the panel is above the marks it explains, which one of them once only clai
   // notices are a section of the panel now, not four blocks stacked on top of
   // it. `.month-head` is still the phone block's handle on the padding; see the
   // ledger over `.month-head` in app/styles.css.
+  /* ⚠ "INSIDE THE CARD" UNTIL 2026-10-08 — that day every page's notices moved
+     to the top of the page, above the card (*"ย้ายแบนเนอร์การแจ้งเตือนทั้ง App
+     เอาไว้ส่วนบนสุด"*). The property that matters — read before the table —
+     holds either way. */
   assert.ok(
-    strip > hrView.indexOf('<div className="month-head">'),
-    'the panel floated back out above the card',
+    strip < hrView.indexOf('<div className="card flush month-panel">'),
+    'the notices went back inside the card',
   );
   // ⚠ AND `<ExportMenu` IS NOW ABOVE IT, which this asserted the reverse of.
   // The head is a title and the card's verbs; the band under it is what a reader
   // checks before pressing one. Reading order down the card is unchanged.
-  assert.ok(strip > hrView.indexOf('<ExportMenu'), 'the head and the notices swapped back');
   // …and it can only be up there because it names the month itself; the assert
   // for that is in the first test in this group.
   assert.match(hrView, /\{data && \(\s*<MonthAlerts/);
