@@ -158,8 +158,15 @@ compose ผูก `./backups` ของ repo เข้ากับ `/app/backups
 0 2 * * * PATH=/home/app_sales/.nvm/versions/node/v22.23.2/bin:/usr/bin:/bin /bin/sh /home/app_sales/primus-ot/scripts/backup.sh /home/app_sales/primus-ot/backups 30 >/dev/null 2>&1
 ```
 
-- `PATH` ต้องใส่เอง — cron ไม่โหลด nvm และหา `npm` ไม่เจอ **อัปเกรด node เมื่อไหร่
-  ต้องแก้เลขเวอร์ชันในบรรทัดนี้ด้วย** ไม่อย่างนั้นงานจะล้มเงียบ ๆ จนแบนเนอร์ขึ้น
+> 🔴 **อัปเกรด node บนเครื่องนี้เมื่อไหร่ ต้องแก้ crontab ด้วย** — เลขเวอร์ชัน
+> `v22.23.2` ใน `PATH` ข้างบนเขียนตายตัว เพราะ cron ไม่โหลด nvm และหา `npm` เองไม่เจอ
+> ถ้าลืม งานจะล้มทุกคืนโดยไม่มีอะไรเตือน จนแบนเนอร์ขึ้นในอีก 24 ชั่วโมง
+>
+> ```bash
+> crontab -e                    # แก้ v22.23.2 เป็นเวอร์ชันใหม่ (ดูจาก `which node`)
+> tail backups/backup.log       # เช้าวันถัดไป บรรทัดล่าสุดต้องเป็น "สำเร็จ" ตอนตีสอง
+> ```
+
 - เรียกผ่าน `/bin/sh` เพราะ `scripts/backup.sh` ใน repo ไม่มีบิต execute
 - ผลแต่ละรอบอยู่ใน `backups/backup.log`
 - ลง crontab ของ `app_sales` แล้วเมื่อ 2026-10-08
