@@ -15933,13 +15933,20 @@ table.mini tbody tr:hover { background: none; }
    usual inset one. Only the second half keeps the calendar glyph — two of them
    side by side said the same thing twice. The focus ring is the frame's, drawn
    while either half is open. */
-.queue-tools .field.daterange { flex: 1.4 1 230px; }
-/* THE LOG'S BAR HOLDS FIVE BOXES AND MUST STAY ONE ROW at the widths of a
-   desktop card. The bar's own bases (300 + 3 × 200 + this one) add up to more
-   than the card, so the last box wrapped onto a line of its own — measured on
-   the screenshot of 2026-10-08. Smaller bases here, same proportions. */
-.queue-tools.log-tools .field.search { flex: 2 1 200px; }
-.queue-tools.log-tools .field:not(.search):not(.daterange) { flex: 1 1 150px; }
+/* ABOVE THE PHONE BLOCK ONLY (861px up): inside it `.queue-tools .field` is
+   `flex: 1 1 100%`, and these selectors are more specific, so unguarded they
+   would keep the phone's boxes at their desktop bases. `max-width` on the range
+   box because on a two-item bar (การใช้สิทธิ์พิเศษ) it grew across the whole
+   card — reported 2026-10-08 as *"หน้านี้มันกว้างเกินไป"*. */
+@media screen and (min-width: 861px) {
+  .queue-tools .field.daterange { flex: 1.4 1 230px; max-width: 360px; }
+  /* THE LOG'S BAR HOLDS FIVE BOXES AND MUST STAY ONE ROW at the widths of a
+     desktop card. The bar's own bases (300 + 3 × 200 + this one) add up to more
+     than the card, so the last box wrapped onto a line of its own. Smaller
+     bases here, same proportions. */
+  .queue-tools.log-tools .field.search { flex: 2 1 200px; }
+  .queue-tools.log-tools .field:not(.search):not(.daterange) { flex: 1 1 150px; }
+}
 /* Left-aligned like every other value; the button default centres a placeholder. */
 .range-pair .pick-box, .range-pair .pick-box .val { text-align: left; }
 .range-pair {
