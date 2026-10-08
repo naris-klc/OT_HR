@@ -8890,7 +8890,9 @@ tbody tr:hover { background: var(--green-wash); }
   background: var(--neutral-wash); color: var(--ink-2);
 }
 .policy-example-head { font: 600 12.5px/1.5 var(--sans); color: var(--ink); }
-.policy-example-line { font: 400 12.5px/1.55 var(--mono); }
+/* SANS WITH TABULAR FIGURES, NOT --mono: these lines are Thai sentences with
+   numbers in them, and IBM Plex Mono carries no Thai glyph. */
+.policy-example-line { font: 400 12.5px/1.55 var(--sans); font-variant-numeric: tabular-nums; }
 
 /* The explanation, under the question rather than beside the control: it
    explains what is being asked, and the answer to it is opposite. */
