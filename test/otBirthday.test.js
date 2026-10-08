@@ -17,8 +17,9 @@ import { formDayTypes } from '../lib/reports.js';
 import { ARITHMETIC_KEYS, COSMETIC_KEYS, sameArithmetic } from '../lib/policyVersion.js';
 
 /**
- * วันเกิดพนักงานเป็นวันหยุด "เฉพาะคนนั้น" — และตั้งแต่ 2026-09-08 คิดอัตราตาม
- * จำนวนชั่วโมงที่ทำ ไม่ใช่ตามนาฬิกา: 8 ชม. แรก ×1.5 หลังจากนั้น ×3.
+ * วันเกิดพนักงานเป็นวันหยุด "เฉพาะคนนั้น" — ตั้งแต่ 2026-10-08 แบ่งช่องด้วย
+ * นาฬิกา: 8 ชม. แรกในช่วง 08:00–17:00 ×1.5 นอกนั้นและส่วนที่เกิน 8 ชม. ×3
+ * (2026-09-08 ถึง 2026-10-08 เคยนับ 8 ชม. แรกที่ "ทำ" ไม่ดูนาฬิกา).
  *
  * Every test here is pure — a session, a policy, a birthDate and a holiday list
  * in; buckets out. That is the whole reason day types are resolved by the
@@ -70,28 +71,25 @@ test('วันเกิดตรงวันอังคาร — 08:00–17:0
 });
 
 /**
- * นาฬิกาไม่ได้ตัดสินอีกแล้ว — จำนวนชั่วโมงที่ทำต่างหาก.
+ * นาฬิกาตัดสิน — ตั้งแต่ 2026-10-08.
  *
- * เคสนี้เคยชื่อ "ก่อน 08:00 และหลัง 17:00 เข้า ot3_holiday" และยืนยันตรงข้ามกับ
- * ที่ยืนยันอยู่ตอนนี้ทุกบรรทัด — เพราะจนถึง 2026-09-08 วันเกิดคือวันหยุดธรรมดา
- * ของคนคนเดียว แบ่งช่องด้วยนาฬิกาเหมือนวันเสาร์ กฎใหม่นับ 8 ชม. แรกที่ "ทำ" ไม่ใช่
- * 8 ชม. ที่ "อยู่ในช่วง 08:00–17:00" กะสั้นที่ไม่ได้เริ่มตอนเช้าจึงยังอยู่ใน ×1.5
- * ทั้งกะ
+ * 2026-09-08 ถึง 2026-10-08 เคสนี้ยืนยันตรงข้าม: กะสั้นนอกเวลางานเป็น "ชั่วโมง
+ * แรกของวัน" จึงได้ ×1.5 ทั้งกะ ตอนนี้นอก 08:00–17:00 คือ ×3 เหมือนวันเสาร์
  */
-test('วันเกิดตรงวันอังคาร — กะสั้นนอกเวลางาน ยังอยู่ใน 8 ชม. แรก จึงเป็น ot15_holiday', () => {
+test('วันเกิดตรงวันอังคาร — ก่อน 08:00 และหลัง 17:00 เข้า ot3_holiday', () => {
   const early = run(
     { workDate: '2026-08-04', startTime: '06:00', endTime: '08:00' },
     { birthDate: '1994-08-04' },
   );
-  assert.equal(early.buckets[BUCKETS.OT15_HOLIDAY], 2);
-  assert.equal(early.buckets[BUCKETS.OT3_HOLIDAY], 0);
+  assert.equal(early.buckets[BUCKETS.OT3_HOLIDAY], 2);
+  assert.equal(early.buckets[BUCKETS.OT15_HOLIDAY], 0);
 
   const late = run(
     { workDate: '2026-08-04', startTime: '17:00', endTime: '20:00' },
     { birthDate: '1994-08-04' },
   );
-  assert.equal(late.buckets[BUCKETS.OT15_HOLIDAY], 3);
-  assert.equal(late.buckets[BUCKETS.OT3_HOLIDAY], 0);
+  assert.equal(late.buckets[BUCKETS.OT3_HOLIDAY], 3);
+  assert.equal(late.buckets[BUCKETS.OT15_HOLIDAY], 0);
 
   // Without the rule this is the ordinary weekday evening column.
   const off = run(
@@ -103,13 +101,35 @@ test('วันเกิดตรงวันอังคาร — กะสั
 });
 
 /**
- * 8 ชม. แรก ×1.5 · หลังจากนั้น ×3 — และเส้นแบ่งตัดกลาง segment ได้.
+ * เคสที่ขอแก้มา 2026-10-08 — 05:00–17:00 ในวันเกิด.
  *
- * 06:00–20:00 หักพักเที่ยงเหลือ 13 ชม. เส้นแบ่งจึงตกที่ 15:00 น. ซึ่งไม่ใช่ขอบของ
- * ช่วงไหนเลย ถ้าเลื่อนไปหาขอบที่ใกล้ที่สุดแทนที่จะตัด คนคนนี้จะได้หรือเสียชั่วโมง
- * เพราะพักเที่ยงบังเอิญตกตรงไหน
+ * กฎเก่าให้ 05:00–12:00 ×1.5 (7) · 13:00–14:00 ×1.5 (1) · 14:00–17:00 ×3 (3)
+ * คือ ×3 ไปตกท้ายวัน ทั้งที่ 14:00–17:00 อยู่ในเวลางาน
  */
-test('วันเกิด — 8 ชม. แรก ×1.5 ที่เหลือ ×3 และเส้นแบ่งตัดกลางช่วงได้', () => {
+test('วันเกิด 05:00–17:00 — 05:00–08:00 ×3 · 08:00–17:00 ×1.5', () => {
+  const r = run(
+    { workDate: '2026-08-04', startTime: '05:00', endTime: '17:00' },
+    { birthDate: '1994-08-04' },
+  );
+
+  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 8);
+  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 3);
+  assert.equal(r.totals.otHours, 11);
+  assert.deepEqual(
+    r.segments.map((x) => [x.start, x.end, x.bucket]),
+    [
+      ['05:00', '08:00', BUCKETS.OT3_HOLIDAY],
+      ['08:00', '12:00', BUCKETS.OT15_HOLIDAY],
+      ['13:00', '17:00', BUCKETS.OT15_HOLIDAY],
+    ],
+  );
+});
+
+/**
+ * 06:00–20:00 หักพักเที่ยงเหลือ 13 ชม. — 8 ชม. ใน 08:00–17:00 ×1.5 ส่วนหัวและ
+ * ท้ายวัน 5 ชม. ×3 · ก่อน 2026-10-08 เส้นแบ่งตกที่ 15:00 (ชั่วโมงที่แปดที่ทำ)
+ */
+test('วันเกิด 06:00–20:00 — ใน 08:00–17:00 ×1.5 หัวและท้ายวัน ×3', () => {
   const r = run(
     { workDate: '2026-08-04', startTime: '06:00', endTime: '20:00' },
     { birthDate: '1994-08-04' },
@@ -123,11 +143,11 @@ test('วันเกิด — 8 ชม. แรก ×1.5 ที่เหลื�
   assert.deepEqual(
     r.segments.map((x) => [x.start, x.end, x.bucket]),
     [
-      ['06:00', '12:00', BUCKETS.OT15_HOLIDAY],
-      ['13:00', '15:00', BUCKETS.OT15_HOLIDAY],
-      ['15:00', '20:00', BUCKETS.OT3_HOLIDAY],
+      ['06:00', '08:00', BUCKETS.OT3_HOLIDAY],
+      ['08:00', '12:00', BUCKETS.OT15_HOLIDAY],
+      ['13:00', '17:00', BUCKETS.OT15_HOLIDAY],
+      ['17:00', '20:00', BUCKETS.OT3_HOLIDAY],
     ],
-    'ช่วงที่ถูกตัดต้องขึ้นสองแถว และแถวข้างเคียงที่ช่องเดียวกันยังรวมกันเหมือนเดิม',
   );
   assert.ok(
     r.segments.every((x) => x.dayReason === DAY_REASONS.BIRTHDAY),
@@ -135,8 +155,7 @@ test('วันเกิด — 8 ชม. แรก ×1.5 ที่เหลื�
   );
   assert.deepEqual(
     r.segments.map((x) => x.multiplier),
-    [1.5, 1.5, 3],
-    'ตัวคูณบนแถวต้องเดินตามช่องที่ถูกย้าย ไม่ใช่ค้างของเดิม',
+    [3, 1.5, 1.5, 3],
   );
 });
 
@@ -155,6 +174,26 @@ test('8 ชม. แรก คือวันทำงานมาตรฐาน
     { birthDate: '1994-08-04', policy: sevenHourDay },
   );
   assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 7);
+});
+
+/**
+ * เพดาน 8 ชม. — ไม่พักเที่ยงในวันเกิดที่ตกวันเสาร์ คือ 9 ชม. ในช่วง 08:00–17:00
+ * ชั่วโมงที่เก้าเป็น ×3 และเส้นแบ่งตัดกลางช่วงได้ ต่างจากวันเสาร์ธรรมดาที่ได้ ×1.5
+ * ทั้งเก้าชั่วโมง
+ */
+test('วันเกิด ไม่พักเที่ยง 08:00–17:00 — 8 ชม. ×1.5 ชั่วโมงที่เก้า ×3', () => {
+  const session = { workDate: '2026-08-08', startTime: '08:00', endTime: '17:00', noBreakTaken: true };
+  const r = run(session, { birthDate: '1994-08-08' });
+
+  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 8);
+  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 1);
+  assert.deepEqual(
+    r.segments.map((x) => [x.start, x.end, x.multiplier]),
+    [['08:00', '16:00', 1.5], ['16:00', '17:00', 3]],
+  );
+
+  const saturday = run(session, { birthDate: null });
+  assert.equal(saturday.buckets[BUCKETS.OT15_HOLIDAY], 9);
 });
 
 /**
@@ -179,29 +218,18 @@ test('วันเกิดตรงวันเสาร์ — ใช้กฎ
   assert.equal(without.segments[0].dayReason, DAY_REASONS.WEEKEND);
 });
 
-test('วันเกิดตรงวันเสาร์ — กะเย็นได้ ×1.5 ต่างจากวันเสาร์ธรรมดาที่ได้ ×3', () => {
-  const session = { workDate: '2026-08-08', startTime: '20:00', endTime: '23:00' };
+test('วันเกิดตรงวันเสาร์หรือวันหยุดบริษัท — กะเย็นได้ ×3 เท่าวันหยุดทั่วไป', () => {
+  // 8 Aug is a Saturday, 12 Aug on the company calendar. Between 2026-09-08 and
+  // 2026-10-08 a birthday made 20:00–23:00 ×1.5 here.
+  for (const date of ['2026-08-08', '2026-08-12']) {
+    const session = { workDate: date, startTime: '20:00', endTime: '23:00' };
+    const withBirthday = run(session, { birthDate: `1994-${date.slice(5)}` });
+    const without = run(session, { birthDate: null });
 
-  const withBirthday = run(session, { birthDate: '1994-08-08' });
-  const without = run(session, { birthDate: null });
-
-  assert.equal(withBirthday.buckets[BUCKETS.OT15_HOLIDAY], 3);
-  assert.equal(withBirthday.buckets[BUCKETS.OT3_HOLIDAY], 0);
-  assert.equal(without.buckets[BUCKETS.OT3_HOLIDAY], 3);
-  assert.equal(without.buckets[BUCKETS.OT15_HOLIDAY], 0);
-});
-
-test('วันเกิดตรงวันหยุดบริษัท — ใช้กฎวันเกิดเช่นกัน', () => {
-  // 12 Aug 2026 is a Wednesday on the company calendar.
-  const session = { workDate: '2026-08-12', startTime: '20:00', endTime: '23:00' };
-
-  const withBirthday = run(session, { birthDate: '1994-08-12' });
-  const without = run(session, { birthDate: null });
-
-  assert.equal(withBirthday.segments[0].dayReason, DAY_REASONS.BIRTHDAY);
-  assert.equal(withBirthday.buckets[BUCKETS.OT15_HOLIDAY], 3);
-  assert.equal(without.segments[0].dayReason, DAY_REASONS.COMPANY_HOLIDAY);
-  assert.equal(without.buckets[BUCKETS.OT3_HOLIDAY], 3);
+    assert.deepEqual(withBirthday.buckets, without.buckets, date);
+    assert.equal(withBirthday.buckets[BUCKETS.OT3_HOLIDAY], 3, date);
+    assert.equal(withBirthday.segments[0].dayReason, DAY_REASONS.BIRTHDAY, date);
+  }
 });
 
 test('พนักงานที่ไม่มี birthDate — คำนวณปกติ ไม่ throw', () => {
@@ -219,7 +247,7 @@ test('วันเกิดของคนหนึ่งไม่ใช่ว�
   const birthdayPerson = run(session, { birthDate: '1994-08-04' });
   const colleague = run(session, { birthDate: '1990-11-23' });
 
-  assert.equal(birthdayPerson.buckets[BUCKETS.OT15_HOLIDAY], 3);
+  assert.equal(birthdayPerson.buckets[BUCKETS.OT3_HOLIDAY], 3);
   assert.equal(colleague.buckets[BUCKETS.OT15_WEEKDAY], 3);
 });
 
@@ -238,13 +266,13 @@ test('วันเกิดของคนหนึ่งไม่ใช่ว�
  * is the half below: a birthday's count starts at nought and is spent by the
  * one request that date may carry (หนึ่งวัน หนึ่งใบ).
  */
-test('วันเกิดวันศุกร์ ทำงาน 17:00–23:00 — เจ็ดชั่วโมงแรกของวันเกิด อยู่ ×1.5 ทั้งใบ', () => {
+test('วันเกิดวันศุกร์ ทำงาน 17:00–23:00 — นอกเวลางานทั้งใบ จึง ×3 ทั้งใบ', () => {
   const session = { workDate: '2026-08-07', startTime: '17:00', endTime: '23:00' };
   const r = run(session, { birthDate: '1994-08-07' });
 
   assert.deepEqual(sessionDates(session), ['2026-08-07']);
-  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 6, 'หกชั่วโมง ยังไม่ถึงเพดานแปดชั่วโมงแรก');
-  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 0);
+  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 6, 'ก่อน 2026-10-08 ได้ ×1.5 ทั้งหกชั่วโมง');
+  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 0);
   assert.equal(r.segments.every((x) => x.date === '2026-08-07'), true);
   assert.equal(r.segments.every((x) => x.dayReason === 'birthday'), true);
 });
@@ -301,15 +329,9 @@ test('dayTypes รับได้ทั้ง string ล้วนและ { typ
     dayTypes: { '2026-08-04': { type: 'holiday', reason: DAY_REASONS.BIRTHDAY } },
   });
 
-  /**
-   * และตั้งแต่ 2026-09-08 สองรูปแบบนี้ให้ "ตัวเลข" ต่างกันได้ ไม่ใช่แค่ป้าย.
-   *
-   * 'holiday' เปล่า ๆ ไม่ได้บอกว่าเพราะอะไร engine จึงคิดด้วยนาฬิกาแบบวันหยุด
-   * ทั่วไป ส่วนรูปแบบที่มี reason: 'birthday' ได้กฎ 8 ชม. แรก ผู้เรียกที่ยังส่ง
-   * string ล้วนมาจึงไม่ได้กฎวันเกิด ซึ่งถูกแล้ว — มันไม่ได้อ้างว่าเป็นวันเกิด
-   */
+  // ตัวเลขเท่ากันเมื่อไม่เกินเพดาน 8 ชม. — ต่างกันแค่เหตุผลบนแถว
   assert.equal(plain.buckets[BUCKETS.OT3_HOLIDAY], 3);
-  assert.equal(rich.buckets[BUCKETS.OT15_HOLIDAY], 3);
+  assert.equal(rich.buckets[BUCKETS.OT3_HOLIDAY], 3);
   assert.equal(plain.segments[0].dayReason, null, 'string form records no reason');
   assert.equal(rich.segments[0].dayReason, DAY_REASONS.BIRTHDAY);
 });
@@ -383,7 +405,7 @@ test('29 ก.พ. — ทางเลือก config เปลี่ยนช�
     }),
   });
 
-  assert.equal(shifted.buckets[BUCKETS.OT15_HOLIDAY], 3);
+  assert.equal(shifted.buckets[BUCKETS.OT3_HOLIDAY], 3);
   assert.equal(notShifted.buckets[BUCKETS.OT15_WEEKDAY], 3);
 });
 

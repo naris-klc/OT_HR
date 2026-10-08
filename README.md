@@ -3981,13 +3981,24 @@ answer depends on **who** worked rather than only on when.
 
 | Flag | What it decides | Arithmetic? |
 |---|---|---|
-| `birthdayHolidayEnabled` | Off by default. On, a birthday is a holiday for that person alone, and the day is split by **hours worked**: the first eight go to `ot15_holiday`, everything past them to `ot3_holiday` | **Yes** |
+| `birthdayHolidayEnabled` | Off by default. On, a birthday is a holiday for that person alone, split **by the clock** like a Saturday: 08:00–17:00 goes to `ot15_holiday` up to eight hours, everything else to `ot3_holiday` | **Yes** |
 | `birthdayLeapFallback` | Which day a 29 February birthday lands on in a non-leap year — `'feb28'` (default), `'mar01'` or `'none'` | **Yes** |
 
 There was a third, `birthdayReasonOnForm`, and it is **gone** — see
 [Where “วันเกิด” is printed](#where-วนเกด-is-printed) below.
 
 #### 8 ชม. แรก ×1.5 · หลังจากนั้น ×3 — and the two things that changed with it
+
+> **The split went back to the clock on 2026-10-08.** The user, shown a
+> 05:00–17:00 birthday that came out 7 h ×1.5 · 1 h ×1.5 · 3 h ×3 (the ×3 on
+> 14:00–17:00, inside office hours): *ต้องคำนวน 8 ชม. แรก ตั้งแต่เวลา 8.00-17.00
+> ×1.5 นอกนั้น เกิน 8 ชม. ×3*. It is now 05:00–08:00 ×3 and 08:00–17:00 ×1.5.
+> `applyBirthdayTiers()` only caps the ×1.5 that the clock already gave at
+> `birthdayFirstTierMinutes()`; that cap bites only with ไม่พักเที่ยง (nine hours
+> inside the window, the ninth ×3). **17:00–20:00 on one's own birthday is ×3
+> again.** The birthday still wins over a Saturday or a company holiday, but
+> the two now differ only in that cap. What follows is the 2026-09-08 rule, kept
+> because it explains the order in `resolveDayTypes()`.
 
 **HR's rule, 2026-09-08**: *เมื่อพนักงานขอ OT ตรงกับวันเกิดของตัวเอง 8 ชม. แรก
 rate ×1.5 หลังจากนั้นเป็น rate ×3*. Asked which of the two readings that was,

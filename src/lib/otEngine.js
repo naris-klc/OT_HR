@@ -109,10 +109,9 @@ export function flatDailyMinutes(policy = DEFAULT_POLICY) {
 /**
  * สวัสดิการวันเกิด — how much of the day is worth ×1.5 before ×3 starts.
  *
- * HR's rule, 2026-09-08: *เมื่อพนักงานขอ OT ตรงกับวันเกิดของตัวเอง 8 ชม. แรก
- * rate ×1.5 หลังจากนั้นเป็น rate ×3*. Eight hours OF WORK, not the hours
- * between eight and five — see `applyBirthdayTiers`, which is where that
- * distinction is spent.
+ * The rule since 2026-10-08: *8 ชม. แรก ตั้งแต่เวลา 8.00-17.00 ×1.5 นอกนั้น
+ * เกิน 8 ชม. ×3* — the clock decides, and this is the cap on the ×1.5 inside
+ * the window. See `applyBirthdayTiers`.
  *
  * THE SAME EIGHT HOURS THE FLAT DAY IS, and delegated rather than re-derived
  * for the reason `flatDailyMinutes` refuses to be the constant 480: it is the
@@ -313,6 +312,10 @@ export function birthdayInYear(birthDate, year, policy = DEFAULT_POLICY) {
  * one of them, taken silently, on the ground that there was nothing to decide.
  * There is: HR decided it, and this is where the decision is kept.
  *
+ * Since 2026-10-08 a birthday is split by the clock again, so the two agree
+ * except past the eighth hour inside 08:00–17:00 (ไม่พักเที่ยง), where a
+ * birthday is ×3. Birthday stays first: it is still the reason on the row.
+ *
  * Values come out in the `{ type, reason }` form. `computeSession` also accepts
  * a bare 'workday' / 'holiday' string per date, which is what a hand-written
  * map in a test looks like.
@@ -511,49 +514,27 @@ function boundaryCuts(startAbs, endAbs, policy) {
  *
  * ── THE RULE ─────────────────────────────────────────────────────────────────
  *
- * On the filer's own birthday the first `birthdayFirstTierMinutes` of OT are
- * ×1.5 and everything past them is ×3, **counted in hours worked and not read
- * off the clock** — HR, 2026-09-08, asked which of the two it was and answering
- * *นับตามชั่วโมงที่ทำจริง (ไม่ดูนาฬิกา)*.
+ * On the filer's own birthday the clock decides, exactly as on a Saturday:
+ * inside 08:00–17:00 is ×1.5, outside it is ×3 — and the ×1.5 stops at
+ * `birthdayFirstTierMinutes`, so anything past the eighth hour of the 08:00–17:00
+ * stretch is ×3 as well. The user, 2026-10-08: *ต้องคำนวน 8 ชม. แรก ตั้งแต่เวลา
+ * 8.00-17.00 ×1.5 นอกนั้น เกิน 8 ชม. ×3*.
  *
- * WHAT THAT CHANGES, since the old reading agreed with it more often than not.
- * A birthday was an ordinary วันหยุด: ×1.5 inside 08:00–17:00, ×3 outside it.
- * Somebody working the standard day and staying on gets the same answer either
- * way — 08:00–20:00 is eight hours ×1.5 and three ×3 under both. The two part
- * company when the work does not start in the morning: 17:00–20:00 on one's own
- * birthday was three hours ×3 and is now three hours ×1.5, because it is the
- * first three hours of the day and the day had not been worked yet.
+ * IT READ THE OTHER WAY FROM 2026-09-08 UNTIL 2026-10-08: the first eight hours
+ * WORKED were ×1.5 wherever they fell (*นับตามชั่วโมงที่ทำจริง (ไม่ดูนาฬิกา)*), so
+ * 05:00–17:00 came out 7 h ×1.5 · 1 h ×1.5 · 3 h ×3 with the ×3 at the END of
+ * the day. Now the 05:00–08:00 before work is the ×3 and 08:00–17:00 is the ×1.5.
+ * 17:00–20:00 on one's own birthday is three hours ×3 again.
  *
- * ── WHY IT IS A PASS OVER THE SEGMENTS AND NOT A BRANCH IN `bucketFor` ───────
+ * ── WHY THERE IS STILL A PASS AT ALL ────────────────────────────────────────
  *
- * `bucketFor` is given one minute and asked what it is worth. That is answerable
- * from the clock and unanswerable from a running total, which is the whole
- * difference between the two rules. So the clock decides first, as it always
- * did, and this walks what it produced.
- *
- * PER DATE, and the accumulator is keyed on the date for that reason. A shift
- * that begins on the birthday and runs past midnight puts the far side in an
- * ordinary day, which has its own rules and is not part of this count; a shift
- * that runs INTO a birthday starts that birthday's count at nought at midnight,
- * which is the same sentence read from the other end. `หนึ่งวัน หนึ่งใบ`
- * (lib/overlap.js) is what makes one session's count the whole day's — two
- * requests cannot share a date, so there is no second entry for the first eight
- * hours to have been spent by.
- *
- * MEASURED ON THE MINUTES AS SEGMENTED — after the lunch hole, before the flat
- * break deduction and before rounding. The hole is the right subtraction: an
- * 08:00–17:00 birthday is eight hours of work and lands wholly in ×1.5, which
- * is what it read before this rule existed and what HR expects to keep reading.
- * Running after the flat deduction instead would mean splitting a segment whose
- * `minutes` no longer match its own clock times, and the row on F-HR-027 would
- * carry a boundary that is not where the figures change.
- *
- * SPLITS RATHER THAN ROUNDS TO A WHOLE SEGMENT. The eighth hour can end in the
- * middle of a stretch, and moving the boundary to the nearest edge would pay
- * somebody by where a break happened to fall. `mergeSegments` runs afterwards
- * and will not glue the two halves back together — they are different buckets —
- * while the pieces on either side of the cut that DO share a bucket merge as
- * usual, so the printed row is one line per rate per day as it has always been.
+ * `bucketFor` already gives a birthday the Saturday split, because a birthday is
+ * a holiday. What it cannot do is stop at eight hours: with the lunch hole that
+ * never matters (08:00–17:00 less 12:00–13:00 is eight), but ไม่พักเที่ยง on a
+ * birthday that falls on a Saturday is nine hours inside the window, and the
+ * ninth is ×3. Counted PER DATE, in time order, after the lunch hole and before
+ * rounding; a stretch the eighth hour ends inside is split, and `mergeSegments`
+ * keeps the two halves apart because they are different buckets.
  */
 function applyBirthdayTiers(segments, policy) {
   const tier = birthdayFirstTierMinutes(policy);
@@ -565,14 +546,17 @@ function applyBirthdayTiers(segments, policy) {
   });
 
   for (const seg of segments) {
-    if (seg.dayReason !== DAY_REASONS.BIRTHDAY) { out.push(seg); continue; }
+    if (seg.dayReason !== DAY_REASONS.BIRTHDAY || seg.bucket !== BUCKETS.OT15_HOLIDAY) {
+      out.push(seg);
+      continue;
+    }
 
     const spent = spentByDate.get(seg.date) || 0;
     spentByDate.set(seg.date, spent + seg.minutes);
     const firstTierLeft = Math.max(0, tier - spent);
 
     if (firstTierLeft >= seg.minutes) {
-      out.push(at(seg, BUCKETS.OT15_HOLIDAY));
+      out.push(seg);
     } else if (firstTierLeft <= 0) {
       out.push(at(seg, BUCKETS.OT3_HOLIDAY));
     } else {
@@ -805,9 +789,9 @@ export function computeSession(session, options = {}) {
     }
   }
 
-  // สวัสดิการวันเกิด — ×1.5 for the first eight hours WORKED, ×3 after them.
-  // Here rather than in the loop above because it needs a running total of a
-  // whole day, which one cut point cannot see. See `applyBirthdayTiers`.
+  // สวัสดิการวันเกิด — the clock has split the day like a Saturday; this caps
+  // the ×1.5 at eight hours, which needs a running total of the whole day that
+  // one cut point cannot see. See `applyBirthdayTiers`.
   segments = applyBirthdayTiers(segments, policy);
 
   const clockMinutes = endAbs - startAbs;
