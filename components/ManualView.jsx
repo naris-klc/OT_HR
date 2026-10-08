@@ -1362,7 +1362,7 @@ const SECTIONS = [
                 </span>
                 <span className="mk-dlg">
                   <span className="mk-dlg-h">ประวัติการแก้ไข</span>
-                  <MkNote>แถวด้านบนคือข้อมูลล่าสุดที่พิมพ์ลงใบ F-HR-027 · ด้านล่างคือข้อมูลเดิมก่อนการแก้แต่ละครั้ง</MkNote>
+                  <MkNote>ด้านล่าง = ข้อมูลเดิมก่อนแก้</MkNote>
                   <MkRow>แก้เวลาสิ้นสุด · โดยฝ่ายบุคคล · 11/09/2569 09:14</MkRow>
                 </span>
               </Desk>
@@ -2302,7 +2302,6 @@ const SECTIONS = [
               phone={(
                 <Phone title="ตรวจสอบประจำเดือน" bar={<MkSlot icon="chart" label="รายงาน" on />}>
                   <MkRow>ยืนยันได้ 24 คน · 61 รายการ</MkRow>
-                  <MkNote>ติ๊กหนึ่งช่อง = ยืนยันรายการทั้งเดือนของคนนั้น</MkNote>
                   <MkTick on>สมชาย ใจดี · ฝ่ายผลิต</MkTick>
                   <MkBtn>ยืนยันรายการที่เลือก</MkBtn>
                 </Phone>

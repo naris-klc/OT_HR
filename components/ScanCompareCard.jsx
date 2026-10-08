@@ -319,9 +319,11 @@ export default function ScanCompareCard({
             <span className="quiet"><strong>{counts.overTime}</strong> {SCAN_BADGE.OVER}</span>
             <span className="quiet"><strong>{counts.flatDaily}</strong> เหมารายวัน</span>
             <span className="quiet"><strong>{agreed}</strong> ตรง</span>
-            <span className="quiet">
-              {SCAN_BADGE.OVER} และ เหมารายวัน เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ ·
-              {' '}ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน
+            <span
+              className="quiet"
+              title={`${SCAN_BADGE.OVER} และ เหมารายวัน เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ · ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน`}
+            >
+              {SCAN_BADGE.OVER} และ เหมารายวัน ไม่นับเป็นกองที่ต้องตรวจ
             </span>
           </div>
         )}

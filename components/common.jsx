@@ -1240,6 +1240,9 @@ export function ScanMismatchMark({ entry }) {
  */
 export const FLAT_DAILY_SAY = 'พนักงานเหมารายวัน — นับ 8 ชั่วโมงเป็น OT ×1.5 ไม่ว่าจะอยู่นานแค่ไหน';
 
+/** The one-line form of `FLAT_DAILY_SAY` for the Alerts beside a filing or an edit; the full rule is the chip's tooltip. */
+export const FLAT_DAILY_SHORT = 'เหมารายวัน — นับ OT ×1.5 = 8 ชม.';
+
 export function FlatDailyMark({ entry }) {
   if (!entry?.flatDaily) return null;
   const check = entry.scanCheck;

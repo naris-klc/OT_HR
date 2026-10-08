@@ -84,7 +84,7 @@ test('a grey button says why it is grey — and stands down when a field already
     /\{!ready && !busy && shape\.ok && !unchanged && !mismatch && \(/,
     'the readiness note must not talk over a field-level error',
   );
-  assert.match(code, /ปุ่มจึงจะเป็นสีเขียวและกดบันทึกได้/);
+  assert.match(code, /กรอกให้ครบทั้งสามช่อง/);
   assert.match(styles(), /\.profile-submit \{[^}]*align-items: flex-start[^}]*\}/);
 });
 
