@@ -5,7 +5,7 @@ import { isSigner } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
 import { Alert, Disclosure, PasswordInput } from './common.jsx';
-import { Icon } from './icons.jsx';
+import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
 
 const ROLE_LABEL = {
