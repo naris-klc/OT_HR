@@ -336,6 +336,10 @@ test('เหมารายวัน and วันเกิด sit under the dat
   assert.match(dateCell, /<div className="entry-mark day-mark">/);
   assert.match(dateCell, /<FlatDailyMark entry=\{e\} \/>/);
   assert.match(dateCell, /<BirthdayWelfareMark entry=\{e\} \/>/);
+  // ไม่พักเที่ยง joined them the same day, in the red คิวรออนุมัติ prints it in.
+  assert.match(dateCell, /<NoBreakMark entry=\{e\} \/>/);
+  assert.match(dateCell, /e\.noBreakTaken\) &&/);
+  assert.match(css, /\.chip\.no-break \{ background: var\(--danger-bg\); color: var\(--danger-ink\); \}/);
   const whenCell = jsx.slice(jsx.indexOf('<td className="when-cell"'), jsx.indexOf('<td className="num rate-col">'));
   assert.ok(!whenCell.includes('<FlatDailyMark'), 'เหมารายวัน is back beside the times');
 
@@ -344,6 +348,8 @@ test('เหมารายวัน and วันเกิด sit under the dat
   const day = rule('.entry-table.stack-table tbody td.stack-name .day-mark');
   assert.match(day, /display: flex;/);
   assert.match(day, /gap: 4px;/);
+  // and no sibling margin on top of it — that indented a wrapped chip by 6px.
+  assert.match(rule('.entry-table.stack-table tbody td.stack-name .day-mark .chip'), /margin: 0;/);
   assert.ok(!/\.when-cell \.entry-mark \.chip:not\(:last-of-type\)/.test(css), 'the two-badge rules came back');
 });
 
@@ -759,4 +765,14 @@ test('the history toggle is a chip on the scan row, and the bar it replaced is g
   // The text may be long and must not push the chip off the card; 44px on a phone.
   assert.match(rule('.scan-row > .hint'), /min-width: 0;/);
   assert.match(css, /\.chip-toggle \{ min-height: 44px;/);
+});
+
+test('ป้ายวันเกิดเขียนว่า วันเกิด ทั้งแอป — ไม่ใช่ OT สวัสดิการวันเกิด', () => {
+  // 2026-10-08: *แก้ไขข้อความป้าย "OT สวัสดิการวันเกิด" เป็น "วันเกิด" ป้ายทั้ง app*.
+  // ทุกจอวาดป้ายนี้ผ่าน `BirthdayWelfareMark` ตัวเดียว จึงแก้ที่เดียว
+  const common = read('components/common.jsx');
+  const mark = common.slice(common.indexOf('export function BirthdayWelfareMark'));
+  const body = mark.slice(0, mark.indexOf('\n}\n')).replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  assert.match(body, />\s*วันเกิด\s*<\/span>/);
+  assert.ok(!body.includes('OT สวัสดิการวันเกิด'), 'ป้ายกลับไปเป็นคำยาว');
 });

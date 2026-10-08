@@ -1017,7 +1017,27 @@ export function BirthdayWelfareMark({ entry }) {
       title={'วันเกิดของพนักงานนับเป็นวันหยุดของคนนั้นคนเดียว — ชั่วโมงที่มาทำงานในวันนั้น '
         + 'จึงเข้าช่อง OT วันหยุดทั้งวัน ตามอัตราที่ตั้งไว้ในนโยบายการคำนวณ'}
     >
-      OT สวัสดิการวันเกิด
+      {/* "OT สวัสดิการวันเกิด" until 2026-10-08 — *แก้ไขข้อความป้าย "OT
+          สวัสดิการวันเกิด" เป็น "วันเกิด" ป้ายทั้ง app*. The tooltip still says
+          what the day means; the chip only has to name it. */}
+      วันเกิด
+    </span>
+  );
+}
+
+/**
+ * ไม่พักเที่ยง — the filer ticked that they worked through the lunch hour.
+ *
+ * A CHIP OF ITS OWN SINCE 2026-10-08, under the date on รายการ OT (*"เพิ่มป้าย
+ * "ไม่พักเที่ยง" ใต้วันที่"*). คิวรออนุมัติ and the employee's own list already
+ * print the same fact as a red `.cell-flag`, so this wears the same red pair —
+ * one meaning, one colour — in `.chip`'s geometry, beside the day's other marks.
+ */
+export function NoBreakMark({ entry }) {
+  if (!entry?.noBreakTaken) return null;
+  return (
+    <span className="chip no-break" title="พนักงานติ๊กว่าไม่ได้พักเที่ยง — ไม่หักเวลาพัก">
+      ไม่พักเที่ยง
     </span>
   );
 }
