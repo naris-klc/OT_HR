@@ -226,10 +226,21 @@ export function PolicyDriftBanner({ user, onOpenPolicy }) {
 export function policyVersionNotice(spread, { onGoMonthly } = {}) {
   if (!spread?.mixed) return null;
 
-  const named = spread.used
-    .map((u) => (u.seq != null
-      ? `เวอร์ชัน ${u.seq} (${u.count} ใบ)`
-      : `ไม่ทราบเวอร์ชัน (${u.count} ใบ)`));
+  /* ALL THE UNKNOWN ONES ARE ONE ENTRY. Each version id whose snapshot this
+     screen does not hold used to print its own `ไม่ทราบเวอร์ชัน (N ใบ)`, and a
+     month with nine of them was nine identical phrases, cut at the edge of the
+     banner (2026-10-08). Which unknown id a row has is not something anybody
+     can act on; how many rows are unknown is. */
+  const unknownCount = spread.used.filter((u) => u.seq == null).reduce((n, u) => n + u.count, 0);
+  const named = [];
+  let unknownDrawn = false;
+  for (const u of spread.used) {
+    if (u.seq != null) named.push(`เวอร์ชัน ${u.seq} (${u.count} ใบ)`);
+    else if (!unknownDrawn) {
+      unknownDrawn = true;
+      named.push(`ไม่ทราบเวอร์ชัน (${unknownCount} ใบ)`);
+    }
+  }
   if (spread.unversioned) named.push(`ไม่ระบุเวอร์ชัน (${spread.unversioned} ใบ)`);
 
   /**
@@ -332,29 +343,27 @@ export function PolicyVersionBanner({ spread, onGoMonthly }) {
     // the list item ตรวจสอบรายเดือน draws from the same call can never be two
     // different colours — or two different sentences — about one month.
     <Alert kind={notice.kind}>
-      <strong>{notice.heading}</strong>
-      {/* THE VERSION LIST FOLDS TO ONE LINE, asked for on 2026-09-10 — and it
-          is the only part of this notice that does. On a phone it ran to three
-          lines of `ไม่ทราบเวอร์ชัน (N ใบ)` before the reader reached the line
-          that says what to do. The heading (what is wrong) and `say` (where to
-          go about it) stand outside the fold; what is behind it is the
-          breakdown, which is evidence for the heading rather than the alarm.
-          Named in `ALERTS_THAT_MAY_FOLD` in test/disclosure.test.js on those
-          terms. On a laptop the list fits one line and no control is drawn. */}
-      <Disclosure as="div" lines={1} of="รายชื่อเวอร์ชันของกฎในเดือนนี้" style={{ marginTop: 4 }}>
-        {notice.figures}
-      </Disclosure>
-      {/* THE INSTRUCTION, ONE STEP QUIETER — and by the same class ตรวจสอบ
-          รายเดือน already prints this exact sentence with. It carried its own
-          inline `fontSize` until 2026-08-26, which is how one line of one
-          notice ended up being the only place in the app that said 12.5 by
-          hand: the size, the space above it and the grey now come from
-          `.alert .say`, so the panel and the list are one decision.
-
-          WHY THE PANEL NEEDED IT. Three lines in one amber, two of them the
-          same size, is a block the eye has to read to sort — and the third line
-          is the only one that says what to DO about the other two. */}
-      <div className="say">{notice.say}</div>
+      {/* ONE ROW, picked from three mockups on 2026-10-08 (*"แบนเนอร์นี้ยังไม่
+          กระชับ"*). It was a heading, a version list cut at the banner's edge,
+          and the instruction under it. The heading (what is wrong) and `say`
+          (where to go about it) now share the row; the version list, which is
+          evidence for the heading and not the alarm, sits behind ดูรายละเอียด —
+          the same row `LivePolicy` uses (`.alert-row-head`). Named in
+          `ALERTS_THAT_MAY_FOLD` in test/disclosure.test.js on those terms. */}
+      <div className="alert-row-head">
+        <span className="alert-row-title">
+          <strong>{notice.heading}</strong> · {notice.say}
+        </span>
+        <Disclosure
+          as="div"
+          lines={0}
+          of="รายชื่อเวอร์ชันของกฎในเดือนนี้"
+          more="ดูรายละเอียด ▾"
+          less="ซ่อนรายละเอียด ▴"
+        >
+          {notice.figures}
+        </Disclosure>
+      </div>
     </Alert>
   );
 }
