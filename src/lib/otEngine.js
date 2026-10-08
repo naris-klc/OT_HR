@@ -530,9 +530,10 @@ function boundaryCuts(startAbs, endAbs, policy) {
  *
  * `bucketFor` already gives a birthday the Saturday split, because a birthday is
  * a holiday. What it cannot do is stop at eight hours: with the lunch hole that
- * never matters (08:00–17:00 less 12:00–13:00 is eight), but ไม่พักเที่ยง on a
- * birthday that falls on a Saturday is nine hours inside the window, and the
- * ninth is ×3. Counted PER DATE, in time order, after the lunch hole and before
+ * never matters (08:00–17:00 less 12:00–13:00 is eight), and ไม่พักเที่ยง is
+ * ignored on a birthday since 2026-10-08 (see `computeSession`), so the cap
+ * bites only under a `breakMode` with no hole at noon, where the ninth hour
+ * inside the window is ×3. Counted PER DATE, in time order, after the lunch hole and before
  * rounding; a stretch the eighth hour ends inside is split, and `mergeSegments`
  * keeps the two halves apart because they are different buckets.
  */
@@ -705,7 +706,6 @@ export function computeSession(session, options = {}) {
   const dayTypes = options.dayTypes || {};
 
   const { workDate, startTime, endTime } = session;
-  const noBreakTaken = Boolean(session.noBreakTaken);
 
   parseDate(workDate);
   const startMin = parseTime(startTime);
@@ -739,6 +739,19 @@ export function computeSession(session, options = {}) {
   const startAbs = startMin;
   const endAbs = endMin;
 
+  const { type: dayType, reason: dayReason } = readDayType(dayTypes, workDate);
+
+  /**
+   * ไม่พักเที่ยง DOES NOT EXIST ON ONE'S OWN BIRTHDAY — the user, 2026-10-08:
+   * *ซ่อนตัวเลือกไม่พักเที่ยงสำหรับ ot วันเกิด*. Hidden on every form, and
+   * ignored here as well, because a hidden box is not a rule: a row ticked
+   * before, a date moved onto a birthday, or a proxy batch the form could not
+   * see into would otherwise still buy the lunch hour. The result carries the
+   * answer (`noBreakTaken`) and `applyComputation` writes it back, so the tick
+   * never outlives the hours it no longer moves.
+   */
+  const noBreakTaken = Boolean(session.noBreakTaken) && dayReason !== DAY_REASONS.BIRTHDAY;
+
   // [OPEN 1] In lunchWindow mode the break is a hole in the session, so it
   // lands in whichever bucket actually contains 12:00–13:00 — no attribution
   // guesswork, and it also settles [OPEN 2] for overnight sessions.
@@ -766,8 +779,6 @@ export function computeSession(session, options = {}) {
    * unreadable. `endTime` is at most 23:59 now, so no cut can land there and
    * the case is unreachable.
    */
-  const { type: dayType, reason: dayReason } = readDayType(dayTypes, workDate);
-
   for (let i = 0; i < cuts.length - 1; i++) {
     for (const [a, b] of subtractIntervals(cuts[i], cuts[i + 1], holes)) {
       const bucket = bucketFor(dayType === DAY_TYPES.HOLIDAY, a, policy);
@@ -989,6 +1000,7 @@ export function computeSession(session, options = {}) {
       // at a row for being short of a minimum it was never measured against.
       belowMinimumFlagged: false,
       belowBufferZeroed: false,
+      noBreakTaken,
       flatDailyTrimmed: minutesToHours(trimmedMinutes),
       warnings: flatWarnings,
     };
@@ -1200,6 +1212,8 @@ export function computeSession(session, options = {}) {
      * than the absence of one.
      */
     belowMinimumFlagged,
+    /** ไม่พักเที่ยง as it counted — false on a birthday whatever was ticked. */
+    noBreakTaken,
     /**
      * เวลาขั้นต่ำในการเริ่มนับ OT cut this session to nought — see where it is
      * set above. Always present, like `belowMinimumFlagged` beside it, and never

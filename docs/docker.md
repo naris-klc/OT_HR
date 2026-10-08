@@ -51,6 +51,7 @@ docker compose down              # หยุด
 docker compose exec app npm run whatif -- --show
 docker compose exec app npm run backup -- --out /backups
 docker compose exec app npm run reset-admin -- ADMIN
+docker compose exec app npm run recompute -- --yes   # คำนวณใบทุกใบใหม่ (รวมอนุมัติแล้ว) หลัง deploy ที่แก้กฎในโค้ด
 ```
 
 ---

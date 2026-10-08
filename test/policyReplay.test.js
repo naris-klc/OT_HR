@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   computeSession, makeIsHoliday, resolveDayTypes, sessionDates,
@@ -344,4 +345,22 @@ test('and the approved entry still reproduces from the version it kept', () => {
   // snapshot the pointer names — not the policy in force by then.
   const named = versions.get(approved.policyVersionId);
   assert.equal(computeSession(session, contextOf(named, session)).totals.otHours, approved.otHours);
+});
+
+/**
+ * บันทึกนโยบายคำนวณใบอนุมัติแล้วใหม่ด้วย อัตโนมัติ — 2026-10-08.
+ *
+ * `savePolicy` needs a database, so what is pinned is its source: approved is
+ * always in, the filter is the live statuses, and the old gate (`recompute ===
+ * 'all'` through `authorizeReplay`) is not what decides any more.
+ */
+test('บันทึกนโยบาย — คำนวณใหม่ทุกใบที่ยังมีผล รวมใบอนุมัติแล้ว ไม่ต้องเลือก', () => {
+  const src = readFileSync(new URL('../lib/policySave.js', import.meta.url), 'utf8');
+  assert.match(src, /const includeApproved = true;/);
+  assert.match(src, /status: \{ \$in: \['pending_mgr', 'pending_hr', 'approved'\] \}/);
+  assert.ok(!/const includeApproved = recompute/.test(src));
+  assert.ok(!/authorizeReplay\(/.test(src));
+
+  // Each entry is still replayed under its own date's version.
+  assert.equal(planRecompute([{ _id: 'x', status: 'approved' }], { includeApproved: true }).replay.length, 1);
 });

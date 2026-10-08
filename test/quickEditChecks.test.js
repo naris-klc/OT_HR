@@ -229,13 +229,16 @@ test('คนที่กำลังอ่านถูกส่งลงไป�
  * handed the company calendar and `weekendDays` and nothing else; a
  * สวัสดิการวันเกิด is a holiday for one person, resolved from a stored วันเกิด
  * no screen may hold (`publicEmployee`), so it cannot register even by accident.
+ * Since 2026-10-08 a birthday that falls on a company day off hides the box
+ * too, read from the row's own segments rather than from any birth date.
  *
  * AND THE DATE IS `entry.workDate`, which this panel cannot move. The box is
  * about the hour at noon, and that noon belongs to the day the request is filed
  * under — not to the second date an overnight shift crosses.
  */
 test('ช่องไม่พักเที่ยงอ่านจากปฏิทินของวันที่ทำงาน ไม่ได้ถามจาก preview', () => {
-  assert.match(edit, /const mayTickNoBreak = mayTick\.noBreak;/);
+  // และไม่ใช่วันเกิด — 2026-10-08 — อ่านจาก segment ของใบเอง วันที่ย้ายไม่ได้
+  assert.match(edit, /const mayTickNoBreak = mayTick\.noBreak && !isBirthdayWelfare\(entry\);/);
   assert.match(edit, /workDate: entry\.workDate,/);
   assert.match(block, /\{mayTickNoBreak && \(\s*<label className="check">/);
 

@@ -36,6 +36,7 @@ const policyReplayRunSchema = new mongoose.Schema(
      *   'policy_save' — a flag under นโยบายการคำนวณ was answered (lib/policySave.js)
      *   'manual'      — POST /api/settings/recompute, ordered by an administrator
      *   'birthdate'   — a วันเกิด was corrected on ทะเบียนพนักงาน
+     *   'script'      — `npm run recompute`, after a rule changed in the code (2026-10-08)
      *
      * The last one is separate from 'manual' for a reason that outlives the
      * code: 'manual' with `includeApproved` is somebody deciding a POLICY

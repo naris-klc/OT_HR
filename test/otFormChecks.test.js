@@ -426,7 +426,10 @@ test('isCompanyOffDay — ค่าที่อ่านไม่ได้ ต�
 });
 
 test('ฟอร์มวาดช่องไม่พักเที่ยงจากปฏิทิน ไม่ได้ถามจาก preview', () => {
-  assert.match(form, /const mayTickNoBreak = mayTick\.noBreak;/);
+  // ปฏิทินตัดสินวัน และวันเกิด (จาก preview — 2026-10-08) ซ่อนเพิ่มอีกชั้น
+  assert.match(form, /const mayTickNoBreak = mayTick\.noBreak && !noBreakOff;/);
+  assert.match(form, /setNoBreakOff\(Boolean\(res\.noBreakOff\)\)/);
+  assert.match(form, /employeeIds: proxy \? targets : undefined/);
   assert.match(
     form,
     /const mayTick = ticksAllowed\(\{\s*\r?\n?\s*positions: ticketPositions,\s*\r?\n?\s*workDate: form\.workDate,\s*\r?\n?\s*holidays,\s*\r?\n?\s*weekendDays: policy\.weekendDays,/,

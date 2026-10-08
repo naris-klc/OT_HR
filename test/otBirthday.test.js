@@ -177,23 +177,22 @@ test('8 ชม. แรก คือวันทำงานมาตรฐาน
 });
 
 /**
- * เพดาน 8 ชม. — ไม่พักเที่ยงในวันเกิดที่ตกวันเสาร์ คือ 9 ชม. ในช่วง 08:00–17:00
- * ชั่วโมงที่เก้าเป็น ×3 และเส้นแบ่งตัดกลางช่วงได้ ต่างจากวันเสาร์ธรรมดาที่ได้ ×1.5
- * ทั้งเก้าชั่วโมง
+ * ไม่พักเที่ยงไม่มีในวันเกิด — 2026-10-08. ติ๊กมาก็หักพักเที่ยงตามปกติ และผลบอกว่า
+ * ไม่ได้นับ (`noBreakTaken: false`) เพื่อให้ใบที่บันทึกล้างติ๊กออกด้วย · วันเสาร์
+ * ธรรมดายังได้ 9 ชม.
  */
-test('วันเกิด ไม่พักเที่ยง 08:00–17:00 — 8 ชม. ×1.5 ชั่วโมงที่เก้า ×3', () => {
+test('วันเกิด ติ๊กไม่พักเที่ยง — ระบบไม่นับ หักพักเที่ยงตามปกติ', () => {
   const session = { workDate: '2026-08-08', startTime: '08:00', endTime: '17:00', noBreakTaken: true };
   const r = run(session, { birthDate: '1994-08-08' });
 
   assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 8);
-  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 1);
-  assert.deepEqual(
-    r.segments.map((x) => [x.start, x.end, x.multiplier]),
-    [['08:00', '16:00', 1.5], ['16:00', '17:00', 3]],
-  );
+  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 0);
+  assert.equal(r.breakMinutes, 60);
+  assert.equal(r.noBreakTaken, false);
 
   const saturday = run(session, { birthDate: null });
   assert.equal(saturday.buckets[BUCKETS.OT15_HOLIDAY], 9);
+  assert.equal(saturday.noBreakTaken, true);
 });
 
 /**
