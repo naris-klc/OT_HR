@@ -5,6 +5,7 @@ import {
   SCAN_BADGE, SCAN_MATCH, SCAN_MATCH_TOLERANCE_MINUTES, checkEntryAgainstScans,
   scanBadgeLabel, scanMismatchDetail, scanMismatchNote, summariseScanChecks,
   groupScanChecksByPerson, dayPunchLine, scanCheckInTime, SCAN_CHECK_IN_FLOOR_MINUTES,
+  overrunOutsideCore,
 } from '../lib/scanMatch.js';
 
 /**
@@ -1175,4 +1176,32 @@ test('ผลลัพธ์ไม่มีชั่วโมง ไม่มี�
       'missingScanOut', 'overThreshold', 'overTime', 'punchCount',
       'start', 'startFinding', 'state', 'tolerance'],
   );
+});
+
+test('เกินเวลานับเฉพาะนอกเวลาทำงานปกติ — OT เช้าแล้วทำงานต่อทั้งวันไม่ใช่เกินเวลา', () => {
+  /**
+   * แจ้งมา 2026-10-08: ใบ 07:00–08:00 สแกนออก 17:04 ขึ้น "เกินเวลา · เกิน 9 ชม.
+   * 4 นาที" ทั้งที่ช่วง 08:00–17:00 คือเวลางานปกติที่ได้เงินเดือนอยู่แล้ว
+   */
+  const core = { start: 8 * 60, end: 17 * 60 };
+  const day = [punch('2026-09-01', '05:42:00'), punch('2026-09-01', '17:04:00')];
+  const morning = entry({ startTime: '07:00', endTime: '08:00' });
+
+  // ไม่รู้เวลางาน = พฤติกรรมเดิม
+  assert.equal(checkEntryAgainstScans(morning, day).endOverMinutes, 9 * 60 + 4);
+  const check = checkEntryAgainstScans(morning, day, { coreWindow: core });
+  assert.equal(check.endOverMinutes, 4, 'เหลือเฉพาะ 17:00–17:04');
+  assert.equal(check.overTime, false);
+  assert.equal(scanBadgeLabel(check), null);
+
+  // อยู่ต่อหลังเลิกงานจริง ยังนับส่วนนอกเวลา
+  const late = checkEntryAgainstScans(morning,
+    [punch('2026-09-01', '05:42:00'), punch('2026-09-01', '19:00:00')], { coreWindow: core });
+  assert.equal(late.endOverMinutes, 120);
+  assert.equal(late.overTime, true);
+
+  // OT เย็นไม่ซ้อนกับเวลางาน นับเท่าเดิม
+  assert.equal(overrunOutsideCore(19 * 60, 19 * 60 + 45, core), 45);
+  // วันไม่มีเวลางานปกติ (null) = นับเต็ม
+  assert.equal(overrunOutsideCore(7 * 60, 17 * 60 + 4, null), 10 * 60 + 4);
 });

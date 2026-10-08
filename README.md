@@ -5569,6 +5569,17 @@ mark-on-every-row failure this module has already paid for twice. **The short
 side keeps no grace at all** (*ถ้าเวลาไม่ตรงกันขึ้นทุกกรณี*): a shortfall is a
 claim to money, an overrun is a gift, and a gift three minutes wide is not news.
 
+**The overrun is counted OUTSIDE normal working hours only — 2026-10-08.** It
+read the raw gap between the request's end and the last scan, so a 07:00–08:00
+request followed by the ordinary day (scan-out 17:04) printed *เกิน 9 ชม. 4
+นาที*. Reported as *นับที่เกินเฉพาะนอกเวลา — ตอนนี้มันนับการทำโอทีช่วงเช้าเป็น
+เกินเวลา*. `overrunOutsideCore` now takes off the part of the gap that lies inside
+the policy's เวลาทำงานปกติ (`coreStartMinute`–`coreEndMinute`, the rule set in
+force on that date), so that row reads 4 นาที and draws nothing; an evening
+request that ends 19:00 and a scan-out at 19:45 still reads 45. A weekend or
+company holiday has no normal hours and keeps the raw gap. `scanChecksFor` loads
+the calendar once and passes each row its own `coreWindow`.
+
 **The line under the chip says the minutes were not paid** — *ชั่วโมงคิดตามใบที่
 ยื่น ไม่ได้บวกเพิ่มให้*. Without it, "the machine saw more than the paper" reads
 as an amount owed. Nothing here has ever moved a figure and this does not either.
