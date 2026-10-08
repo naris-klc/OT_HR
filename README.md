@@ -9154,7 +9154,20 @@ both. What the screen says, with dates, is which rows those are.
 > unmarked sheet now; the rule that produced the two answers still runs, for the
 > screen.
 
-**And since 2026-09-09 that screen OPENS on the statuses the sheet prints.**
+**Since 2026-10-08 ตรวจสอบประจำเดือน opens on ทั้งหมด**, which is what the
+shipped `draft` sheet prints — asked for as *ให้เริ่มที่ทั้งหมด*, in the same
+round that cut สถานะที่นับ from five rows to four: **รอหัวหน้า** (`pending_mgr`) ·
+**รอ HR** (`approved,pending_hr` — *ก่อนจะรอ HR ต้องหัวหน้าอนุมัติมาก่อนอยู่แล้ว*) ·
+**อนุมัติแล้ว** (`approved`) · **ทั้งหมด**. The two "เท่านั้น" rows below are gone;
+`pending_hr` alone is no longer a setting, and `test/monthStatusFilter.test.js`
+pins the four rows.
+
+> The paragraphs from here to the price below describe 2026-09-09 to 2026-10-08,
+> when the screen opened on อนุมัติแล้ว + รอ HR and the control had five rows.
+> Kept because the reasons in them — a screen must not open one step behind its
+> own paper — are the reason for ทั้งหมด too.
+
+**From 2026-09-09 that screen OPENED on the statuses the sheet printed.**
 ตรวจสอบประจำเดือน's สถานะที่นับ starts at **อนุมัติแล้ว + รอ HR**. Asked for in
 those words: *ถ้าหัวหน้าอนุมัติแล้วให้ขึ้นที่หน้านี้ด้วย ใบที่มีสถานะรอ HR*. It
 opened on **อนุมัติแล้วเท่านั้น** until then, for a reason that was true of a
@@ -9196,11 +9209,11 @@ control that could say it. `test/monthStatusFilter.test.js` pins the five rows,
 their order, and that every value survives that function intact.
 
 **The price is that ตรวจสอบประจำเดือน and คิวรออนุมัติ no longer lead with the
-same figure at their defaults**, which they were deliberately made to do on
+same figure at their defaults** (still true at ทั้งหมด), which they were deliberately made to do on
 2026-09-04. The queue's headline is approved hours — a หัวหน้า has not yet
 decided the rest — and this screen now counts the step *after* theirs, which is
-the step it exists to carry out. Put สถานะที่นับ back to อนุมัติแล้วเท่านั้น and
-the two agree again, which is what `test/queueCapUsage.test.js` compares them at.
+the step it exists to carry out. Put สถานะที่นับ on อนุมัติแล้ว (อนุมัติแล้วเท่านั้น
+until 2026-10-08) and the two agree again, which is what `test/queueCapUsage.test.js` compares them at.
 The เพดาน column is unaffected either way: it has been coloured from every
 request still alive, at every filter, since the same day.
 
@@ -13046,6 +13059,18 @@ role UIs. *(It read "the four role UIs" until 2026-09-03 — there are seven
 build แล้ว
 
 **Verified**
+
+- **`สถานะที่นับ` เหลือสี่แถว เปิดมาที่ `ทั้งหมด` · คอลัมน์ `รายการ` เป็น
+  `ที่นับ/ทั้งเดือน` กับนาฬิกา** — 2026-10-08 · ผู้ใช้บอกว่าห้าแถวเดิมกับคอลัมน์
+  รายการ "ซ้ำซ้อน" → mockup สามแบบ เลือกแบบดรอปดาวน์ แล้วกำหนดเอง: `รอหัวหน้า` ·
+  `รอ HR` (รวมอนุมัติแล้ว) · `อนุมัติแล้ว` (ไม่มีสถานะรอใครแล้ว) · `ทั้งหมด`
+  · **ค่าที่ส่งเราต์เป็นสตริงเดิม** ไม่ได้แตะ `reportStatuses` · ตัวที่หายไปคือ
+  `pending_hr` อย่างเดียว · **เปิดมาที่ `ทั้งหมด`** ตรงกับกระดาษ `draft` ที่ส่งมา
+  · **เซลล์ `3/4`**: เลขหน้าคือใบที่นับ ตรงกับ ชม. ในแถว เลขหลังคือทั้งเดือน
+  เท่ากันวาดเลขเดียว · บรรทัด `รอหัวหน้า 1 · รอHR 3` ย้ายเข้า tooltip ของนาฬิกา
+  (`data-tip` ตัวร่วม) · คอลัมน์ 136 → 96px คืน 40px ให้ พนักงาน (224 → 264)
+  · **มือถือไม่มีอะไรเปลี่ยน** การ์ดซ่อนคอลัมน์นี้อยู่แล้ว · ✅ เทสต์ผ่านหมด ·
+  ✅ build ผ่านบน distDir แยก
 
 - **แท็ก `(รออนุมัติ)` ออกจากใบ F-HR-027 — ช่องลงชื่อที่ว่างคือคำตอบเดียว** —
   2026-09-18 · สั่งมาพร้อมภาพใบจริงที่มีแถวเดียวเขียนว่า *ทำอาร์ตเวิร์กแคตตาล็อกฉบับใหม่ (รออนุมัติ)*:

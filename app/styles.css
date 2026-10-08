@@ -9398,7 +9398,7 @@ th.act-col { width: 258px; }
    168 still draws it on one line with 15px to spare, and the widest single
    TOKEN still cannot break. Nothing above regressed; the surplus went next
    door. */
-.hr-table th.who-col { width: 224px; }
+.hr-table th.who-col { width: 264px; }
 /* แผนก is the second line of พนักงาน since 2026-10-08, as on คิวรออนุมัติ: the
    160px its own column took went to this one (168 → 224), so a long แผนก wraps
    under the code instead of squeezing the figures. */
@@ -9423,63 +9423,35 @@ th.act-col { width: 258px; }
    11.5px/600, wanting 131.2 with the gutters. 140 keeps 9px over that. */
 .hr-table th.cap-col { width: 140px; }
 
-/* ── คอลัมน์ รายการ — จำนวนใบทั้งเดือน แล้วบรรทัดบอกว่าค้างอยู่ที่ขั้นไหน ──
+/* ── คอลัมน์ รายการ — `ที่นับ/ทั้งเดือน` แล้วนาฬิกาเมื่อมีใบค้าง ──────────────
 
-   136px AND IT HAD NO WIDTH AT ALL until 2026-09-11 — it was `auto`, which came
-   out at about 46, the width of the heading over a column of two-digit figures.
-   The pending line needs it: `รอหัวหน้า 1 · รอHR 2` is the widest this cell
-   draws in practice, and it must not wrap.
+   96px since 2026-10-08, and it was "136" — the 136 was paid for a second line
+   reading `รอหัวหน้า 1 · รอHR 2`, which moved into the clock's tooltip. The
+   widest the cell draws now is `12/15` plus the 16px clock: about 66px, so 90
+   with the cell's two 12px gutters. The 40px went back to `who-col` (224 →
+   264), where it saves a wrapped name rather than padding a short figure.
 
-   ⚠ "96px" HELD THE SAME LINE WITHOUT THE WORD `รอ` ON IT, and it did not
-   really hold that one either. The figures in this file are written as content
-   plus the cell's two 12px gutters; `หัวหน้า 1 · HR 2` measures 81.6px off the
-   font file, which wanted 105.6 and was declared 96. Under `table-layout: auto`
-   a declaration that short is not a clipped cell — the browser takes the
-   difference out of the columns that wrap, silently, which is the exact way
-   แผนก broke twice before. `รอหัวหน้า 1 · รอHR 2` is 109.5px, so 133.5 with
-   the gutters, rounded to 136 the way `act-col`'s 98 was rounded to 104.
-
-   THE 40px IS PAID FOR, NOT TAKEN. `who-col` 196 → 168 and `cap-col` 152 → 140,
-   both measured above against what they actually hold; neither lost a line it
-   was drawing. `dept-col` was deliberately not touched — it is the column that
-   wraps, and it is the one this move exists to protect.
-
-   CENTRED, NOT `.num`'s RIGHT. The cell stopped being one figure. `scan-col`
-   and `edits-col` on this same table are centred for the same reason — a cell
-   whose content is not a quantity to be compared down the column does not owe
-   the decimal alignment. */
-.hr-table th.count-col { width: 136px; }
+   CENTRED, NOT `.num`'s RIGHT: a fraction with an icon after it is not a
+   figure aligned down a decimal column — the same reason as `scan-col` and
+   `edits-col` on this table. */
+.hr-table th.count-col { width: 96px; }
 .hr-table th.count-col, .hr-table td.count-col { text-align: center; }
 
-/* ── THE LINE THAT ONLY APPEARS WHEN SOMETHING IS OUTSTANDING ──────────────
-
-   ⚠ A THREE-COLUMN GRID STOOD HERE FOR ONE ROUND ON 2026-09-11, with a
-   `.count-legend` twin in the heading and a `.out` rule greying the slots the
-   filter did not count. It was reported as unreadable the same day and the
-   whole apparatus went with it — the cell names its own statuses in words now,
-   from one basis, so there is no key to print and no gap to grey.
-
-   `nowrap` IS THE LOAD-BEARING PART. Both kinds on one person share this line
-   (`รอหัวหน้า 1 · รอHR 2`); let it wrap and the cell is three lines, which
-   makes every row in the table taller — the one thing this column was asked
-   not to do. The 136px above is what keeps the promise; this is what makes a
-   broken promise visible as an overflow instead of silent as a reflow.
-
-   ⚠ TWO-DIGIT ON BOTH SIDES AT ONCE IS THE ONE CASE 136 DOES NOT HOLD:
-   `รอหัวหน้า 12 · รอHR 12` is 123.3px, wanting 147. Left over the line rather
-   than paid for, because a person with ten or more waiting at BOTH stages in
-   one month is not the row this table is read for, and buying 11px more would
-   have come out of แผนก. It grows the column when it happens; it does not wrap. */
-.count-status {
-  font: 600 11.5px/1.5 var(--sans); margin-top: 1px; white-space: nowrap;
+/* ONE LINE, NEVER WRAPPED — a fraction broken at the slash reads as two
+   numbers, which is the 2026-09-11 cell the user rejected as hard to read. */
+.count-frac {
+  display: inline-flex; align-items: center; gap: 1px; white-space: nowrap;
 }
-
-/* The ink each status already wears on its own `.chip.st-*` — inherited rather
-   than chosen, so a figure here and a chip elsewhere on the screen cannot come
-   to mean different things. There is no `.cs-a`: อนุมัติ is the resting state
-   and is never drawn, being the total minus what is written here. */
-.count-status .cs-m { color: var(--amber); }
-.count-status .cs-h { color: var(--info); }
+/* The month's total is context for the counted figure, not a second figure to
+   compare down the column, so it is quieter. */
+.count-frac .count-of { color: var(--muted); font-weight: 400; }
+/* The clock wears `.chip.st-pending_mgr`'s ink — the waiting colour the app
+   already uses — and the words are in the shared tooltip (`data-tip`). */
+.count-frac .count-wait {
+  display: inline-grid; place-items: center; width: 20px; height: 20px;
+  margin-left: 4px; border-radius: 6px; color: var(--amber); cursor: help;
+}
+.count-frac .count-wait svg { width: 16px; height: 16px; }
 /* The heading is one short word and the cells are one short phrase; without
    this the shared `th` nowrap holds the heading while the CELL still wraps,
    which is how a column ends up sized by neither. */
