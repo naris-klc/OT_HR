@@ -238,7 +238,7 @@ test('คนที่กำลังอ่านถูกส่งลงไป�
  */
 test('ช่องไม่พักเที่ยงอ่านจากปฏิทินของวันที่ทำงาน ไม่ได้ถามจาก preview', () => {
   // และไม่ใช่วันเกิด — 2026-10-08 — อ่านจาก segment ของใบเอง วันที่ย้ายไม่ได้
-  assert.match(edit, /const mayTickNoBreak = mayTick\.noBreak && !isBirthdayWelfare\(entry\);/);
+  assert.match(edit, /const mayTickNoBreak = mayTick\.noBreak\s*&& !\(isBirthdayWelfare\(entry\) && policy\.birthdayNoBreak !== 'scope'\);/);
   assert.match(edit, /workDate: entry\.workDate,/);
   assert.match(block, /\{mayTickNoBreak && \(\s*<label className="check">/);
 

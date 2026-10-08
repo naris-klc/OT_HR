@@ -86,8 +86,9 @@ test('ทั้งหกข้อไม่เปลี่ยนชั่วโ�
 
 // ── หน้าตั้งค่า ─────────────────────────────────────────────────────────────
 
-test('หน้าตั้งค่ามีบล็อกที่ 6 และหกแถวของมัน', () => {
-  assert.match(admin, /\{ id: 6, title: 'ช่องติ๊กบนฟอร์มบันทึก OT' \}/);
+test('หน้าตั้งค่ามีบล็อกช่องติ๊ก และแถวของมัน', () => {
+  // Block 7 since 2026-10-08, when อัตรา OT went in as block 2.
+  assert.match(admin, /\{ id: 7, title: 'ช่องติ๊กบนฟอร์มบันทึก OT' \}/);
   for (const key of KEYS) {
     assert.ok(admin.includes(`key: '${key}'`), `หน้าตั้งค่าไม่มีแถวของ ${key}`);
   }
@@ -99,8 +100,11 @@ test('หน้าตั้งค่ามีบล็อกที่ 6 แล�
    * ทุกแถวบนหน้านี้ต้องเป็นคีย์นโยบายจริง — `savePolicy` ปฏิเสธคีย์ที่ไม่รู้จัก
    * ด้วย 400 และจะรู้ก็ต่อเมื่อมีคนไปเปลี่ยนแถวนั้นเข้า ซึ่งอาจเป็นอีกหลายเดือน.
    */
-  for (const m of admin.matchAll(/^\s{4}key: '([a-zA-Z]+)'/gm)) {
-    assert.ok(m[1] in DEFAULT_POLICY, `แถว ${m[1]} ไม่ใช่คีย์ใน DEFAULT_POLICY`);
+  // A row of two values (เวลาทำงานปกติ · ช่วงพักเที่ยง, 2026-10-08) names its
+  // own `key` for React and saves its `keys` — those are what must be real.
+  for (const m of admin.matchAll(/^\s{4}key: '([a-zA-Z]+)'(?:, keys: \[([^\]]*)\])?/gm)) {
+    const keys = m[2] ? [...m[2].matchAll(/'([a-zA-Z]+)'/g)].map((k) => k[1]) : [m[1]];
+    for (const k of keys) assert.ok(k in DEFAULT_POLICY, `แถว ${m[1]} — ${k} ไม่ใช่คีย์ใน DEFAULT_POLICY`);
   }
 });
 
@@ -146,7 +150,7 @@ test('เอฟเฟกต์โหลดรายชื่อตำแหน�
 
 test('แถวตำแหน่งใช้ตัวเลือกหลายค่า และรายชื่อมาจากทะเบียนจริง', () => {
   // คอนโทรลของแถวนี้เป็น PickMany ไม่ใช่ดรอปดาวน์ค่าเดียว
-  assert.match(admin, /\{f\.positions \? \(\s*\n\s*<PickMany/);
+  assert.match(admin, /f\.positions \? \(\s*\n\s*<PickMany/);
   assert.match(admin, /values=\{Array\.isArray\(shown\) \? shown : \[\]\}/);
   // …และคำตอบเข้าเส้นทางเดียวกับทุกแถว: เสนอก่อน แล้วค่อยยืนยันในไดอะล็อก
   assert.match(admin, /onCommit=\{\(next\) => setPending\(\{ field: f, value: next \}\)\}/);
@@ -164,7 +168,7 @@ test('ค่าที่ใช้อยู่ของแถวตำแหน�
    * ตัวคอนโทรลตอนปิด · และบรรทัด เก่า → ใหม่ ในไดอะล็อกยืนยัน — แถวที่ไม่มี
    * `options` ไม่มีพจนานุกรมให้เปิด คำตอบจึงเป็นชื่อตำแหน่งเอง.
    */
-  assert.match(admin, /if \(!field\.options\) \{[\s\S]*?return list\.length \? list\.join\(' · '\) : 'ไม่ได้เลือกไว้';/);
+  assert.match(admin, /if \(!options\) \{[\s\S]*?return list\.length \? list\.join\(' · '\) : 'ไม่ได้เลือกไว้';/);
 });
 
 test('รายชื่อตำแหน่งไม่ถูกอ่าน เมื่อโหมดเป็นทุกตำแหน่ง', () => {

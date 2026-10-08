@@ -60,6 +60,15 @@ export const GET = route(async (req) => {
       noBreakPositionMode: policy.noBreakPositionMode,
       noBreakPositions: policy.noBreakPositions,
       noBreakDayScope: policy.noBreakDayScope,
+      // The lunch window and the birthday-noBreak answer, so the forms can say
+      // the hours they mean (2026-10-08) and the queue knows whether a
+      // birthday hides ไม่พักเที่ยง.
+      breakWindowStartMinute: policy.breakWindowStartMinute,
+      breakWindowEndMinute: policy.breakWindowEndMinute,
+      birthdayNoBreak: policy.birthdayNoBreak,
+      birthdaySplit: policy.birthdaySplit,
+      holidayCoreRate: policy.holidayCoreRate,
+      holidayOuterRate: policy.holidayOuterRate,
       hrSummaryBasis: policy.hrSummaryBasis,
       hrMayReject: policy.hrMayReject,
       /**

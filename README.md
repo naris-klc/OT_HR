@@ -2108,7 +2108,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     158 files, run by `npm test`. Six named below as a
+test/                     159 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2121,9 +2121,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2813 tests
-across 158 files**, measured 2026-09-21 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2828 tests
+across 159 files**, measured 2026-10-08 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2813 tests across 158 files … measured 2026-09-21" until **นโยบายการ
+คำนวณแก้ได้บนหน้าจอ** — `policySettings` is file 159, and it pins each rule that
+became a setting that day.
 It read "2793 tests across 157 files … measured 2026-09-18" until **ผล QA
 2026-09-21** — `requestInputGuards` is file 158, and it pins the six routes that
 answered 500 to a mistyped id, the two that let `?limit=-1` past a ceiling they
@@ -2376,6 +2379,42 @@ Two later flags sit beside them, both COSMETIC and neither an [OPEN] item:
 `proxySkipsOwnApproval` (default `false`; it read "default `true`" until
 2026-09-09) and `proxyNoteOnForm` (default `false`) — see
 [หัวหน้าบันทึก OT แทนลูกทีม](#หัวหน้าบันทึก-ot-แทนลูกทีม).
+
+#### นโยบายการคำนวณ แก้ได้บนหน้าจอ — 2026-10-08
+
+The user: *พวกนโยบายการคำนวนที่เราคุยกันมาตั้งแต่ต้น ทำให้แก้ไขได้ผ่าน ui ได้แบบ
+ยืดหยุ่นต่อไปจะได้ไม่ต้องมาแก้โค้ดอีก*. Agreed on a mockup first, then built.
+Every default below is the behaviour that shipped before the flag existed, and
+the engine merges `DEFAULT_POLICY` under any recorded version — so versions
+written before these keys read them at these values and no stored hour moved.
+
+| Row on the page | Key | Default | Moves hours? |
+|---|---|---|---|
+| เวลาทำงานปกติ | `coreStartMinute` · `coreEndMinute` | 08:00–17:00 | yes — keys that existed, now on screen |
+| ช่วงพักเที่ยง | `breakWindowStartMinute` · `breakWindowEndMinute` | 12:00–13:00 | yes — likewise |
+| วันหยุดประจำสัปดาห์ | `weekendDays` | `[0, 6]` | yes — likewise |
+| วันหยุด — ในเวลางาน / นอกเวลางาน | `holidayCoreRate` · `holidayOuterRate` | 1.5 · 3 | yes |
+| วันที่ติ๊กไม่พักเที่ยง | `noBreakRate` | `'clock'` (or `'all15'`) | yes |
+| วันเกิด — วิธีแบ่ง ×1.5 / ×3 | `birthdaySplit` | `'clock'` (or `'worked'`, the 2026-09-08 rule) | yes |
+| วันเกิดที่ตรงวันหยุดบริษัท | `birthdayOnHoliday` | `'birthday'` (or `'holiday'`) | yes |
+| ช่องไม่พักเที่ยงในวันเกิด | `birthdayNoBreak` | `'hide'` (or `'scope'`) | yes |
+| เปลี่ยนนโยบายแล้วคำนวณใบใหม่ | `replayApproved` | `true` | no — decides what a save replays |
+
+Rates are only ×1.5 or ×3, because F-HR-027 and the accounting file have those
+two columns and no other. `policyValueRefusal()` in
+[`lib/policySave.js`](lib/policySave.js) refuses anything else, and refuses a
+work day that ends before it starts or a lunch window outside it.
+
+**Three things on the page changed with it**, also asked for while reviewing
+the mockup: a new group 2 **อัตรา OT** renumbered the groups after it (3–7);
+every row is numbered กลุ่ม.ลำดับ (`ROW_LABEL`) — it printed the requirements'
+[OPEN n] number with gaps until then, and that number now opens the row's
+explanation; and that explanation is a **คำอธิบาย** toggle after the row's title
+rather than an อ่านต่อ fold under its answer.
+
+**After deploy** the live policy has keys the latest recorded version lacks, so
+นโยบายการคำนวณ shows its "rules in force do not match a version" banner until a
+version is recorded there — the same step every earlier new key needed.
 
 ### What HR sets about the arithmetic itself
 
@@ -4002,6 +4041,10 @@ There was a third, `birthdayReasonOnForm`, and it is **gone** — see
 > the two now differ only in that cap. What follows is the 2026-09-08 rule, kept
 > because it explains the order in `resolveDayTypes()`.
 >
+> **Later the same day all of this became settings** — `birthdaySplit` (`'worked'`
+> is the 2026-09-08 rule below), `birthdayOnHoliday` and `birthdayNoBreak`; see
+> [นโยบายการคำนวณ แก้ได้บนหน้าจอ](#นโยบายการคำนวณ-แก้ได้บนหน้าจอ--2026-10-08).
+>
 > **ไม่พักเที่ยง does not exist on one's own birthday, also since 2026-10-08**
 > (*ซ่อนตัวเลือกไม่พักเที่ยงสำหรับ ot วันเกิด*). Hidden on all three forms — on
 > บันทึก OT แทนพนักงาน too, which the user chose knowing a missing box tells the
@@ -4601,7 +4644,8 @@ correct use, sitting beside one that has one.
 **BOTH HALVES ARE SETTINGS SINCE 2026-09-16**, asked for the same day the rule
 was corrected: *อยากให้แก้ไขนโยบายหรือเงื่อนไขนี้บน ui ตั้งค่าได้แบบยืดหยุ่น
 เผื่อการเปลี่ยนแปลงในอนาคตโดยไม่ต้องแก้ไขโค้ด*. ตั้งค่าระบบ → นโยบายการคำนวณ →
-**กลุ่มที่ 6 ช่องติ๊กบนฟอร์มบันทึก OT** holds six rows, three per tick: which
+**กลุ่มที่ 7 ช่องติ๊กบนฟอร์มบันทึก OT** (กลุ่มที่ 6 until 2026-10-08, when อัตรา OT
+went in as group 2) holds six rows, three per tick, plus ช่องไม่พักเที่ยงในวันเกิด since that day: which
 ตำแหน่ง (ทุก · เฉพาะที่เลือก · ยกเว้นที่เลือก), the ตำแหน่ง themselves, and which
 days (ทุกวัน · เฉพาะวันหยุด · เฉพาะวันทำงาน). The shipped values are the rules
 below, so an install that never opens that page behaves exactly as this section
@@ -7209,9 +7253,11 @@ what makes a replay reproducible three months later, and
 > **A policy save replays approved entries too, automatically, since
 > 2026-10-08.** The user: *ใบที่บันทึกไว้แล้วคำนวณใหม่ทุกครั้งที่เปลี่ยนนโยบาย*,
 > and asked whether that included signed rows, *รวมใบอนุมัติแล้วด้วย อัตโนมัติ*.
-> `savePolicy()` in [`lib/policySave.js`](lib/policySave.js) now always passes
+> `savePolicy()` in [`lib/policySave.js`](lib/policySave.js) passes
 > `includeApproved` over `pending_mgr`/`pending_hr`/`approved`, for HR and admin
-> alike, with no note required. What stops it restating history is
+> alike, with no note required — **while `replayApproved` is on**, which it is by
+> default; the same day it became a row on นโยบายการคำนวณ (เปลี่ยนนโยบายแล้ว
+> คำนวณใบใหม่), and off it replays the pending ones only. What stops it restating history is
 > `versionForDate`: each entry is recomputed under the version in force on its
 > own workDate, and a version cannot start in the past — so a save moves entries
 > on or after its start date, plus anything the ENGINE now answers differently.
@@ -14253,8 +14299,11 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2813 tests**, about 5 s, measured 2026-09-21 across 158
-  files, all green. **`requestInputGuards` is the new file of the last round**
+- `npm test` — **2828 tests**, about 5 s, measured 2026-10-08 across 159
+  files, all green. **`policySettings` is the newest file** — every rule made a
+  setting on นโยบายการคำนวณ on 2026-10-08. It read
+  "2813 tests … across 158 files" before that, and what follows was the
+  newest file then: **`requestInputGuards` is the new file of the last round**
   — the twelve refusals a mistyped request is owed, written after a QA pass
   walked the whole API against the database and found six routes answering 500
   to a bad id, two letting `?limit=-1` past a ceiling they printed, and two

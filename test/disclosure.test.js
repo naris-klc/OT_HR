@@ -249,26 +249,27 @@ test('a policy row is cut by CONTENT: the answer stands, everything else folds',
    * It had TWO folds before, one either side of that sentence, so a reader met
    * two อ่านต่อ per row before reaching the line most visits are for.
    */
+  /*
+   * THE FOLD BECAME A TOGGLE AFTER THE TITLE ON 2026-10-08 — *ป้านอ่านต่อ
+   * เปลี่ยนเป็น "คำอธิบาย" และย้ายไปอยู่หลังชื่อหัวข้อ*. The rule above still
+   * holds: the answer line stands, and what the row is not answering opens
+   * under it — but the control is on the title line, so it is no Disclosure.
+   */
   const row = admin.slice(admin.indexOf('<div className="policy-row-q">'), admin.indexOf('<div className="policy-row-a">'));
-  // the answer line first, and outside the fold
+  assert.ok(row.indexOf('คำอธิบาย {explainedOpen') < row.indexOf('<PolicyReading'), 'คำอธิบาย อยู่บนบรรทัดชื่อ');
   assert.ok(
-    row.indexOf('<PolicyReading') < row.indexOf('<Disclosure'),
-    'ค่าที่ใช้อยู่ ต้องอยู่เหนือรอยพับ ไม่ใช่ในนั้น',
+    row.indexOf('<PolicyReading') < row.indexOf('className="policy-detail"'),
+    'ค่าที่ใช้อยู่ ต้องอยู่เหนือคำอธิบาย ไม่ใช่ในนั้น',
   );
-  // It read its value off an HR_UNCONFIRMED item until 2026-09-08 and so
-  // appeared on the six rows that list covered; it reads the live policy now
-  // and appears on every row that has a dropdown. `shown` and not the stored
-  // value, so a change waiting in its dialog says what it is about to be.
-  assert.match(admin, /<PolicyReading field=\{f\} value=\{shown\} \/>/);
+  assert.match(admin, /<PolicyReading field=\{f\} value=\{shown\} policy=\{proposed\} \/>/);
   assert.match(admin, /ค่าที่ใช้อยู่: <strong>\{said\}<\/strong>/);
-  // ONE fold in the row, and the three things behind it
-  assert.equal((row.match(/<Disclosure\b/g) || []).length, 1, 'แถวหนึ่งต้องมีรอยพับเดียว');
-  const fold = row.slice(row.indexOf('<Disclosure'), row.indexOf('</Disclosure>'));
+  assert.equal((row.match(/<Disclosure\b/g) || []).length, 0, 'ไม่มีรอยพับในแถวแล้ว');
+  const fold = row.slice(row.indexOf('className="policy-detail"'));
   assert.match(fold, /\{f\.hint && <div className="hint policy-help">\{f\.hint\}<\/div>\}/);
   assert.match(fold, /\{f\.optionHints && \(/);
-  // and a row with nothing behind its answer draws no control at all
-  assert.match(admin, /const detail = Boolean\(f\.hint \|\| f\.optionHints\);/);
-  assert.match(row, /\{detail && \(\r?\n\s*<Disclosure as="div" lines=\{0\}/);
+  assert.match(row, /aria-expanded=\{explainedOpen\}/);
+  // a row with nothing behind its answer draws no control at all
+  assert.match(admin, /const detail = Boolean\(f\.hint \|\| f\.optionHints \|\| f\.open\);/);
 });
 
 test('the fold on that page is answering a real length', () => {
@@ -323,7 +324,8 @@ test('ซ่อนทั้งหมด is for the folds a preview cannot previe
   const zeros = components
     .flatMap((n) => [...sourceOf(`components/${n}`).matchAll(/<Disclosure([^>]*)lines=\{0\}([^>]*)>/g)]
       .map((m) => `${n}${m[1]}${m[2]}`.replace(/\s+/g, ' ')));
-  assert.equal(zeros.length, 5, `มี lines={0} อยู่ ${zeros.length} ที่`);
+  // Four since 2026-10-08: the policy ROW's fold became a คำอธิบาย toggle.
+  assert.equal(zeros.length, 4, `มี lines={0} อยู่ ${zeros.length} ที่`);
   const lists = zeros.filter((z) => /as="ul"/.test(z));
   assert.equal(lists.length, 2, 'ลิสต์บุลเล็ตที่พับทั้งก้อนต้องมีสองที่');
   /*
@@ -341,7 +343,7 @@ test('ซ่อนทั้งหมด is for the folds a preview cannot previe
    */
   assert.deepEqual(
     zeros.filter((z) => !/as="ul"/.test(z)).map((z) => z.split(' ')[0]).sort(),
-    ['AdminView.jsx', 'AdminView.jsx', 'ManualView.jsx'],
+    ['AdminView.jsx', 'ManualView.jsx'],
   );
 });
 

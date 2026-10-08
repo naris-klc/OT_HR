@@ -343,7 +343,9 @@ export function resolveDayTypes(dates = [], options = {}) {
     const birthday = policy.birthdayHolidayEnabled && birthDate
       && birthdayFor(Number(date.slice(0, 4))) === date;
 
-    if (birthday) {
+    // `birthdayOnHoliday: 'holiday'` (2026-10-08) lets the company's own day
+    // off answer first, so a birthday on a Saturday is an ordinary Saturday.
+    if (birthday && !(policy.birthdayOnHoliday === 'holiday' && isHoliday(date))) {
       out[date] = { type: DAY_TYPES.HOLIDAY, reason: DAY_REASONS.BIRTHDAY };
       continue;
     }
@@ -539,6 +541,14 @@ function boundaryCuts(startAbs, endAbs, policy) {
  */
 function applyBirthdayTiers(segments, policy) {
   const tier = birthdayFirstTierMinutes(policy);
+  /**
+   * `birthdaySplit` — a setting since 2026-10-08. 'clock' (the default) is the
+   * rule described above. 'worked' is the 2026-09-08 rule, kept selectable:
+   * the first `tier` minutes WORKED are ×1.5 wherever the clock puts them and
+   * the rest ×3, so every birthday segment is in the count, not only the ×1.5
+   * ones.
+   */
+  const worked = policy.birthdaySplit === 'worked';
   const spentByDate = new Map();
   const out = [];
 
@@ -547,7 +557,8 @@ function applyBirthdayTiers(segments, policy) {
   });
 
   for (const seg of segments) {
-    if (seg.dayReason !== DAY_REASONS.BIRTHDAY || seg.bucket !== BUCKETS.OT15_HOLIDAY) {
+    if (seg.dayReason !== DAY_REASONS.BIRTHDAY
+      || (!worked && seg.bucket !== BUCKETS.OT15_HOLIDAY)) {
       out.push(seg);
       continue;
     }
@@ -557,7 +568,7 @@ function applyBirthdayTiers(segments, policy) {
     const firstTierLeft = Math.max(0, tier - spent);
 
     if (firstTierLeft >= seg.minutes) {
-      out.push(seg);
+      out.push(worked ? at(seg, BUCKETS.OT15_HOLIDAY) : seg);
     } else if (firstTierLeft <= 0) {
       out.push(at(seg, BUCKETS.OT3_HOLIDAY));
     } else {
@@ -575,12 +586,19 @@ function applyBirthdayTiers(segments, policy) {
   return out;
 }
 
+/** A holiday rate as its column — ×3 or, for anything else, ×1.5. */
+function holidayBucket(rate) {
+  return Number(rate) === 3 ? BUCKETS.OT3_HOLIDAY : BUCKETS.OT15_HOLIDAY;
+}
+
 function bucketFor(isHolidayDay, minuteOfDay, policy) {
   // Half-open [coreStart, otStart): the minute the OT boundary sits on belongs
   // to whatever is on its left, which is what makes 17:00–20:00 three clean
   // hours when OT starts at 17:00 and 2 h 59 m when it starts at 17:01.
   const inCore = minuteOfDay >= policy.coreStartMinute && minuteOfDay < otStartMinute(policy);
-  if (isHolidayDay) return inCore ? BUCKETS.OT15_HOLIDAY : BUCKETS.OT3_HOLIDAY;
+  // Which column each half of a holiday lands in is a setting since 2026-10-08
+  // (`holidayCoreRate` · `holidayOuterRate`); the defaults are ×1.5 and ×3.
+  if (isHolidayDay) return holidayBucket(inCore ? policy.holidayCoreRate : policy.holidayOuterRate);
   // Mon–Fri inside 08:00–17:00 is normal working time, not OT at all.
   return inCore ? null : BUCKETS.OT15_WEEKDAY;
 }
@@ -750,7 +768,8 @@ export function computeSession(session, options = {}) {
    * answer (`noBreakTaken`) and `applyComputation` writes it back, so the tick
    * never outlives the hours it no longer moves.
    */
-  const noBreakTaken = Boolean(session.noBreakTaken) && dayReason !== DAY_REASONS.BIRTHDAY;
+  const noBreakTaken = Boolean(session.noBreakTaken)
+    && !(dayReason === DAY_REASONS.BIRTHDAY && policy.birthdayNoBreak !== 'scope');
 
   // [OPEN 1] In lunchWindow mode the break is a hole in the session, so it
   // lands in whichever bucket actually contains 12:00–13:00 — no attribution
@@ -804,6 +823,15 @@ export function computeSession(session, options = {}) {
   // the ×1.5 at eight hours, which needs a running total of the whole day that
   // one cut point cannot see. See `applyBirthdayTiers`.
   segments = applyBirthdayTiers(segments, policy);
+
+  // วันที่ติ๊กไม่พักเที่ยง ×1.5 ทั้งวัน — `noBreakRate: 'all15'`, 2026-10-08. Last,
+  // so it holds over the holiday rates and a birthday's split alike; a weekday
+  // segment is already ×1.5.
+  if (noBreakTaken && policy.noBreakRate === 'all15') {
+    segments = segments.map((seg) => (seg.bucket === BUCKETS.OT3_HOLIDAY
+      ? { ...seg, bucket: BUCKETS.OT15_HOLIDAY, multiplier: BUCKET_MULTIPLIER[BUCKETS.OT15_HOLIDAY] }
+      : seg));
+  }
 
   const clockMinutes = endAbs - startAbs;
   const otMinutesBeforeBreak = segments.reduce((s, x) => s + x.minutes, 0)

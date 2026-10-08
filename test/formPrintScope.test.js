@@ -512,8 +512,9 @@ test('HR can set the answer from ตั้งค่าระบบ, and the loos
   // question rather than answering it: what the sheet will carry, and what goes
   // wrong when it is signed and the row is refused afterwards.
   assert.match(field, /if \(\['signed', 'approved'\]\.includes\(value\)\) return '';/);
-  assert.match(field, /รายการที่ยังไม่มีใครอนุมัติ/);
-  assert.match(field, /ไม่ตรงกับยอดจ่ายจริง/);
+  // Shortened 2026-10-08 (กระชับข้อความ) — the same two halves, fewer words.
+  assert.match(field, /รายการที่ยังไม่อนุมัติ/);
+  assert.match(field, /ยอดบนกระดาษจะไม่ตรงกับระบบ/);
 });
 
 /**
@@ -539,9 +540,9 @@ test('the shipped answer informs, the narrow ones are silent, and screen warns',
   const draft = warn.slice(warn.indexOf("value === 'draft'"), warn.indexOf('return \'⚠️'));
   assert.match(draft, /ℹ️/);
   assert.ok(!draft.includes('⚠️'), 'the answer HR chose warns about itself');
-  assert.match(draft, /“ลงชื่อหัวหน้างาน”/, 'the note must name what stays blank');
+  assert.match(draft, /ช่องลงชื่อหัวหน้าเว้นว่างไว้/, 'the note must name what stays blank');
   // …so the ⚠️ belongs to whatever is left, which is ตาม “สถานะที่นับ”.
-  assert.match(warn, /return '⚠️ คำเตือน/);
+  assert.match(warn, /return '⚠️ /);
   // The old spelling tested one value against one string and would go on
   // passing while quietly warning on the answer that ships.
   assert.ok(!warn.includes("value === 'approved'"), 'the warning still tests a single answer');

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { isBirthdayWelfare } from '../lib/entries.js';
+import { isBirthdayWelfare, birthdayRateSay } from '../lib/entries.js';
 import {
   BUCKETS, computeSession, makeIsHoliday, resolveDayTypes, sessionDates,
 } from '../src/lib/otEngine.js';
@@ -221,7 +221,9 @@ test('ฟอร์มบอกเองว่าวันนั้นเป็�
     /\{preview && !proxy && !hrEdit && isOwnBirthday\(preview\) && \(/,
     'ประกาศเหนือช่วงเวลาไม่ได้ขึ้นทุกใบที่ตรงวันเกิดแล้ว',
   );
-  assert.match(form, /ช่วง 08:00–17:00 \(ไม่เกิน 8 ชั่วโมง\) เข้าช่อง OT วันหยุด ×1\.5/);
+  // ประโยคอัตรามาจากนโยบาย (2026-10-08) — ค่าเริ่มต้นยังพูดเหมือนเดิมทุกตัวอักษร
+  assert.match(form, /<strong>\{birthdayRateSay\(policy\)\}<\/strong>/);
+  assert.equal(birthdayRateSay(), 'ช่วง 08:00–17:00 (ไม่เกิน 8 ชั่วโมง) เข้าช่อง OT วันหยุด ×1.5 นอกช่วงนั้นและส่วนที่เกิน 8 ชั่วโมงเข้าช่อง ×3');
 
   // Withheld on บันทึก OT แทนพนักงาน: it would tell a หัวหน้า when their team
   // member was born. The HOURS are unaffected — the server reads the stored

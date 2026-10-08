@@ -9,7 +9,7 @@ import {
   submissionWindow, zeroOtHoursAllowed,
   ticksAllowed, tickClearing, applyTickClearing,
   cancelCutoffHrNote, isPastCancelCutoff,
-  FLAT_DAY_TIMES,
+  FLAT_DAY_TIMES, workHoursSay, birthdayRateSay,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import {
@@ -987,7 +987,7 @@ export default function OtForm({
         <div className="hint">
           {isOwnBirthday(preview)
             ? 'วันที่เลือกเป็นวันเกิดของคุณ — เป็นวันหยุดของคุณทั้งวัน ชั่วโมงที่ทำทั้งหมดจึงนับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'
-            : 'เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. · นอกเหนือจากนี้นับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'}
+            : `${workHoursSay(policy)} · นอกเหนือจากนี้นับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ`}
         </div>
       )}
       {entry && !hrEdit && (
@@ -1618,7 +1618,7 @@ export default function OtForm({
         <Alert kind="info">
           ช่วงเวลาที่ยื่นนี้ตรงกับ<strong>วันเกิดของคุณ</strong> ซึ่งนับเป็นวันหยุดของคุณคนเดียว —
           {' '}ระบบคิดสวัสดิการวันเกิดให้อัตโนมัติ ไม่ต้องติ๊กอะไรเพิ่ม ·
-          {' '}<strong>ช่วง 08:00–17:00 (ไม่เกิน 8 ชั่วโมง) เข้าช่อง OT วันหยุด ×1.5</strong> นอกช่วงนั้นและส่วนที่เกิน 8 ชั่วโมงเข้าช่อง ×3
+          {' '}<strong>{birthdayRateSay(policy)}</strong>
           {' '}· ยื่นถูกแล้ว
         </Alert>
       )}
