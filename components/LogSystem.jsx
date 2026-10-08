@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, thaiStamp } from '@/lib/api.js';
-import { PickDate } from './PickDate.jsx';
+import { DateRange } from './PickDate.jsx';
 import {
   EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
 } from '@/lib/accessLog.js';
@@ -589,17 +589,36 @@ function Compliance() {
           บันทึก OT แทนพนักงาน puts beside its heading, with the `i` glyph
           rather than `?` because a heading is not asking the reader anything.
           See `TipButton` in common.jsx. */}
-      <div className="form-head">
-        <h2>การใช้สิทธิ์พิเศษ</h2>
-        <TipButton
-          glyph="i"
-          text={ABOUT}
-          of="การใช้สิทธิ์พิเศษ"
-          open={aboutOpen}
-          onToggle={() => setAboutOpen((v) => !v)}
-        />
+      {/* THE TWO BUTTONS ARE IN THE HEAD, AT THE RIGHT — 2026-10-08, the same
+          as the other tabs of this screen. ล้างตัวกรองทั้งหมด keeps its place to
+          the left of ดาวน์โหลด: it appears only when something is filtering, and
+          a button that comes and goes must not be the one whose position the
+          other is found by. */}
+      <div className="card-head log-head">
+        <div className="log-head-text">
+          <div className="form-head">
+            <h2>การใช้สิทธิ์พิเศษ</h2>
+            <TipButton
+              glyph="i"
+              text={ABOUT}
+              of="การใช้สิทธิ์พิเศษ"
+              open={aboutOpen}
+              onToggle={() => setAboutOpen((v) => !v)}
+            />
+          </div>
+          <div className="hint">บันทึกทุกครั้งที่มีการใช้สิทธิ์ระดับสูง หรือสิทธิ์ที่ระบบปกติจะปฏิเสธ</div>
+        </div>
+        <div className="log-head-actions">
+          {(range.from || range.to || only) && (
+            <button className="btn ghost sm" onClick={() => { setRange({ from: '', to: '' }); setOnly(''); }}>
+              ล้างตัวกรองทั้งหมด
+            </button>
+          )}
+          <button className="btn outline sm" onClick={download} disabled={!data?.total}>
+            ดาวน์โหลด CSV ตามตัวกรอง
+          </button>
+        </div>
       </div>
-      <div className="hint">บันทึกทุกครั้งที่มีการใช้สิทธิ์ระดับสูง หรือสิทธิ์ที่ระบบปกติจะปฏิเสธ</div>
       {aboutOpen && <div className="field-note compliance-about">{ABOUT}</div>}
 
       {/* THREE FILTERS AND THE TWO BUTTONS ON ONE LINE — see `.queue-tools`.
@@ -613,19 +632,12 @@ function Compliance() {
           box; a second flex row with its own gap and its own idea of where a
           control starts is what that report was about. */}
       <div className="queue-tools">
-        <Field label="ตั้งแต่วันที่">
-          <PickDate label="ตั้งแต่วันที่" max={today} value={range.from} clearable
-            onChange={(v) => setRange((r) => ({ ...r, from: v }))} />
-        </Field>
-        {/* THE NOTE IS IN THE LABEL NOW, and it is a smaller change than it
-            looks: `note="รวมวันที่เลือกด้วย"` drew a second line UNDER this one
-            box, which on a bar of equal-height controls is the one field that
-            is taller than the rest. Inside the label it is read where the
-            question is asked — and "ถึงวันที่" and "รวมวันนั้น" are one
-            question, not a question and a footnote. */}
-        <Field label="ถึงวันที่ (รวมวันนั้น)">
-          <PickDate label="ถึงวันที่" max={today} value={range.to} clearable
-            onChange={(v) => setRange((r) => ({ ...r, to: v }))} />
+        {/* ONE BOX FOR BOTH DATES — 2026-10-08; see `DateRange`. The note that
+            lived in the second label (`รวมวันนั้น`) is the label's now. */}
+        <Field label="ช่วงวันที่ (รวมวันสุดท้าย)" className="daterange">
+          <DateRange from={range.from} to={range.to} max={today} clearable
+            onFrom={(v) => setRange((r) => ({ ...r, from: v }))}
+            onTo={(v) => setRange((r) => ({ ...r, to: v }))} />
         </Field>
         {/* `PickOne` AND NOT A `<select>`, SINCE 2026-09-04 — the round that
             took the last of the operating system's own menus off this app. The
@@ -650,26 +662,6 @@ function Compliance() {
             value: k, label: v, count: data?.counts?.[k],
           }))}
         />
-        {/* Last cell of the row. ล้างตัวกรองทั้งหมด keeps its place to the left
-            of ดาวน์โหลด: it appears only when something is filtering, and a
-            button that comes and goes must not be the one whose position the
-            other is found by.
-
-            THE 25px OF PADDING THAT PUT THESE ON THE LINE OF THE BOXES RATHER
-            THAN OF THE LABELS IS GONE, and so is the arithmetic behind it —
-            `.field-head`'s 18 plus `.field`'s 7, two numbers from two rules
-            that had to agree with nothing saying so. There is no label line to
-            miss any more; `.queue-tools` ends its children on one edge. */}
-        <div className="compliance-actions">
-          {(range.from || range.to || only) && (
-            <button className="btn ghost sm" onClick={() => { setRange({ from: '', to: '' }); setOnly(''); }}>
-              ล้างตัวกรองทั้งหมด
-            </button>
-          )}
-          <button className="btn ghost sm" onClick={download} disabled={!data?.total}>
-            ดาวน์โหลด CSV ตามตัวกรอง
-          </button>
-        </div>
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}
@@ -913,12 +905,30 @@ function LogList({
 
   return (
     <div className="card">
-      <h2 title={TAB_SAY[tab]}>{TABS.find((t) => t.key === tab)?.label}</h2>
-      <div className="hint">
-        {/* Was a `note` under กรองตามบัญชี until 2026-09-10 — see the note over
-            that control for why a sentence this long is the screen's and not
-            the field's. */}
-        รายชื่อในช่อง <strong>กรองตามบัญชี</strong> มาจากบันทึกเอง ไม่ใช่ทะเบียนวันนี้
+      {/* ── THE TWO BUTTONS ARE IN THE HEAD, AT THE RIGHT — 2026-10-08 ──────
+          *"ย้ายปุ่มส่งออกไปไว้ด้านบนชิดขวาตรงแถวชื่อ"*. They were the last item of
+          the filter bar; here they sit on the heading's line and the bar is five
+          boxes on one row. ล้างตัวกรองทั้งหมด is drawn only while something is
+          narrowed, as it was. */}
+      <div className="card-head log-head">
+        <div className="log-head-text">
+        <h2 title={TAB_SAY[tab]}>{TABS.find((t) => t.key === tab)?.label}</h2>
+        <div className="hint">
+          {/* Was a `note` under กรองตามบัญชี until 2026-09-10 — see the note over
+              that control for why a sentence this long is the screen's and not
+              the field's. */}
+          รายชื่อในช่อง <strong>กรองตามบัญชี</strong> มาจากบันทึกเอง ไม่ใช่ทะเบียนวันนี้
+        </div>
+        </div>
+        <div className="log-head-actions">
+          {narrowed && (
+            <button className="btn ghost sm" onClick={onClearFilters}>ล้างตัวกรองทั้งหมด</button>
+          )}
+          {/* The reason this screen has an export at all: the request comes from
+              somebody who will never be given a login. See the route.
+              `.outline` — see the note at `.btn.outline`. */}
+          <button className="btn outline sm" onClick={download}>ดาวน์โหลด CSV ตามตัวกรอง</button>
+        </div>
       </div>
 
       {/* `queue-tools` SINCE 2026-09-10, in place of `.form-grid` — see the note
@@ -1002,37 +1012,11 @@ function LogList({
             .filter(([k]) => k !== 'unknown')
             .map(([k, label]) => ({ value: k, label }))}
         />
-        <Field label="ตั้งแต่วันที่">
-          <PickDate label="ตั้งแต่วันที่" max={today} value={filters.from} clearable onChange={(v) => setFilter('from', v)} />
+        {/* ONE BOX FOR BOTH DATES — 2026-10-08; see `DateRange`. */}
+        <Field label="ช่วงวันที่ (รวมวันสุดท้าย)" className="daterange">
+          <DateRange from={filters.from} to={filters.to} max={today} clearable
+            onFrom={(v) => setFilter('from', v)} onTo={(v) => setFilter('to', v)} />
         </Field>
-        <Field label="ถึงวันที่ (รวมวันนั้น)">
-          <PickDate label="ถึงวันที่" max={today} value={filters.to} clearable onChange={(v) => setFilter('to', v)} />
-        </Field>
-        {/* ── THE TWO BUTTONS ARE ON THE BAR, NOT UNDER IT — 2026-09-10 ──────
-            They were a `.row.log-actions` below the filters, which was right
-            while the filters were a `.form-grid`; on a bar it left a lone button
-            sitting on white directly under a wash band, and การใช้สิทธิ์พิเศษ —
-            the fifth tab of this same screen — already had its pair inside the
-            bar. Two tabs of one screen answering the same question two ways is
-            what the round of 2026-09-10 was reported over.
-
-            `compliance-actions` IS THE CLASS, and it keeps that name rather than
-            gaining a second: `margin-left: auto` and the phone rules are one
-            declaration, and a `.log-actions` beside it would be a copy of it. */}
-        <div className="compliance-actions">
-          {narrowed && (
-            <button className="btn ghost sm" onClick={onClearFilters}>ล้างตัวกรองทั้งหมด</button>
-          )}
-        {/* The reason this screen has an export at all: the request comes from
-            somebody who will never be given a login. See the route.
-
-            `.outline` and not a third ghost. Of the two buttons here this is
-            the one that DOES something — the other undoes a filter — and two
-            grey cards side by side say neither. Not the filled green either:
-            that voice belongs to the action a screen is for, and this screen is
-            for reading. See the note at `.btn.outline`. */}
-          <button className="btn outline sm" onClick={download}>ดาวน์โหลด CSV ตามตัวกรอง</button>
-        </div>
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}

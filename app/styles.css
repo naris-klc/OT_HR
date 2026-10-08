@@ -16351,25 +16351,52 @@ table.mini tbody tr:hover { background: none; }
    `margin-left: auto` SURVIVES, for the case the flex line has room to spare,
    which is most desktop widths: the pair is held against the right edge of the
    card rather than drifting up against เฉพาะประเภท. */
-.queue-tools .compliance-actions {
-  flex: none; display: flex; gap: 8px; align-items: center;
-  margin-left: auto;
-}
+/* `.compliance-actions` — the pair of buttons as the last cell of this bar —
+   STOOD HERE UNTIL 2026-10-08 and is deleted: both buttons are in the card's
+   head now, `.log-head-actions`, below. */
 /* The paragraph the ⓘ opens, under the one line that is always drawn. Held to
    the reading measure the rest of the app's prose uses — a 1200px card would
    otherwise give this one sentence a 150-character line. */
 .compliance-about { margin: -6px 0 14px; max-width: 80ch; }
 
-/* The two buttons take their own line before they get too narrow to read —
-   560 is `.form-grid`'s own breakpoint, which is where these fields were before
-   they were a row at all. The fields themselves need nothing here any more:
-   `.queue-tools .field` goes full width in the 860px block, which is above this
-   one. On their own line the right-hand pull comes off and the pair takes the
-   44px every other phone target in this app measures. */
+/* ── บันทึกประวัติระบบ: THE HEAD CARRIES THE BUTTONS, THE BAR IS ONE ROW ─────
+   2026-10-08 — *"ปรับให้ตัวกรองอยู่แถวเดียวกัน รวมตัวเลือกวันที่ให้เป็นกล่อง
+   เดียวกัน แล้วย้ายปุ่มส่งออกไปไว้ด้านบนชิดขวาตรงแถวชื่อ"*, then *"เอาไปใช้กับ
+   ทุกหน้าของ บันทึกประวัติระบบ"* — all four tabs.
+
+   `.card-head` is the shared head row; `.log-head-text` takes what the buttons
+   leave and may shrink (`min-width: 0`), so a long hint wraps rather than
+   pushing the buttons off the card. Below 560px the pair takes its own line
+   at 44px, the rule `.compliance-actions` used to carry for the same buttons
+   when they were the last cell of the bar. */
+.log-head { align-items: flex-start; margin-bottom: 12px; }
+.log-head-text { flex: 1 1 260px; min-width: 0; }
+.log-head-actions { flex: none; display: flex; gap: 8px; align-items: center; margin-left: auto; }
 @media (max-width: 560px) {
-  .queue-tools .compliance-actions { margin-left: 0; width: 100%; }
-  .queue-tools .compliance-actions .btn { flex: 1; min-height: 44px; }
+  .log-head-actions { margin-left: 0; width: 100%; }
+  .log-head-actions .btn { flex: 1; min-height: 44px; }
 }
+
+/* ── ONE BOX FOR A DATE RANGE (`DateRange`) ───────────────────────────────
+   The frame is the box; the two `pick-box` buttons inside are stripped of
+   their own border so they read as halves of it. The label is the field's
+   usual inset one. Only the second half keeps the calendar glyph — two of them
+   side by side said the same thing twice. The focus ring is the frame's, drawn
+   while either half is open. */
+.queue-tools .field.daterange { flex: 1.6 1 280px; }
+.range-pair {
+  display: flex; align-items: stretch; min-width: 0;
+  border: 1px solid var(--input-line); border-radius: var(--radius-sm);
+  background: var(--field-bg);
+}
+.range-pair:has(.pick-box.open) { border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring); }
+.range-pair .pick-box-wrap { flex: 1 1 0; min-width: 0; }
+.field .range-pair .pick-box {
+  border: 0; border-radius: 0; background: transparent; box-shadow: none;
+  min-height: calc(var(--field-h) - 2px);
+}
+.range-pair .pick-box-wrap:first-child .pick-mark { display: none; }
+.range-sep { align-self: flex-end; padding-bottom: 12px; color: var(--muted-2); flex: none; }
 
 /* ล้างตัวกรอง and ดาวน์โหลด CSV. On a wide screen this is an ordinary `.row`;
    what it needs from a class is the margin, which the phone block below

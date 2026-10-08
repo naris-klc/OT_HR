@@ -309,7 +309,11 @@ test('ล้างค่าได้เฉพาะช่องที่ว่�
   // colleague with no birthdate on file are the cases that can.
   assert.match(code, /const clearing = clearable && !empty && !disabled;/);
   const log = strip(read('components/LogSystem.jsx'));
-  assert.equal((log.match(/clearable/g) || []).length, 4, 'ช่วงวันที่ของบันทึกระบบต้องล้างได้ทั้งสี่ช่อง');
+  // Two `DateRange`s (the three list tabs and การใช้สิทธิ์พิเศษ), each opened up.
+  assert.equal((log.match(/<DateRange [^>]*clearable/g) || []).length, 2, 'ช่วงวันที่ของบันทึกระบบต้องล้างได้ทั้งสองกล่อง');
+  const range = strip(read('components/PickDate.jsx'));
+  assert.equal((range.match(/<PickDate label="(?:ตั้งแต่|ถึง)วันที่"[^>]*clearable=\{clearable\}/g) || []).length, 2, 'DateRange ต้องส่ง clearable ให้ทั้งสองช่อง');
+  assert.ok(!/<DateRange[^>]*clearable/.test(strip(read('components/Delegation.jsx'))), 'ช่วงเวลามอบหมายเป็นช่องบังคับ ต้องล้างไม่ได้');
   const form = strip(read('components/OtForm.jsx'));
   assert.ok(!/<Pick(Date|Time)[\s\S]{0,300}?clearable/.test(form), 'ช่องบังคับบนฟอร์ม OT ต้องล้างไม่ได้');
 });

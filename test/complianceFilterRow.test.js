@@ -109,12 +109,16 @@ test('the filters and the buttons are one row, and it is the app’s own bar', (
      rather than breaking at a guessed width. */
   assert.match(card, /<div className="queue-tools">/);
   assert.ok(!card.includes('compliance-filters'), 'แถวตัวกรองของจอนี้กลับมาเป็นคลาสของตัวเอง');
-  // The pair is INSIDE that row; a `.row` of its own under the grid is the
-  // third line this change removed.
-  const row = card.slice(card.indexOf('<div className="queue-tools">'));
-  assert.ok(row.indexOf('compliance-actions') < row.indexOf('{error &&'), 'ปุ่มหลุดออกไปนอกแถวตัวกรองแล้ว');
-  assert.match(row, /ดาวน์โหลด CSV ตามตัวกรอง/);
-  assert.match(row, /ล้างตัวกรองทั้งหมด/);
+  // THE PAIR IS IN THE CARD'S HEAD since 2026-10-08 (*"ย้ายปุ่มส่งออกไปไว้
+  // ด้านบนชิดขวาตรงแถวชื่อ"*) — on the heading's line, not a cell of the bar and
+  // not a `.row` under it.
+  const head = card.slice(0, card.indexOf('<div className="queue-tools">'));
+  assert.ok(head.includes('<div className="log-head-actions">'), 'ปุ่มไม่ได้อยู่ที่หัวการ์ด');
+  assert.match(head, /ดาวน์โหลด CSV ตามตัวกรอง/);
+  assert.match(head, /ล้างตัวกรองทั้งหมด/);
+  assert.ok(!card.includes('compliance-actions'), 'ปุ่มกลับไปอยู่ในแถบตัวกรองอีกแล้ว');
+  // The two dates are ONE box.
+  assert.match(card, /<DateRange /);
   // Wrapping, so the pair drops to a line of its own when the window cannot
   // hold five things — no breakpoint is asked to guess where that is.
   assert.match(rule('.queue-tools'), /display: flex; gap: 12px; flex-wrap: wrap;/);
@@ -139,9 +143,7 @@ test('there is no label line left for the buttons to miss', () => {
      the control), so the boxes start at the top of the row and the pair needs
      no padding at all. One number that could go stale, deleted rather than
      re-derived — which is the better answer to the report that produced it. */
-  assert.ok(!css.includes('.compliance-actions {\n  flex: none; display: flex; gap: 8px; align-items: center;\n  margin-left: auto; padding-top:'),
-    'ปุ่มกลับไปเยื้องตามบรรทัด label อีกแล้ว');
-  const actions = rule('.queue-tools .compliance-actions');
+  const actions = rule('.log-head-actions');
   assert.ok(!/padding-top/.test(actions), 'ปุ่มยังเยื้องเองอยู่ ทั้งที่ไม่มีบรรทัด label ให้เยื้องแล้ว');
   // Held against the right edge of the card when the line has room to spare.
   assert.match(actions, /margin-left: auto/);
@@ -158,10 +160,10 @@ test('under 560 the buttons are a thumb tall and take the line', () => {
   // `.form-grid` until this row was written. The FIELDS need nothing here any
   // more — `.queue-tools .field` goes full width in the 860px block, which is
   // above this one — so what is left is the pair.
-  const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.queue-tools .compliance-actions {')));
+  const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.log-head-actions {')));
   const block = narrow.slice(0, narrow.indexOf('\n}\n'));
-  assert.match(block, /\.queue-tools \.compliance-actions \{[^}]*margin-left: 0/);
-  assert.match(block, /\.queue-tools \.compliance-actions \.btn \{[^}]*min-height: 44px/);
+  assert.match(block, /\.log-head-actions \{[^}]*margin-left: 0/);
+  assert.match(block, /\.log-head-actions \.btn \{[^}]*min-height: 44px/);
   const wide = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.match(wide, /\.queue-tools \.field, \.queue-tools \.field\.search \{ flex: 1 1 100%; \}/);
 });

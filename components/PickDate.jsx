@@ -561,7 +561,7 @@ function Calendar({ mode, value, min, max, onPick, onClose, sheet, typeable = fa
 
 export function PickDate({
   value, onChange, min, max, disabled = false, clearable = false, label = 'วันที่',
-  typeable = false,
+  typeable = false, placeholder = 'เลือกวันที่',
 }) {
   const p = usePicker({ onChange, disabled });
   // The panel's height changes with the view, and the placement has to be told.
@@ -584,7 +584,7 @@ export function PickDate({
       <PickerBox
         icon="calendar"
         display={thaiDate(value)}
-        placeholder="เลือกวันที่"
+        placeholder={placeholder}
         label={label}
         out={out}
         disabled={disabled}
@@ -602,6 +602,26 @@ export function PickDate({
         </Popover>
       )}
     </>
+  );
+}
+
+/**
+ * ONE BOX FOR A FROM–TO RANGE, 2026-10-08 — *"รวมตัวเลือกวันที่ให้เป็นกล่องเดียวกัน"*.
+ * Two `PickDate`s inside one frame: each still opens its own calendar and keeps
+ * its own ✕, only the border is shared (`.range-pair`). It goes inside a
+ * `Field className="daterange"`, which owns the label; every from–to pair
+ * of dates in the app is this (the log's filters, the hand-over's period), so
+ * there is no second way to draw one. `clearable` is for a range left open.
+ */
+export function DateRange({
+  from, to, onFrom, onTo, min, max, disabled = false, clearable = false,
+}) {
+  return (
+    <div className="range-pair">
+      <PickDate label="ตั้งแต่วันที่" placeholder="ตั้งแต่" min={min} max={max} value={from} disabled={disabled} clearable={clearable} onChange={onFrom} />
+      <span className="range-sep" aria-hidden="true">→</span>
+      <PickDate label="ถึงวันที่" placeholder="ถึง" min={min} max={max} value={to} disabled={disabled} clearable={clearable} onChange={onTo} />
+    </div>
   );
 }
 
