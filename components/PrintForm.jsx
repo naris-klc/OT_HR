@@ -67,22 +67,35 @@ export function sheetQuery({ employeeId = '', status = '' } = {}) {
  * answers with the strict list under every `formPrintScope` setting, which is
  * the right way for a missing filter to be wrong on a sheet that gets signed.
  */
-export default function PrintForm({ employeeId, period, status = '', onClose }) {
+export default function PrintForm({ employeeId, period, status = '', onClose, head = null }) {
   const [form, setForm] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    setError('');
     api.get(`/reports/form/${period}${sheetQuery({ employeeId, status })}`)
       .then((res) => setForm(res.form))
       .catch((err) => setError(err.message));
   }, [employeeId, period, status]);
 
-  if (error) return <Alert kind="error">{error}</Alert>;
-  if (!form) return <div className="empty">กำลังโหลด…</div>;
+  /* `head` carries the month picker (MyForm in App.jsx), so while there is no
+     sheet to print the card still stands, buttons disabled — otherwise a month
+     that fails to load would take away the control that picks another one. */
+  if (error || !form) {
+    const wait = error ? <Alert kind="error">{error}</Alert> : <div className="empty">กำลังโหลด…</div>;
+    if (!head) return wait;
+    return (
+      <>
+        <PrintChrome disabled head={head} graphics={null} />
+        {wait}
+      </>
+    );
+  }
 
   return (
     <>
       <PrintChrome
+        head={head}
         onClose={onClose}
         filename={printName.form({ code: form.employee.code, period })}
         {...f027Chrome(form)}

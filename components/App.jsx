@@ -2279,7 +2279,7 @@ function MyForm() {
   const [period, setPeriod] = useState(currentPeriod());
   return (
     <div className="stack">
-      {/* ── หัวการ์ด แล้วแถบตัวกรอง — 2026-09-15 ─────────────────────────────
+      {/* ── หัวการ์ด แล้วแถบตัวกรอง — 2026-09-15 (เป็นรูปนี้ถึง 2026-10-08) ────
           Reported with a picture of the box: *"เหลือช่อง input ตามรูปที่ยังไม่ใช้
           label แบบเดียวกัน"*, after the same round put ประวัติการแก้ทะเบียน on a
           bar. This was the last label in the app standing ABOVE its box while
@@ -2290,37 +2290,37 @@ function MyForm() {
           bilingual label no other control in the app has, hung over the box
           rather than inside it.
 
-          IT IS THE SHAPE EVERY REPORT SCREEN HAS: `.card.flush` + `.card-head`
+          IT WAS THE SHAPE EVERY REPORT SCREEN HAS: `.card.flush` + `.card-head`
           + `.queue-tools`, which is what รายงาน OT การเงิน and รายงาน OT แยกแผนก
           are made of — the heading and its sentence on the white band, the
           control that decides what is on screen on the wash below it, label
           inside the box.
 
-          THE HEADING IS `.card-head .t` AND NOT AN `<h2>` for the same reason:
-          that is what the band is, on all four screens that draw one. */}
-      <div className="card flush no-print">
-        <div className="card-head">
-          <div style={{ minWidth: 0 }}>
-            <div className="t">ใบขออนุมัติทำงานล่วงเวลา · {periodLabel(period)}</div>
-            <div className="hint" style={{ margin: 0 }}>
-              รวมรายการที่อนุมัติแล้วและที่ยังรออนุมัติ · ลงนามแล้วส่งฝ่ายบุคคล
+          THE HEADING WAS `.card-head .t` AND NOT AN `<h2>` for the same reason
+          — and it is still `.t`, not `<h2>`, in the one-row card below. The
+          label stays inside the box. */}
+      {/* ── ชั้นเดียว — 2026-10-08 ──────────────────────────────────────────
+          *"ปรับ ui ให้ layout จัดวางกระชับขึ้น ไม่เปลืองพื้นที่"* · เคยเป็นสาม
+          ชั้นซ้อนกัน (หัวการ์ด · แถบตัวกรอง · แถวปุ่มพิมพ์ ≈220px ก่อนถึงใบ) ·
+          เลือกแบบ B จาก mockup: การ์ดเดียว `.queue-tools` แถวเดียว หัวข้อกับ
+          ประโยคอธิบายซ้าย ประจำเดือนกับปุ่มพิมพ์ขวา · การ์ดนั้นวาดโดย
+          `PrintChrome` (`head`) เพราะปุ่มเป็นของมัน — ดูหัวคอมโพเนนต์ใน
+          components/common.jsx */}
+      <PrintForm
+        period={period}
+        head={(
+          <>
+            <div className="print-head-t">
+              <div className="t">ใบขออนุมัติทำงานล่วงเวลา · {periodLabel(period)}</div>
+              <div className="hint">รวมรายการที่อนุมัติแล้วและที่ยังรออนุมัติ · ลงนามแล้วส่งฝ่ายบุคคล</div>
             </div>
-          </div>
-        </div>
-        {/* ONE CONTROL ON THE BAR, AND THAT IS NOT AN ARGUMENT AGAINST THE BAR
-            — ทะเบียนพนักงาน's was one field too until this week, and the round
-            of 2026-09-10 settled that a bar with one control on it is still the
-            bar rather than a rule of its own. The ` · PERIOD` half of the label
-            went with the move: the inset label is 10px mono uppercase and every
-            other one in the app is Thai alone. */}
-        <div className="queue-tools">
-          <div className="field">
-            <div className="field-head"><label>ประจำเดือน</label></div>
-            <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
-          </div>
-        </div>
-      </div>
-      <PrintForm period={period} />
+            <div className="field">
+              <div className="field-head"><label>ประจำเดือน</label></div>
+              <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
+            </div>
+          </>
+        )}
+      />
     </div>
   );
 }
