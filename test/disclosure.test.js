@@ -895,7 +895,7 @@ test('a live figure is not an explanation, and is left on the screen', () => {
   assert.ok(figures > 0, 'บรรทัดตัวเลขของเดือนหายไปจากหัวลิ้นชัก');
   assert.ok(figures < scanImport.indexOf('<Disclosure'), 'ตัวเลขของเดือนถูกพับไปกับคำอธิบาย');
   assert.match(scanImport.slice(figures, scanImport.indexOf('<Disclosure')), /นำเข้าแล้ว \$\{/);
-  assert.match(sourceOf('components/HrView.jsx'), /<div className="hint">\r?\n\s*ไม่นับ \{data\.supersededCount\}/);
+  assert.match(sourceOf('components/HrView.jsx'), /className="hint"\r?\n\s*title="[^"]*"\r?\n\s*>\r?\n\s*ไม่นับ \{data\.supersededCount\}/);
   assert.match(
     sourceOf('components/HrEntries.jsx'),
     /<div className="hint" style=\{\{ marginTop: 6 \}\}>\r?\n\s*ซ่อน \{replacedCount\}/,

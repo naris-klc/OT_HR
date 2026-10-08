@@ -136,8 +136,7 @@ function ThemeChoice() {
     <div className="card">
       <h2>ธีมสีหน้าจอ</h2>
       <div className="hint">
-        จำไว้เฉพาะในเบราว์เซอร์นี้ · เครื่องอื่นหรือโทรศัพท์ตั้งแยกกันได้
-        {' '}· ใบที่พิมพ์ออกกระดาษเป็นพื้นขาวเสมอไม่ว่าตั้งไว้แบบไหน
+        จำไว้เฉพาะเบราว์เซอร์นี้
       </div>
       <div className="seg" style={{ marginTop: 12 }} role="group" aria-label="ธีมสีหน้าจอ">
         {THEMES.map((t) => (
@@ -178,9 +177,9 @@ function Details({ user }) {
     <div className="card">
       <h2>ข้อมูลส่วนตัว</h2>
       <div className="hint">
-        ข้อมูลด้านล่างมาจากทะเบียนพนักงานของฝ่ายบุคคล
-        · ชื่อ-สกุลเป็นชื่อที่พิมพ์ลงใบ F-HR-027 จึงแก้ไขเองไม่ได้
-        หากมีข้อมูลใดไม่ถูกต้อง กรุณาแจ้งฝ่ายบุคคลเพื่อแก้ไข
+        <span title="ข้อมูลมาจากทะเบียนพนักงานของฝ่ายบุคคล · ชื่อ-สกุลเป็นชื่อที่พิมพ์ลงใบ F-HR-027">
+          แก้ไม่ได้ — แจ้งฝ่ายบุคคล
+        </span>
       </div>
 
       <dl className="profile-facts">
@@ -484,7 +483,7 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
             {busy ? 'กำลังบันทึก…' : 'บันทึกรหัสผ่านใหม่'}
           </button>
           {!ready && !busy && shape.ok && !unchanged && !mismatch && (
-            <div className="field-note">กรอกให้ครบทั้งสามช่อง ปุ่มจึงจะเป็นสีเขียวและกดบันทึกได้</div>
+            <div className="field-note">กรอกให้ครบทั้งสามช่อง</div>
           )}
         </div>
       </form>

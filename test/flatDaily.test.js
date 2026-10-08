@@ -674,7 +674,7 @@ test('ป้ายเขียวและคำกำกับใต้ป้�
   // `normalHours > 0` until 2026-09-07, which is nought on every session now and
   // would draw the panel on none of them.
   assert.ok(!form.includes('เหมารายวันคิดให้ไม่เกิน 8 ชั่วโมง'), 'the ceiling wording is still on the form');
-  assert.match(form, /\{form\.flatDaily && \(\s*\r?\n\s*<Alert kind="ok">\s*\r?\n\s*\{FLAT_DAILY_SAY\}/);
+  assert.match(form, /\{form\.flatDaily && \(\s*\r?\n\s*<Alert kind="ok">\{FLAT_DAILY_SHORT\}<\/Alert>/);
   /**
    * THE LABEL SAYS THE LENGTH AND NOT THE COLUMN — 2026-09-07.
    *
@@ -906,5 +906,5 @@ test('หน้ารออนุมัติ — แก้ไขชั่วโ
 
   // One sentence for the figure, and it is the row chip's own — the delta is
   // about to read 8.00 against times that may say twelve hours.
-  assert.match(edit, /\{form\.flatDaily && <Alert kind="ok">\{FLAT_DAILY_SAY\}<\/Alert>\}/);
+  assert.match(edit, /\{form\.flatDaily && <Alert kind="ok">\{FLAT_DAILY_SHORT\}<\/Alert>\}/);
 });

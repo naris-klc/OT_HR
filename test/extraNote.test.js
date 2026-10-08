@@ -151,7 +151,7 @@ test('ในฟอร์ม: ซ่อนไว้หลังลิงก์ �
  * note in the form for why ` Rev.4` is deliberately absent.
  */
 test('คำใบ้บอกชัดว่าช่องไหนขึ้นกระดาษ ช่องไหนไม่ขึ้น', () => {
-  assert.match(form, /ไม่เกิน \$\{DESCRIPTION_MAX_CHARS\} ตัวอักษร — เท่าที่ช่องในใบ F-HR-027 พิมพ์ได้พอดี/);
+  assert.match(form, /`ไม่เกิน \$\{DESCRIPTION_MAX_CHARS\} ตัวอักษร`/);
   assert.match(form, /placeholder="อธิบายรายละเอียดเพิ่มเติม \(ไม่แสดงในแบบฟอร์ม F-HR-027\)"/);
   // No revision number anywhere in the hints: `formCode` ships as
   // "F-HR-027 Rev.4" and HR may change it, so a hint carrying the revision is a

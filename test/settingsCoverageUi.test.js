@@ -270,11 +270,11 @@ test('the ceiling note is under the table, and tells the truth about 0', () => {
   assert.match(code, /หมายเหตุ: เว้นว่าง = ไม่จำกัดเพดาน/);
 
   // Read once, printed as the legend and as the `title` on both boxes.
-  assert.match(code, /const capTip = capNote\(usePolicy\(\)\)/);
-  assert.match(code, /<div className="hint cap-note">\{capTip\}<\/div>/);
+  assert.match(code, /const capTip = capNote\(policyNow\)/);
+  assert.match(code, /<div className="hint cap-note" title=\{capTip\}>\{capNoteShort\(policyNow\)\}<\/div>/);
   assert.equal(
     (code.match(/title=\{capTip\}/g) || []).length,
-    2,
+    3,
     'both ceiling boxes carry the same sentence',
   );
 
@@ -365,7 +365,7 @@ test('what ปิดใช้งาน does is behind the (?), not standing open
   );
   // The one sentence that is NOT behind a (?): a control ฝ่ายบุคคล cannot
   // press needs its reason BEFORE the press, not on hover after it.
-  assert.match(section, /\{!mayActive && <div className="field-note">\{DEPT_ACTIVE_LOCK\}<\/div>\}/);
+  assert.match(section, /\{!mayActive && <div className="field-note" title=\{DEPT_ACTIVE_LOCK\}>เฉพาะผู้ดูแลระบบ<\/div>\}/);
   // The heading and the (?) share `.field-head`'s row, so the mark sits on the
   // heading's line at the same gap a field's does.
   assert.match(section.length ? body : '', /<div className="field-head gh-head">/);

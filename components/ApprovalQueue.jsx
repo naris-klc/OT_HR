@@ -25,7 +25,7 @@ import {
 import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
   Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
-  FlatDailyMark, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark, WhoName,
+  FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, Section, SegmentList, ShowMore,
   SignatureFacts,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
@@ -195,8 +195,7 @@ function watchingNote(entry, stage, user) {
  * surface without either surface knowing which case it got.
  */
 const SIGNED_MGR_NOTE = {
-  short: 'คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว — ใบหนึ่งต้องผ่านผู้เซ็นสองคน '
-    + 'ให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ',
+  short: 'เซ็นขั้นหัวหน้าไปแล้ว — ให้ฝ่ายบุคคลตรวจ',
   head: 'คุณเซ็นขั้นหัวหน้าของใบนี้ไปแล้ว',
   body: 'ใบหนึ่งต้องผ่านผู้เซ็นสองคน จึงอนุมัติในขั้นฝ่ายบุคคลของใบเดียวกันไม่ได้ '
     + '— ให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ ไม่เกี่ยวกับบทบาท '
@@ -215,8 +214,7 @@ const SIGNED_MGR_NOTE = {
  * thing, which is the thing that was always true of all but one of them.
  */
 const OWN_FILING_NOTE = {
-  short: 'คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ '
-    + '— ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ',
+  short: 'คุณบันทึกใบนี้เอง — ให้ผู้มีสิทธิ์อนุมัติตรวจ',
   head: 'ใบนี้คุณเป็นผู้บันทึกแทนเอง',
   body: 'ผู้บันทึกไม่ได้เป็นผู้เซ็นขั้นนี้ของใบที่ตัวเองกรอก '
     + '— ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ',
@@ -2079,7 +2077,13 @@ export default function ApprovalQueue({
                     {/* code + column: a bucket-scoped minimum can leave two
                         warnings on one entry sharing a code. */}
                     {shownWarnings(e.warnings).map((w) => (
-                      <div key={w.code + (w.bucket || '')} className="cell-sub">{w.message}</div>
+                      w.code === 'BELOW_MINIMUM_ACCEPTED'
+                        ? (
+                          <div key={w.code + (w.bucket || '')} style={{ marginTop: 4 }}>
+                            <span className="chip warn" title={w.message}>ต่ำกว่าขั้นต่ำ</span>
+                          </div>
+                        )
+                        : <div key={w.code + (w.bucket || '')} className="cell-sub">{w.message}</div>
                     ))}
                   </td>
                   {/* `act-col`, which this cell has never carried. The heading
@@ -3747,7 +3751,7 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
                   "warn" — the same green the row's own chip wears, because it is
                   the same fact, and `FLAT_DAILY_SAY` is that chip's own sentence
                   rather than a second wording of it. */}
-              {form.flatDaily && <Alert kind="ok">{FLAT_DAILY_SAY}</Alert>}
+              {form.flatDaily && <Alert kind="ok">{FLAT_DAILY_SHORT}</Alert>}
               <div className="delta">
                 <span className="was">{hours(entry.totals?.otHours)} ชม.</span>
                 <span className="to">→</span>
@@ -3810,7 +3814,7 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
         </button>
       </div>
       <div className="hint">
-        การแก้ไขจะคำนวณชั่วโมงใหม่ทันทีและคงสถานะการอนุมัติเดิมไว้ · ยังต้องกด “{'อนุมัติ'}” อีกครั้งเพื่อรับรองรายการ
+        ยังต้องกด “{'อนุมัติ'}” อีกครั้ง
       </div>
     </div>
   );

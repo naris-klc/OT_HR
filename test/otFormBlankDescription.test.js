@@ -170,5 +170,5 @@ test('ใต้ช่องมีบรรทัดเดียว ไม่ใ�
   has(form, '{descriptionRefusal ? (');
   has(form, '<span className="field-note error" id={`${formId}-description-refusal`}>');
   has(form, '{descriptionRefusal}');
-  has(form, 'เท่าที่ช่องในใบ F-HR-027 พิมพ์ได้พอดี');
+  has(form, 'ตัวอักษร`');
 });

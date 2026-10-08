@@ -550,7 +550,7 @@ test('the drawer’s caption is smaller than the timestamps under it', () => {
   // reason — `.card .hint`'s `margin-bottom: 14px` reaching in from four hundred
   // lines away — and the shorthand states all four sides so it cannot come back.
   assert.match(rule('.audit-drawer > .hint'), /margin: 2px 0 0;/);
-  assert.match(code, /<div className="hint">\s*\n\s*แถวด้านบนคือข้อมูลล่าสุด/);
+  assert.match(code, /<div className="hint">\s*\n\s*ด้านล่าง = ข้อมูลเดิมก่อนแก้/);
 });
 
 // ── กฎที่ใช้ came off the table on 2026-09-04 ────────────────────────────────

@@ -341,9 +341,11 @@ export default function AccountingView() {
       {/* The sheet counts one filing per session. Saying so beats letting
           accounting find the difference between this and the raw queue. */}
       {data?.supersededCount > 0 && (
-        <div className="box warn no-print">
-          ไม่นับ {data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม —
-          {' '}เมื่อมีการกรอกวันและเวลาเดียวกันซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุดเป็นชั่วโมง OT
+        <div
+          className="box warn no-print"
+          title="เมื่อมีการกรอกวันและเวลาเดียวกันซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุดเป็นชั่วโมง OT"
+        >
+          ไม่นับ {data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม
         </div>
       )}
 

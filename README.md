@@ -5625,8 +5625,7 @@ is unconditional, and it has to be: the rate column beside it reads `8.00`
 against times that may say five hours or twelve, which on any other row would
 mean the entry failed to compute. Drawn only where a scan disagreed — which is
 what it did while it only had to say the disagreement was fine — the figure would
-be unexplained on every other flat row. One exported constant, used by the badge
-and by the form’s preview, so the screen that files a flat day and the screen
+be unexplained on every other flat row. One exported constant, used by the badge's tooltip, so the screen that files a flat day and the screen
 that reviews one cannot word the rule twice.
 
 **It does not name the column, and that is deliberate.** The one string is drawn

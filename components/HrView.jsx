@@ -1986,11 +1986,10 @@ export default function HrView({
               <div className={`batch-bar no-print${chosen.length ? ' picking' : ''}`}>
                 <div className="count-label">
                   {chosen.length === 0 ? (
-                    <>
+                    <span title="ติ๊กหนึ่งช่อง = ยืนยันรายการทั้งเดือนของคนนั้น">
                       ยืนยันได้ <strong>{canPick.length}</strong> คน
                       {' · '}<strong>{canPick.reduce((n, r) => n + r.approvable.count, 0)}</strong> รายการ
-                      <span className="sub">ติ๊กหนึ่งช่อง = ยืนยันรายการทั้งเดือนของคนนั้น</span>
-                    </>
+                    </span>
                   ) : (
                     <>
                       {/* ⚠ BOTH UNITS, ALWAYS — §5.1's price, paid on every
@@ -2744,10 +2743,11 @@ export default function HrView({
                   stylesheet's `:first-child` rule on the months where this is
                   the only note there is. */}
               {data.supersededCount > 0 && (
-                <div className="hint">
-                  ไม่นับ {data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม ·
-                  {' '}เมื่อกรอกวันและเวลาเดียวกันซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุด ·
-                  {' '}เปิดใบ F-HR-027 ของพนักงานเพื่อดูว่าเป็นรายการใด
+                <div
+                  className="hint"
+                  title="เมื่อกรอกวันและเวลาเดียวกันซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุด · เปิดใบ F-HR-027 ของพนักงานเพื่อดูว่าเป็นรายการใด"
+                >
+                  ไม่นับ {data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม
                 </div>
               )}
 

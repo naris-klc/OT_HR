@@ -977,10 +977,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           data-tip-why={lastEdit.note || undefined}
                         >
                           <EditedMark entry={e} />
-                          <div className="cell-sub th">
-                            โดย {lastEdit.byName || '—'}
-                            {lastEdit.note ? ` — ${lastEdit.note}` : ''}
-                          </div>
+                          <div className="cell-sub th">โดย {lastEdit.byName || '—'}</div>
                         </div>
                       )}
                       {/* ── ใครเป็นคนปิดใบนี้ — 2026-09-18 ──────────────────
@@ -1220,8 +1217,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                               style here, which is the one place a rule reaching
                               in from `.card .hint` cannot be seen from. */}
                           <div className="hint">
-                            แถวด้านบนคือข้อมูลล่าสุดที่พิมพ์ลงใบ F-HR-027 ·
-                            ด้านล่างนี้คือทุกครั้งที่รายการนี้ถูกแตะ พร้อมค่าเดิมก่อนแก้แต่ละครั้ง
+                            ด้านล่าง = ข้อมูลเดิมก่อนแก้
                             {e.refiledFrom && ' · รวมคำขอเดิมที่ถูกไม่อนุมัติ'}
                           </div>
                           {/* WHICH RULE SET COMPUTED THIS ROW — moved off the

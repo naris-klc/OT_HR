@@ -686,6 +686,13 @@ function capNote(policy) {
     + ' · เพดานนับรวมวันหยุดด้วย ถ้าต้องการปิดโอทีเฉพาะวันทำงานปกติ ให้ตั้งที่ “รูปแบบโอที” ในปุ่มแก้ไข';
 }
 
+/** The line printed under the table; `capNote` is the full sentence and lives in the inputs' `title`. */
+function capNoteShort(policy) {
+  return policy?.capBehaviour === 'block'
+    ? 'เว้นว่าง = ไม่จำกัด · 0 = ไม่อนุญาตให้ยื่น'
+    : 'เว้นว่าง = ไม่จำกัด · 0 = ติดธงเกินเพดานทุกใบ';
+}
+
 /**
  * Why the สถานะ badge will not press, for the one role it will not press for.
  *
@@ -718,7 +725,8 @@ const DEPT_DELETE_LOCK = 'ลบแผนก ทำได้โดยผู้�
 function Departments({ user, onGo, roster }) {
   const { rows, people, reload: load } = roster;
   /** Read for one sentence — see `capNote`. */
-  const capTip = capNote(usePolicy());
+  const policyNow = usePolicy();
+  const capTip = capNote(policyNow);
   /**
    * Mirrors `departmentPermission` in lib/departments.js — every other field on
    * this screen is ฝ่ายบุคคล's, and `active` is not, in either direction.
@@ -1001,7 +1009,11 @@ function Departments({ user, onGo, roster }) {
                       saying "มีโอทีตามปกติ" would leave the two rows that
                       matter looking like the rest of the table. */}
                   {otModeOf(d) !== 'normal' && (
-                    <div className="cell-sub th">{OT_MODE_NOTE_TH[otModeOf(d)]}</div>
+                    <div>
+                      <span className="chip warn" title={OT_MODE_NOTE_TH[otModeOf(d)]}>
+                        {OT_MODE_LABEL_TH[otModeOf(d)]}
+                      </span>
+                    </div>
                   )}
                 </td>
                 <td className="heads-col">
@@ -1105,7 +1117,7 @@ function Departments({ user, onGo, roster }) {
           typing into one of them — and on a phone, where the two boxes are two
           lines on every card, it is the one place it can sit without being
           repeated eight times. */}
-      <div className="hint cap-note">{capTip}</div>
+      <div className="hint cap-note" title={capTip}>{capNoteShort(policyNow)}</div>
 
       {adding && <DepartmentForm onClose={() => setAdding(false)} onSave={create} />}
       {editing && (
@@ -1515,7 +1527,7 @@ function DepartmentForm({
               {/* The one thing that is NOT behind the (?): ฝ่ายบุคคล cannot
                   press this at all, and a reason that arrives only on hover is
                   a reason that arrives after the click that did nothing. */}
-              {!mayActive && <div className="field-note">{DEPT_ACTIVE_LOCK}</div>}
+              {!mayActive && <div className="field-note" title={DEPT_ACTIVE_LOCK}>เฉพาะผู้ดูแลระบบ</div>}
             </section>
             {/* Its own group, so the form's own divider separates it from the
                 pill above. It was a bare `.hint` and it sat flush under the
@@ -7085,6 +7097,13 @@ function sectionNote(id, replayApproved = true) {
   return `${fields.length} ข้อ · ${moves} ข้อในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง — ${recompute}`;
 }
 
+/** The visible half of `sectionNote`; the sentence about recomputing is its tooltip. */
+function sectionNoteShort(id) {
+  const fields = POLICY_FIELDS.filter((f) => f.section === id);
+  const moves = fields.filter(isArithmetic).length;
+  return `${fields.length} ข้อ · ${moves === 0 ? 'ไม่กระทบชั่วโมง' : 'มีผลต่อชั่วโมง'}`;
+}
+
 /** The heading between two blocks — a rule with a name on it, not a card. */
 function PolicyBlockHead({ block, replayApproved }) {
   return (
@@ -7093,7 +7112,9 @@ function PolicyBlockHead({ block, replayApproved }) {
         <span className="n">กลุ่มที่ {block.id}</span>
         <span>{block.title}</span>
       </div>
-      <div className="policy-section-note">{sectionNote(block.id, replayApproved)}</div>
+      <div className="policy-section-note" title={sectionNote(block.id, replayApproved)}>
+        {sectionNoteShort(block.id)}
+      </div>
     </div>
   );
 }

@@ -22,7 +22,7 @@ import {
   // From the shared kit and not assembled here out of `Modal`: a screen that
   // hand-rolls its own dialog is the moment the app has two of them.
   Alert, BucketSplit, ConfirmDialog, SegmentList, StatusChip, TipButton,
-  FLAT_DAILY_SAY, shownWarnings,
+  FLAT_DAILY_SHORT, shownWarnings,
 } from './common.jsx';
 import { PickDate } from './PickDate.jsx';
 import { PickTime } from './PickTime.jsx';
@@ -986,15 +986,13 @@ export default function OtForm({
       {!proxy && (
         <div className="hint">
           {isOwnBirthday(preview)
-            ? 'วันที่เลือกเป็นวันเกิดของคุณ — เป็นวันหยุดของคุณทั้งวัน ชั่วโมงที่ทำทั้งหมดจึงนับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'
-            : `${workHoursSay(policy)} · นอกเหนือจากนี้นับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ`}
+            ? 'วันที่เลือกเป็นวันเกิดของคุณ — เป็นวันหยุดของคุณทั้งวัน ชั่วโมงที่ทำทั้งหมดจึงนับเป็น OT'
+            : `${workHoursSay(policy)} · นอกเหนือจากนี้นับเป็น OT`}
         </div>
       )}
       {entry && !hrEdit && (
         <div className="hint">
-          แก้ไขวันที่ เวลา และรายละเอียดได้ระหว่างที่รายการยังรอหัวหน้าอนุมัติ ·
-          ระบบจะคำนวณชั่วโมงใหม่และส่งข้อมูลที่แก้แล้วให้หัวหน้าพิจารณา ·
-          เมื่อหัวหน้าหรือฝ่ายบุคคลอนุมัติแล้ว ต้องให้ฝ่ายบุคคลเป็นผู้แก้ไข
+          แก้ได้จนกว่าหัวหน้าจะอนุมัติ
         </div>
       )}
       {/* ── งวดของใบนี้ปิดไปแล้ว ────────────────────────────────────────────
@@ -1015,8 +1013,7 @@ export default function OtForm({
       {hrEdit && (
         <div className="hint">
           {entry?.employee?.name && <>พนักงาน: <strong>{entry.employee.name}</strong> · </>}
-          สถานะเดิมคงไว้ตามเดิม ไม่ต้องส่งกลับไปให้หัวหน้าอนุมัติใหม่ ·
-          ระบบบันทึกผู้แก้ไขและเหตุผลไว้ในประวัติรายการ
+          สถานะเดิมคงไว้ · บันทึกในประวัติ
         </div>
       )}
 
@@ -1494,7 +1491,7 @@ export default function OtForm({
           <span style={{ fontSize: 12, color: over ? 'var(--danger-ink)' : 'var(--muted)' }}>
             {over
               ? `ข้อความเดิมยาวเกินกำหนด กรุณาตัดให้เหลือไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษรก่อนบันทึก`
-              : `ไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษร — เท่าที่ช่องในใบ F-HR-027 พิมพ์ได้พอดี`}
+              : `ไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษร`}
           </span>
         )}
       </div>
@@ -1535,8 +1532,11 @@ export default function OtForm({
             maxLength={EXTRA_NOTE_MAX_CHARS}
             placeholder="อธิบายรายละเอียดเพิ่มเติม (ไม่แสดงในแบบฟอร์ม F-HR-027)"
           />
-          <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-            ข้อความนี้เก็บไว้ในระบบและเห็นได้ในหน้ารายละเอียดใบ — ไม่ถูกพิมพ์ลงใบ F-HR-027
+          <span
+            style={{ fontSize: 12, color: 'var(--muted)' }}
+            title="ข้อความนี้เก็บไว้ในระบบและเห็นได้ในหน้ารายละเอียดใบ — ไม่ถูกพิมพ์ลงใบ F-HR-027"
+          >
+            ไม่ถูกพิมพ์ลงใบ F-HR-027
           </span>
         </div>
       ) : (
@@ -1616,10 +1616,8 @@ export default function OtForm({
           stored วันเกิด whoever is filing. */}
       {preview && !proxy && !hrEdit && isOwnBirthday(preview) && (
         <Alert kind="info">
-          ช่วงเวลาที่ยื่นนี้ตรงกับ<strong>วันเกิดของคุณ</strong> ซึ่งนับเป็นวันหยุดของคุณคนเดียว —
-          {' '}ระบบคิดสวัสดิการวันเกิดให้อัตโนมัติ ไม่ต้องติ๊กอะไรเพิ่ม ·
+          <strong>วันเกิดของคุณ</strong> — คิดสวัสดิการวันเกิดให้อัตโนมัติ ·
           {' '}<strong>{birthdayRateSay(policy)}</strong>
-          {' '}· ยื่นถูกแล้ว
         </Alert>
       )}
 
@@ -1704,7 +1702,6 @@ export default function OtForm({
             <Alert kind="info">
               ตัวเลขนี้คำนวณจาก <strong>{nameOf(targets[0])}</strong> เป็นตัวอย่าง
               {' '}— อีก {targets.length - 1} คนระบบจะคำนวณแยกตอนบันทึก
-              {' '}และอาจได้ไม่เท่ากันถ้าวันนี้ตรงกับวันเกิดของใครบางคน หรือใครใช้เพดานเดือนนี้ไปต่างกัน
             </Alert>
           )}
           {/* เหมารายวัน — SAID BEFORE THE FIGURE, NOT AFTER IT.
@@ -1722,10 +1719,7 @@ export default function OtForm({
               that could put a figure there; `normalHours` is nought on every
               session now, so that test answers "no flat day" on every row. */}
           {form.flatDaily && (
-            <Alert kind="ok">
-              {FLAT_DAILY_SAY} · วันนี้นับเป็น {hours(preview.totals.otHours)} ชม.
-              {' '}ไม่ว่าเวลาที่กรอกจะเป็นเท่าไร
-            </Alert>
+            <Alert kind="ok">{FLAT_DAILY_SHORT}</Alert>
           )}
           <BucketSplit buckets={preview.buckets} total={preview.totals.otHours} label="รวมชั่วโมง OT" />
           <SegmentList segments={preview.segments} />
@@ -1754,8 +1748,7 @@ export default function OtForm({
           )}
           {proxy && targets.length > 1 && (
             <div className="field-note" style={{ marginTop: 8 }}>
-              เพดานของแต่ละคนต่างกัน จึงยังไม่แสดงตรงนี้ — ระบบจะตรวจให้ทีละคนตอนบันทึก
-              {' '}และแจ้งชื่อคนที่ติดเพดานในสรุปผล
+              เพดานตรวจแยกรายคนตอนบันทึก
             </div>
           )}
         </div>

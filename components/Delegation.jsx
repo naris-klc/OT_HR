@@ -124,10 +124,10 @@ export default function Delegation({ user, scope = 'mine' }) {
         one thing on this line worth a weight.
       */}
       <Alert kind="info">
-        การมอบหมาย<strong>หมดอายุเองตามวันที่กำหนด</strong> ไม่มีอะไรต้องกลับมาปิด ·{' '}
-        เป็นการ<strong>เพิ่ม</strong>สิทธิ์ ไม่ใช่ย้าย หัวหน้างานเจ้าของคิวยังอนุมัติเองได้ตลอด ·{' '}
-        {`ทุกการอนุมัติของผู้รับช่วง${DELEGATED_APPROVAL_RECORDED} · ผู้รับช่วง`}
-        <strong>มอบหมายต่อเป็นทอดไม่ได้</strong>
+        <span title={`การมอบหมายหมดอายุเองตามวันที่กำหนด ไม่มีอะไรต้องกลับมาปิด · เป็นการเพิ่มสิทธิ์ ไม่ใช่ย้าย หัวหน้างานเจ้าของคิวยังอนุมัติเองได้ตลอด · ทุกการอนุมัติของผู้รับช่วง${DELEGATED_APPROVAL_RECORDED} · ผู้รับช่วงมอบหมายต่อเป็นทอดไม่ได้`}>
+          <strong>หมดอายุตามกำหนด</strong> · ให้สิทธิ์อนุมัติจะบันทึกว่า “ทำแทน” พร้อมชื่อ ·{' '}
+          <strong>ส่งต่อไม่ได้</strong>
+        </span>
       </Alert>
 
       {error && <Alert kind="error">{error}</Alert>}
@@ -220,7 +220,6 @@ export default function Delegation({ user, scope = 'mine' }) {
       {active.length === 0 && rows?.length > 0 && (
         <div className="hint" style={{ marginTop: 8 }}>
           ไม่มีการมอบหมายที่มีผลอยู่ในขณะนี้ — รายการด้านบนหมดอายุหรือถูกยกเลิกไปแล้ว
-          {' '}และยังเก็บไว้เพราะเป็นหลักฐานของรายการที่อนุมัติไปภายใต้การมอบหมายนั้น
         </div>
       )}
 
