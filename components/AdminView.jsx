@@ -859,6 +859,20 @@ function Departments({ user, onGo, roster }) {
   }
 
   return (
+    <>
+    {/* แจ้งเตือนอยู่บนสุดของหน้า เหนือการ์ด — แบบหน้าบันทึก OT (สั่งไว้ 2026-10-08) */}
+    {/* The เพดาน note used to be here, above everything. It is under the
+        table now — see `CapNote`. A rule about two boxes, printed four rows
+        above the first of them and separated from it by a red banner and a
+        pair of chips, is read before there is anything to read it against. */}
+    {/* Above the table rather than in it: a department with nobody to sign
+        for its people is not a column of that department's row, it is a thing
+        somebody has to go and do. ข้อผิดพลาดของหน้าอยู่ในกล่องเดียวกัน
+        (ระบบแจ้งเตือนเดียวทั้งแอป, 2026-10-08) */}
+    <NoticeStack id="departments">
+      {(error || roster.error) && <NoticeRow tone="error" title={error || roster.error} />}
+      <SigningCoverage departments={rows} people={people} onGo={onGo} />
+    </NoticeStack>
     <div className="card">
       {/* The CTA rides in the heading line, not below the banner.
 
@@ -876,18 +890,6 @@ function Departments({ user, onGo, roster }) {
         <h2>แผนก</h2>
         <button className="btn" onClick={() => setAdding(true)}>เพิ่มแผนก</button>
       </div>
-      {/* The เพดาน note used to be here, above everything. It is under the
-          table now — see `CapNote`. A rule about two boxes, printed four rows
-          above the first of them and separated from it by a red banner and a
-          pair of chips, is read before there is anything to read it against. */}
-      {/* Above the table rather than in it: a department with nobody to sign
-          for its people is not a column of that department's row, it is a thing
-          somebody has to go and do. ข้อผิดพลาดของหน้าอยู่ในกล่องเดียวกัน
-          (ระบบแจ้งเตือนเดียวทั้งแอป, 2026-10-08) */}
-      <NoticeStack id="departments">
-        {(error || roster.error) && <NoticeRow tone="error" title={error || roster.error} />}
-        <SigningCoverage departments={rows} people={people} onGo={onGo} />
-      </NoticeStack>
       {ok && <Alert kind="ok">{ok}</Alert>}
 
       {/* ── the two ways to read the table ────────────────────────────────────
@@ -1184,6 +1186,7 @@ function Departments({ user, onGo, roster }) {
         </ConfirmDialog>
       )}
     </div>
+    </>
   );
 }
 
@@ -7442,6 +7445,17 @@ function Policy({ user }) {
   const proposed = pending ? { ...policy, ...patchOf(pending.field, pending.value) } : policy;
 
   return (
+    <>
+    {/* แจ้งเตือนอยู่บนสุดของหน้า เหนือการ์ด — แบบหน้าบันทึก OT (สั่งไว้ 2026-10-08) */}
+    {/* ระบบแจ้งเตือนเดียวทั้งแอป (2026-10-08): ทุกเรื่องที่ค้างบนหน้านี้อยู่ใน
+        กล่องเดียว — ข้อผิดพลาด · กฎที่ยังไม่บันทึกเป็นเวอร์ชัน · ใบที่ยังไม่กำกับ
+        เวอร์ชัน (เดิมอยู่ใต้หัวข้อประวัติ) · ค่าที่ตั้งทับโปรแกรม */}
+    <NoticeStack id="policy">
+      {error && <NoticeRow tone="error" title={error} />}
+      <UnrecordedPolicy live={live} canEdit={canEdit} busy={busy} onRecord={recordLive} />
+      <UnversionedEntries unversioned={unversioned} />
+      <LivePolicy policy={policy} defaults={defaults} overrides={overrides} />
+    </NoticeStack>
     <div className="card">
       <h2>นโยบายการคำนวณ</h2>
       <div className="hint">
@@ -7449,15 +7463,6 @@ function Policy({ user }) {
         · การแก้ข้อที่มีผลต่อการคำนวณจะคำนวณใบใหม่ทันทีตามข้อ “เปลี่ยนนโยบายแล้วคำนวณใบใหม่”
         — ใบที่วันทำงานอยู่ก่อนวันเริ่มใช้ยังคิดตามกฎเดิม
       </div>
-      {/* ระบบแจ้งเตือนเดียวทั้งแอป (2026-10-08): ทุกเรื่องที่ค้างบนหน้านี้อยู่ใน
-          กล่องเดียว — ข้อผิดพลาด · กฎที่ยังไม่บันทึกเป็นเวอร์ชัน · ใบที่ยังไม่กำกับ
-          เวอร์ชัน (เดิมอยู่ใต้หัวข้อประวัติ) · ค่าที่ตั้งทับโปรแกรม */}
-      <NoticeStack id="policy">
-        {error && <NoticeRow tone="error" title={error} />}
-        <UnrecordedPolicy live={live} canEdit={canEdit} busy={busy} onRecord={recordLive} />
-        <UnversionedEntries unversioned={unversioned} />
-        <LivePolicy policy={policy} defaults={defaults} overrides={overrides} />
-      </NoticeStack>
       {msg && <Alert kind="ok">{msg}</Alert>}
       <LivePolicyClean policy={policy} defaults={defaults} overrides={overrides} />
 
@@ -7829,6 +7834,7 @@ function Policy({ user }) {
         />
       )}
     </div>
+    </>
   );
 }
 

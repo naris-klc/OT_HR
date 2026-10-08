@@ -1362,6 +1362,98 @@ export default function HrView({
           asked for on 2026-08-27 and not undone here. So the phone block hands
           the card back to `.month-head` alone and leaves `.month-panel`
           transparent, which is exactly the shape that shipped before today. */}
+      {/* แจ้งเตือนอยู่บนสุดของหน้า เหนือการ์ด — แบบหน้าบันทึก OT (สั่งไว้ 2026-10-08) */}
+      {/* ── อ่านก่อนเชื่อยอด — ONE BLOCK, ABOVE THE CARD IT IS ABOUT ─────
+
+          ⚠ ในการ์ด ระหว่างหัวการ์ดกับแถบตัวกรอง จนถึง 2026-10-08 — วันนั้นผู้ใช้สั่งให้
+          แจ้งเตือนทุกหน้าอยู่บนสุดของหน้าแบบหน้าบันทึก OT ย่อหน้าข้างล่างคือเหตุผล
+          ของรุ่นก่อน ส่วนลำดับที่อ่าน (ก่อนตาราง) ยังถือ
+
+          Four notices that were four separate blocks floating above this card
+          until 2026-09-11, in the order a reader needs them:
+
+            1. งวด…ยังเปิดอยู่   — is this month even settled?
+            2. ผลเทียบสแกน       — can the figures on it be trusted?
+            3. MonthAlerts       — the month's digest (policy spread, missing
+                                   วันเกิด, ยืนยันโดย HR n ใบ)
+            4. error             — the request failed
+
+          ⚠ MonthAlerts MOVED DOWN, and it is the one reordering in the round.
+          It was first, above everything, and the argument for that (*what it
+          warns about is the figures on this screen, and the person it warns is
+          the one about to sign them*) is satisfied by any position above the
+          table — which this is. What decides the order among the three is that
+          งวด and ผลเทียบ answer *may this month be signed at all*, while the
+          digest is a list of things to know while signing it.
+
+          ตั้งแต่ 2026-10-08 ทั้งหมดเป็นแถวใน `NoticeStack` — ระบบแจ้งเตือนเดียว
+          ทั้งแอป (components/common.jsx) · ปุ่ม ซ่อน ที่หัวกล่องซ่อนได้ทุกแถว
+          ยกเว้นแถวแดง · ลำดับบนจอเรียงตามระดับ (แดง → เหลือง → ฟ้า) ไม่ใช่ตาม
+          ลำดับในโค้ด
+
+          ABOVE `.queue-tools` AND NOT UNDER THE TABLE. Both of the first two
+          are checks a reader makes BEFORE they trust a total — *is anything
+          still waiting? is this month's scan file in?* — and an answer that
+          arrives under the sheet is an answer that arrived after the decision.
+          What changed is not the reading order; it is that they are now inside
+          the card they are about, instead of stacked on the page above it.
+
+          ไม่มีเงื่อนไขในนี้ว่าเมื่อไรกล่องว่าง — ลูกทุกตัวคืน `null` เมื่อไม่มีอะไร
+          จะพูด และ `NoticeStack` นับแถวที่วาดจริงเอง ไม่มีแถว = ไม่มีกล่อง
+          เงื่อนไขในนี้จะเป็นความเห็นที่สองว่าเมื่อไรมีเรื่อง และวันที่สองความเห็น
+          ไม่ตรงกันคือวันที่มีแจ้งเตือนที่ไม่มีใครวาด */}
+      <NoticeStack id="month">
+        {/* THE งวด HEADLINE, WITHOUT THE `actions` IT USED TO CARRY. The scan
+            toggle rode on this component's own row while the row was the only
+            thing on the page that could hold it; it is on `.card-head` now,
+            and `actions` went with it — see components/PeriodStatus.jsx. */}
+        <PeriodStatus period={period} compact />
+
+        {/* NOT KEYED ON THE MONTH like `MonthAlerts` is, because it holds no
+            state of its own to go stale — every word it draws comes from
+            `scan`, which this screen empties and re-asks whenever any of the
+            three narrowings move. */}
+        {readsScans && (
+          <ScanCompareCard
+            period={period}
+            compare={scan?.compare || null}
+            punchCount={scan?.punchCount ?? null}
+            loading={scanLoading}
+            onlyFlagged={onlyFlagged}
+            onToggleFlagged={() => setOnlyFlagged((v) => !v)}
+            /* One press from "ยังไม่ได้เทียบ" to the thing that fixes it. It
+               OPENS the drawer rather than toggling it: this button is only
+               ever drawn while the drawer is shut, and a control that could
+               also close it would be a second answer to a question the head's
+               own `scan-toggle` already owns. */
+            onOpenImport={() => setScanOpen(true)}
+            /* …and it draws neither that button nor the ยังไม่ได้เทียบ row
+               itself while the drawer is open, which is the state the
+               2026-09-11 screenshot caught: two controls that open a drawer,
+               stacked above the drawer, open. */
+            importOpen={scanOpen}
+          />
+        )}
+
+        {/* KEYED ON ALL THREE NARROWINGS, so nothing it counted can outlive
+            the month, the สถานะที่นับ or the แผนก it was counted over. The
+            key is what re-mounts it; `MonthAlerts` returns null when it finds
+            nothing.
+
+            `dept` is not decoration in that list: every count this draws — the
+            missing วันเกิด, the policy spread, ยืนยันโดย HR n ใบ — is the
+            server's over the NARROWED month. */}
+        {data && (
+          <MonthAlerts
+            key={`${period}|${statusFilter}|${dept}`}
+            policy={data.policy}
+            hrVerifiedCount={data.hrVerifiedCount}
+            rowAction={openRowLabel(mayCorrect)}
+          />
+        )}
+
+        {error && <NoticeRow tone="error" title={error} />}
+      </NoticeStack>
       <div className="card flush month-panel">
       {/* `month-head` — a handle for the phone block, and above 860px a
           passthrough: what draws the two sections inside it is `.card-head` and
@@ -1521,94 +1613,6 @@ export default function HrView({
           />
           </div>
         </div>
-
-        {/* ── อ่านก่อนเชื่อยอด — ONE BLOCK, INSIDE THE CARD IT IS ABOUT ────
-
-            Four notices that were four separate blocks floating above this card
-            until 2026-09-11, in the order a reader needs them:
-
-              1. งวด…ยังเปิดอยู่   — is this month even settled?
-              2. ผลเทียบสแกน       — can the figures on it be trusted?
-              3. MonthAlerts       — the month's digest (policy spread, missing
-                                     วันเกิด, ยืนยันโดย HR n ใบ)
-              4. error             — the request failed
-
-            ⚠ MonthAlerts MOVED DOWN, and it is the one reordering in the round.
-            It was first, above everything, and the argument for that (*what it
-            warns about is the figures on this screen, and the person it warns is
-            the one about to sign them*) is satisfied by any position above the
-            table — which this is. What decides the order among the three is that
-            งวด and ผลเทียบ answer *may this month be signed at all*, while the
-            digest is a list of things to know while signing it.
-
-            ตั้งแต่ 2026-10-08 ทั้งหมดเป็นแถวใน `NoticeStack` — ระบบแจ้งเตือนเดียว
-            ทั้งแอป (components/common.jsx) · ปุ่ม ซ่อน ที่หัวกล่องซ่อนได้ทุกแถว
-            ยกเว้นแถวแดง · ลำดับบนจอเรียงตามระดับ (แดง → เหลือง → ฟ้า) ไม่ใช่ตาม
-            ลำดับในโค้ด
-
-            ABOVE `.queue-tools` AND NOT UNDER THE TABLE. Both of the first two
-            are checks a reader makes BEFORE they trust a total — *is anything
-            still waiting? is this month's scan file in?* — and an answer that
-            arrives under the sheet is an answer that arrived after the decision.
-            What changed is not the reading order; it is that they are now inside
-            the card they are about, instead of stacked on the page above it.
-
-            ไม่มีเงื่อนไขในนี้ว่าเมื่อไรกล่องว่าง — ลูกทุกตัวคืน `null` เมื่อไม่มีอะไร
-            จะพูด และ `NoticeStack` นับแถวที่วาดจริงเอง ไม่มีแถว = ไม่มีกล่อง
-            เงื่อนไขในนี้จะเป็นความเห็นที่สองว่าเมื่อไรมีเรื่อง และวันที่สองความเห็น
-            ไม่ตรงกันคือวันที่มีแจ้งเตือนที่ไม่มีใครวาด */}
-        <NoticeStack id="month">
-          {/* THE งวด HEADLINE, WITHOUT THE `actions` IT USED TO CARRY. The scan
-              toggle rode on this component's own row while the row was the only
-              thing on the page that could hold it; it is on `.card-head` now,
-              and `actions` went with it — see components/PeriodStatus.jsx. */}
-          <PeriodStatus period={period} compact />
-
-          {/* NOT KEYED ON THE MONTH like `MonthAlerts` is, because it holds no
-              state of its own to go stale — every word it draws comes from
-              `scan`, which this screen empties and re-asks whenever any of the
-              three narrowings move. */}
-          {readsScans && (
-            <ScanCompareCard
-              period={period}
-              compare={scan?.compare || null}
-              punchCount={scan?.punchCount ?? null}
-              loading={scanLoading}
-              onlyFlagged={onlyFlagged}
-              onToggleFlagged={() => setOnlyFlagged((v) => !v)}
-              /* One press from "ยังไม่ได้เทียบ" to the thing that fixes it. It
-                 OPENS the drawer rather than toggling it: this button is only
-                 ever drawn while the drawer is shut, and a control that could
-                 also close it would be a second answer to a question the head's
-                 own `scan-toggle` already owns. */
-              onOpenImport={() => setScanOpen(true)}
-              /* …and it draws neither that button nor the ยังไม่ได้เทียบ row
-                 itself while the drawer is open, which is the state the
-                 2026-09-11 screenshot caught: two controls that open a drawer,
-                 stacked above the drawer, open. */
-              importOpen={scanOpen}
-            />
-          )}
-
-          {/* KEYED ON ALL THREE NARROWINGS, so nothing it counted can outlive
-              the month, the สถานะที่นับ or the แผนก it was counted over. The
-              key is what re-mounts it; `MonthAlerts` returns null when it finds
-              nothing.
-
-              `dept` is not decoration in that list: every count this draws — the
-              missing วันเกิด, the policy spread, ยืนยันโดย HR n ใบ — is the
-              server's over the NARROWED month. */}
-          {data && (
-            <MonthAlerts
-              key={`${period}|${statusFilter}|${dept}`}
-              policy={data.policy}
-              hrVerifiedCount={data.hrVerifiedCount}
-              rowAction={openRowLabel(mayCorrect)}
-            />
-          )}
-
-          {error && <NoticeRow tone="error" title={error} />}
-        </NoticeStack>
 
         {/* ── ลิ้นชักนำเข้าไฟล์สแกน — IN THE CARD, BETWEEN THE NOTICES AND THE
                BAR ────────────────────────────────────────────────────────────

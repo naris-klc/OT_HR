@@ -298,9 +298,11 @@ test('ประจำเดือน and ค้นหา are one row, above the 
      table, and it is still above the table — it is read on the way in rather
      than on the way past. What it stopped being is a block between two things
      that belong together. */
+  // ⚠ A BAND BETWEEN THE HEAD AND THE BAR until 2026-10-08 — every page's
+  // notices are at the top of the page now, above the card.
   const notices = hrView.indexOf('<NoticeStack id="month">');
-  assert.ok(notices > cardHead && notices < find, 'สรุปสถานะงวด is not a band between the head and the bar');
-  assert.ok(status > notices && status < find, 'สรุปสถานะงวด left the notices band');
+  assert.ok(notices > 0 && notices < cardHead && notices < find, 'สรุปสถานะงวด is not above the card');
+  assert.ok(status > notices && status < cardHead, 'สรุปสถานะงวด left the notices box');
   assert.ok(!/className="month-strip/.test(hrView), 'the strip above the card came back');
   /* ⚠ `actions` IS GONE FROM `PeriodStatus`, and this asserted it was there
      until 2026-09-11. It existed for one caller and one control — ไฟล์สแกนนิ้วมือ
@@ -330,29 +332,25 @@ test('ประจำเดือน and ค้นหา are one row, above the 
  * boundaries one at a time and left the blocks themselves stacked above it.
  */
 
-test('every block on this screen is a section of one card', () => {
+test('every block on this screen is a section of one card — the notices sit on top of it', () => {
   const panel = hrView.indexOf('<div className="card flush month-panel">');
   const head = hrView.indexOf('<div className="card-head">');
   const notices = hrView.indexOf('<NoticeStack id="month">');
   const drawer = hrView.indexOf('<ScanImport period={period}');
   const bar = hrView.indexOf('<div className="queue-tools">');
   const list = hrView.indexOf('<div className="month-card">');
-  // หัว → แจ้งเตือน → ลิ้นชัก → ตัวกรอง → ตาราง, every one of them inside it.
-  for (const [name, at] of [['card-head', head], ['month-notices', notices],
-    ['ScanImport', drawer], ['queue-tools', bar], ['month-card', list]]) {
+  // หัว → ลิ้นชัก → ตัวกรอง → ตาราง inside the card…
+  for (const [name, at] of [['card-head', head], ['ScanImport', drawer], ['queue-tools', bar], ['month-card', list]]) {
     assert.ok(at > panel, `${name} is outside the card`);
   }
-  assert.ok(head < notices && notices < drawer && drawer < bar && bar < list,
-    'the five sections are not in reading order');
-  // AND NOTHING IS LEFT ABOVE IT — the fragment opens onto a comment and then
-  // straight onto the card. Measured as "no element between the two" rather than
-  // as a distance, so the header comment stays free to be rewritten.
-  // `lastIndexOf` FROM THE PANEL, not the first `return (` in the file — this
-  // component has an early return above it, and the fragment that matters is the
-  // one the card is inside of.
+  assert.ok(head < drawer && drawer < bar && bar < list, 'the sections are not in reading order');
+  // …and the notices above it, the first thing in the returned fragment — since
+  // 2026-10-08 (*"ย้ายแบนเนอร์การแจ้งเตือนทั้ง App เอาไว้ส่วนบนสุด"*). Nothing
+  // else is drawn between the fragment's opening and the card.
   const opens = hrView.lastIndexOf('\n    <>', panel);
-  assert.ok(opens > 0, 'the card is not inside the returned fragment');
-  assert.ok(!/<[A-Za-z]/.test(hrView.slice(opens, panel)), 'something is drawn above the card again');
+  assert.ok(opens > 0 && opens < notices && notices < panel, 'the notices are not the first thing above the card');
+  const between = hrView.slice(hrView.indexOf('</NoticeStack>', notices), panel);
+  assert.ok(!/<[A-Za-z]/.test(between.replace('</NoticeStack>', '')), 'something is drawn between the notices and the card');
 });
 
 test('ScanImport is a drawer in that card and not a card of its own', () => {

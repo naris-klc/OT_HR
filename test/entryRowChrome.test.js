@@ -457,27 +457,21 @@ test('on a phone card the description\'s chips start at the left, like สถา
   assert.ok(!/td\.entry-desc \{[^}]*text-align/.test(phone), 'the whole cell went left, not only its chips');
 });
 
-test('the notice under the name has one place, whether or not there is a notice', () => {
-  // Most months carry no policy warning, so this slot is empty on most people —
-  // and `.alert` brought its own 12px top margin while `.audit-bar` brings 16,
-  // so the first thing under the heading sat 12px down on a month that had a
-  // warning and 16px down on one that did not. HR reads this screen one
-  // employee after the next, and a block that moves between them is a
-  // difference the eye reports every time.
-  // ⚠ `<div className="entry-notice">` จนถึง 2026-10-08 — ตอนนี้ช่องนี้คือ
-  // `NoticeStack` ของหน้า (ระบบแจ้งเตือนเดียวทั้งแอป) ซึ่งหายไปทั้งก้อนเมื่อไม่มีแถว
-  assert.match(jsx, /<NoticeStack id="entries" className="entry-notice">\s*\n\s*<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>\s*\n\s*<\/NoticeStack>/);
-
-  // THE WRAPPER CARRIES NO MARGIN AND THE NOTICE INSIDE IT CARRIES 16, so an
-  // empty slot is zero pixels tall and there is no `:empty` rule to get right.
-  // Asserted as a negative too: a margin on the wrapper would put 16px of air
-  // under the name of every employee who has no warning.
-  assert.match(rule('.notice-stack.entry-notice'), /margin: 16px 0 0;/);
+test('the notice is at the top of the page, and takes no room when there is none', () => {
+  /* ⚠ IT WAS A SLOT UNDER THE EMPLOYEE'S NAME (`.entry-notice`, 16px above) until
+     2026-10-08 — kept at one height so the rows below did not move between one
+     employee and the next. That day every page's notices moved to the top of the
+     page, above the card (*"ย้ายแบนเนอร์การแจ้งเตือนทั้ง App เอาไว้ส่วนบนสุด"*),
+     which answers the same worry from the other side: nothing inside the card
+     moves at all, and an empty stack draws nothing. */
+  const stack = jsx.indexOf('<NoticeStack id="entries">');
+  assert.ok(stack > 0, 'the page has no notice stack');
+  const ret = jsx.lastIndexOf('return (', stack);
+  assert.ok(!jsx.slice(ret, stack).includes('<div className="card">'), 'the notices are inside the card again');
+  assert.ok(jsx.indexOf('<div className="card">', stack) > stack, 'the card does not follow the notices');
+  assert.match(jsx, /<NoticeStack id="entries">\s*\n\s*<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>\s*\n\s*<\/NoticeStack>/);
   assert.match(css, /^\.notice-stack\.is-empty \{ display: none; \}/m);
-  assert.ok(!/^\.entry-notice \{/m.test(css), 'the slot took a box of its own');
-  // The same figure the scan row below it takes, which is what makes the two
-  // gaps one gap repeated rather than two numbers that happen to be close.
-  assert.match(rule('.scan-row'), /margin: 16px 0 0;/);
+  assert.ok(!/^\.notice-stack\.entry-notice/m.test(css), 'the slot under the name came back');
 });
 
 test('every card footer is the same two slots, and they line up down the month', () => {
