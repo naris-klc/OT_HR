@@ -90,7 +90,7 @@ const BARS = [
     'กรองตามประเภท', 'กรองตามบัญชีผู้แก้ไข']],
   /* The two one-control bars, 2026-09-15 — a bar with one field on it is still
      the bar. Both were a `.field` with its label stacked over the box. */
-  /* ใบขออนุมัติ OT ของพนักงาน: ตั้งแต่ 2026-10-08 แถบนั้นวาดโดย `PrintChrome head`
+  /* ใบขออนุมัติ OT ของพนักงาน: ตั้งแต่ 2026-10-08 แถบนั้นวาดโดย `PrintChrome` (`tools`)
      ใน components/common.jsx (การ์ดแถวเดียว หัวข้อ · ประจำเดือน · ปุ่มพิมพ์) —
      ป้ายยังอยู่ใน App.jsx ส่วน `.queue-tools` อยู่ในไฟล์ที่สาม */
   ['components/App.jsx', ['ประจำเดือน'], 'components/common.jsx'],
@@ -395,17 +395,17 @@ test('คู่มือเลิกเรียกช่องนั้นว�
 
 test('สองจอนั้นเป็น card flush + queue-tools เหมือนจอรายงาน', () => {
   // ใบขออนุมัติ OT ของพนักงานเป็นการ์ดแถวเดียวตั้งแต่ 2026-10-08: หัวข้อ ประจำเดือน
-  // และปุ่มพิมพ์อยู่ใน `.queue-tools.print-head` ที่ `PrintChrome` วาดเมื่อได้ `head`
+  // และปุ่มพิมพ์อยู่ใน `.queue-tools.print-head` ที่ `PrintChrome` วาดเมื่อได้ `title`
   // — มันเคยเป็น card-head + queue-tools + แถวปุ่มแยก สามชั้น
   const print = noProse(read('components/App.jsx'));
   const at = print.indexOf('function MyForm()');
   const form = print.slice(at, print.indexOf('\nfunction ', at + 10));
-  assert.match(form, /<PrintForm\s+period=\{period\}\s+head=\{/);
-  assert.match(form, /<div className="t">ใบขออนุมัติทำงานล่วงเวลา/);
+  assert.match(form, /<PrintForm\s+period=\{period\}\s+title=\{[\s\S]*?tools=\{/);
+  assert.match(form, /title=\{`ใบขออนุมัติทำงานล่วงเวลา/);
   assert.ok(!form.includes('<h2>'), 'หัวการ์ดยังเป็น <h2> ไม่ใช่ .t');
   assert.ok(!form.includes('className="card'), 'MyForm วาดการ์ดของตัวเองซ้อนกับของ PrintChrome');
   const chrome = noProse(read('components/common.jsx'));
-  assert.match(chrome, /<div className="card flush no-print">\s*\n\s*<div className="queue-tools print-head">\s*\n\s*\{head\}\s*\n\s*\{bar\}/);
+  assert.match(chrome, /<div className="card flush no-print">\s*\n\s*<div className="queue-tools print-head">\s*\n\s*<div className="print-head-t">[\s\S]*?\{tools\}\s*\n\s*\{bar\}/);
 
   const emp = noProse(read('components/EmployeeView.jsx'));
   assert.match(emp, /<div className="card flush">\s*\n\s*<div className="card-head">\s*\n\s*<div style=\{\{ minWidth: 0 \}\}>/);

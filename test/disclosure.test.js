@@ -706,9 +706,14 @@ test('วิธีพิมพ์ พับไว้ในแถวปุ่ม 
   // ⚠ THE FOOTER IS NOT INSIDE THE FOLD. It is read holding the paper, not
   // standing at the printer, so it cannot go behind a control pressed before
   // printing. `</ul>` closes the card; `footer` comes after it.
+  // Since 2026-10-08 every print view has a `title` and the footer is a `.hint`
+  // under it on the card — above the fold, never inside it.
   const shut = chrome.indexOf('</ul>');
-  assert.ok(shut > 0);
-  assert.ok(chrome.indexOf('{footer && <div className="print-foot') > shut, 'บรรทัดท้ายถูกพับไปกับการ์ด');
+  const open = chrome.indexOf('<ul className="print-setup');
+  assert.ok(shut > 0 && open > 0);
+  const onCard = chrome.indexOf('{footer && <div className="hint">{footer}</div>}');
+  assert.ok(onCard > 0 && onCard < open, 'บรรทัดความหมายของตัวเลขไม่ได้อยู่บนการ์ดเหนือฝาพับ');
+  assert.ok(chrome.indexOf('{footer && !title && <div className="print-foot') > shut, 'บรรทัดท้ายถูกพับไปกับการ์ด');
 
   // Opened while the sticky bar is holding the top of a phone screen, the card
   // unfolds above the viewport unless something scrolls it back — measured off

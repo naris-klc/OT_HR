@@ -3364,6 +3364,7 @@ function ManualPrint({ visible, ctx, picked, onPick, onClose }) {
           changes nothing is a line that costs trust in the other three. */}
       <PrintChrome
         onClose={onClose}
+        title={`คู่มือการใช้งาน · ${sheets.length} หัวข้อ`}
         disabled={sheets.length === 0}
         graphics={false}
         filename={printName.manual({ count: sheets.length })}

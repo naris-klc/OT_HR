@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, thaiDate } from '@/lib/api.js';
+import { api, periodLabel, thaiDate } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 import { FORM_PRINT_SCOPE_SAY } from '@/lib/reports.js';
 import {
@@ -117,6 +117,7 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
       <PrintChrome
         onClose={onClose}
         disabled={loading}
+        title={`ใบขออนุมัติ OT ทั้งเดือน · ${periodLabel(period)} · ${employees.length} คน`}
         /* The count is the sheets that will actually be in the file, not the
            names asked for — a bundle four of whose people failed to load is a
            bundle of the rest, and the name says so. `employees.length` while it

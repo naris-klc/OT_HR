@@ -67,7 +67,9 @@ export function sheetQuery({ employeeId = '', status = '' } = {}) {
  * answers with the strict list under every `formPrintScope` setting, which is
  * the right way for a missing filter to be wrong on a sheet that gets signed.
  */
-export default function PrintForm({ employeeId, period, status = '', onClose, head = null }) {
+export default function PrintForm({
+  employeeId, period, status = '', onClose, title = null, sub = null, tools = null,
+}) {
   const [form, setForm] = useState(null);
   const [error, setError] = useState('');
 
@@ -78,16 +80,14 @@ export default function PrintForm({ employeeId, period, status = '', onClose, he
       .catch((err) => setError(err.message));
   }, [employeeId, period, status]);
 
-  /* `head` carries the month picker (MyForm in App.jsx), so while there is no
-     sheet to print the card still stands, buttons disabled — otherwise a month
-     that fails to load would take away the control that picks another one. */
+  /* While there is no sheet to print the card still stands, buttons disabled —
+     otherwise a month that fails to load would take away the month picker
+     (`tools`, MyForm in App.jsx) and the ‹ กลับ that leaves (HR's print). */
   if (error || !form) {
-    const wait = error ? <Alert kind="error">{error}</Alert> : <div className="empty">กำลังโหลด…</div>;
-    if (!head) return wait;
     return (
       <>
-        <PrintChrome disabled head={head} graphics={null} />
-        {wait}
+        <PrintChrome disabled onClose={onClose} title={title || 'ใบขออนุมัติ OT'} sub={sub} tools={tools} graphics={null} />
+        {error ? <Alert kind="error">{error}</Alert> : <div className="empty">กำลังโหลด…</div>}
       </>
     );
   }
@@ -95,7 +95,9 @@ export default function PrintForm({ employeeId, period, status = '', onClose, he
   return (
     <>
       <PrintChrome
-        head={head}
+        title={title || `ใบขออนุมัติ OT · ${form.employee.name} · ${form.periodLabel}`}
+        sub={sub}
+        tools={tools}
         onClose={onClose}
         filename={printName.form({ code: form.employee.code, period })}
         {...f027Chrome(form)}
