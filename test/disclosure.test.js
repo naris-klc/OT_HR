@@ -906,7 +906,7 @@ test('a live figure is not an explanation, and is left on the screen', () => {
   const scanFold = entries.indexOf('<Disclosure as="div" of="วิธีเทียบเวลากับไฟล์สแกนนิ้ว">');
   assert.ok(scanFold > 0, 'กฎการเทียบสแกนไม่ได้พับแล้ว');
   const scanEnd = entries.indexOf('</Disclosure>', scanFold);
-  assert.match(entries.slice(scanFold, scanEnd), /ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน/);
+  assert.match(entries.slice(scanFold, scanEnd), /ชั่วโมงไม่ถูกแก้ตามสแกน/);
   assert.ok(entries.indexOf('เดือนนี้:', scanFold) > scanEnd, 'ตัวเลขประจำเดือนถูกพับไปกับกฎ');
 });
 

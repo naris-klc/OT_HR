@@ -681,9 +681,14 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                     an explanation (test/disclosure.test.js). On a laptop the rules
                     fit and no control is drawn. */}
                 <Disclosure as="div" of="วิธีเทียบเวลากับไฟล์สแกนนิ้ว">
-                  เทียบเวลากับไฟล์สแกนนิ้วแล้ว — สแกนออกไม่ก่อนเวลาสิ้นสุด OT ถือว่าทำครบตามที่ขอ
-                  {' '}· เวลาเริ่มถือว่าตรงกันเมื่อห่างกันไม่เกิน {SCAN_MATCH_TOLERANCE_MINUTES} นาที
-                  {' '}· <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong>
+                  {/* ONE ROW (2026-10-08, *"ปรับคำให้กระชับในแถวเดียว"*): each rule is
+                      its verdict — `X = ครบ`, `Y = ตรง` — instead of a clause saying
+                      what the system "treats as" it. Nothing was dropped: the
+                      direction of the end, the distance of the start, and that
+                      no hour is restated from the file. */}
+                  เทียบกับไฟล์สแกนแล้ว — ออกไม่ก่อนเวลาสิ้นสุด OT = ครบ
+                  {' '}· เริ่มห่างไม่เกิน {SCAN_MATCH_TOLERANCE_MINUTES} นาที = ตรง
+                  {' '}· <strong>ชั่วโมงไม่ถูกแก้ตามสแกน</strong>
                 </Disclosure>
                 {/* THE TWO PILES, AS A NUMBER, FOR THE WHOLE MONTH.
                     The chips separate flat days from real mismatches row by row,

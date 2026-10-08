@@ -99,6 +99,14 @@ export default function ScanCompareCard({
    * to decide.
    */
   importOpen = false,
+  /**
+   * The tally and the caveat under it are behind ONE control shared with the
+   * rest of the month's notice box (2026-10-08, mockup A) — `detailOpen` is that
+   * control's state, owned by HrView so `MonthAlerts` opens with it. With no
+   * `onToggleDetail` the card is on its own and draws everything, as before.
+   */
+  detailOpen = false,
+  onToggleDetail = null,
 }) {
   /**
    * A month still loading claims nothing. The state this card exists to name is
@@ -212,6 +220,19 @@ export default function ScanCompareCard({
             ) : (
               <span className="scan-big ok">✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน</span>
             )}
+            {onToggleDetail && (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  className="link"
+                  aria-expanded={detailOpen}
+                  onClick={onToggleDetail}
+                >
+                  {detailOpen ? 'ซ่อนรายละเอียด ▴' : 'ดูรายละเอียด ▾'}
+                </button>
+              </>
+            )}
           </span>
           {/* THE PRESS THAT TURNS A NUMBER INTO A PLACE TO STAND, and it is at
               the end of the sentence that holds the number now rather than on a
@@ -285,23 +306,25 @@ export default function ScanCompareCard({
             the two figures they qualify, for the same reason: a screen that
             folds facts into the errand count is a screen whose errand count
             nobody trusts. */}
-        <div className="scan-tally">
-          <span><strong>{counts.short}</strong> {SCAN_BADGE.SHORT}</span>
-          <span><strong>{counts.startOff}</strong> {SCAN_BADGE.START_OFF}</span>
-          {/* THE GLOSS CAME OFF WITH THE REWORD. It read `{SCAN_BADGE.NO_SCAN}
-              (ไม่มีสแกนนิ้ว)` until 2026-09-11, because `ไม่ตรง` on its own did
-              not say WHICH thing failed to agree and the parenthesis was
-              carrying the whole meaning. `ไม่ได้สแกน` is the gloss, so keeping
-              it would print the same sentence twice. */}
-          <span><strong>{counts.noScan}</strong> {SCAN_BADGE.NO_SCAN}</span>
-          <span className="quiet"><strong>{counts.overTime}</strong> {SCAN_BADGE.OVER}</span>
-          <span className="quiet"><strong>{counts.flatDaily}</strong> เหมารายวัน</span>
-          <span className="quiet"><strong>{agreed}</strong> ตรง</span>
-          <span className="quiet">
-            {SCAN_BADGE.OVER} และ เหมารายวัน เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ ·
-            {' '}ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน
-          </span>
-        </div>
+        {(detailOpen || !onToggleDetail) && (
+          <div className="scan-tally">
+            <span><strong>{counts.short}</strong> {SCAN_BADGE.SHORT}</span>
+            <span><strong>{counts.startOff}</strong> {SCAN_BADGE.START_OFF}</span>
+            {/* THE GLOSS CAME OFF WITH THE REWORD. It read `{SCAN_BADGE.NO_SCAN}
+                (ไม่มีสแกนนิ้ว)` until 2026-09-11, because `ไม่ตรง` on its own did
+                not say WHICH thing failed to agree and the parenthesis was
+                carrying the whole meaning. `ไม่ได้สแกน` is the gloss, so keeping
+                it would print the same sentence twice. */}
+            <span><strong>{counts.noScan}</strong> {SCAN_BADGE.NO_SCAN}</span>
+            <span className="quiet"><strong>{counts.overTime}</strong> {SCAN_BADGE.OVER}</span>
+            <span className="quiet"><strong>{counts.flatDaily}</strong> เหมารายวัน</span>
+            <span className="quiet"><strong>{agreed}</strong> ตรง</span>
+            <span className="quiet">
+              {SCAN_BADGE.OVER} และ เหมารายวัน เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ ·
+              {' '}ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน
+            </span>
+          </div>
+        )}
       </Alert>
     </div>
   );

@@ -379,12 +379,15 @@ test('the notices band takes itself off the page when there is nothing to say', 
   // them from the days they floated on the page, and in a flex column those
   // would stack with the gap AND with each other.
   assert.match(css, /\.month-notices > \* \{ margin: 0; \}/);
-  assert.match(css, /\.month-notices \{\r?\n  display: flex; flex-direction: column; gap: 10px;/);
-  // WHITE, not washed like `.queue-tools` under it: the band holds `.alert`
-  // children carrying their own amber and green, and a tint behind a tint is two
-  // washes arguing.
-  const band = css.slice(css.indexOf('.month-notices {'));
-  assert.ok(!/background/.test(band.slice(0, band.indexOf('}'))), 'the notices band took a fill');
+  // ⚠ IT WAS THREE BOXES IN A FLEX COLUMN WITH `gap: 10px`, AND NO FILL, UNTIL
+  // 2026-10-08. The band is ONE box now (mockup A) and the children are rows:
+  // they give up their own ground, border and radius, and the band takes the
+  // amber when any row is amber.
+  assert.match(css, /\.month-notices \{\r?\n  display: flex; flex-direction: column;\r?\n/);
+  assert.match(css, /\.month-notices > \* \+ \* \{ border-top: 1px solid var\(--line-soft\); \}/);
+  assert.match(css, /\.month-notices:has\(\.warn\) \{ background: var\(--amber-bg\); border-color: var\(--amber-line\); \}/);
+  const rows = css.slice(css.indexOf('.month-notices .box:is('));
+  assert.match(rows.slice(0, rows.indexOf('}')), /background: transparent; border: 0; border-radius: 0;/);
   // …and `.scan-compare` gave up the margin it carried for the days it floated.
   assert.ok(!css.includes('.scan-compare { margin: 0 0 10px; }'), 'the compare card is spacing itself again');
 });

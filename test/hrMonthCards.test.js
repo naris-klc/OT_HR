@@ -603,7 +603,8 @@ test('two panels became one panel — a list, not a second stack', () => {
      its own benefit. The month by name stays — this panel sits ABOVE the box
      that sets the period, so "เดือนนี้" is a question rather than an answer. */
   assert.match(strip, /`แจ้งเตือนของ \$\{periodName\}`/);
-  assert.match(strip, /notices\.length > 1 && ` · \$\{notices\.length\} ข้อความ`/);
+  // ⚠ `· N ข้อความ` WAS HERE UNTIL 2026-10-08: the three notices became one box
+  // and the heading shows only while the list is open — see MonthAlerts.
   assert.match(strip, /<strong className="alerts-head">/);
   assert.match(hrView, /periodName=\{periodLabel\(period\)\}/);
   // ONE `<Alert>` in the whole component, and the list is INSIDE it.
@@ -676,12 +677,12 @@ test('one control for the whole thing, and no second ดูรายละเอ
   // The labels line is drawn SHUT only — open, the list headings are those same
   // words, and saying them twice fourteen pixels apart is a difference a reader
   // has to check for and will not find.
-  assert.match(strip, /\{!open && <span>\{'— '\}\{notices\.map\(\(n\) => n\.label\)\.join\(' · '\)\}<\/span>\}/);
+  assert.match(strip, /\{!open && <span>\{notices\.map\(\(n\) => n\.label\)\.join\(' · '\)\}<\/span>\}/);
   // …and the button is in that SAME flow, not on a block of its own: a 44px
   // touch target stacked under two wrapped lines of Thai is a whole row of the
   // panel spent on one control.
   // …and the heading is the first thing in that flow, not a block above it.
-  assert.match(strip, /<div className="alerts-say">\s*<strong className="alerts-head">[\s\S]*?\{!open && <span>[\s\S]*?<button/);
+  assert.match(strip, /<div className="alerts-say">[\s\S]*?\{!open && <span>[\s\S]*?<strong className="alerts-head">[\s\S]*?<button/);
   assert.match(css, /\.alerts-say > \.fold-pill \{ margin: 0 0 0 8px; vertical-align: middle; \}/);
   // `margin-top` went with the stacking: the heading is a phrase of this row.
   assert.match(css, /\.alerts-say \{ font-size: 12px; \}/);
