@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
 import { DELEGATED_APPROVAL_RECORDED } from '@/lib/delegation.js';
-import { Alert, Empty, Field, Modal, PickOne } from './common.jsx';
+import { Alert, Empty, Field, Modal, PickOne, RowAction } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
 import { PickDate } from './PickDate.jsx';
@@ -199,9 +199,15 @@ export default function Delegation({ user, scope = 'mine' }) {
                         enforces; this just does not offer it. */}
                     {['active', 'scheduled'].includes(d.state)
                       && (all || d.from?.id === String(user.id || user._id)) && (
-                      <button className="btn ghost sm" disabled={busy} onClick={() => revoke(d)}>
-                        ยกเลิก
-                      </button>
+                      <div className="row-actions">
+                        <RowAction
+                          icon="ban"
+                          label="ยกเลิก"
+                          tone="stop"
+                          disabled={busy}
+                          onClick={() => revoke(d)}
+                        />
+                      </div>
                     )}
                   </td>
                 </tr>

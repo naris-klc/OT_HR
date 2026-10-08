@@ -158,8 +158,10 @@ test('the mark wears a grey of its own, not the status chip\'s class', () => {
  */
 test('ยกเลิก and ถอนใบ are red outlines on the row, and filled only in the dialog', () => {
   const row = emp.slice(emp.indexOf('<div className="row-actions">'));
-  assert.match(row, /className="btn ghost danger sm"\n\s+onClick=\{\(\) => \{ setCancelling\(e\); setCancelNote\(''\); \}\}\n\s+>\n\s+ยกเลิก/);
-  assert.match(row, /className="btn ghost danger sm"\n\s+onClick=\{\(\) => \{ setAsking\(e\); setAskReason\(''\); \}\}\n\s+>\n\s+ถอนใบ/);
+  // RowAction since 2026-10-08: `tone="stop"` is the red outline.
+  assert.match(row, /label="ยกเลิก"\n\s+tone="stop"\n\s+onClick=\{\(\) => \{ setCancelling\(e\); setCancelNote\(''\); \}\}/);
+  assert.match(row, /label="ถอนใบ"\n\s+tone="stop"\n\s+onClick=\{\(\) => \{ setAsking\(e\); setAskReason\(''\); \}\}/);
+  assert.match(read('components/common.jsx'), /tone === 'go' \? '' : 'ghost',\s+tone === 'stop' \? 'danger' : '',/);
 });
 
 /**

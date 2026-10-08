@@ -77,6 +77,7 @@ const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 // the printed sheets use it.
 import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, PickMany,
+  RowAction,
   ClearButton, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -1083,18 +1084,11 @@ function Departments({ user, onGo, roster }) {
                   {/* รหัส and ชื่อแผนก, which were unreachable after creation —
                       see DepartmentForm.
 
-                      A TEXT ACTION on a wide screen, where it sits in a จัดการ
-                      column beside a สถานะ column: the two headings already say
-                      which is which, so the action steps back and lets the state
-                      read first. Nothing it does is final — it only opens a
-                      dialog — so it does not need a button's weight to be found.
-
-                      On a phone the headings are gone and there is no column to
-                      sit in, so `td.act-col .link` below 860px is drawn as a
-                      ghost button: a card's foot has to show its one action as
-                      something with an edge you can aim at. Same markup, two
-                      layouts — which is why the button is not written twice. */}
-                  <button className="link" onClick={() => setEditing(d)}>แก้ไข</button>
+                      It was a TEXT link on a wide screen, drawn as a ghost
+                      button below 860px, until 2026-10-08 — when every จัดการ
+                      button in the app became `RowAction`: the pencil square
+                      here, the pencil and its word on a phone card. */}
+                  <RowAction icon="pencil" label="แก้ไข" name={d.name} onClick={() => setEditing(d)} />
                 </td>
               </tr>
             ))}
@@ -3640,37 +3634,41 @@ function Employees({ user }) {
                     {/* Opens for every row, including one this person may not
                         change: the dialog is where the reason is written, and a
                         dead button explains nothing. */}
-                    <button className="btn ghost sm act-main" onClick={() => setEditing(p)}>
-                      {mayEdit(p) ? 'แก้ไข' : 'ดูข้อมูล'}
-                    </button>
+                    <RowAction
+                      icon={mayEdit(p) ? 'pencil' : 'eye'}
+                      label={mayEdit(p) ? 'แก้ไข' : 'ดูข้อมูล'}
+                      name={p.name}
+                      className="act-main"
+                      onClick={() => setEditing(p)}
+                    />
                     {/* ลืมรหัสผ่าน has no self-service path — no email is on file
                         for most of the roster — so this is the whole of the
                         recovery story, and it stays on the row rather than
                         behind an edit dialog somebody has to open for it. */}
-                    <button
-                      className="btn ghost sm act-security"
+                    {/* Read ตั้งรหัสใหม่ until 2026-09-02. Renamed to match the
+                        button now sitting inside แก้ไข → สิทธิ์และสถานะ: one
+                        action reached from two places must not have two names.
+                        Ten advancing glyphs against the eight this had, which
+                        `.roster-actions` still holds on one nowrap line in a
+                        third of a 375px card. */}
+                    <RowAction
+                      icon="key"
+                      label="รีเซ็ตรหัสผ่าน"
+                      name={p.name}
+                      className="act-security"
+                      hint="ตั้งรหัสผ่านกลับเป็นรหัสพนักงาน"
+                      why={mayReset(p) ? '' : RESET_LOCK[isSelf(p) ? 'self' : 'adminRow']}
                       onClick={() => setResetting(p)}
-                      disabled={!mayReset(p)}
-                      title={mayReset(p) ? 'ตั้งรหัสผ่านกลับเป็นรหัสพนักงาน' : RESET_LOCK[
-                        isSelf(p) ? 'self' : 'adminRow'
-                      ]}
-                    >
-                      {/* Read ตั้งรหัสใหม่ until 2026-09-02. Renamed to match the
-                          button now sitting inside แก้ไข → สิทธิ์และสถานะ: one
-                          action reached from two places must not have two names.
-                          Ten advancing glyphs against the eight this had, which
-                          `.roster-actions` still holds on one nowrap line in a
-                          third of a 375px card. */}
-                      รีเซ็ตรหัสผ่าน
-                    </button>
-                    <button
-                      className="btn ghost sm act-info"
+                    />
+                    <RowAction
+                      icon="history"
+                      label="ดูประวัติ"
+                      name={p.name}
+                      className="act-info"
+                      hint="ใครแก้อะไรในทะเบียนของคนนี้บ้าง"
+                      why={mayEdit(p) ? '' : 'ดูได้เฉพาะผู้ที่แก้ทะเบียนของคนนี้ได้'}
                       onClick={() => setTrailFor(p)}
-                      disabled={!mayEdit(p)}
-                      title="ใครแก้อะไรในทะเบียนของคนนี้บ้าง"
-                    >
-                      ดูประวัติ
-                    </button>
+                    />
                   </div>
                 </td>
               </tr>
@@ -6143,9 +6141,14 @@ function Holidays() {
                         stays an outline in the danger colour: unmistakably the
                         destructive control, and not the loudest thing on a card
                         about a public holiday. */}
-                    <button className="btn ghost sm act-danger" onClick={() => setRemoving(h)}>
-                      ลบ
-                    </button>
+                    <RowAction
+                      icon="trash"
+                      label="ลบ"
+                      tone="stop"
+                      name={h.name}
+                      className="act-danger"
+                      onClick={() => setRemoving(h)}
+                    />
                   </td>
                 </tr>
               ))}

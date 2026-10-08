@@ -342,10 +342,10 @@ test('the queue says one thing to a reviewer barred from their own filing', () =
  */
 test('the row carries both writes, gated alike', () => {
   assert.match(hrEntries, /\{!mayEdit \? null : closed \? \(/);
-  assert.match(hrEntries, /className="btn ghost sm with-icon" onClick=\{\(\) => setEditing\(e\)\}/);
-  assert.match(hrEntries, /className="btn ghost danger sm with-icon"/);
+  // Icon squares since 2026-10-08 (RowAction); the word is the label.
+  assert.match(hrEntries, /<RowAction icon="pencil" label="แก้ไข" onClick=\{\(\) => setEditing\(e\)\} \/>/);
+  assert.match(hrEntries, /icon="ban"\s+label="ยกเลิก"\s+tone="stop"/);
   assert.match(hrEntries, /onClick=\{\(\) => \{ setCancelling\(e\); setCancelNote\(''\); \}\}/);
-  assert.match(strip(hrEntries), /\n\s*ยกเลิก\n/);
 });
 
 /**
@@ -355,7 +355,9 @@ test('the row carries both writes, gated alike', () => {
  * nothing new was drawn for this.
  */
 test('the row button is danger-light and the dialog button is the filled one', () => {
-  assert.match(hrEntries, /className="btn ghost danger sm with-icon"/);
+  // `tone="stop"` is RowAction's red outline — `ghost` and `danger` together.
+  assert.match(hrEntries, /label="ยกเลิก"\s+tone="stop"/);
+  assert.match(read('components/common.jsx'), /tone === 'go' \? '' : 'ghost',\s+tone === 'stop' \? 'danger' : '',/);
   assert.match(hrEntries, /className="btn danger" disabled=\{busy \|\| !cancelNote\.trim\(\)\}/);
   assert.match(read('app/styles.css'), /\n\.btn\.ghost\.danger \{/);
 });

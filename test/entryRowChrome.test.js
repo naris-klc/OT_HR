@@ -53,20 +53,20 @@ function rule(selector) {
 
 // ── one control, one statement ───────────────────────────────────────────────
 
-test('the only thing that can be pressed is the only thing drawn as a button', () => {
+test('every control in the cell is a RowAction, and a dead one is disabled with its reason', () => {
   // แก้ไข — a control.
-  assert.match(jsx, /<button className="btn ghost sm with-icon" onClick=\{\(\) => setEditing\(e\)\}>/);
-  // ไม่มีประวัติการแก้ไข — a statement, in the same voice as แก้ไขไม่ได้ above it.
-  assert.match(jsx, /<span className="cell-sub th">ไม่มีประวัติการแก้ไข<\/span>/);
-  assert.match(jsx, /<span className="cell-sub th">แก้ไขไม่ได้<\/span>/);
-  // AND NOT A DISABLED BUTTON, which is what it was until 2026-08-26. Asserted
-  // as a negative because the failure is invisible in the light theme: it is
-  // `--neutral-wash` being lighter than `--card` in ธีมมืด that made the dead
-  // control the loudest thing on the card.
-  assert.ok(
-    !/<button[^>]*disabled>/.test(jsx),
-    'a disabled button came back — a row with nothing to press says so in words',
-  );
+  assert.match(jsx, /<RowAction icon="pencil" label="แก้ไข" onClick=\{\(\) => setEditing\(e\)\} \/>/);
+  // ไม่มีประวัติการแก้ไข and แก้ไขไม่ได้ WERE SENTENCES from 2026-08-26 until
+  // 2026-10-08, chosen over a disabled button because `--neutral-wash` drew the
+  // dead control brighter than the live one in ธีมมืด. When the row's controls
+  // became 32px icon squares the sentences became the widest thing in the cell,
+  // and the app's rule since 2026-09-11 is DISABLE, DON'T REMOVE, with the
+  // reason on the tooltip (docs/design.md §5). The edge that keeps the live
+  // square heavier is pinned in the cancelled-row test below.
+  assert.match(jsx, /why=\{hasAuditTrail\(e\) \? '' : 'ไม่มีประวัติการแก้ไข'\}/);
+  assert.match(jsx, /<RowAction icon="pencil" label="แก้ไข" why="แก้ไขไม่ได้ — /);
+  assert.ok(!/<span className="cell-sub th">ไม่มีประวัติการแก้ไข<\/span>/.test(jsx),
+    'the sentence came back — it is the reason on a disabled icon now');
 });
 
 test('nothing in a row writes its own type size any more', () => {
@@ -120,13 +120,15 @@ test('the pencil is drawn, not typed, and it is sized by a class', () => {
   // for. ✏️ beside a form numbered F-HR-027 is also the wrong register.
   assert.match(icons, /^\s*pencil: \(/m);
   assert.ok(!/✏/.test(code), 'the pencil went back to being an emoji');
-  assert.match(jsx, /<Icon name="pencil" className="btn-icon" \/>/);
-  assert.match(jsx, /import Icon from '\.\/icons\.jsx';/);
+  // Through `RowAction` since 2026-10-08 — the one icon button every table's
+  // จัดการ column draws, so the glyph is chosen by meaning in one place.
+  assert.match(jsx, /<RowAction icon="pencil"/);
+  assert.match(read('components/common.jsx'), /<Icon name=\{icon\} className="btn-icon" \/>/);
 
   // OPT-IN BY CLASS. `display: inline-flex` on `.btn` itself would relayout
   // every button in the app to fix the one that has a picture in it.
-  assert.match(rule('.btn.with-icon'), /display: inline-flex; align-items: center;/);
-  assert.match(rule('.btn.with-icon .btn-icon'), /width: 15px; height: 15px; flex: none;/);
+  assert.match(rule('.btn.act-icon'), /display: inline-flex; align-items: center;/);
+  assert.match(rule('.btn.act-icon .btn-icon'), /width: 16px; height: 16px; flex: none;/);
 });
 
 // ── the three states of the button ───────────────────────────────────────────
@@ -406,14 +408,11 @@ test('on a cancelled row the live control outweighs the dead sentence', () => {
   // cannot be done and a thing that can. Both were `--muted` at nearly one
   // size, and the live one was a white button with a `--line` hairline on a
   // white card — two labels, and which was which came only from the words.
-  assert.match(rule('.entry-actions .cell-sub.th'), /color: var\(--muted-2\);/);
+  //
+  // Since 2026-10-08 the dead half is a disabled icon square rather than a
+  // sentence (see the first test in this file), and the edge is what still
+  // tells the two apart.
   assert.match(rule('.entry-actions .btn.ghost'), /border-color: var\(--line-lift\);/);
-
-  // BOTH SENTENCES, not only แก้ไขไม่ได้. ไม่มีประวัติการแก้ไข stands in for
-  // ดูข้อมูลเดิม in exactly the same way, and that the two speak in one voice
-  // is the whole reason neither of them is a disabled button any more.
-  assert.match(jsx, /<span className="cell-sub th">แก้ไขไม่ได้<\/span>/);
-  assert.match(jsx, /<span className="cell-sub th">ไม่มีประวัติการแก้ไข<\/span>/);
 
   // NOT A FILL. `--neutral-wash` behind a ghost button is what `.btn:disabled`
   // looks like, and on ธีมมืด that token is LIGHTER than the `--card` a ghost
@@ -447,7 +446,7 @@ test('the one value that wraps gets a line-height, and only that one', () => {
   // The table's own rule is left alone: on the desktop this cell is a column
   // beside ten others, and a line-height set for a wrapped card value would
   // loosen every row of every table in the app.
-  assert.match(css, /^td \{ padding: 12px;[^}]*font: 400 14px\/1\.5 var\(--sans\);/m);
+  assert.match(css, /^td \{ padding: 7px 12px;[^}]*font: 400 14px\/1\.4 var\(--sans\);/m);
 });
 
 test('on a phone card the description\'s chips start at the left, like สถานะ', () => {

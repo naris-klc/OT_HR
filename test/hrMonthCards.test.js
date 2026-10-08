@@ -221,7 +221,8 @@ test('the action column was resized when it lost a button, and แผนก got 
      the focus ring is not clipped by the card's edge. */
   assert.match(css, /\.hr-table th\.act-col \{ width: 104px; \}/);
   const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
-  assert.equal((cell.match(/<button/g) || []).length, 2, 'act-col holds a different number of buttons than 104px was cut for');
+  // RowAction squares since 2026-10-08 — 32px each, so the 104 still holds.
+  assert.equal((cell.match(/<RowAction\b/g) || []).length, 2, 'act-col holds a different number of buttons than 104px was cut for');
 
   // Where the room went. `dept-col` had NO width on this screen before — it was
   // whatever `auto` left over, and what `auto` left over was nothing.
@@ -260,15 +261,16 @@ test('พิมพ์ F-HR-027 stayed, because it is the one act that is not "op
   // print one from. Folding it into the row would mean opening a person and
   // coming back out to get the paper.
   assert.match(cell, /พิมพ์ F-HR-027/);
-  assert.match(hrView, /<Icon name="printer" \/>/);
+  assert.match(cell, /icon="printer"/);
   assert.ok(!cell.includes('act-open'));
 
   // ⚠ HIDDEN, NOT REMOVED, above 860px. `display: none` would take the label
   // out of the accessibility tree and leave `aria-label` as the only name.
-  assert.match(css, /\.hr-table \.icon-btn \.act-label \{[\s\S]*?clip-path: inset\(50%\);/);
+  // App-wide since 2026-10-08: every RowAction hides its word the same way.
+  assert.match(css, /\.btn\.act-icon \.btn-word \{[\s\S]*?clip-path: inset\(50%\);/);
   // …and the phone card puts the words back, because down there this cell is
   // the foot of a person's card rather than a column of a table.
-  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \.act-label \{/);
+  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \.btn-word \{/);
 
   // `.row-actions` around ONE button looks like over-fitting until you read the
   // phone block: it is what gives that button its full card width and its 44px.
@@ -1487,8 +1489,9 @@ test('ไอคอนอนุมัติในแถว เปิดกล่�
   const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
 
   // กลีฟเดียวกับปุ่ม อนุมัติ ของคิวรออนุมัติ ไม่ใช่กลีฟที่เลือกใหม่ให้จอนี้
-  assert.match(cell, /<Icon name="tick" \/>/);
-  assert.match(read('components/ApprovalQueue.jsx'), /<Icon name="tick" className="btn-icon" \/>/);
+  // ผ่าน `RowAction` ทั้งสองจอตั้งแต่ 2026-10-08 — หนึ่งความหมาย หนึ่งไอคอน
+  assert.match(cell, /icon="tick"/);
+  assert.match(read('components/ApprovalQueue.jsx'), /icon="tick"/);
 
   /* วาดพร้อมคอลัมน์ติ๊ก — และตั้งแต่ 2026-09-11 นั่นแปลว่า "ทุกเดือนที่ผู้อ่าน
      เซ็นได้" เพราะ `showPickCol` เป็น `mayCorrect` เฉย ๆ แล้ว · ⚠ บรรทัดนี้เคยมี
@@ -1497,15 +1500,17 @@ test('ไอคอนอนุมัติในแถว เปิดกล่�
      *"ทำไมตารางไม่มีปุ่มให้อนุมัติตามที่คุยกัน"* · ดู monthBatchApprove */
   assert.match(cell, /\{showPickCol && \(/);
   // ปิดด้วยกฎเดียวกับช่องติ๊ก ไม่ใช่กฎที่เขียนใหม่ตรงนี้
-  assert.match(cell, /disabled=\{!pickable\(row\)\}/);
+  assert.match(cell, /why=\{pickable\(row\) \? '' : whyNotPickable\(row\)\}/);
 
   /* ⚠ เหตุผลอยู่บน "ตัวครอบ" ไม่ใช่บนปุ่ม — ปุ่มที่ถูก disable ไม่เปิด title ของ
      ตัวเอง เหตุผลที่เขียนบนปุ่มจึงเป็นเหตุผลที่ไม่มีใครได้อ่าน ซึ่งเป็นความล้มเหลว
      ที่ title ของ §5.2 มีไว้กันพอดี · `.act-watch` บนคิวรออนุมัติเรียนเรื่องนี้มาแล้ว */
-  const wrap = cell.slice(cell.indexOf('<span'), cell.indexOf('</span>', cell.indexOf('<button')));
-  assert.match(wrap, /className="act-sign"\s+title=\{pickable\(row\)/);
-  assert.match(wrap, /: whyNotPickable\(row\)\}/);
-  assert.match(css, /\.act-sign \{ display: inline-flex; flex: none; \}/);
+  // ตัวครอบคือ `.act-tip` ของ RowAction ตั้งแต่ 2026-10-08 (เดิมคือ `.act-sign`
+  // ของจอนี้เอง) — `why` ตั้งค่าแล้วปุ่มถูก disable และเหตุผลไปอยู่บนตัวครอบ
+  const common = read('components/common.jsx');
+  assert.match(common, /className="act-tip"\s+data-tip=\{label\}\s+data-tip-why=\{why \|\| hint \|\| undefined\}/);
+  assert.match(common, /disabled=\{!!why \|\| disabled\}/);
+  assert.match(css, /\.act-tip \.btn:disabled \{ pointer-events: none; \}/);
 
   // กดแล้วเลือกคนเดียว แล้วเปิดกล่องเดิม — ไม่ได้เพิ่มเข้ากองที่ติ๊กไว้
   assert.match(cell, /setPicked\(new Set\(\[String\(row\.employee\._id\)\]\)\);\s*\r?\n\s*setConfirming\(true\);/);

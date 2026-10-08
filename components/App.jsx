@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
-import { Alert, AlertFold, PasswordInput, TipButton } from './common.jsx';
+import { Alert, AlertFold, PasswordInput, TipButton, TipLayer } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { ToastHost } from './Toast.jsx';
@@ -126,6 +126,8 @@ export default function App() {
           onLogout={() => setSession(null)}
         />
       </PolicyProvider>
+      {/* The one tooltip every `data-tip` in the app shares — RowAction's. */}
+      <TipLayer />
     </ToastHost>
   );
 }

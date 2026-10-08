@@ -3209,16 +3209,61 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    ⚠ `clip-path: inset(50%)` AND NOT `display: none`. The label has to stay
    readable to assistive technology; `display: none` takes it out of the
    accessibility tree, which would leave two buttons whose only name is the
-   `aria-label` — true today and one edit away from being nothing at all. */
+   `aria-label` — true today and one edit away from being nothing at all.
+
+   Those two buttons became `RowAction` on 2026-10-08, with every other row
+   action in the app (below). `.icon-btn` is left to the one button outside a
+   table that still uses it, the คู่มือ's print. */
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .icon-btn svg { width: 16px; height: 16px; flex: none; }
+
+/* ── ROWACTION — EVERY จัดการ BUTTON IS AN ICON, ITS WORD A TOOLTIP ───────────
+   components/common.jsx `RowAction`, 2026-10-08. One shape for every per-row
+   action in the app: a 32px square above 860px — `.btn.sm`'s own height, so a
+   row that still has a worded button beside it does not step — and the icon
+   with its word again below 860px, where nothing hovers and the card layouts
+   of each table size the buttons for a thumb.
+
+   The word is hidden as a caption is (`clip-path`), not `display: none`, so the
+   button's name in the accessibility tree is never only its `aria-label`.
+
+   A DISABLED ONE LETS THE POINTER THROUGH to `.act-tip`, which carries the
+   tooltip and the reason: a disabled button dispatches no pointer events of its
+   own, so without this the one control that most needs explaining would be the
+   one whose tooltip never opens. */
+.act-tip { display: inline-flex; }
+.act-tip .btn:disabled { pointer-events: none; }
+.btn.act-icon { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn.act-icon .btn-icon { width: 16px; height: 16px; flex: none; }
+/* Below 860px the wrapper steps out of the layout, so every card rule written
+   as `.row-actions .btn { flex: … }` still reaches the button it was written
+   for. A phone shows the word, so the tooltip it would have carried has no
+   job there. */
+@media (max-width: 860px) {
+  .act-tip { display: contents; }
+}
 @media (min-width: 861px) {
-  .hr-table .icon-btn { padding-left: 9px; padding-right: 9px; }
-  .hr-table .icon-btn .act-label {
+  .btn.act-icon { width: 32px; height: 32px; padding: 0; flex: none; }
+  .btn.act-icon .btn-word {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap;
   }
 }
+
+/* The bubble `TipLayer` draws. Inverted — `--ink` under `--card` — so it reads
+   as something laid over the page in both themes without a colour of its own.
+   Fixed and outside every scroller; never printed. */
+.tip-bubble {
+  position: fixed; z-index: 130; pointer-events: none; max-width: 280px;
+  padding: 6px 9px; border-radius: var(--radius-xs);
+  background: var(--ink); color: var(--card); box-shadow: 0 6px 18px var(--shadow-lift);
+  font: 500 12.5px/1.35 var(--sans);
+  opacity: 0; transition: opacity .12s;
+}
+.tip-bubble.shown { opacity: 1; }
+.tip-bubble small { display: block; font-size: 12px; font-weight: 400; }
+@media (prefers-reduced-motion: reduce) { .tip-bubble { transition: none; } }
+@media print { .tip-bubble { display: none; } }
 /* ผู้รับช่วงอนุมัติแทน's heading block — the title and its two-line explanation,
    taking whatever the button beside it leaves. It was an inline `flex: 1`; it is
    a class so the phone layout can widen it, which an inline style forbids. */
@@ -7580,6 +7625,13 @@ td > .approver-line { margin-top: 5px; }
 
 /* THE TWO KINDS OF THING IN THIS RUN, TOLD APART BY WEIGHT.
 
+   ⚠ SINCE 2026-10-08 NEITHER SENTENCE BELOW IS DRAWN. Every control in this
+   cell became a `RowAction` icon square, and แก้ไขไม่ได้ and ไม่มีประวัติการแก้ไข
+   — each now wider than the controls they stood in for — became those controls
+   disabled, with the sentence as their tooltip (docs/design.md §5). Their
+   `--muted-2` rule went with them. The `--line-lift` edge below is the half of
+   this that still holds: it is what keeps a live square heavier than a dead one.
+
    On a ยกเลิก row the cell holds แก้ไขไม่ได้ and ดูข้อมูลเดิม side by side: a
    thing that cannot be done, and a thing that can. Both were the same grey
    (`--muted`) at nearly the same size, and the live one was a white button with a
@@ -7603,23 +7655,7 @@ td > .approver-line { margin-top: 5px; }
    the live control the heavier of the two. Not a fill: `--neutral-wash` behind a
    ghost button is what `.btn:disabled` looks like, and drawing the live one in
    the dead one's clothes is the defect this cell was just repaired for. */
-.entry-actions .cell-sub.th { color: var(--muted-2); }
 .entry-actions .btn.ghost { border-color: var(--line-lift); }
-
-/* THE HOVER TARGET FOR AN อนุมัติ THAT CANNOT BE PRESSED.
-
-   A disabled button dispatches no pointer events, so a `title` on the button
-   itself never opens — the pointer falls through to whatever is behind it. So
-   the sentence explaining WHY the row cannot be signed hangs on this wrapper
-   instead, which is the ancestor the hover actually lands on. It is the same
-   arrangement `.act-watch` uses on คิวรออนุมัติ OT, for the same reason.
-
-   `inline-flex` is the whole rule: without it the span is a text box around a
-   flex child and picks up the line-height of the row rather than the button's
-   own height, which puts the grey button a pixel or two off the baseline of the
-   live controls beside it. `flex: none` — it holds one button and may not be
-   squeezed by the run of controls it sits in. */
-.entry-actions .act-why { display: inline-flex; flex: none; }
 
 /* ── a chip under the line of work it qualifies ─────────────────────────────
    6px and not 4: on the phone card the description cell is a floated label with
@@ -7637,6 +7673,22 @@ td > .approver-line { margin-top: 5px; }
    is what the rest of the card does. Scoped to this one place: nothing else in
    the app puts a sentence in a chip. */
 .entry-mark { margin-top: 6px; }
+
+/* ── รายการ OT (HrEntries) ON ONE LINE PER ROW — 2026-10-08 ─────────────────
+   A row there was four lines tall: the date over its weekday, the time over
+   ไม่ได้สแกน, and the work over พนักงานแก้ไข over โดย …. The user asked for
+   every row as short as it can be, and the chips are short enough to sit
+   beside what they qualify. Desktop only — the phone card is already one fact
+   per line. โดย … leaves the screen for the tooltip on its mark (`data-tip`,
+   read by `TipLayer`) and stays in the accessibility tree. */
+@media (min-width: 861px) {
+  .entry-table.stack-table tbody td.stack-name .cell-sub { display: inline; margin: 0 0 0 6px; }
+  .entry-table.stack-table tbody td .entry-mark { display: inline-block; margin: 0 0 0 6px; vertical-align: middle; }
+  .entry-table.stack-table tbody td .entry-mark > .cell-sub {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+}
 .entry-mark .chip { white-space: normal; text-align: left; }
 /* TWO CHIPS CAN LAND HERE SINCE 2026-09-04, and before that no two ever could:
    `เหมารายวัน` and `เวลาไม่ตรงกับสแกน` are mutually exclusive by construction,
@@ -8193,8 +8245,7 @@ td > .approver-line { margin-top: 5px; }
   outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .deptset-table td.state-col .btn, .deptset-table td.act-col .btn,
-.deptset-table td.state-col .state-badge,
-.deptset-table td.act-col .link { white-space: nowrap; }
+.deptset-table td.state-col .state-badge { white-space: nowrap; }
 
 /* ── A CLOSED แผนก IS FADED, AND TWO CELLS ARE NOT ─────────────────────────
    Asked for as 50%, and 50% is what the row gets: it is still on the screen,
@@ -8415,13 +8466,20 @@ td > .approver-line { margin-top: 5px; }
 }
 
 table { width: 100%; border-collapse: collapse; }
+/* ── ROWS AS SHORT AS THE CONTENT ALLOWS ─────────────────────────────────────
+   `td` read `padding: 12px` and `14px/1.5`, `th` `11px 12px`, until
+   2026-10-08, when the user asked for every table and list row to be as
+   compact as it can be before anything else is designed — option A of the
+   row-actions mockup, alongside RowAction. 7px above and below a 32px icon
+   button is a 46px row; a row of text alone is about 34px. Card layouts below
+   860px set their own cell padding and do not read these. */
 th {
-  text-align: left; padding: 11px 12px;
+  text-align: left; padding: 8px 12px;
   font: 600 11.5px/1.4 var(--mono); letter-spacing: .07em; color: var(--muted-2);
   text-transform: uppercase; border-bottom: 1px solid var(--line);
   white-space: nowrap; background: var(--neutral-wash);
 }
-td { padding: 12px; border-bottom: 1px solid var(--line-softer); font: 400 14px/1.5 var(--sans); vertical-align: middle; }
+td { padding: 7px 12px; border-bottom: 1px solid var(--line-softer); font: 400 14px/1.4 var(--sans); vertical-align: middle; }
 td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 /* A running line number is an index, not a figure to be compared down the
@@ -8728,11 +8786,13 @@ tbody tr:hover { background: var(--green-wash); }
    `minmax(0, …)` on both tracks: a grid track's default minimum is the widest
    thing that cannot wrap, and the longest option inside the <select> is exactly
    that. Without it one dropdown's widest option decides the whole layout. */
+/* `padding: 14px 0` until 2026-10-08 — rows as short as they can be, asked
+   for with the table rows that day. */
 .policy-row {
   display: grid;
   grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
   gap: 4px 28px;
-  padding: 14px 0;
+  padding: 8px 0;
   align-items: start;
 }
 /* The divider, and only between two rules — a row that opens a block already
@@ -10010,20 +10070,6 @@ th.act-col { width: 258px; }
    square are all rules this file already carries for every disabled button and
    every queue icon. This is the box that holds them and nothing more. */
 .act-watch { display: inline-flex; gap: 6px; flex: none; }
-
-/* ── ยืนยันคนนี้ ON ตรวจสอบประจำเดือน — 2026-09-11 ─────────────────────────
-   *"เพิ่ม icon อนุมัติ ในตารางด้วย หากรายการไหนอนุมัติไม่ได้ให้ disable ปุ่มไว้"*.
-
-   A WRAPPER FOR THE SAME REASON `.act-watch` ABOVE IS ONE: a disabled button
-   never opens its own `title`, so the sentence saying WHY the row cannot be
-   confirmed has to hang on something that is not disabled. Everything the
-   button looks like is `.btn.sm.icon-btn` and the disabled rules this file
-   already carries; this box holds them and nothing more.
-
-   `flex: none` above 860px so the two squares sit on the same left edge down
-   the column; the phone block hands it `flex: 1 1 0` instead, where the cell is
-   the foot of a person's card and the two buttons split it. */
-.act-sign { display: inline-flex; flex: none; }
 
 /* Prose, and the only cell in the row that is meant to wrap. Given a width
    rather than the leftover: under `table-layout: fixed` the leftover is
@@ -14999,11 +15045,6 @@ table.mini tbody tr:hover { background: none; }
      inside their own button instead, which is the one place a Thai label has
      room to. */
   .hr-table tbody td.act-col .row-actions { flex-wrap: nowrap; gap: 8px; }
-  /* `.act-sign` is a wrapper round one of the two buttons (a disabled button
-     cannot hold its own tooltip — see the rule in the desktop section), so the
-     split has to be handed to the wrapper as well or the card goes to the
-     button it does not wrap. */
-  .hr-table tbody td.act-col .row-actions > .act-sign { flex: 1 1 0; min-width: 0; }
   .hr-table tbody td.act-col .row-actions .btn {
     flex: 1 1 0; min-width: 0; min-height: 44px;
     padding: 10px 8px; font-size: 13px; text-align: center;
@@ -15017,14 +15058,13 @@ table.mini tbody tr:hover { background: none; }
      can do with the person they are looking at. A card whose actions are two
      bare glyphs is a card that has to be learnt.
 
-     So `.act-label` is simply not hidden at this width (the rule that hides it
+     So `.btn-word` is simply not hidden at this width (the rule that hides it
      is `min-width: 861px`), and the icon stays beside it: a word with a glyph in
      front of it is what the rest of this app's buttons look like.
 
      `min-width: 0` on the label so a long Thai label still wraps inside its own
      button — the one place it has room to, and what the note above is about. */
-  .hr-table tbody td.act-col .row-actions .btn.icon-btn { gap: 6px; }
-  .hr-table tbody td.act-col .row-actions .btn .act-label {
+  .hr-table tbody td.act-col .row-actions .btn .btn-word {
     min-width: 0; white-space: normal;
   }
 
@@ -16302,19 +16342,6 @@ table.mini tbody tr:hover { background: none; }
   .deptset-table td.state-col .state-badge {
     min-height: 36px; padding: 0 13px; font-size: 13px;
   }
-  /* แก้ไข as a ghost button, which is what a card's one action has to look
-     like when there is no จัดการ heading above it to say so. Written out
-     rather than given the `.btn ghost` class in the JSX, because the desktop
-     table wants the text action it already has and the row is rendered once
-     for both layouts. */
-  .deptset-table td.act-col .link {
-    display: inline-flex; align-items: center; justify-content: center;
-    height: 36px; min-width: 96px; padding: 0 16px;
-    border: 1px solid var(--line); border-radius: var(--radius-xs);
-    background: var(--card); color: var(--green-dark);
-    font: 600 13.5px/1 var(--sans); text-decoration: none;
-  }
-  .deptset-table td.act-col .link:hover { text-decoration: none; border-color: var(--green); }
 }
 
 /* Every tab change fades the page in and the bottom sheet slides. Somebody who
@@ -16768,7 +16795,6 @@ table.mini tbody tr:hover { background: none; }
    Two lines per cell in three of the five columns: the fact, and the thing
    that qualifies it. A log with one line per cell needs twice the columns to
    say the same and stops fitting on a laptop at about column six. */
-.log-table td { padding-top: 9px; padding-bottom: 9px; }
 .log-table tr.clickable { cursor: pointer; }
 .log-when { white-space: nowrap; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
 .log-who { display: block; font: 500 13px/1.45 var(--sans); color: var(--ink); overflow-wrap: anywhere; }

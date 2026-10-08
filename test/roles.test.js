@@ -729,7 +729,7 @@ test('the screens ask the same rule the route refuses by, so no button is offere
   // other write on this row was ถอนใบวันเกิด and had a gate of its own.
   const entries = src('components/HrEntries.jsx');
   assert.match(entries, /\{!mayEdit \? null : closed \? \(/);
-  assert.match(entries, /className="btn ghost danger sm with-icon"/);
+  assert.match(entries, /label="ยกเลิก"\s+tone="stop"\s+hint=/);
   assert.ok(!/isUntouchedSystemFiling/.test(entries), 'ถอนใบวันเกิด กลับมาแล้ว');
 });
 
