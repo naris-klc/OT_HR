@@ -190,7 +190,32 @@ export const POST = route(async (req) => {
     })
     : null;
 
+  /**
+   * ไม่พักเที่ยง ถูกซ่อนในวันเกิด — 2026-10-08, on every form including
+   * บันทึก OT แทนพนักงาน, where the user accepted that a missing box tells a
+   * หัวหน้า somebody on the batch has a birthday that day. The engine ignores
+   * the tick on a birthday regardless (`computeSession`); this only says
+   * whether to draw it.
+   *
+   * `employeeIds` is the rest of a proxy batch. Each one passes the same
+   * permission check as `employeeId` above, and one that does not is skipped
+   * rather than refused — the batch is checked again, per person, when it is
+   * sent.
+   */
+  let noBreakOff = (result?.segments || []).some((x) => x.dayReason === 'birthday');
+  const others = Array.isArray(payload.employeeIds)
+    ? [...new Set(payload.employeeIds.map(String))].filter((id) => id !== String(employeeId))
+    : [];
+  for (const id of noBreakOff ? [] : others) {
+    const other = await Employee.findById(id).populate('department').catch(() => null);
+    if (!other) continue;
+    if (!['hr', 'admin'].includes(user.role) && String(other._id) !== String(user._id)
+      && !isDepartmentManager(user, other.department, companyOf(other))) continue;
+    const otherCtx = await loadContext([session.workDate], { employee: other });
+    if (otherCtx.dayTypes?.[session.workDate]?.reason === 'birthday') { noBreakOff = true; break; }
+  }
+
   return json({
-    result, cap, routing, weekdayRefusal, coreHoursRefusal: coreHoursBlock, conflict,
+    result, cap, routing, weekdayRefusal, coreHoursRefusal: coreHoursBlock, conflict, noBreakOff,
   });
 });

@@ -78,6 +78,7 @@ const ENTRY_POINTS = [
   'src/migrate-hr-headed-departments.js',
   'src/migrate-drop-ends-next-day.js',
   'src/migrate-withdraw-granted.js',
+  'src/recompute-all.js',
 ];
 
 /** Somewhere nothing is listening, in case both the guard and the stub fail.

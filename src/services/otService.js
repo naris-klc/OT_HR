@@ -328,6 +328,10 @@ export function applyComputation(entry, result, ctx = null) {
   // to move with them. A replay under a policy that no longer leaves this entry
   // short writes `false` back, so the flag can never outlive the hours.
   entry.belowMinimumFlagged = Boolean(result.belowMinimumFlagged);
+  // ไม่พักเที่ยง as the engine counted it — false on one's own birthday,
+  // whatever was ticked (2026-10-08). Only when the result says, so a caller
+  // handing in an older result leaves the stored tick alone.
+  if ('noBreakTaken' in result) entry.noBreakTaken = Boolean(result.noBreakTaken);
   // Only ever overwritten together with the hours it describes. A caller with
   // no context leaves the existing pointer alone rather than clearing it —
   // an unstamped recomputation is a gap; a wrongly cleared one is a lie about

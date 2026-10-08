@@ -2350,9 +2350,11 @@ one per date — see §ทำงานข้ามคืนถูกถอดอ
 All twelve are implemented as **configuration, not assumptions**. Change one
 value in [`src/config/policy.js`](src/config/policy.js) — or flip it at runtime
 under **ตั้งค่าระบบ → นโยบายการคำนวณ** — and nothing else needs touching.
-Changing an arithmetic flag replays every entry still in flight through the
-engine; entries already approved are left alone, because silently restating a
-signed-off number is worse than an inconsistency.
+Changing an arithmetic flag replays every live entry through the engine —
+**approved ones included since 2026-10-08**, each under the version in force on
+its own date. It read "entries already approved are left alone, because silently
+restating a signed-off number is worse than an inconsistency" until then; see
+[Which rules produced this figure](#which-rules-produced-this-figure).
 
 | # | Question | Default shipped | Flag |
 |---|---|---|---|
@@ -3999,6 +4001,15 @@ There was a third, `birthdayReasonOnForm`, and it is **gone** — see
 > again.** The birthday still wins over a Saturday or a company holiday, but
 > the two now differ only in that cap. What follows is the 2026-09-08 rule, kept
 > because it explains the order in `resolveDayTypes()`.
+>
+> **ไม่พักเที่ยง does not exist on one's own birthday, also since 2026-10-08**
+> (*ซ่อนตัวเลือกไม่พักเที่ยงสำหรับ ot วันเกิด*). Hidden on all three forms — on
+> บันทึก OT แทนพนักงาน too, which the user chose knowing a missing box tells the
+> หัวหน้า somebody on the batch has a birthday; the preview answers
+> `noBreakOff` for every ticked person. `computeSession()` ignores the tick on a
+> birthday and returns `noBreakTaken: false`, which `applyComputation()` writes
+> back, so the lunch hour is always deducted and the cap above no longer bites
+> under the shipped `breakMode`.
 
 **HR's rule, 2026-09-08**: *เมื่อพนักงานขอ OT ตรงกับวันเกิดของตัวเอง 8 ชม. แรก
 rate ×1.5 หลังจากนั้นเป็น rate ×3*. Asked which of the two readings that was,
@@ -7153,7 +7164,8 @@ from the tree, and `test/periodStatus.test.js` fails if either comes back.
 
 Answering an [OPEN] item mid-month is the point of these being runtime flags,
 and it has a cost the flags alone cannot pay. Entries still in flight are
-replayed through the engine; approved ones deliberately are not. So a single
+replayed through the engine; approved ones deliberately were not, until
+2026-10-08 (below). So a single
 month legitimately holds hours arrived at two different ways, the sheet balances
 against itself either way, and until this existed there was no way — then or
 ever afterwards — to tell which row was which.
@@ -7193,6 +7205,20 @@ untouched by any of this and stays a pure function of `(session, policy)`: the
 caller resolves the policy and hands it over, exactly as before. That purity is
 what makes a replay reproducible three months later, and
 [`test/policyReplay.test.js`](test/policyReplay.test.js) pins it.
+
+> **A policy save replays approved entries too, automatically, since
+> 2026-10-08.** The user: *ใบที่บันทึกไว้แล้วคำนวณใหม่ทุกครั้งที่เปลี่ยนนโยบาย*,
+> and asked whether that included signed rows, *รวมใบอนุมัติแล้วด้วย อัตโนมัติ*.
+> `savePolicy()` in [`lib/policySave.js`](lib/policySave.js) now always passes
+> `includeApproved` over `pending_mgr`/`pending_hr`/`approved`, for HR and admin
+> alike, with no note required. What stops it restating history is
+> `versionForDate`: each entry is recomputed under the version in force on its
+> own workDate, and a version cannot start in the past — so a save moves entries
+> on or after its start date, plus anything the ENGINE now answers differently.
+> A rule changed in code triggers nothing by itself; `npm run recompute -- --yes`
+> ([`src/recompute-all.js`](src/recompute-all.js)) is the same replay, run after a
+> deploy. The manual endpoint below still has its admin-and-note gate.
+> The paragraph below is how it stood until then.
 
 **An approved entry is not replayed.** The rule lives in `planRecompute()` in
 [`lib/policyVersion.js`](lib/policyVersion.js) rather than only in each caller's
@@ -15785,7 +15811,8 @@ lib/policyVersion.js has ONE rule left and it is the approved one: an entry
 somebody has signed is not replayed unless the caller passes `includeApproved`,
 which `authorizeReplay` allows only to an administrator and only with a `note`.
 That check is now the whole of what stands between a signed-off figure and a
-restatement.
+restatement — **except a policy save, which passes `includeApproved` itself
+since 2026-10-08** (see [Which rules produced this figure](#which-rules-produced-this-figure)).
 
 `test/policyVersion.test.js` and `test/birthDateReplay.test.js` hold the rule.
 `test/periodStatus.test.js` holds the removal — it reads the whole tree and fails

@@ -3441,7 +3441,9 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
     policy,
   });
   const mayTickFlatDaily = mayTick.flatDaily && mayCorrectEntries(user);
-  const mayTickNoBreak = mayTick.noBreak;
+  // Not on a วันเกิด — 2026-10-08. The date cannot move on this panel, so the
+  // row's own segments answer it; the engine ignores the tick there anyway.
+  const mayTickNoBreak = mayTick.noBreak && !isBirthdayWelfare(entry);
 
   useEffect(() => { onDirty?.(moved || note.trim().length > 0); }, [moved, note]);
 

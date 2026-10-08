@@ -372,6 +372,9 @@ export default function OtForm({
    * engine over these times — see `weekdayOtRefusal`.
    */
   const [weekdayRefusal, setWeekdayRefusal] = useState(null);
+  // วันนี้เป็นวันเกิดของใครสักคนบนใบ — ซ่อน ไม่พักเที่ยง (2026-10-08). From the
+  // preview, which is the only thing on this screen that knows a birth date.
+  const [noBreakOff, setNoBreakOff] = useState(false);
   /**
    * ช่วง 08:00–16:59 ของวันทำงานปกติ — a sentence or null, answered by the server
    * for THESE times, for the reason `weekdayRefusal` above is: the rule turns on
@@ -623,7 +626,14 @@ export default function OtForm({
     policy,
   });
   const mayTickFlatDaily = mayTick.flatDaily;
-  const mayTickNoBreak = mayTick.noBreak;
+  const mayTickNoBreak = mayTick.noBreak && !noBreakOff;
+
+  // A tick carried onto a birthday — opened from a row, or the date moved —
+  // goes quietly, as `tickClearing` does for the calendar. The engine ignores
+  // it anyway; this keeps the form from saying something it will not do.
+  useEffect(() => {
+    if (noBreakOff) setForm((f) => (f.noBreakTaken ? { ...f, noBreakTaken: false } : f));
+  }, [noBreakOff]);
 
   /**
    * ปลดติ๊กที่กฎไม่ให้ติ๊กแล้ว — ไม่บอกอะไร. HR, 2026-09-16.
@@ -663,14 +673,16 @@ export default function OtForm({
       // knows who: the ceiling and the day types are theirs, and a split
       // computed against nobody would disagree with what saving produces.
       if (proxy && !targets.length) {
-        setPreview(null); setCap(null); setWeekdayRefusal(null);
+        setPreview(null); setNoBreakOff(false); setCap(null); setWeekdayRefusal(null);
         setCoreHoursRefusal(null); setConflict(null); return;
       }
       try {
         const res = await api.post('/entries/preview', {
           ...form, entryId: entry?._id, employeeId: forWhom,
+          employeeIds: proxy ? targets : undefined,
         });
         setPreview(res.result);
+        setNoBreakOff(Boolean(res.noBreakOff));
         setCap(res.cap);
         setRouting(res.routing || null);
         setWeekdayRefusal(res.weekdayRefusal || null);
@@ -678,7 +690,7 @@ export default function OtForm({
         setConflict(res.conflict || null);
         setError('');
       } catch (err) {
-        setPreview(null);
+        setPreview(null); setNoBreakOff(false);
         setRouting(null);
         setWeekdayRefusal(null);
         setCoreHoursRefusal(null);
@@ -698,6 +710,8 @@ export default function OtForm({
     // date, which is the first name here.
     form.flatDaily,
     forWhom,
+    // The rest of a proxy batch: anyone on it with a birthday hides ไม่พักเที่ยง.
+    proxy ? targets.join(',') : '',
   ]);
 
   async function submit(e, confirmed = false) {
@@ -1391,7 +1405,9 @@ export default function OtForm({
         )}
         {/* ONLY ON A DAY THE WHOLE COMPANY HAS OFF — เสาร์อาทิตย์ หรือวันหยุด
             ตามประกาศ — and deliberately NOT on a สวัสดิการวันเกิด, which is a
-            holiday for one person. HR, 2026-09-08. AND NOT FOR A
+            holiday for one person. HR, 2026-09-08. Since 2026-10-08 not on a
+            birthday that falls on such a day either, nor on a proxy batch with
+            a birthday in it — `noBreakOff`, from the preview. AND NOT FOR A
             เจ้าหน้าที่บริการ at all — HR, 2026-09-16: their day is bought whole,
             so an hour taken out of the middle of it is not a question. `mayTick`
             above says why the answer comes off the calendar rather than off the

@@ -6,10 +6,10 @@ import { savePolicy } from '@/lib/policySave.js';
  * Answering an [OPEN] item at runtime.
  *
  * Changing an arithmetic flag (break, rounding, minimum) changes what stored
- * entries mean, so entries still in flight are replayed through the engine.
- * Approved entries are left alone by default — they have been signed off, and
- * silently restating a signed number is worse than an inconsistency. Pass
- * `recompute: 'all'`, with a `note`, to replay those too.
+ * entries mean, so every live entry — approved ones included, since
+ * 2026-10-08 — is replayed through the engine, each under the version in force
+ * on its own date. `recompute: 'all'` used to be what reached approved entries
+ * and no longer decides anything; see `savePolicy`.
  *
  * Either way the rules themselves are recorded first: every save that changes
  * the policy appends a row to otPolicyVersions, and every entry computed from
