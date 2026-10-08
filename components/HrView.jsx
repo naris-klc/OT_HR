@@ -537,6 +537,17 @@ export default function HrView({
     () => new Set(scan?.compare?.notImported || []),
     [scan],
   );
+  /**
+   * ตรวจแล้ว — people whose every scan-flagged row is already อนุมัติ
+   * (2026-10-08, แบบ A). Not in `flaggedBy`, so they tick and filter like
+   * anyone with nothing to look at; this only decides what คอลัมน์ สแกน says,
+   * because `ตรง` would claim the machine agreed. See `reviewedScanPeople`.
+   */
+  const reviewedBy = React.useMemo(() => {
+    const map = new Map();
+    for (const person of scan?.compare?.reviewed || []) map.set(String(person.id), person.reviewed);
+    return map;
+  }, [scan]);
 
   /**
    * ── ใครติ๊กได้ — the rule, in one place ──────────────────────────────────
@@ -2335,6 +2346,17 @@ export default function HrView({
                                its two colours and nothing else; a second set of
                                pill measurements here is how two pills that
                                slowly disagree come from one. */
+                            const reviewed = reviewedBy.get(String(row.employee._id));
+                            if (!flag && reviewed) {
+                              return (
+                                <span
+                                  className="chip scan-ok"
+                                  title={`เวลาไม่ตรงกับไฟล์สแกน ${reviewed} ใบ — อนุมัติไปแล้วทั้งหมด`}
+                                >
+                                  ตรวจแล้ว
+                                </span>
+                              );
+                            }
                             if (!flag) return <span className="chip scan-ok">ตรง</span>;
                             return (
                               <span className="scan-flag">
