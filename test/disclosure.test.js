@@ -492,12 +492,15 @@ test("a card's subtitle is drawn in full, on every screen in the app", () => {
  * that shows why — a warning with a button in it, whose folded paragraph would
  * be the reason the button exists.
  *
- * `LivePolicy` says nothing about a press. Its alarm — the heading, the line
- * under it, and a chip per value this installation runs that the program does
- * not ship — is never folded; what is, is the OTHER half, the values stored at
- * the same figure the program ships today. Nothing is wrong about those, and
- * they matter on the day a release moves a default and this installation does
- * not follow it.
+ * `LivePolicy` says nothing about a press. Its alarm — the one row saying how
+ * many values differ from what the program ships and how many of those move
+ * hours — is never folded. What is, since 2026-10-08, is WHICH values (a chip
+ * each) and the values stored at the same figure the program ships today:
+ * every changed value already wears its own amber tag beside its question, so
+ * the chips are an index and not the warning.
+ *
+ * ⚠ IT READ "A CHIP PER VALUE … IS NEVER FOLDED" UNTIL 2026-10-08, when the
+ * banner was cut to one row on request (*"แบนเนอร์รกมาก"*).
  *
  * `PolicyVersionBanner` IS THE SECOND, asked for on 2026-09-10 and on the same
  * terms. Its heading (the month mixes rule sets) and its instruction (where to
@@ -538,13 +541,15 @@ test('the alert that folds keeps its alarm outside the fold', () => {
   const live = admin.slice(admin.indexOf('function LivePolicy(')).split(/\r?\nfunction /)[0];
   const foldAt = live.indexOf('<Disclosure');
   assert.ok(foldAt > 0, 'LivePolicy ไม่มีรอยพับแล้ว');
-  // the count, the one-line summary and every chip stand above it …
-  assert.ok(live.indexOf('มีการปรับแต่งค่าจากโปรแกรมเดิม') < foldAt, 'หัวข้อถูกพับลงไปด้วย');
-  assert.ok(live.indexOf('ระบบกำลังใช้งานค่าที่ถูกแก้') < foldAt, 'บรรทัดสรุปถูกพับลงไปด้วย');
-  assert.ok(live.indexOf('{moved.map((d) => (') < foldAt, 'ชิปของค่าที่ต่างถูกพับลงไปด้วย');
-  // … and what is behind it is the half that is not a warning
+  // the one row — the count and how many move hours — stands above it …
+  assert.ok(live.indexOf('ปรับค่าจากโปรแกรมเดิม ${moved.length} รายการ') < foldAt, 'หัวข้อถูกพับลงไปด้วย');
+  assert.ok(live.indexOf('มีผลต่อชั่วโมง`') < foldAt, 'จำนวนที่มีผลต่อชั่วโมงถูกพับลงไปด้วย');
+  // … the line that repeated the heading is gone …
+  assert.ok(!live.includes('ระบบกำลังใช้งานค่าที่ถูกแก้'), 'บรรทัดอธิบายซ้ำหัวข้อกลับมาแล้ว');
+  // … and both kinds of chip are behind it: which values, and the pinned ones
+  assert.ok(live.indexOf('{moved.map((d) => (') > foldAt, 'ชิปของค่าที่ต่างไม่ได้อยู่หลังรอยพับ');
   assert.match(live.slice(foldAt), /ตรึงไว้เท่ากับค่าตั้งต้นวันนี้/);
-  assert.match(live, /more="ดูรายละเอียด"\r?\n\s*less="ซ่อนรายละเอียด"/);
+  assert.match(live, /more="ดูรายละเอียด ▾"\r?\n\s*less="ซ่อนรายละเอียด ▴"/);
   // the warning next door has a button in it and is not folded at all
   const unrecorded = admin.slice(admin.indexOf('function UnrecordedPolicy(')).split(/\r?\nfunction /)[0];
   assert.match(unrecorded, /บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่/);
