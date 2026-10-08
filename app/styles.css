@@ -7687,9 +7687,15 @@ td > .approver-line { margin-top: 5px; }
    every row as short as it can be, and the chips are short enough to sit
    beside what they qualify. Desktop only — the phone card is already one fact
    per line. โดย … leaves the screen for the tooltip on its mark (`data-tip`,
-   read by `TipLayer`) and stays in the accessibility tree. */
+   read by `TipLayer`) and stays in the accessibility tree.
+
+   THE DATE CELL LEFT THIS BLOCK ON THE SAME DAY. Its weekday was a `.cell-sub`
+   pulled inline here with a 6px left margin, and "05/10/2569 วันจันทร์" broke
+   between วัน and จันทร์ on a narrow table. It is "จ.05/10/2569" now — the
+   คิวรออนุมัติ form at both widths, from `.cell-sub.when-day` — and `nowrap`
+   below, because a date does not wrap. */
+.entry-table.stack-table tbody td.stack-name { white-space: nowrap; }
 @media (min-width: 861px) {
-  .entry-table.stack-table tbody td.stack-name .cell-sub { display: inline; margin: 0 0 0 6px; }
   .entry-table.stack-table tbody td .entry-mark { display: inline-block; margin: 0 0 0 6px; vertical-align: middle; }
   .entry-table.stack-table tbody td .entry-mark > .cell-sub {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
@@ -9214,8 +9220,14 @@ tfoot tr.grand td {
    does not apply to an inline box, its 12px and `--muted` are exactly what was
    asked for (*`ส.` ยังจางและเล็กกว่า วันที่ยังเด่น*), and the baseline the two
    sit on is the browser's own — a 12px sans box and a 14px sans box share it
-   without anything here saying so. */
-.queue-table td.when-col .when-day { display: inline; margin: 0 2px 0 0; }
+   without anything here saying so.
+
+   NOT SCOPED TO THE QUEUE ANY MORE — 2026-10-08. It read
+   `.queue-table td.when-col .when-day` until รายการ OT asked for the same
+   "จ.05/10/2569" (*ปรับการแสดงวันที่ให้เป็นรูปแบบเดียวกับหน้า รออนุมัติ*). One
+   rule for both screens, so the two dates cannot drift apart; `.cell-sub` in
+   the selector keeps it above that rule's own `margin-top`. */
+.cell-sub.when-day { display: inline; margin: 0 2px 0 0; }
 
 /* ── THE NAME MAY TAKE A SECOND LINE, AND UNTIL 2026-09-10 IT MAY NOT ─────
    Reported as "ชื่อของพนักงานที่ยาว ๆ มันจะทับกับวันที่" with the side bar open,
