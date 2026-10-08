@@ -8,7 +8,7 @@ import {
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
   Alert, ClearButton, Empty, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
-  PAGE_SIZE, RowAction, ShowMore, TablePager, pageWindow,
+  PAGE_SIZE, RowAction, ShowMore, TablePager, WhoName, pageWindow,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -810,7 +810,7 @@ export default function HrView({
    * ยืนยันได้ 0 คน · 0 รายการ is noise rather than an offer. Its own note says
    * it disappears on a month with nothing outstanding, and it still does.
    *
-   * TWO OPTIONAL COLUMNS MAKE THE TABLE TEN, ELEVEN OR TWELVE WIDE, and every
+   * TWO OPTIONAL COLUMNS MAKE THE TABLE NINE, TEN OR ELEVEN WIDE (แผนก left it 2026-10-08), and every
    * full-width row in it has to know. `colCount` is that number in one place;
    * writing `11` at four call sites is how a `colSpan` ends up one short of the
    * header and the pager sits under the wrong edge of the table.
@@ -819,7 +819,7 @@ export default function HrView({
   /** See the paragraph above: the table always offers, the bar only speaks
       when it has something to say. */
   const showBatchBar = mayCorrect && canPick.length > 0;
-  const colCount = 10 + (showScanCol ? 1 : 0) + (showPickCol ? 1 : 0);
+  const colCount = 9 + (showScanCol ? 1 : 0) + (showPickCol ? 1 : 0);
   /**
    * The blank tail of รวมทั้งหมด — every column after รวม ชม.
    *
@@ -2093,7 +2093,6 @@ export default function HrView({
                       </th>
                     )}
                     <th className="who-col">พนักงาน</th>
-                    <th className="dept-col">แผนก</th>
                     {/* Broken where RateHead says, not where the width falls
                         out — the same three headings on every screen. */}
                     {/* One class per bucket, not three cells sharing `rate-col`.
@@ -2278,10 +2277,13 @@ export default function HrView({
                             all (see `.month-find` in app/styles.css), but the
                             row had no answer for a genuinely nameless employee
                             either, and now it does. */}
-                        {row.employee.name || '—'}
-                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
+                        <div className="who-name"><WhoName name={row.employee.name || '—'} /></div>
+                        <div className="cell-sub">
+                          <span className="nb">{row.employee.code}</span>
+                          {' · '}
+                          {row.department?.nameTh || row.department?.name}
+                        </div>
                       </td>
-                      <td className="dept-col">{row.department?.nameTh || row.department?.name}</td>
                       <td className="num rate-col b-15w">{hours(row.summary.buckets[BUCKETS.OT15_WEEKDAY])}</td>
                       <td className="num rate-col b-15h">{hours(row.summary.buckets[BUCKETS.OT15_HOLIDAY])}</td>
                       <td className="num rate-col b-3h">{hours(row.summary.buckets[BUCKETS.OT3_HOLIDAY])}</td>
@@ -2651,6 +2653,7 @@ export default function HrView({
                       {find && (
                         <div className="cap-sub">ไม่ใช่ยอดของผลการค้นหา</div>
                       )}
+                      {deptName && <div className="cap-sub">{deptName}</div>}
                     </td>
                     {/* THE ONE CELL OF THIS ROW THAT IS NOT BLANK ANY MORE, and
                         only when แผนก is narrowing the month — 2026-09-10.
@@ -2663,7 +2666,6 @@ export default function HrView({
                         wording — it IS the whole of what the server sent — and
                         this is what says whose whole it is, on the line that
                         gets read against the CSV and against the paper. */}
-                    <td className="dept-col">{deptName || ''}</td>
                     <td className="num rate-col b-15w"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_WEEKDAY])}</strong></td>
                     <td className="num rate-col b-15h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
                     <td className="num rate-col b-3h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>

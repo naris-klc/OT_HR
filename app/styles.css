@@ -9835,15 +9835,12 @@ th.act-col { width: 258px; }
    168 still draws it on one line with 15px to spare, and the widest single
    TOKEN still cannot break. Nothing above regressed; the surplus went next
    door. */
-.hr-table th.who-col { width: 168px; }
-/* ⚠ 160 SINCE 2026-09-11, AND IT WAS 132 — which held the word and still did
-   not get it, because `table-layout: auto` gives a declared width only once the
-   table fits. `th.cap-col`'s 224 (below) was taking the room back out of the one
-   column on the row that wraps, so แผนกบัญชีและการเงิน came out over two lines
-   under 132px of declared width. Asked for as *"ปรับขนาดคอลัมน์ของตารางให้สมดุล"*
-   — and balance here is not equal columns, it is each column holding what it was
-   measured against. */
-.hr-table th.dept-col { width: 160px; }
+.hr-table th.who-col { width: 224px; }
+/* แผนก is the second line of พนักงาน since 2026-10-08, as on คิวรออนุมัติ: the
+   160px its own column took went to this one (168 → 224), so a long แผนก wraps
+   under the code instead of squeezing the figures. */
+.hr-table td.who-col .who-name,
+.hr-table td.who-col .cell-sub { white-space: normal; }
 /* ── สะสม / เพดาน — 152 ON THIS SCREEN, AND THE SHARED RULE SAYS 224 ────────
 
    The 224 is measured for the widest cell this column ever holds; here the cell
@@ -9923,7 +9920,6 @@ th.act-col { width: 258px; }
 /* The heading is one short word and the cells are one short phrase; without
    this the shared `th` nowrap holds the heading while the CELL still wraps,
    which is how a column ends up sized by neither. */
-.hr-table td.dept-col { white-space: normal; }
 
 /* ── WHERE ถัดไป LANDS ON สรุป OT ส่งบัญชี ──────────────────────────────────
    One number, and the same one at both widths: nothing on that screen is
@@ -14975,7 +14971,6 @@ table.mini tbody tr:hover { background: none; }
   /* The seven the card does not have room for. Named rather than hidden with a
      blanket rule and three exceptions, so adding an eleventh column to this
      table shows up on a phone instead of silently disappearing. */
-  .hr-table tbody td.dept-col,
   .hr-table tbody td.rate-col,
   .hr-table tbody td.count-col,
   .hr-table tbody td.edits-col,

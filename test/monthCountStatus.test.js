@@ -197,13 +197,12 @@ test('40px ที่คอลัมน์ รายการ กินเพิ�
     return Number(m[1]);
   };
   assert.equal(width('count-col'), 136);
-  assert.equal(width('who-col'), 168);
+  assert.equal(width('who-col'), 224);
   assert.equal(width('cap-col'), 140);
-  assert.equal(width('dept-col'), 160, 'แผนก ถูกเรียกมาจ่ายด้วย — มันคือคอลัมน์ที่การย้ายนี้มีไว้ป้องกัน');
 
   assert.equal(
     width('count-col') + width('who-col') + width('cap-col'),
-    96 + 196 + 152,
+    136 + 224 + 140,
     'รวมสามคอลัมน์ไม่เท่าเดิม — ความกว้างที่เพิ่มมาถูกดึงมาจาก แผนก โดยเงียบ ๆ',
   );
 });

@@ -267,7 +267,7 @@ test('คอลัมน์สแกน is drawn as soon as this screen knows ab
   // rather than a ternary — ten, eleven or twelve. `padCols` deliberately does
   // NOT follow it: รวมทั้งหมด draws its own empty `.check` cell, so the pad
   // covers only the tail after รวม ชม. and `colCount - 6` would double-count.
-  assert.match(hrView, /const colCount = 10 \+ \(showScanCol \? 1 : 0\) \+ \(showPickCol \? 1 : 0\);/);
+  assert.match(hrView, /const colCount = 9 \+ \(showScanCol \? 1 : 0\) \+ \(showPickCol \? 1 : 0\);/);
   assert.match(hrView, /const padCols = showScanCol \? 5 : 4;/);
   assert.ok(!hrView.includes('colSpan={10}'), 'a full-width row still assumes ten columns');
 });
@@ -477,7 +477,7 @@ test('the phone card shows the warning too, and the paper shows none of it', () 
   // the card repeats elsewhere or can do without; this is a WARNING, and one
   // that appears on a desktop but not on a phone is a warning half the readers
   // never see.
-  const hidden = phone.slice(phone.indexOf('.hr-table tbody td.dept-col,'));
+  const hidden = phone.slice(phone.indexOf('.hr-table tbody td.rate-col,'));
   assert.ok(!hidden.slice(0, 400).includes('td.scan-col'), 'the warning is hidden on a phone');
   // The tick sits BESIDE the name — it is a handle on the person, not a fourth
   // fact about them — and `scan` still takes a full row of its own.

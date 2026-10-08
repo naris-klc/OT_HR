@@ -115,9 +115,10 @@ test('the cell still draws the name in its own element for the rule to reach', (
  * markup: every word in `.nb`, every space outside one.
  */
 test('the name is drawn as unbreakable words with the spaces between them', () => {
-  const at = jsx.indexOf('function WhoName({ name })');
+  const common = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'components/common.jsx'), 'utf8');
+  const at = common.indexOf('function WhoName({ name })');
   assert.ok(at > 0, 'WhoName is gone — the name is back to one text node');
-  const body = jsx.slice(at, jsx.indexOf('\nfunction ', at + 1));
+  const body = common.slice(at);
   assert.match(body, /String\(name \|\| ''\)\.split\(' '\)/,
     'the split is on the space, which is the only break the cell is allowed');
   assert.match(body, /<span key=\{i\} className="nb">\{word\}<\/span>/,
