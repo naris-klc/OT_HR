@@ -17,6 +17,7 @@ import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
 import OtForm from './OtForm.jsx';
 import { useBackHandler } from './nav.jsx';
+import Icon from './icons.jsx';
 import { useToast } from './Toast.jsx';
 
 /**
@@ -618,7 +619,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
             eye reports as "something changed" every single time.
 
             The wrapper carries no margin of its own and the notice inside it
-            carries 16 — the same figure `.audit-bar` takes — so an empty slot is
+            carries 16 — the same figure `.scan-row` takes — so an empty slot is
             zero pixels tall and contributes nothing, and a full one puts the
             bar exactly as far below the banner as the banner is below the
             heading. NOT a reserved height: the banner is two lines on one month
@@ -636,25 +637,110 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
           <PolicyVersionBanner spread={spread} onGoMonthly={onClose} />
         </div>
 
-        {/* One press to read the whole month at once, which is what closing it
-            actually involves — the per-row buttons are for following a single
-            figure that looks wrong. Disabled rather than hidden when no row in
-            the month has anything to show, so the control does not appear and
-            disappear between months. */}
-        <div className="audit-bar">
-          <label className={auditable.length ? 'check' : 'check off'}>
-            <input
-              type="checkbox"
-              checked={allOpen}
-              disabled={!auditable.length}
-              onChange={toggleAll}
-            />
-            แสดงประวัติการแก้ไขทั้งหมด
-          </label>
-          <span className="hint">
-            {auditable.length
+        {/* WHAT THE CHIPS IN THE จาก–ถึง COLUMN MEAN, said BEFORE the reader
+            meets one — and, more importantly, said on a month that has no chips
+            at all.
+
+            A table with nothing marked means one of two opposite things: every
+            row agreed with the scanner, or nobody has imported the scanner's
+            file for this month. A table is silent in exactly the same way for
+            both, so the difference has to be stated outright.
+
+            NOT IN `.entry-foot` BELOW, though that is where the table's other
+            two rules live. That footnote is pinned at exactly two lines by
+            `test/entryRowChrome.test.js`, and the pin is not arbitrary: it went
+            from a wall of prose to two lines because a wall is what nobody
+            reads. A third rule of a different kind, about evidence from outside
+            this system rather than about what a correction does, is how it
+            grows back. Here instead, beside the other line that describes the
+            SHAPE of the table (`replacedCount` below).
+
+            BOTH RULES ARE SAID OUT LOUD, because they are not the same rule and
+            a reader who has only been told one of them will read the chips
+            wrongly. The end is a DIRECTION — สแกนออกไม่ก่อนเวลาสิ้นสุด OT คือ
+            ครบตามขอ, however long past it they stayed (2026-09-07) — and the
+            start is a DISTANCE, `SCAN_MATCH_TOLERANCE_MINUTES`, which ฝ่ายบุคคล
+            answered on 2026-09-04 was neither too tight nor too loose. Printed
+            rather than buried, because the reader who thinks either is the wrong
+            rule is exactly the person whose answer would fix it. */}
+        {/* THE HISTORY TOGGLE IS THE END OF THIS ROW, NOT A BAR OF ITS OWN —
+            mockup B, 2026-10-08. One press to read the whole month at once,
+            which is what closing it actually involves; the per-row buttons are
+            for following a single figure that looks wrong. Disabled rather than
+            hidden when no row has anything to show, so the control does not
+            appear and disappear between months — and the reason is its tooltip
+            (`data-tip-why`, the same hook `RowAction` uses). */}
+        <div className="scan-row">
+          <div className="hint">
+            {scanChecked ? (
+              <>
+                {/* THE THREE RULES FOLD TO TWO LINES WITH …อ่านต่อ, asked for on
+                    2026-09-10: on a phone they were four lines above the first
+                    card. Only the rules — `เดือนนี้:` below is this month's live
+                    count and stands outside the fold, because a live figure is not
+                    an explanation (test/disclosure.test.js). On a laptop the rules
+                    fit and no control is drawn. */}
+                <Disclosure as="div" of="วิธีเทียบเวลากับไฟล์สแกนนิ้ว">
+                  เทียบเวลากับไฟล์สแกนนิ้วแล้ว — สแกนออกไม่ก่อนเวลาสิ้นสุด OT ถือว่าทำครบตามที่ขอ
+                  {' '}· เวลาเริ่มถือว่าตรงกันเมื่อห่างกันไม่เกิน {SCAN_MATCH_TOLERANCE_MINUTES} นาที
+                  {' '}· <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong>
+                </Disclosure>
+                {/* THE TWO PILES, AS A NUMBER, FOR THE WHOLE MONTH.
+                    The chips separate flat days from real mismatches row by row,
+                    in colour; this separates them for the month, which is the
+                    question somebody scrolling thirty rows actually has — *"how
+                    many here need a look, and how many are flat days that never
+                    did"*. Asked for in those words on 2026-09-04: แจ้งเตือนเพื่อ
+                    ให้ HR แยกออกระหว่างงานเหมากับเวลาไม่ตรงงานปกติ.
+                    A flat day is never counted into the warning piles — see
+                    `summariseScanChecks`, where that exclusion is the point. */}
+                {/* HR'S OWN FOUR WORDS, IN THE ORDER THEY DEFINED THEM
+                    (2026-09-07): ไม่ครบ · ไม่ตรง · เกินเวลา · เหมารายวัน —
+                    ไม่ตรง reworded to ไม่ได้สแกน on 2026-09-11, see `SCAN_BADGE`.
+                    Only the FIRST is an errand. เกินเวลา and เหมารายวัน are
+                    facts and ไม่ตรง is a gap in the evidence, so the line says
+                    which pile is the one to work through rather than leaving
+                    four numbers to be read as one total. */}
+                <div style={{ marginTop: 2 }}>
+                  เดือนนี้:
+                  {' '}<strong>{scanCounts.short}</strong> แถวไม่ครบ ·
+                  {' '}<strong>{scanCounts.startOff}</strong> แถวเวลาเริ่มไม่ตรง ·
+                  {' '}<strong>{scanCounts.noScan}</strong> แถวไม่ได้สแกน ·
+                  {' '}<strong>{scanCounts.overTime}</strong> แถวเกินเวลา ·
+                  {' '}<strong>{scanCounts.flatDaily}</strong> แถวเป็นใบเหมารายวัน
+                  {(scanCounts.overTime > 0 || scanCounts.flatDaily > 0)
+                    && ' — แถวเกินเวลาและใบเหมาไม่ต้องตรวจ'}
+                </div>
+              </>
+            ) : (
+              <>
+                ยังไม่ได้เทียบกับไฟล์สแกนนิ้ว — เดือนนี้ยังไม่มีข้อมูลสแกนของพนักงานคนนี้
+                {' '}· นำเข้าไฟล์ได้ที่หน้า ตรวจสอบประจำเดือน
+                {/* The flat-day count still stands without any scan file — it is a
+                    fact about how the requests were FILED, and the chips on those
+                    rows are drawn on this month too. */}
+                {scanCounts.flatDaily > 0
+                  && ` · เดือนนี้มี ${scanCounts.flatDaily} แถวที่เป็นใบเหมารายวัน`}
+              </>
+            )}
+          </div>
+          <span
+            className="act-tip"
+            data-tip="ประวัติการแก้ไขทั้งหมด"
+            data-tip-why={auditable.length
               ? `${auditable.length} จาก ${entries.length} รายการมีประวัติให้ดู`
               : 'เดือนนี้ยังไม่มีรายการใดถูกแก้ไขหรือคำนวณใหม่'}
+          >
+            <button
+              type="button"
+              className={`chip-toggle${allOpen ? ' on' : ''}`}
+              aria-pressed={allOpen}
+              disabled={!auditable.length}
+              onClick={toggleAll}
+            >
+              <Icon name="history" className="btn-icon" />
+              ประวัติการแก้ไขทั้งหมด <b>{auditable.length}</b>
+            </button>
           </span>
         </div>
 
@@ -684,85 +770,6 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
           </div>
         )}
 
-        {/* WHAT THE CHIPS IN THE จาก–ถึง COLUMN MEAN, said BEFORE the reader
-            meets one — and, more importantly, said on a month that has no chips
-            at all.
-
-            A table with nothing marked means one of two opposite things: every
-            row agreed with the scanner, or nobody has imported the scanner's
-            file for this month. A table is silent in exactly the same way for
-            both, so the difference has to be stated outright.
-
-            NOT IN `.entry-foot` BELOW, though that is where the table's other
-            two rules live. That footnote is pinned at exactly two lines by
-            `test/entryRowChrome.test.js`, and the pin is not arbitrary: it went
-            from a wall of prose to two lines because a wall is what nobody
-            reads. A third rule of a different kind, about evidence from outside
-            this system rather than about what a correction does, is how it
-            grows back. Here instead, beside the other line that describes the
-            SHAPE of the table (`replacedCount` below).
-
-            BOTH RULES ARE SAID OUT LOUD, because they are not the same rule and
-            a reader who has only been told one of them will read the chips
-            wrongly. The end is a DIRECTION — สแกนออกไม่ก่อนเวลาสิ้นสุด OT คือ
-            ครบตามขอ, however long past it they stayed (2026-09-07) — and the
-            start is a DISTANCE, `SCAN_MATCH_TOLERANCE_MINUTES`, which ฝ่ายบุคคล
-            answered on 2026-09-04 was neither too tight nor too loose. Printed
-            rather than buried, because the reader who thinks either is the wrong
-            rule is exactly the person whose answer would fix it. */}
-        <div className="hint" style={{ marginTop: 6 }}>
-          {scanChecked ? (
-            <>
-              {/* THE THREE RULES FOLD TO TWO LINES WITH …อ่านต่อ, asked for on
-                  2026-09-10: on a phone they were four lines above the first
-                  card. Only the rules — `เดือนนี้:` below is this month's live
-                  count and stands outside the fold, because a live figure is not
-                  an explanation (test/disclosure.test.js). On a laptop the rules
-                  fit and no control is drawn. */}
-              <Disclosure as="div" of="วิธีเทียบเวลากับไฟล์สแกนนิ้ว">
-                เทียบเวลากับไฟล์สแกนนิ้วแล้ว — สแกนออกไม่ก่อนเวลาสิ้นสุด OT ถือว่าทำครบตามที่ขอ
-                {' '}· เวลาเริ่มถือว่าตรงกันเมื่อห่างกันไม่เกิน {SCAN_MATCH_TOLERANCE_MINUTES} นาที
-                {' '}· <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong>
-              </Disclosure>
-              {/* THE TWO PILES, AS A NUMBER, FOR THE WHOLE MONTH.
-                  The chips separate flat days from real mismatches row by row,
-                  in colour; this separates them for the month, which is the
-                  question somebody scrolling thirty rows actually has — *"how
-                  many here need a look, and how many are flat days that never
-                  did"*. Asked for in those words on 2026-09-04: แจ้งเตือนเพื่อ
-                  ให้ HR แยกออกระหว่างงานเหมากับเวลาไม่ตรงงานปกติ.
-                  A flat day is never counted into the warning piles — see
-                  `summariseScanChecks`, where that exclusion is the point. */}
-              {/* HR'S OWN FOUR WORDS, IN THE ORDER THEY DEFINED THEM
-                  (2026-09-07): ไม่ครบ · ไม่ตรง · เกินเวลา · เหมารายวัน —
-                  ไม่ตรง reworded to ไม่ได้สแกน on 2026-09-11, see `SCAN_BADGE`.
-                  Only the FIRST is an errand. เกินเวลา and เหมารายวัน are
-                  facts and ไม่ตรง is a gap in the evidence, so the line says
-                  which pile is the one to work through rather than leaving
-                  four numbers to be read as one total. */}
-              <div style={{ marginTop: 2 }}>
-                เดือนนี้:
-                {' '}<strong>{scanCounts.short}</strong> แถวไม่ครบ ·
-                {' '}<strong>{scanCounts.startOff}</strong> แถวเวลาเริ่มไม่ตรง ·
-                {' '}<strong>{scanCounts.noScan}</strong> แถวไม่ได้สแกน ·
-                {' '}<strong>{scanCounts.overTime}</strong> แถวเกินเวลา ·
-                {' '}<strong>{scanCounts.flatDaily}</strong> แถวเป็นใบเหมารายวัน
-                {(scanCounts.overTime > 0 || scanCounts.flatDaily > 0)
-                  && ' — แถวเกินเวลาและใบเหมาไม่ต้องตรวจ'}
-              </div>
-            </>
-          ) : (
-            <>
-              ยังไม่ได้เทียบกับไฟล์สแกนนิ้ว — เดือนนี้ยังไม่มีข้อมูลสแกนของพนักงานคนนี้
-              {' '}· นำเข้าไฟล์ได้ที่หน้า ตรวจสอบประจำเดือน
-              {/* The flat-day count still stands without any scan file — it is a
-                  fact about how the requests were FILED, and the chips on those
-                  rows are drawn on this month too. */}
-              {scanCounts.flatDaily > 0
-                && ` · เดือนนี้มี ${scanCounts.flatDaily} แถวที่เป็นใบเหมารายวัน`}
-            </>
-          )}
-        </div>
 
         {/* Said on the screen rather than left as a gap in the table. The rows
             are not deleted and not merely filtered — each one is folded into
