@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   SCAN_BADGE, SCAN_MATCH, SCAN_MATCH_TOLERANCE_MINUTES, checkEntryAgainstScans,
   scanBadgeLabel, scanMismatchDetail, scanMismatchNote, summariseScanChecks,
-  groupScanChecksByPerson, dayPunchLine, scanCheckInTime, SCAN_CHECK_IN_FLOOR_MINUTES,
+  groupScanChecksByPerson, reviewedScanPeople, dayPunchLine, scanCheckInTime, SCAN_CHECK_IN_FLOOR_MINUTES,
   overrunOutsideCore,
 } from '../lib/scanMatch.js';
 
@@ -669,7 +669,7 @@ test('เดือนหนึ่งนับแถวเกินเวลา�
     row([]),
   ]);
   assert.deepEqual(counts, {
-    mismatch: 1, short: 1, startOff: 0, noScan: 1, flatDaily: 0, checked: 3, overTime: 1,
+    mismatch: 1, short: 1, startOff: 0, noScan: 1, flatDaily: 0, checked: 3, overTime: 1, reviewed: 0,
   });
 });
 
@@ -1109,7 +1109,7 @@ test('ใบเหมาไม่ถูกนับเป็น "เวลาไ
     row({ flatDaily: true, scanCheck: { state: SCAN_MATCH.NO_SCAN } }),
   ]);
   assert.deepEqual(counts, {
-    mismatch: 2, short: 0, startOff: 2, noScan: 1, flatDaily: 3, checked: 4, overTime: 0,
+    mismatch: 2, short: 0, startOff: 2, noScan: 1, flatDaily: 3, checked: 4, overTime: 0, reviewed: 0,
   });
 });
 
@@ -1118,7 +1118,7 @@ test('เดือนที่ยังไม่ได้นำเข้าไ�
     { flatDaily: true }, { flatDaily: true }, {}, {},
   ]);
   assert.deepEqual(counts, {
-    mismatch: 0, short: 0, startOff: 0, noScan: 0, flatDaily: 2, checked: 0, overTime: 0,
+    mismatch: 0, short: 0, startOff: 0, noScan: 0, flatDaily: 2, checked: 0, overTime: 0, reviewed: 0,
   });
 });
 
@@ -1156,10 +1156,58 @@ test('แถวที่ไม่มีพนักงานผูกอยู�
 test('รายการว่างนับได้เป็นศูนย์ ไม่ใช่พัง', () => {
   assert.deepEqual(summariseScanChecks(), {
     mismatch: 0, short: 0, startOff: 0, noScan: 0, flatDaily: 0, checked: 0, overTime: 0,
+    reviewed: 0,
   });
   assert.deepEqual(summariseScanChecks([null, undefined]), {
     mismatch: 0, short: 0, startOff: 0, noScan: 0, flatDaily: 0, checked: 0, overTime: 0,
+    reviewed: 0,
   });
+});
+
+test('ใบที่อนุมัติแล้ว ไม่อยู่ในกองที่ต้องตรวจ — นับเป็น ตรวจแล้ว แทน', () => {
+  /**
+   * 2026-10-08: นายจิตติอนุมัติครบ 11 ใบ ใบหนึ่งขาดสแกน 1 นาที แต่หน้าตรวจสอบ
+   * ประจำเดือนยังขึ้นแดงและติ๊กไม่ได้ — 15 จาก 17 แถว "ต้องตรวจ" ของเดือนนั้น
+   * อนุมัติไปแล้ว · ใบที่ยังรอหัวหน้าหรือรอ HR ยังเป็นธุระอยู่เหมือนเดิม
+   */
+  const settled = (e) => e.status === 'approved';
+  const e = (id, code, status, state, over = {}) => ({
+    employee: { _id: id, code, name: code }, status, scanCheck: { state, ...over },
+  });
+  const rows = [
+    // ทุกใบที่ไม่ตรงอนุมัติแล้ว → ตรวจแล้ว ไม่ใช่ธุระ
+    e('1', 'PM001', 'approved', SCAN_MATCH.MISMATCH, { endShortMinutes: 1 }),
+    e('1', 'PM001', 'approved', SCAN_MATCH.OK),
+    // มีทั้งใบรอ HR และใบอนุมัติแล้ว → ยังเป็นธุระ นับเฉพาะใบที่รอ
+    e('2', 'PM002', 'pending_hr', SCAN_MATCH.MISMATCH, { endShortMinutes: 5 }),
+    e('2', 'PM002', 'approved', SCAN_MATCH.MISMATCH),
+    e('2', 'PM002', 'approved', SCAN_MATCH.NO_SCAN),
+    // รอหัวหน้า ยังไม่มีใครตัดสิน → ยังเป็นธุระ
+    e('3', 'PM003', 'pending_mgr', SCAN_MATCH.NO_SCAN),
+  ];
+
+  const counts = summariseScanChecks(rows, { settled });
+  assert.equal(counts.mismatch, 1);
+  assert.equal(counts.short, 1);
+  assert.equal(counts.noScan, 1);
+  assert.equal(counts.reviewed, 3);
+  assert.equal(counts.checked, 6);
+
+  const people = groupScanChecksByPerson(rows, { settled });
+  assert.deepEqual(people.map((p) => p.code), ['PM002', 'PM003']);
+  assert.deepEqual({ mismatch: people[0].mismatch, noScan: people[0].noScan }, { mismatch: 1, noScan: 0 });
+
+  // ป้าย ตรวจแล้ว เฉพาะคนที่ไม่มีใบรอค้างเลย
+  assert.deepEqual(reviewedScanPeople(rows, { settled }), [{ id: '1', reviewed: 1 }]);
+});
+
+test('ไม่ส่ง settled มา = นับแบบเดิม — หน้ารายการ OT ของแต่ละคนยังเห็นทุกใบ', () => {
+  // แบบ A: เปลี่ยนเฉพาะหน้าตรวจสอบประจำเดือน · HrEntries เรียกโดยไม่ส่ง settled
+  const rows = [{ employee: { _id: '1', code: 'PM001' }, status: 'approved', scanCheck: { state: SCAN_MATCH.MISMATCH, endShortMinutes: 1 } }];
+  assert.equal(summariseScanChecks(rows).mismatch, 1);
+  assert.equal(summariseScanChecks(rows).reviewed, 0);
+  assert.equal(groupScanChecksByPerson(rows).length, 1);
+  assert.deepEqual(reviewedScanPeople(rows), []);
 });
 
 // ── ขอบเขต: ไม่มีอะไรในโมดูลนี้แตะตัวเลข ────────────────────────────────────

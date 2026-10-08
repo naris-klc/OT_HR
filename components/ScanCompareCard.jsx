@@ -177,7 +177,11 @@ export default function ScanCompareCard({
   if (!counts) return null;
 
   const checked = counts.checked || 0;
-  const agreed = Math.max(0, checked - (counts.mismatch || 0));
+  /* `reviewed` is checked but neither agreed nor in the pile — a row the
+     machine disputed and a person approved anyway. Left out of `ตรง`, which it
+     is not. */
+  const reviewed = counts.reviewed || 0;
+  const agreed = Math.max(0, checked - (counts.mismatch || 0) - reviewed);
 
   return (
     <>
@@ -185,7 +189,9 @@ export default function ScanCompareCard({
         tone={counts.mismatch ? 'warn' : 'ok'}
         title={counts.mismatch > 0
           ? `เทียบไฟล์สแกนแล้ว — ต้องตรวจ ${counts.mismatch} แถว`
-          : 'เทียบไฟล์สแกนแล้ว — ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน'}
+          : reviewed > 0
+            ? 'เทียบไฟล์สแกนแล้ว — ไม่มีแถวที่ต้องตรวจ'
+            : 'เทียบไฟล์สแกนแล้ว — ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน'}
         detail={counts.mismatch > 0 ? `${flagged} คน จาก ${compare.entryCount} ใบ` : null}
         /* กดแล้วตารางข้างล่างเหลือเฉพาะคนที่ต้องตรวจ — กดซ้ำคือทางกลับ และ
            ล้างตัวกรอง ก็ปล่อยมันด้วย */
@@ -207,6 +213,11 @@ export default function ScanCompareCard({
             <span className="quiet"><strong>{counts.overTime}</strong> {SCAN_BADGE.OVER}</span>
             <span className="quiet"><strong>{counts.flatDaily}</strong> เหมารายวัน</span>
             <span className="quiet"><strong>{agreed}</strong> ตรง</span>
+            {reviewed > 0 && (
+              <span className="quiet" title="เวลาไม่ตรงกับไฟล์สแกน แต่อนุมัติไปแล้ว — ไม่นับเป็นกองที่ต้องตรวจ">
+                <strong>{reviewed}</strong> ตรวจแล้ว
+              </span>
+            )}
             <span
               className="quiet"
               title={`${SCAN_BADGE.OVER} และ เหมารายวัน เป็นข้อเท็จจริง ไม่นับเป็นกองที่ต้องตรวจ · ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน`}
