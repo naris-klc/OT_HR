@@ -348,7 +348,8 @@ test('ซ่อนทั้งหมด is for the folds a preview cannot previe
     .flatMap((n) => [...sourceOf(`components/${n}`).matchAll(/<Disclosure([^>]*)lines=\{0\}([^>]*)>/g)]
       .map((m) => `${n}${m[1]}${m[2]}`.replace(/\s+/g, ' ')));
   // Four since 2026-10-08: the policy ROW's fold became a คำอธิบาย toggle.
-  assert.equal(zeros.length, 4, `มี lines={0} อยู่ ${zeros.length} ที่`);
+  // Five the same day: `PolicyVersionBanner` folds its version list whole.
+  assert.equal(zeros.length, 5, `มี lines={0} อยู่ ${zeros.length} ที่`);
   const lists = zeros.filter((z) => /as="ul"/.test(z));
   assert.equal(lists.length, 2, 'ลิสต์บุลเล็ตที่พับทั้งก้อนต้องมีสองที่');
   /*
@@ -366,7 +367,7 @@ test('ซ่อนทั้งหมด is for the folds a preview cannot previe
    */
   assert.deepEqual(
     zeros.filter((z) => !/as="ul"/.test(z)).map((z) => z.split(' ')[0]).sort(),
-    ['AdminView.jsx', 'ManualView.jsx'],
+    ['AdminView.jsx', 'ManualView.jsx', 'PolicyVersion.jsx'],
   );
 });
 
@@ -504,8 +505,9 @@ test("a card's subtitle is drawn in full, on every screen in the app", () => {
  *
  * `PolicyVersionBanner` IS THE SECOND, asked for on 2026-09-10 and on the same
  * terms. Its heading (the month mixes rule sets) and its instruction (where to
- * check or recompute) stand; what folds to one line is the list of versions
- * and their counts, which on a phone ran to three lines of ไม่ทราบเวอร์ชัน.
+ * check or recompute) stand, now on ONE row (2026-10-08); what folds is the
+ * list of versions and their counts — which ran to nine copies of ไม่ทราบเวอร์ชัน
+ * until the unknown ones were merged into a single entry.
  *
  * A name added to this list is a decision, not a fix for a failing case.
  */
@@ -555,15 +557,17 @@ test('the alert that folds keeps its alarm outside the fold', () => {
   assert.match(unrecorded, /บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่/);
   assert.ok(!unrecorded.includes('<Disclosure'), 'คำเตือนที่มีปุ่มอยู่ในนั้น ไม่ควรถูกพับ');
 
-  // The second named alert, on the same terms: heading above the fold, the
-  // instruction below it, and only the version list inside — cut to one line.
+  // The second named alert, on the same terms: the heading and the
+  // instruction share ONE row, and only the version list is behind the fold.
   const pv = sourceOf('components/PolicyVersion.jsx');
   const banner = pv.slice(pv.indexOf('export function PolicyVersionBanner('));
   const pvFold = banner.indexOf('<Disclosure');
   const pvEnd = banner.indexOf('</Disclosure>');
   assert.ok(banner.indexOf('{notice.heading}') < pvFold, 'หัวข้อของคำเตือนเวอร์ชันถูกพับลงไปด้วย');
-  assert.ok(banner.indexOf('{notice.say}') > pvEnd, 'บรรทัดที่บอกให้ทำอะไรถูกพับลงไปด้วย');
-  assert.match(banner.slice(pvFold, pvEnd), /<Disclosure as="div" lines=\{1\}[^>]*>\s*\{notice\.figures\}\s*$/);
+  assert.ok(banner.indexOf('{notice.say}') < pvFold, 'บรรทัดที่บอกให้ทำอะไรถูกพับลงไปด้วย');
+  assert.match(banner.slice(pvFold, pvEnd), /lines=\{0\}[\s\S]*more="ดูรายละเอียด ▾"[\s\S]*\{notice\.figures\}\s*$/);
+  // every unknown version is ONE entry, not a phrase per id
+  assert.match(pv, /ไม่ทราบเวอร์ชัน \(\$\{unknownCount\} ใบ\)/);
 });
 
 /*

@@ -8908,12 +8908,12 @@ tbody tr:hover { background: var(--green-wash); }
    `display: contents` + `order` as `.scan-drawer-head`; the body's top gap is
    padding and not margin for the same reason given there. On a phone the
    sentence wraps and the control drops under it rather than shrinking. */
-.live-policy-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
-.live-policy-title { flex: 1 1 14rem; min-width: 0; }
-.live-policy-head > .disclosure { display: contents; }
-.live-policy-head .disclosure-more { order: 1; margin-top: 0; margin-left: auto; }
-.live-policy-head .disclosure-slide { order: 3; flex-basis: 100%; }
-.live-policy-head .disclosure-body { margin: 0; padding-top: 4px; }
+.alert-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
+.alert-row-title { flex: 1 1 14rem; min-width: 0; }
+.alert-row-head > .disclosure { display: contents; }
+.alert-row-head .disclosure-more { order: 1; margin-top: 0; margin-left: auto; }
+.alert-row-head .disclosure-slide { order: 3; flex-basis: 100%; }
+.alert-row-head .disclosure-body { margin: 0; padding-top: 4px; }
 
 /* What each answer means, under the question that offers them.
 

@@ -1077,7 +1077,10 @@ test('the panel says the instruction in the same voice the list does', () => {
   // two decisions about how loud its instruction is, and an inline style is
   // the one thing a media query cannot reach.
   const pv = read('components/PolicyVersion.jsx');
-  assert.match(pv, /<div className="say">\{notice\.say\}<\/div>/);
+  // ⚠ IT READ `<div className="say">{notice.say}</div>` UNTIL 2026-10-08, when
+  // the banner became one row and the instruction moved up beside the heading
+  // (see `.alert-row-head`). `.say` is still how ตรวจสอบรายเดือน draws it.
+  assert.match(pv, /<strong>\{notice\.heading\}<\/strong> · \{notice\.say\}/);
   assert.ok(
     !/style=\{\{ fontSize: 12\.5/.test(pv),
     'the banner went back to writing its own type size',

@@ -8182,8 +8182,8 @@ function LivePolicy({ policy, defaults, overrides }) {
   return (
     <Alert kind={arithmetic ? 'warn' : 'info'}>
       {/* NO EMOJI IN THE HEADING. `Alert` draws its own mark. */}
-      <div className="live-policy-head">
-        <strong className="live-policy-title">
+      <div className="alert-row-head">
+        <strong className="alert-row-title">
           {moved.length > 0
             ? `ปรับค่าจากโปรแกรมเดิม ${moved.length} รายการ${arithmetic ? ` · ${arithmetic} มีผลต่อชั่วโมง` : ''}`
             : `ไม่มีค่าใดต่างจากโปรแกรมเดิม — แต่มี ${pinned.length} ข้อที่ถูกเก็บค่าไว้แล้ว`}
