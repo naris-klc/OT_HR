@@ -546,7 +546,7 @@ export default function ApprovalQueue({
   const everHadRows = useRef(false);
 
   /**
-   * The list stops at 500 rows, and this is the queue where that shows.
+   * THE WHOLE QUEUE, FROM THE FIRST LOAD — since 2026-10-08.
    *
    * `truncated` is what the server sends back when it cut the list short; every
    * filter on this screen is built from the rows in hand (`departments`,
@@ -555,12 +555,15 @@ export default function ApprovalQueue({
    * never sent. None of that is visible from the screen, and the rows dropped
    * are the oldest — the ones that have waited longest for a signature.
    *
-   * `asked` raises the ceiling for this screen only, which is why it is state
-   * and not a constant: pressing โหลดทั้งหมด refetches the same query with the
-   * server's maximum. It resets whenever the queue changes, so moving between
-   * tabs never carries a heavy fetch along with it.
+   * IT ASKED FOR THE SERVER'S DEFAULT OF 500 UNTIL 2026-10-08, with a โหลดทั้งหมด
+   * link in the red notice to raise it to `MAX_LIST_LIMIT`. ฝ่ายบุคคล's queue
+   * stood at 946 that day, so the notice was on the screen every morning and
+   * the press was a step taken every time — asked to go, in so many words:
+   * *โหลดทั้งหมดไปเลยได้มั้ย ux มันดูไม่สะดวกกับผู้ใช้งาน*. Paging is in the
+   * browser (`pageRows`), so the table draws the same 20 rows either way; what
+   * grows is the one reply. The notice stays for a queue over `MAX_LIST_LIMIT`,
+   * where nothing on this screen can bring the rest back.
    */
-  const [asked, setAsked] = useState(null);
   const [cut, setCut] = useState(null); // { shown, total } | null
 
   /**
@@ -575,7 +578,7 @@ export default function ApprovalQueue({
    */
   const firstLook = useRef(false);
 
-  async function load(limit = asked) {
+  async function load() {
     try {
       // `usage=cap` adds each row's running total for its own month — see
       // CapUsageCell, and `queueCapUsage` for why it costs the same however
@@ -594,7 +597,7 @@ export default function ApprovalQueue({
       // could sign. Both tabs are merged into this one; see app/api/entries.
       const res = await api.get(
         `/entries?status=${listed.join(',')}&usage=cap${isHr ? '&standin=check' : ''}`
-        + `${limit ? `&limit=${limit}` : ''}`,
+        + `&limit=${MAX_LIST_LIMIT}`,
       );
       setEntries(res.entries);
       setCut(res.truncated ? { shown: res.entries.length, total: res.total } : null);
@@ -631,7 +634,6 @@ export default function ApprovalQueue({
   useEffect(() => {
     setEntries(null);
     setSelected(new Set());
-    setAsked(null);
     // The สถานะ filter is drawn from the rows in hand, and the rows are about to
     // be replaced — a queue arriving with `st` still set to a status that is not
     // in it shows an empty table under a filter nothing offered.
@@ -641,9 +643,7 @@ export default function ApprovalQueue({
     setApplicant('');
     firstLook.current = false;
     everHadRows.current = false;
-    // Passed rather than read off `asked`: the reset above lands on the next
-    // render, so the closure here would still be holding the old queue's.
-    load(null);
+    load();
   }, [stage]);
 
   // ── what the table is showing ─────────────────────────────────────────────
@@ -801,9 +801,10 @@ export default function ApprovalQueue({
    *
    * OVER `shown`, IN THE BROWSER, AND NOTHING IS REFETCHED BY PRESSING ›.
    * The queue arrives whole — one reply, `MAX_LIST_LIMIT` rows at the outside,
-   * and โหลดทั้งหมด above is what raises that ceiling when the server cut the
-   * list. So there is no `useKeptFetch` here and no `.is-paged` fade: the rows
-   * the next page needs are already in hand and the slice is synchronous.
+   * and every load asks for that ceiling — see `cut` — so the whole queue is
+   * in hand unless it is longer than that. So there is no `useKeptFetch` here
+   * and no `.is-paged` fade: the rows the next page needs are already in hand
+   * and the slice is synchronous.
    *
    * 20 AND NOT 10. This screen is read to be CLEARED. Ten rows puts a page turn
    * between every third signature; fifty leaves the ticks at the top out of
@@ -1338,30 +1339,15 @@ export default function ApprovalQueue({
               The month and department dropdowns are NOT offered as a way out
               of this. They filter the rows already in hand, so narrowing one
               cannot bring a hidden row back — telling somebody to "เลือกเดือน
-              ให้แคบลง" here would be advice that quietly does nothing. Loading
-              the rest, or working the queue down, are the only two answers.
+              ให้แคบลง" here would be advice that quietly does nothing. Working
+              the queue down is the only answer left.
 
-              ⚠ โหลดทั้งหมด SAT ON A `.say` LINE OF ITS OWN until 2026-09-14.
-              It is the end of the sentence now — the holiday banner's shape,
-              where ปฏิทินวันหยุดประจำปี is the next thing on the row rather
-              than a deck under it, and the one banner in กอง ก that the shape
-              fits without an argument: a finding, then the single thing to do
-              about it. The `.link` keeps its own colour inside a red alert
-              (`.alert.error .link` → `--danger-ink`), so the press is still
-              visibly a press with the deck gone.
+              ⚠ IT ENDED IN A โหลดทั้งหมด LINK UNTIL 2026-10-08, shown while the
+              list in hand was under `MAX_LIST_LIMIT`. Every load asks for that
+              maximum now (see `cut`), so this notice only appears when the
+              server has nothing more to give and the link had nothing to do.
             */}
-            {cut.shown < MAX_LIST_LIMIT ? (
-              <>
-                {' · '}
-                <button
-                  type="button"
-                  className="link"
-                  onClick={() => { setAsked(MAX_LIST_LIMIT); load(MAX_LIST_LIMIT); }}
-                >
-                  โหลดทั้งหมด
-                </button>
-              </>
-            ) : ' · คิวยาวเกินกว่าจะโหลดในครั้งเดียว — ทยอยอนุมัติแล้วรายการที่เหลือจะขึ้นมาเอง'}
+            {' · คิวยาวเกินกว่าจะโหลดในครั้งเดียว — ทยอยอนุมัติแล้วรายการที่เหลือจะขึ้นมาเอง'}
           </Alert>
         </div>
       )}
