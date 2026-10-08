@@ -402,25 +402,6 @@ test('the footnote lines up with the cards above it on a phone', () => {
   assert.match(phone, /\.stack-table tbody \{ display: flex; flex-direction: column; gap: 10px; padding: 12px;/);
 });
 
-test('the bar centres its two halves on one axis, and the margin is why', () => {
-  // SEVEN PIXELS. `.audit-bar` is `align-items: center` and always was, but
-  // `align-items` centres a flex item's MARGIN box — and `.card .hint` gives
-  // every hint inside a card `margin-bottom: 14px`, so the sentence at the
-  // right-hand end was centred with 14px of nothing under it and its words came
-  // out half of that above the checkbox's. Measured on the built app at 1280px:
-  // the label's mid was 302.8 and the hint's 295.8.
-  //
-  // Stated on all four sides rather than as a bare `margin-bottom: 0`, so the
-  // next thing added to this bar cannot inherit one either. It read
-  // `margin: 0 0 0 auto` until later the same day — see the wrapped-line test.
-  assert.match(rule('.audit-bar .hint'), /margin: 0;/);
-  // The bar's own centring is what the fix relies on — if this ever goes, the
-  // margin above stops being the explanation.
-  assert.match(rule('.audit-bar'), /align-items: center;/);
-  // And the inherited margin is real: this is the rule that was reaching in.
-  assert.match(css, /\.card \.hint \{[^}]*margin-bottom: 14px;/);
-});
-
 test('on a cancelled row the live control outweighs the dead sentence', () => {
   // แก้ไขไม่ได้ and ดูข้อมูลเดิม sit side by side in one cell: a thing that
   // cannot be done and a thing that can. Both were `--muted` at nearly one
@@ -491,9 +472,9 @@ test('the notice under the name has one place, whether or not there is a notice'
   // under the name of every employee who has no warning.
   assert.match(rule('.entry-notice > .alert'), /margin: 16px 0 0;/);
   assert.ok(!/^\.entry-notice \{/m.test(css), 'the slot took a box of its own');
-  // The same figure the bar below it takes, which is what makes the two gaps
-  // one gap repeated rather than two numbers that happen to be close.
-  assert.match(css.slice(css.indexOf('.audit-bar {')), /^\.audit-bar \{[\s\S]*?margin: 16px 0 0; padding: 12px 16px;/);
+  // The same figure the scan row below it takes, which is what makes the two
+  // gaps one gap repeated rather than two numbers that happen to be close.
+  assert.match(rule('.scan-row'), /margin: 16px 0 0;/);
 });
 
 test('every card footer is the same two slots, and they line up down the month', () => {
@@ -525,83 +506,6 @@ test('every card footer is the same two slots, and they line up down the month',
   );
   assert.match(jsx, /ถอนใบวันเกิด/);
   assert.match(rule('.entry-actions'), /display: inline-flex;/);
-});
-
-test('a bar with nothing to show fades, and the reason for it does not', () => {
-  // The checkbox has carried `disabled` since it was written and the label has
-  // been `--muted-2` for as long — but a greyed word beside a live-looking box
-  // reads as a quiet label, not as a control that will not answer. The whole
-  // left-hand group fades: box, tick and words together.
-  assert.match(jsx, /className=\{auditable\.length \? 'check' : 'check off'\}/);
-  assert.match(jsx, /disabled=\{!auditable\.length\}/);
-  const off = rule('.audit-bar .check.off');
-  assert.match(off, /opacity: \.75;/);
-
-  // AND THE COLOUR GOES DARKER BY A STEP SO THE FADE COSTS NOTHING. Stacking
-  // opacity on `--muted-2` lands the words at 2.15:1 on `--neutral-wash`;
-  // `--muted` at 75% comes out at 3.19, which is where `--muted-2` at full
-  // opacity already was (3.20). The group dims and nothing became harder to
-  // read. These five words are the only thing that names what the box does,
-  // which is why the disabled-control contrast exemption is not taken here.
-  assert.match(off, /color: var\(--muted\);/);
-  assert.ok(!/--muted-2/.test(off), 'the label went back to the lighter grey under an opacity');
-
-  // The sentence on the right is not part of the disabled control — it is the
-  // REASON the control is disabled — so it keeps `.hint`'s size and colour and
-  // ends up the more readable of the two. That is the right way round.
-  assert.match(jsx, /'เดือนนี้ยังไม่มีรายการใดถูกแก้ไขหรือคำนวณใหม่'/);
-  assert.match(rule('.audit-bar .hint'), /margin: 0;/);
-  assert.ok(
-    !/\.audit-bar \.hint \{[^}]*opacity/.test(css),
-    'the reason faded with the control it explains',
-  );
-});
-
-test('the bar puts its sentence at the right end, or under the label — never adrift', () => {
-  // Two items: the checkbox and its name at the left, the count or the reason at
-  // the right. On ONE line `space-between` and `margin-left: auto` do exactly the
-  // same thing — but `justify-content` applies to each flex LINE, so on a line
-  // holding one item it places that item at the START. When the bar wraps, the
-  // sentence lands under the label at the same left edge instead of stranded
-  // against the right border with nothing to be right of.
-  assert.match(rule('.audit-bar'), /justify-content: space-between;/);
-  assert.match(rule('.audit-bar'), /flex-wrap: wrap;/);
-  // An auto margin would beat it, which is why the hint's margin is a flat zero.
-  assert.ok(
-    !/\.audit-bar \.hint \{[^}]*auto/.test(css),
-    'the auto margin came back — it pushes right on a wrapped line too',
-  );
-
-  // Only exactly two children, which is what makes space-between safe here —
-  // see `.entry-actions`, where a third control is why the last-child margin is
-  // used instead.
-  assert.match(jsx, /<div className="audit-bar">\s*\n\s*<label/);
-  assert.match(jsx, /<\/label>\s*\n\s*<span className="hint">/);
-});
-
-test('below 860 the sentence is the checkbox’s description, and stacks', () => {
-  // THE BREAKPOINT IS ABOUT WHAT THE SENTENCE IS, NOT ABOUT WHETHER IT FITS.
-  // This file said "and no breakpoint" until 2026-08-26 and had the measurements
-  // for it: the bar needs 444.7px of inside width for the longer of the two
-  // sentences and has 470 at a 560px viewport against 390 at 480, so it fits
-  // from about 535px up, and `flex-wrap` broke the line exactly there. What that
-  // could not decide is what the sentence is FOR. Below 860 the table beside it
-  // is already a column of cards; the bar is as wide as a phone; and the count
-  // is not the far end of a row any more, it is what ticking the box will show.
-  // A description goes under the thing it describes.
-  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  const bar = phone.slice(phone.indexOf('.audit-bar {'));
-  assert.match(bar, /^\.audit-bar \{[^}]*flex-direction: column;/);
-  // `center` on the base rule centres the CROSS axis, which in a column is the
-  // horizontal one — without this the stack comes out centred, which is the one
-  // thing the wrapped line was fixed to stop doing.
-  assert.match(bar, /^\.audit-bar \{[^}]*align-items: flex-start;/);
-  // 6px, not the bar's 14: that gap was measured between two independent items
-  // side by side, and between a label and its own sub-text it is a chasm.
-  assert.match(bar, /^\.audit-bar \{[^}]*gap: 6px;/);
-  // The base rule is what still puts a wrapped line at its own start, and it is
-  // what draws this if the phone rule above ever goes.
-  assert.match(rule('.audit-bar'), /flex-wrap: wrap;/);
 });
 
 test('the drawer’s green edge sits on the card’s border, not inside it', () => {
@@ -884,4 +788,20 @@ test('batch approve: two doors, one sheet, and the ceiling words come from lib/c
   assert.equal((modal.match(/<textarea/g) || []).length, 1);
   // The bar is drawn on a phone too: `.batch-bar` is display:none there.
   assert.match(css, /\.batch-bar\.entry-bar \{ display: flex;/);
+});
+
+test('the history toggle is a chip on the scan row, and the bar it replaced is gone', () => {
+  // Mockup B, chosen 2026-10-08: the bordered `.audit-bar` went and its toggle
+  // became the end of the scan paragraph's own row — about 50px given back.
+  assert.ok(!code.includes('audit-bar') && !css.includes('.audit-bar {'), 'the bar came back');
+  assert.match(code, /<div className="scan-row">/);
+  assert.match(code, /ประวัติการแก้ไขทั้งหมด <b>\{auditable\.length\}<\/b>/);
+  // Disabled, not hidden, with the reason on the tooltip.
+  assert.match(code, /disabled=\{!auditable\.length\}/);
+  assert.match(jsx, /'เดือนนี้ยังไม่มีรายการใดถูกแก้ไขหรือคำนวณใหม่'/);
+  // Same press as before: one toggle for every row's history.
+  assert.match(code, /onClick=\{toggleAll\}/);
+  // The text may be long and must not push the chip off the card; 44px on a phone.
+  assert.match(rule('.scan-row > .hint'), /min-width: 0;/);
+  assert.match(css, /\.chip-toggle \{ min-height: 44px;/);
 });

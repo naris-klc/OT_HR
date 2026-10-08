@@ -7474,7 +7474,7 @@ td > .approver-line { margin-top: 5px; }
    ONE PLACE UNDER THE NAME, WHETHER OR NOT THERE IS ANYTHING IN IT.
 
    Most months carry no policy warning, so this slot is empty on most people —
-   and while `.alert` brought its own 12px top margin and `.audit-bar` brings 16,
+   and while `.alert` brought its own 12px top margin and the bar below it brought 16,
    the first thing under the heading sat 12px down on a month that had a warning
    and 16px down on one that did not. Four pixels is not the point. HR reads
    this screen one employee after the next, and a block that moves between them
@@ -7493,90 +7493,33 @@ td > .approver-line { margin-top: 5px; }
    only sees when moving between two of them. */
 .entry-notice > .alert { margin: 16px 0 0; }
 
-/* 16px ABOVE, NOT 12, and the number is set here rather than as a
-   `margin-bottom` on `.alert`. What sits above this bar on รายการ OT is the
-   policy warning, and adjacent margins collapse — so the two boxes were 12px
-   apart while the alert's own border and the bar's own border made the pair
-   read as one stack of two panels. 16 separates them without touching every
-   other notice in the app, and when there is no warning to show it is the gap
-   under the card's heading instead, which wants the same. */
-.audit-bar {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  /* SPACE-BETWEEN, AND IT IS THE WRAPPED CASE THAT CHOSE IT.
+/* ── THE SCAN SUMMARY AND THE HISTORY TOGGLE, ON ONE ROW — 2026-10-08 ────────
+   It was two blocks: a bordered bar (☐ แสดงประวัติการแก้ไขทั้งหมด · 2 จาก 2
+   รายการมีประวัติให้ดู) over the scan paragraph. Both are about checking this
+   month, so the toggle is a chip at the right end of the paragraph's own row
+   (mockup B, chosen by the user) and the bar is gone — about 50px given back
+   above the first row.
 
-     Two items: the checkbox and its name at the left, the count or the reason
-     at the right. On one line `space-between` and `margin-left: auto` on the
-     second item do exactly the same thing — but `justify-content` applies to each
-     flex LINE, so when the bar wraps, the line holding one item places that item
-     at its START. The sentence lands under the label at the same left edge
-     instead of stranded against the right border with nothing to be right of.
+   16px ABOVE, WHICH IS WHAT THE BAR TOOK. Adjacent margins collapse, so under a
+   policy warning (16 above its own box, 12 below) the row stands 16 off it, and
+   with no warning it is the gap under the card's heading. The slot above
+   (`.entry-notice`) is unchanged.
 
-     AND IT IS STILL WHAT DRAWS THE SECOND LINE, though what puts the sentence
-     on one is a breakpoint now. It read "there is no breakpoint here" until
-     2026-08-26: the bar needs 444.7px of inside width to hold the longer of the
-     two sentences on one line and has that from about 535px up — measured, not
-     assumed, 470px of inside at a 560px viewport against 390 at 480 — so it
-     wrapped when the words made it and not before. What the words cannot answer
-     is what the sentence IS. Below 860 the table beside it is already a column
-     of cards, and there the sentence is not the other end of a row: it is the
-     description of the checkbox above it. The phone block stacks it for that
-     reason rather than for want of room, and `space-between` is what still puts
-     it at the start of its own line once it is on one. */
-  justify-content: space-between;
-  /* 12px 16px, WHICH IS `.alert`'S. It read 11px 13px until 2026-08-26 — a pair
-     of numbers this box arrived with and nothing else in the app used. What sits
-     directly above it on รายการ OT is the policy warning, and two panels in a
-     stack that hold their contents at different distances from their own border
-     read as two kinds of box rather than two of the same kind. (The warning's
-     TEXT still starts further in than this bar's: 43px, because the mark and its
-     9px gap sit inside the padding. That is the mark doing its job, and it is
-     the box edges that have to agree.) The extra pixel of height is what stops
-     one line of type sitting tight between two borders. */
-  margin: 16px 0 0; padding: 12px 16px;
-  background: var(--neutral-wash); border: 1px solid var(--line);
-  border-radius: var(--radius-xs);
+   `min-width: 0` ON THE TEXT: it carries a Thai sentence that may be long, and
+   the default would let it push the chip off the card. */
+.scan-row { display: flex; align-items: flex-start; gap: 6px 12px; flex-wrap: wrap; margin: 16px 0 0; }
+.scan-row > .hint { flex: 1 1 260px; min-width: 0; margin: 0; }
+.chip-toggle {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--ink-2);
+  font: 500 12.5px/1.5 var(--sans); cursor: pointer; white-space: nowrap;
 }
-.audit-bar .check { font: 500 13.5px/1.4 var(--sans); }
-
-/* NOTHING TO SHOW, AND THE CONTROL SAYS SO BEFORE THE SENTENCE DOES.
-
-   The checkbox has carried `disabled` since it was written and the label has
-   been `--muted-2` for as long — but a greyed word beside a live-looking box is
-   read as a quiet label, not as a control that will not answer. The whole
-   left-hand group fades instead: the box, the tick and the words together, which
-   is what "this cannot be pressed" looks like everywhere else.
-
-   THE COLOUR GOES DARKER BY A STEP SO THAT THE FADE COSTS NOTHING. Stacking
-   `opacity` on `--muted-2` would land the words at 2.15:1 on `--neutral-wash`.
-   `--muted` at 75% comes out at 3.19 — which is where `--muted-2` at full
-   opacity already was (3.20), so the group visibly dims and not one word of it
-   became harder to read than it was yesterday. (Disabled controls are exempt
-   from the contrast minimum anyway; this is not the place to take the exemption,
-   because these five words are the only thing that names what the box does.)
-
-   AND THE SENTENCE ON THE RIGHT DOES NOT FADE. It is not part of the disabled
-   control — it is the REASON the control is disabled, at `.hint`'s 12.5px on
-   `--muted-2`, so once the left side dims the reason is the more readable of the
-   two. That is the right way round. */
-.audit-bar .check.off { color: var(--muted); opacity: .75; cursor: default; }
-/* NO MARGIN, ON ANY SIDE, AND EACH ZERO IS LOAD-BEARING.
-
-   THE BOTTOM ONE. `.card .hint` gives every hint inside a card
-   `margin-bottom: 14px`, and `align-items: center` centres a flex item's MARGIN
-   box — so 14px of nothing underneath lifted the words SEVEN PIXELS above the
-   checkbox beside them. Nothing about the rule looked wrong, which is why it
-   stood; the misalignment was inherited from four hundred lines away.
-
-   THE LEFT ONE. It read `margin: 0 0 0 auto` until 2026-08-26, which pushed the
-   sentence to the right end — correct on one line and wrong on two, because an
-   auto margin pushes right on a wrapped line as well, leaving the sentence
-   against the far border with nothing to be right of. `space-between` on the bar
-   does the same job on one line and the opposite one on two, which is what was
-   wanted; an auto margin here would beat it.
-
-   All four sides are stated, so the next thing added to this bar cannot inherit
-   one either. */
-.audit-bar .hint { margin: 0; }
+.chip-toggle:hover:not(:disabled) { border-color: var(--green); color: var(--green-dark); }
+.chip-toggle.on { background: var(--green-bg); border-color: var(--green); color: var(--green-text); }
+.chip-toggle:disabled { opacity: .55; cursor: default; }
+.chip-toggle .btn-icon { width: 14px; height: 14px; }
+.chip-toggle b { font: 600 12px/1.5 var(--mono); }
 
 /* ── the last cell of a row on รายการ OT ────────────────────────────────────
    Up to four things: แก้ไข, ถอนใบวันเกิด, ดูข้อมูลเดิม, and one of two
@@ -15690,33 +15633,9 @@ table.mini tbody tr:hover { background: none; }
      label's line when the description is empty. */
   .stack-table tbody td.entry-desc .entry-mark { clear: left; text-align: left; }
 
-  /* THE SENTENCE BECOMES THE CHECKBOX'S DESCRIPTION HERE, AND SO IT STACKS.
-
-     On the desktop the bar is two things at the two ends of one line: the
-     control at the left, the count or the reason at the right. That is what
-     `space-between` draws on the base rule, and at this width it is the wrong
-     shape — the table beside it has already become a column of cards, the bar
-     is as wide as a phone, and "6 จาก 6 รายการมีประวัติให้ดู" is not the other
-     end of a row any more. It is what ticking the box will show. A description
-     goes under the thing it describes and starts at its left edge.
-
-     IT WRAPPED HERE ALREADY, and the wrap was right about the alignment and
-     could not be right about the width. `flex-wrap` plus `space-between` breaks
-     the line when the words no longer fit — about 535px — and puts the wrapped
-     line at its own start, which is why the sentence has landed left on a phone
-     since 2026-08-26. But between 535 and 860 the two fitted on one line and so
-     stayed on one, and a 12.5px grey sentence alone at the right end of a bar
-     that has nothing else on that side is a caption that has come adrift. Below
-     860 there are cards, so below 860 there is a caption. The base rule still
-     does the work if this one goes.
-
-     6px, NOT THE BAR'S 14. That gap was measured between two independent items
-     side by side; between a label and its own sub-text it is a gap, and the
-     sentence floated between the checkbox above it and the table below.
-     `align-items: flex-start` because the base rule's `center` centres on the
-     CROSS axis, which in a column is the horizontal one — left as it was, the
-     stack would have come out centred. */
-  .audit-bar { flex-direction: column; align-items: flex-start; gap: 6px; }
+  /* The history chip is a 44px target here, and wraps under the scan text
+     rather than beside it. */
+  .chip-toggle { min-height: 44px; padding: 3px 14px; }
 
   /* รายการ OT's last cell, which is the foot of the card here rather than the
      eleventh column of a table. Wrapping is allowed — and only here — because a

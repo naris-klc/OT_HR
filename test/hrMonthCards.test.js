@@ -1148,12 +1148,12 @@ test('the sentence that names a screen offers to open it', () => {
   assert.match(css, /\.alert\.info \.link \{ color: var\(--info\); \}/);
 });
 
-test('the bar below the notice stands 16px off it, not 12', () => {
+test('the row below the notice stands 16px off it, not 12', () => {
   // Adjacent margins collapse, so `.alert`'s 12 and this bar's 12 came to 12 —
   // two bordered boxes 12px apart, reading as one stack of two panels. Set on
   // the bar rather than as a `margin-bottom` on `.alert`, which would move
   // every notice in the app to space one bar on one screen.
-  assert.match(css.slice(css.indexOf('.audit-bar {')), /^\.audit-bar \{[\s\S]*?margin: 16px 0 0; padding: 12px 16px;/);
+  assert.match(css.slice(css.indexOf('.scan-row {')), /^\.scan-row \{[^}]*margin: 16px 0 0;/);
   assert.match(css, /\.alert \{[\s\S]{0,200}margin: 12px 0;/);
 });
 
