@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api, thaiStamp } from '@/lib/api.js';
 import { DateRange } from './PickDate.jsx';
 import {
@@ -112,8 +113,23 @@ function ymd(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * ที่วางกล่องแจ้งเตือนบนสุดของหน้า — เหนือแถบแท็บ (2026-10-08)
+ *
+ * แจ้งเตือนทุกหน้าอยู่บนสุดของหน้า เหนือการ์ดแรก แต่การ์ดแรกของหน้านี้คือแถบแท็บ
+ * และข้อมูลของแจ้งเตือน (เข้าสู่ระบบไม่สำเร็จ · รายการไม่มีเหตุผล) อยู่ในแท็บ
+ * แท็บจึงวาดกล่องของมันเองผ่าน portal ขึ้นไปที่ช่องเหนือแถบแท็บ ข้อมูลไม่ต้อง
+ * ย้ายขึ้นมาที่หน้า · ก่อนช่องพร้อม (render แรก) วาดตรงที่เดิม
+ */
+const NoticeSlot = React.createContext(null);
+function TopNotices({ children }) {
+  const slot = useContext(NoticeSlot);
+  return slot ? createPortal(children, slot) : children;
+}
+
 export default function LogSystem() {
   const [tab, setTab] = useState('overview');
+  const [noticeSlot, setNoticeSlot] = useState(null);
   const [tabsRef, tabsEdge] = useScrollEdge(null);
 
   /**
@@ -133,7 +149,8 @@ export default function LogSystem() {
   });
 
   return (
-    <>
+    <NoticeSlot.Provider value={noticeSlot}>
+      <div ref={setNoticeSlot} />
       <div className="card">
         <div className="tabs-view" data-edge={tabsEdge}>
           <div className="row section-tabs" ref={tabsRef}>
@@ -161,7 +178,7 @@ export default function LogSystem() {
           onClearFilters={clearFilters}
         />
       )}
-    </>
+    </NoticeSlot.Provider>
   );
 }
 
@@ -200,6 +217,7 @@ function Overview({ onOpenTab, onFilter }) {
           headline now, which is what the other seven banners in that group
           do and what this one was doing in prose.
           แถวหนึ่งใน `NoticeStack` ตั้งแต่ 2026-10-08 — ระบบแจ้งเตือนเดียวทั้งแอป */}
+      <TopNotices>
       <NoticeStack id="log-login">
         {noisyLogins && (
           <NoticeRow
@@ -209,6 +227,7 @@ function Overview({ onOpenTab, onFilter }) {
           />
         )}
       </NoticeStack>
+      </TopNotices>
       <div className="card">
         <h2>ภาพรวม {data.windowDays} วันล่าสุด</h2>
 
@@ -598,6 +617,7 @@ function Compliance() {
         table rather than left to be spotted while scrolling one. Four of the
         six kinds cannot be performed without a reason, so this is normally
         zero. */}
+    <TopNotices>
     <NoticeStack id="log-exceptions">
       {error && <NoticeRow tone="error" title={error} />}
       {data?.withoutReason > 0 && (
@@ -609,6 +629,7 @@ function Compliance() {
         />
       )}
     </NoticeStack>
+    </TopNotices>
     <div className="card">
       {/* `.form-head` and the 17px circle are the app's own — the same control
           บันทึก OT แทนพนักงาน puts beside its heading, with the `i` glyph
