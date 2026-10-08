@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayAbbr, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
   Alert, BirthdayWelfareMark, CancelledMark, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark,
-  Modal, ProxyMark,
+  Modal, NoBreakMark, ProxyMark,
   RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
   NoticeStack, RowAction, ShowMore, StatusChip, editsOf, trailOf,
@@ -905,10 +905,13 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           they leave จาก–ถึง to the scan mark alone. วันเกิด was
                           not on this screen at all before; it reads
                           `segments[].dayReason`, which this list carries. */}
-                      {(e.flatDaily || isBirthdayWelfare(e)) && (
+                      {(e.flatDaily || isBirthdayWelfare(e) || e.noBreakTaken) && (
                         <div className="entry-mark day-mark">
                           <FlatDailyMark entry={e} />
                           <BirthdayWelfareMark entry={e} />
+                          {/* ไม่พักเที่ยง joined them later the same day —
+                              *"เพิ่มป้าย "ไม่พักเที่ยง" ใต้วันที่"*. */}
+                          <NoBreakMark entry={e} />
                         </div>
                       )}
                     </td>

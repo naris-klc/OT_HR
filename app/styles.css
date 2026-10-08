@@ -6452,6 +6452,9 @@ td > .approver-line { margin-top: 5px; }
    one. Reuses the `.chip.green` pair rather than inventing a token: a sixth
    hue in this column would be a colour nobody can name. */
 .chip.birthday { background: var(--green-bg); color: var(--green-dark); }
+/* ไม่พักเที่ยง (2026-10-08) — `.cell-flag`'s red pair, the colour คิวรออนุมัติ and
+   the employee's list already print this fact in. */
+.chip.no-break { background: var(--danger-bg); color: var(--danger-ink); }
 /* "· ทำแทน สมชาย" inside a history line. Not a chip and not bold: it is the
    second half of the sentence naming who acted, and it reads as one line. */
 .entry-history .who .behalf { color: var(--muted); font-weight: 500; }
@@ -7331,6 +7334,10 @@ td > .approver-line { margin-top: 5px; }
 .entry-table.stack-table tbody td.stack-name .day-mark {
   display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0 0;
 }
+/* The gap is the flex gap's alone. `.entry-mark .chip + .chip`'s 6px left
+   margin indented every chip that wrapped under the first — seen in a render of
+   เหมารายวัน over ไม่พักเที่ยง at 1440, 2026-10-08. */
+.entry-table.stack-table tbody td.stack-name .day-mark .chip { margin: 0; }
 
 /* ── TWO BADGES THAT NO LONGER FIT SIDE BY SIDE — WITHDRAWN 2026-10-08 ──────
    Two rules spaced a pair of chips in จาก–ถึง (reported 2026-09-07 as "แท็กมัน

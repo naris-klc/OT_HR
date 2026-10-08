@@ -5627,7 +5627,7 @@ see the rule above — and it changes nothing here: no flat day states a length 
 scan can be short against.)
 
 So a `flatDaily` row draws `FlatDailyMark`: the green chip **เหมารายวัน**, the
-same green `OT สวัสดิการวันเกิด` wears, because the two are the same kind of
+same green the วันเกิด chip wears (it read `OT สวัสดิการวันเกิด` until 2026-10-08), because the two are the same kind of
 fact — how a request was filed, and why its hours were counted the way they
 were. `ScanMismatchMark` stands down entirely on those rows; there is never an
 amber mark on a flat day. This paragraph went on **“The NUMBERS survive
@@ -6213,7 +6213,10 @@ decides how loud a screen is. The same call `รูปแบบวันที�
 ```
 
 - ป้ายผลเทียบต่อท้าย**บรรทัดเวลาสแกน** เพราะเป็นคำตัดสินเรื่องเวลาสแกนนั้น · ยาวเกินคอลัมน์ป้ายจะตกไปบรรทัดใต้เวลาสแกน
-- **เหมารายวัน และ OT สวัสดิการวันเกิด ย้ายไปใต้วันที่** — เป็นเรื่องของวัน ไม่ใช่ของเครื่องสแกน · ป้ายวันเกิดไม่เคยขึ้นบนจอนี้มาก่อน
+- **เหมารายวัน และ วันเกิด ย้ายไปใต้วันที่ · ไม่พักเที่ยง ตามมาวันเดียวกัน** — เป็นเรื่องของวัน ไม่ใช่ของเครื่องสแกน · ป้ายวันเกิดไม่เคยขึ้นบนจอนี้มาก่อน
+- **ไม่พักเที่ยง** เป็นป้ายแดง (`NoBreakMark`) สีเดียวกับ `.cell-flag` ที่คิวรออนุมัติใช้บอกเรื่องเดียวกัน
+- **ป้ายวันเกิดเขียนว่า `วันเกิด` ทั้งแอป** (เคยเป็น "OT สวัสดิการวันเกิด") — ทุกจอวาดผ่าน `BirthdayWelfareMark` ตัวเดียว
+- ใต้วันที่มีป้ายได้ถึงสามใบ ถ้าเกินหนึ่งใบ ป้ายเรียงลงและแถวนั้นสูงขึ้น (ราว 92px ถ้ามีสองป้าย · 121px ถ้ามีสาม เทียบกับ 63px ถ้ามีป้ายเดียว) · ต.ค. 2569 ยังไม่มีใบไหนมีป้ายซ้อนกัน
 - ช่อง จาก–ถึง จึงมีป้ายไม่เกินหนึ่งใบ กฎจัดระยะป้ายสองใบในย่อหน้าข้างล่างถูกถอนไป
 - คำอธิบายใต้ป้าย (ขาดกี่นาที) ยังขึ้นเฉพาะบนมือถือ และยังเป็น `--muted-2`
 
