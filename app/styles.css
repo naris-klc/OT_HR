@@ -3346,7 +3346,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    where it always did — which is the whole subject of the note above. */
 .field input:not(:where([type='checkbox'], [type='radio'])),
 .field select, .field textarea, .field .pick-one, .field .pick-box,
-.policy-row select {
+.policy-row select, .policy-row .pick-box {
   border: 1px solid var(--input-line); border-radius: var(--radius-sm);
   min-height: var(--field-h);
   padding: var(--field-pad-y) var(--field-pad-x); background: var(--field-bg); width: 100%;
@@ -3358,7 +3358,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    the ring below would still wear the halo that was reported. */
 .field input:not(:where([type='checkbox'], [type='radio'])):focus,
 .field select:focus, .field textarea:focus, .field .pick-one:focus, .field .pick-box:focus,
-.policy-row select:focus {
+.policy-row select:focus, .policy-row .pick-box:focus {
   outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
 }
 /* A field this person may not change.
@@ -3374,7 +3374,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    checkbox already reads as disabled — the browser greys the box itself. */
 .field input:not(:where([type='checkbox'], [type='radio'])):disabled,
 .field select:disabled, .field textarea:disabled, .field .pick-one:disabled, .field .pick-box:disabled,
-.policy-row select:disabled {
+.policy-row select:disabled, .policy-row .pick-box:disabled {
   background: var(--neutral-wash);
   color: var(--muted);
   cursor: not-allowed;
@@ -4774,7 +4774,11 @@ td > .approver-line { margin-top: 5px; }
    this file. The eighteenth — รายการล่าสุด's month picker on OT ของฉัน — sits
    in a card head wearing `.period-input`, which is a smaller box with its own
    border and padding and has been that since long before this control existed.
-   Layout is the same for both; the box is not. */
+   Layout is the same for both; the box is not.
+   The two time pairs on นโยบายการคำนวณ sit in `.policy-row` with no `.field`
+   round them, and until 2026-10-08 they drew as the browser's own grey button
+   in dark mode — so `.policy-row .pick-box` rides the shared list beside
+   `.policy-row select`, for the same reason that select is there. */
 .pick-box {
   appearance: none;
   display: flex; align-items: center; gap: 8px;

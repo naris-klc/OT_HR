@@ -806,7 +806,7 @@ test('the chips wrap inside the shell, and the shell never scrolls', () => {
   // stood, and a control a pixel off the box beside it reads as a different
   // kind of thing. Another selector in the list, not another declaration.)
   assert.match(css, /\.dept-combo \{[\s\S]*?min-height: var\(--field-h\);/);
-  assert.match(css, /\.field input:not\(:where\(\[type='checkbox'\], \[type='radio'\]\)\),\s*\n\.field select, \.field textarea, \.field \.pick-one, \.field \.pick-box,\s*\n\.policy-row select \{[\s\S]*?min-height: var\(--field-h\);\s*\n\s*padding: var\(--field-pad-y\) var\(--field-pad-x\);[\s\S]*?font: 500 var\(--field-size\)\/1\.3 var\(--mono\);/);
+  assert.match(css, /\.field input:not\(:where\(\[type='checkbox'\], \[type='radio'\]\)\),\s*\n\.field select, \.field textarea, \.field \.pick-one, \.field \.pick-box,\s*\n\.policy-row select, \.policy-row \.pick-box \{[\s\S]*?min-height: var\(--field-h\);\s*\n\s*padding: var\(--field-pad-y\) var\(--field-pad-x\);[\s\S]*?font: 500 var\(--field-size\)\/1\.3 var\(--mono\);/);
   // The vertical padding is DERIVED here rather than reused: these fields pad a
   // 19.5px line of text and the shell pads a 30px chip, so the same number
   // gives two different boxes. What matches is the sum — half of what is left
@@ -816,7 +816,7 @@ test('the chips wrap inside the shell, and the shell never scrolls', () => {
   // The radius was the one they already shared; it stays shared.
   const shellRule = css.slice(css.indexOf('.dept-combo {'), css.indexOf('}', css.indexOf('.dept-combo {')));
   assert.match(shellRule, /border-radius: var\(--radius-sm\);/);
-  assert.match(css, /\.field input:not\(:where\(\[type='checkbox'\], \[type='radio'\]\)\),\s*\n\.field select, \.field textarea, \.field \.pick-one, \.field \.pick-box,\s*\n\.policy-row select \{[\s\S]*?border-radius: var\(--radius-sm\);/);
+  assert.match(css, /\.field input:not\(:where\(\[type='checkbox'\], \[type='radio'\]\)\),\s*\n\.field select, \.field textarea, \.field \.pick-one, \.field \.pick-box,\s*\n\.policy-row select, \.policy-row \.pick-box \{[\s\S]*?border-radius: var\(--radius-sm\);/);
   const shell = css.slice(css.indexOf('.dept-combo {'));
   assert.ok(!/overflow/.test(shell.slice(0, shell.indexOf('}'))), 'the chip shell scrolls');
 });
