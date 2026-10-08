@@ -5,6 +5,7 @@ import { isSigner } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
 import { Alert, Disclosure, PasswordInput } from './common.jsx';
+import { Icon } from './icons.jsx';
 import Delegation from './Delegation.jsx';
 
 const ROLE_LABEL = {
@@ -75,7 +76,7 @@ export default function ProfileView({ user, jumpTo = null, onPasswordChanged, on
 const THEME_KEY = 'ot-theme';
 
 /**
- * สว่าง / มืด / ตามเครื่อง — the one setting on this page that is not about
+ * สว่าง / มืด / ระบบ — the one setting on this page that is not about
  * the person at all.
  *
  * IT IS STORED IN THE BROWSER, NOT ON THE ACCOUNT, and that is the decision
@@ -89,15 +90,15 @@ const THEME_KEY = 'ot-theme';
  * the browser's data clears it. Both are the right trade for a preference that
  * changes nothing about the data and everything about one screen.
  *
- * "ตามเครื่อง" is the absence of the key rather than a third stored value, so
+ * "ระบบ" (was ตามเครื่อง until 2026-10-08) is the absence of the key rather than a third stored value, so
  * somebody who has never touched this gets exactly what they got before the
  * setting existed — and following the machine keeps following it afterwards,
  * including when the machine changes its own mind at sunset.
  */
 const THEMES = [
-  { key: 'system', label: 'ตามเครื่อง', hint: 'เปลี่ยนตามที่ตั้งไว้ในเครื่องหรือระบบปฏิบัติการ' },
-  { key: 'light', label: 'สว่าง', hint: 'พื้นขาว แบบเดิมของระบบ' },
-  { key: 'dark', label: 'มืด', hint: 'พื้นเข้ม สำหรับที่แสงน้อย' },
+  { key: 'system', label: 'ระบบ', icon: 'monitor', hint: 'เปลี่ยนตามที่ตั้งไว้ในเครื่องหรือระบบปฏิบัติการ' },
+  { key: 'light', label: 'สว่าง', icon: 'sun', hint: 'พื้นขาว แบบเดิมของระบบ' },
+  { key: 'dark', label: 'มืด', icon: 'moon', hint: 'พื้นเข้ม สำหรับที่แสงน้อย' },
 ];
 
 function ThemeChoice() {
@@ -146,6 +147,7 @@ function ThemeChoice() {
             title={t.hint}
             onClick={() => pick(t.key)}
           >
+            <Icon name={t.icon} className="seg-icon" />
             {t.label}
           </button>
         ))}
