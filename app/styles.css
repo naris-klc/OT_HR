@@ -7392,7 +7392,7 @@ td > .approver-line { margin-top: 5px; }
    as tall as the chips beside it. Wrapping is the answer here, and the 40%
    this replaces was itself only ever defending the wrap against a narrower
    neighbour. */
-.stack-table th.desc-col { width: 32%; }
+.stack-table th.desc-col { width: 29%; }
 .stack-table th.status-col { width: 12%; }
 
 /* ── จาก–ถึง, WHICH IS NOT A PAIR OF TIMES ANY MORE ────────────────────────
@@ -7451,8 +7451,21 @@ td > .approver-line { margin-top: 5px; }
    `.table-wrap` and scrolls inside it; this makes that 50px, because
    รายละเอียดงานที่ทำ is at its own content floor there (138px) and has nothing
    left to give. The row is 18px shorter and the scan line one line shorter in
-   exchange. At 1440 nothing scrolls, before or after. */
-.stack-table th.when-col { width: 21%; min-width: 204px; }
+   exchange. At 1440 nothing scrolls, before or after.
+
+   ⚠ IT READ `width: 21%; min-width: 204px` UNTIL 2026-10-08, when the cell
+   became two lines (แบบ C) and the scan mark moved to the END of the punches
+   line. Reported the same day with a screenshot — *"ยัง 3 บรรทัดอยู่เลย"*:
+   `เริ่ม 07:45 - 18:34` (96px) + 6 + `ไม่ครบ · ขาด 56 นาที` (128px) is 230px
+   of content and 21% gave 228. Measured in Chromium against this stylesheet,
+   every typical row (≤ 2 punches, which is 89% of the scanned days on file)
+   sits on two lines from 290px; the longest mark measured, `เกินเวลา · เกิน
+   1 ชม. 5 นาที`, needs it. A day with more punches still wraps, as above.
+   Three points come from รายละเอียดงานที่ทำ (32 → 29%), which at 1440 still
+   measures the 232px its longest description needs to stay on two lines.
+   COST: at 1024 the table now scrolls 27px sideways inside `.table-wrap`,
+   where it did not; every other column there is already at its content floor. */
+.stack-table th.when-col { width: 26%; min-width: 290px; }
 
 /* ── which rules computed this row, in the drawer that opened for it ───────
    กฎที่ใช้ was a column until 2026-09-04 and is one line of the ประวัติการแก้ไข

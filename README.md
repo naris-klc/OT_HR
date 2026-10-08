@@ -7361,7 +7361,9 @@ and says what to do about it — is the half that was being used. The per-entry
 column on ดู / แก้ไขรายการ went the same afternoon, on the same argument,
 with the room it freed given to รายละเอียดงานที่ทำ and สถานะ rather than back to
 the table. **Eight of those points went on to จาก–ถึง on 2026-09-07** —
-`desc-col` 40% → 32%, `when-col` 15%/172px → 21%/204px — because the scan
+`desc-col` 40% → 32%, `when-col` 15%/172px → 21%/204px (**→ 26%/290px, and `desc-col` 32% → 29%, on
+2026-10-08**, when the scan mark moved to the end of the punches line and needed
+the room to keep the cell at two lines — see the note over `th.when-col`) — because the scan
 column had meanwhile become the one wrapping: a day with three punches stood the
 tallest row at 188px and broke `สแกน 07:26, 00:59 (+1), 07:23 (+1)` over three
 lines. Measured at 1440px on the built app against a clone of the real database:
