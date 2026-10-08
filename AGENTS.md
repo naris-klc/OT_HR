@@ -74,6 +74,11 @@ yours.
   attributable within minutes: the next session cannot tell your half-finished
   change from its own, and the documentation rule below is written per commit
   for exactly this reason.
+- **งานเสร็จทุกครั้ง: commit → merge เข้า `main` → `git push` → เคลียร์ worktree
+  ของตัวเอง** สั่งไว้ 2026-10-08 · ทำครบทุกขั้นในรอบเดียวกัน ไม่ต้องรอถาม ·
+  push เฉพาะ `main` · เคลียร์เฉพาะ worktree และ branch ที่ตัวเองสร้าง (ยกเลิก
+  junction/symlink `node_modules` ก่อน แล้วเช็กว่า `node_modules` ของ main ยังอยู่
+  ครบ) · worktree ของ session อื่นห้ามแตะ แม้ดูเหมือนค้าง
 - A dirty tree is the normal state here, and tidying it is not a favour.
 
 ### Take a worktree of your own — before the first edit, not only for big work
