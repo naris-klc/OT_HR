@@ -291,7 +291,7 @@ test('where an HR rejection lands is inert when there is no HR rejection', () =>
   assert.equal(inertReason('hrRejectReturnsTo', { ...DEFAULT_POLICY, hrMayReject: true }), null);
 });
 
-test('the file defaults ship with one row already inert', () => {
+test('the file defaults ship with the birthday rows already inert', () => {
   /**
    * Not an accident and not a complaint: `birthdayHolidayEnabled` is false in
    * src/config/policy.js, so on a fresh install the row underneath it is a
@@ -306,7 +306,9 @@ test('the file defaults ship with one row already inert', () => {
    */
   assert.deepEqual(
     Object.keys(inertReasons(DEFAULT_POLICY)).sort(),
-    ['birthdayLeapFallback'],
+    // Four since 2026-10-08: the three birthday rows that became settings that
+    // day are inert under the same switch as the leap-day row.
+    ['birthdayLeapFallback', 'birthdayNoBreak', 'birthdayOnHoliday', 'birthdaySplit'],
   );
 
   // And the policy this system actually runs on — the birthday rule has been on

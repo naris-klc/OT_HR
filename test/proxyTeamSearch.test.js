@@ -516,7 +516,7 @@ test('หัวข้อฟอร์มบันทึกแทนไม่ม�
   // screen. Both halves asserted: a bare deletion would take it off the
   // employee's form too, which nobody asked for.
   assert.match(code, /\{!proxy && \(\s*\n\s*<div className="hint">/);
-  assert.ok(code.includes('เวลาทำงานปกติ จันทร์–ศุกร์'), 'บรรทัดนี้หายไปจากฟอร์มของพนักงานเองด้วย');
+  assert.ok(code.includes('${workHoursSay(policy)}'), 'บรรทัดนี้หายไปจากฟอร์มของพนักงานเองด้วย');
   assert.ok(
     code.includes('วันที่เลือกเป็นวันเกิดของคุณ'),
     'คำอธิบายของแถววันเกิดหายไป — ประโยคนั้นเป็นการแก้ประโยคที่ผิดบนแถวนั้น',

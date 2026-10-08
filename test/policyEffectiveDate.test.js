@@ -154,7 +154,8 @@ test('choosing an answer proposes it — the PATCH waits for the dialog', () => 
   // an event to read `target.value` off. What is asserted is unchanged and is
   // the whole of the point: choosing PROPOSES, and only the dialog saves.
   assert.match(screen, /onChange=\{\(v\) => setPending\(\{ field: f, value: coerce\(f, v\) \}\)\}/, 'the dropdown saves on change again');
-  assert.match(screen, /onConfirm=\{\(\) => save\(pending\.field\.key, pending\.value\)\}/);
+  // A PATCH of the row's keys since 2026-10-08 — a time row holds two.
+  assert.match(screen, /onConfirm=\{\(\) => save\(patchOf\(pending\.field, pending\.value\)\)\}/);
   // And cancelling sends nothing at all.
   assert.match(screen, /onCancel=\{\(\) => setPending\(null\)\}/);
 });
@@ -166,5 +167,6 @@ test('the dialog names the day the new rules start', () => {
   // And whether this particular rule moves hours at all — half of them do not,
   // and "จะคำนวณใหม่" said of a permission flag is a warning people learn to
   // ignore on the rules where it is true.
-  assert.match(screen, /const arithmetic = ARITHMETIC_KEYS\.includes\(field\.key\)/);
+  assert.match(screen, /const arithmetic = isArithmetic\(field\);/);
+  assert.match(screen, /return \(field\.keys \|\| \[field\.key\]\)\.some\(\(k\) => ARITHMETIC_KEYS\.includes\(k\)\);/);
 });

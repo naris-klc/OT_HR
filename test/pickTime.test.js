@@ -70,11 +70,13 @@ test('ไม่มี <input type="time"> เหลืออยู่ในแ�
 });
 
 test('ทั้งสี่ช่องใช้ PickTime และไม่มีช่องไหนอ่าน e.target', () => {
-  // Two on บันทึก OT, two on the queue's quick edit. The count is here so a
-  // fifth added with an `<input>` fails rather than becoming the one time box
-  // in the app that draws itself in the viewer's locale.
+  // Two on บันทึก OT, two on the queue's quick edit, and one on ตั้งค่า →
+  // นโยบายการคำนวณ since 2026-10-08, drawn twice per time row (start · end).
+  // The count is here so one added with an `<input>` fails rather than
+  // becoming the one time box in the app that draws itself in the viewer's
+  // locale.
   const uses = components.reduce((n, [, b]) => n + (b.match(/<PickTime\b/g) || []).length, 0);
-  assert.equal(uses, 4, `มี ${uses} ช่อง — คาดว่า 4`);
+  assert.equal(uses, 5, `มี ${uses} ช่อง — คาดว่า 5`);
   for (const [f, body] of components) {
     if (f === 'PickTime.jsx') continue;
     for (const [tag] of body.matchAll(/<PickTime\b[^>]*?\/>/g)) {

@@ -21,7 +21,8 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 import { companyOf, companyLabel } from '@/src/config/companies.js';
 import PasswordSlips from './PasswordSlips.jsx';
 import { PickDate } from './PickDate.jsx';
-import { approvalDepartments, idOf, viewerId } from '@/lib/entries.js';
+import { approvalDepartments, idOf, viewerId, minuteLabel } from '@/lib/entries.js';
+import { PickTime } from './PickTime.jsx';
 import { ROLES, ROLE_LABEL_TH, isSigner, hrHeadsDepartment } from '@/lib/roles.js';
 // Pure as well — the settings screen names the modes and the write paths refuse
 // with them, and both read the list from here.
@@ -6295,9 +6296,16 @@ function AddHoliday({ onClose, onSave }) {
  */
 const POLICY_SECTIONS = [
   { id: 1, title: 'เวลาทำงาน และการหักเวลาพัก' },
-  { id: 2, title: 'เกณฑ์การนับ และการปัดเศษ OT' },
-  { id: 3, title: 'สิทธิ์วันเกิด และวันหยุดพิเศษ' },
-  { id: 4, title: 'เวิร์กโฟลว์ และเพดานชั่วโมง' },
+  /**
+   * อัตรา OT — 2026-10-08, with the rest of the rules that conversation made
+   * settings. Second because the rates are read straight off the hours the
+   * block above defines; the groups after it renumbered by one, and the ข้อ
+   * numbers with them (see `OPEN_LABEL`).
+   */
+  { id: 2, title: 'อัตรา OT' },
+  { id: 3, title: 'เกณฑ์การนับ และการปัดเศษ OT' },
+  { id: 4, title: 'สิทธิ์วันเกิด และวันหยุดพิเศษ' },
+  { id: 5, title: 'เวิร์กโฟลว์ และเพดานชั่วโมง' },
   /**
    * WHAT THE CALENDAR IS ALLOWED TO DECIDE — a question neither of the other
    * four blocks asks.
@@ -6322,7 +6330,7 @@ const POLICY_SECTIONS = [
    * be past it the same second. What all three share is that a DATE decides,
    * which is what the block is now named for.
    */
-  { id: 5, title: 'กรอบเวลาของใบ OT — ยื่น แก้ไข และถอน' },
+  { id: 6, title: 'กรอบเวลาของใบ OT — ยื่น แก้ไข และถอน' },
   /**
    * WHICH QUESTIONS THE FILING FORM PUTS ON THE SCREEN — a group that decides
    * no figure at all, which is why it is not folded into any of the four above.
@@ -6339,22 +6347,75 @@ const POLICY_SECTIONS = [
    * a replay. Said on the rows themselves, because it is the one consequence
    * that is not visible from this page.
    */
-  { id: 6, title: 'ช่องติ๊กบนฟอร์มบันทึก OT' },
+  { id: 7, title: 'ช่องติ๊กบนฟอร์มบันทึก OT' },
 ];
 
 const POLICY_FIELDS = [
+  /* ── เวลาทำงาน · พักเที่ยง · วันหยุดประจำ — keys the policy always had and no
+     screen showed, put on one on 2026-10-08. `keys` makes a row of two
+     values; `time` draws them as a PickTime pair; `days` as day toggles. ── */
+  {
+    section: 1,
+    key: 'coreHours', keys: ['coreStartMinute', 'coreEndMinute'], time: true,
+    label: 'เวลาทำงานปกติ',
+    hint: 'ในช่วงนี้ของวันทำงานปกติไม่ใช่ OT · วันหยุดใช้ช่วงนี้แบ่ง “ในเวลางาน / นอกเวลางาน” ในกลุ่ม อัตรา OT '
+      + '· ใบเหมารายวันและ “8 ชม. แรก” ของวันเกิดคิดจากความยาวช่วงนี้ลบพักเที่ยง',
+  },
+  {
+    section: 1,
+    key: 'lunchWindow', keys: ['breakWindowStartMinute', 'breakWindowEndMinute'], time: true,
+    label: 'ช่วงพักเที่ยง',
+    hint: 'ช่วงที่ถูกหักเมื่อ “การหักเวลาพัก” เป็นแบบหักเฉพาะช่วงที่คาบเกี่ยว และเป็นช่วงที่ “ไม่พักเที่ยง” คืนให้ '
+      + '· ต้องอยู่ในเวลาทำงานปกติ',
+  },
+  {
+    section: 1,
+    key: 'weekendDays', days: true, label: 'วันหยุดประจำสัปดาห์',
+    hint: 'วันที่เลือกเป็นวันหยุดของทุกคน คิดอัตราวันหยุด · วันหยุดตามประกาศยังจัดการที่หน้า วันหยุดบริษัท เหมือนเดิม',
+  },
   {
     section: 1,
     key: 'breakMode', open: 1, label: 'การหักเวลาพัก',
     options: [
-      ['lunchWindow', 'หักเฉพาะช่วงที่คาบเกี่ยว 12:00–13:00 (ค่าเริ่มต้น)'],
+      ['lunchWindow', 'หักเฉพาะช่วงที่คาบเกี่ยวพักเที่ยง (ค่าเริ่มต้น)'],
+      ['threshold', 'หัก 1 ชม. เมื่อทำงานเกินเกณฑ์'],
+      ['always', 'หัก 1 ชม. ทุกครั้ง'],
+      ['none', 'ไม่หักเลย'],
+    ],
+    // The first answer names the lunch window, which is a setting since
+    // 2026-10-08 (ข้อ ช่วงพักเที่ยง above) — so it is worded from the policy.
+    optionsFor: (policy) => [
+      ['lunchWindow', `หักเฉพาะช่วงที่คาบเกี่ยว ${minuteLabel(policy.breakWindowStartMinute ?? 720)}`
+        + `–${minuteLabel(policy.breakWindowEndMinute ?? 780)} (ค่าเริ่มต้น)`],
       ['threshold', 'หัก 1 ชม. เมื่อทำงานเกินเกณฑ์'],
       ['always', 'หัก 1 ชม. ทุกครั้ง'],
       ['none', 'ไม่หักเลย'],
     ],
   },
+  /* ── อัตรา OT — 2026-10-08. Only ×1.5 and ×3: F-HR-027 and the accounting
+     file have those two columns and no other. ── */
   {
     section: 2,
+    key: 'holidayCoreRate', num: true, label: 'วันหยุด — ในเวลางาน',
+    options: [[1.5, '×1.5 (ค่าเริ่มต้น)'], [3, '×3']],
+    hint: 'วันหยุด = วันหยุดประจำสัปดาห์ วันหยุดตามประกาศ และวันเกิด (ถ้าเปิดกฎวันเกิด) '
+      + '· มีแค่ ×1.5 กับ ×3 เพราะใบ F-HR-027 และไฟล์ส่งบัญชีมีสองช่องนี้ · OT วันทำงานปกติเป็น ×1.5 เสมอ',
+  },
+  {
+    section: 2,
+    key: 'holidayOuterRate', num: true, label: 'วันหยุด — นอกเวลางาน',
+    options: [[3, '×3 (ค่าเริ่มต้น)'], [1.5, '×1.5']],
+    hint: 'ตัวอย่างตามค่าเริ่มต้น: เสาร์ 05:00–20:00 หักพักเที่ยง = ×1.5 8 ชม. + ×3 6 ชม.',
+  },
+  {
+    section: 2,
+    key: 'noBreakRate', label: 'วันที่ติ๊กไม่พักเที่ยง',
+    options: [['clock', 'ตามอัตราวันหยุดข้างบน (ค่าเริ่มต้น)'], ['all15', '×1.5 ทั้งวัน']],
+    hint: 'ตัวอย่าง เสาร์ 05:00–20:00 ติ๊กไม่พักเที่ยง — ตามอัตราวันหยุด: ×1.5 9 ชม. + ×3 6 ชม. '
+      + '· ×1.5 ทั้งวัน: ×1.5 15 ชม.',
+  },
+  {
+    section: 3,
     key: 'roundingMode', open: 3, label: 'วิธีการปัดเศษชั่วโมง OT',
     options: [
       ['floor', 'ปัดลงทั้งหมด (ค่าเริ่มต้น)'],
@@ -6365,11 +6426,10 @@ const POLICY_FIELDS = [
     hint: 'ปัดทีละกี่นาทีตั้งได้ในแถวถัดไป '
       + '· เลือก “คิดตามจริง” แล้วระบบจะไม่ปัดเลย และไม่อ่านค่าบล็อกนาทีในแถวถัดไป '
       + '(ค่าที่ตั้งไว้ยังอยู่ กลับมาเลือกปัดลง/ขึ้น/ใกล้ที่สุดเมื่อไรก็ใช้ค่าเดิม) '
-      + '· ปัดแยกทีละช่องอัตรา ไม่ได้ปัดที่ยอดรวมแล้วเกลี่ยกลับ '
-      + '· เปลี่ยนแล้วจะคำนวณใบทุกใบใหม่ รวมใบที่อนุมัติแล้ว',
+      + '· ปัดแยกทีละช่องอัตรา ไม่ได้ปัดที่ยอดรวมแล้วเกลี่ยกลับ ',
   },
   {
-    section: 2,
+    section: 3,
     key: 'roundingIncrementMinutes', open: 3, label: 'ปัดเศษทีละกี่นาที', num: true,
     options: [
       [5, 'ทุก 5 นาที'],
@@ -6379,8 +6439,7 @@ const POLICY_FIELDS = [
       [60, 'ทุก 60 นาที (ชั่วโมงเต็ม)'],
     ],
     hint: 'ไม่มีผลเมื่อวิธีการปัดเศษข้างบนคือ “คิดตามจริงเป็นทศนิยม” '
-      + '· ชั่วโมงถูกเก็บเป็นทศนิยม 2 ตำแหน่ง — 15, 30 และ 60 นาทีลงตัวพอดี '
-      + '· เปลี่ยนแล้วจะคำนวณใบทุกใบใหม่ รวมใบที่อนุมัติแล้ว',
+      + '· ชั่วโมงถูกเก็บเป็นทศนิยม 2 ตำแหน่ง — 15, 30 และ 60 นาทีลงตัวพอดี ',
     /**
      * The half of that note that was about 5 and 10, moved out from under the
      * question and put under the answer, where it is shown only when 5 or 10 is
@@ -6424,7 +6483,7 @@ const POLICY_FIELDS = [
     ),
   },
   {
-    section: 2,
+    section: 3,
     key: 'roundingGraceMinutes', open: 3, label: 'ผ่อนปรน — ใกล้ครบบล็อกแล้วปัดขึ้นให้', num: true,
     options: [
       [0, 'ไม่ใช้ — ปัดลงอย่างเดียว (ค่าเริ่มต้น)'],
@@ -6447,8 +6506,7 @@ const POLICY_FIELDS = [
       + '· อ่านเฉพาะเมื่อวิธีการปัดเศษข้างบนคือ “ปัดลงทั้งหมด” '
       + '· ผ่อนปรนครึ่งบล็อกพอดี ให้ผลเท่ากับ “ปัดเข้าหาค่าใกล้ที่สุด” ทุกนาที '
       + '· ⚠ ข้อนี้ขยับเส้นที่ระบบปฏิเสธงานสั้น ๆ ด้วย — ปัดลง 30 นาทีเคยปฏิเสธทุกอย่างที่ต่ำกว่า 30 นาที '
-      + 'ผ่อนปรน 10 นาทีทำให้เส้นนั้นเหลือ 20 นาที ควรทบทวน “เวลาขั้นต่ำในการเริ่มนับ OT” ข้างล่างพร้อมกัน '
-      + '· เปลี่ยนแล้วจะคำนวณใบทุกใบใหม่ รวมใบที่อนุมัติแล้ว',
+      + 'ผ่อนปรน 10 นาทีทำให้เส้นนั้นเหลือ 20 นาที ควรทบทวน “เวลาขั้นต่ำในการเริ่มนับ OT” ข้างล่างพร้อมกัน ',
     /**
      * Two traps, and neither is the inert note's job.
      *
@@ -6477,7 +6535,7 @@ const POLICY_FIELDS = [
     },
   },
   {
-    section: 2,
+    section: 3,
     key: 'minimumBufferMinutes', label: 'เวลาขั้นต่ำในการเริ่มนับ OT', num: true,
     options: [
       [0, 'ไม่ใช้ — นับทุกนาทีที่ทำ (ค่าเริ่มต้น)'],
@@ -6492,11 +6550,10 @@ const POLICY_FIELDS = [
       + '· วัดจากนาที OT หลังหักเวลาพัก ก่อนปัดเศษ และวัดทั้งใบรวมกัน ไม่ได้แยกทีละช่องอัตรา '
       + '· คนละข้อกับ “ต่ำกว่าขั้นต่ำ 1 ชม.” ข้างล่าง — ข้อนี้ถามว่ามี OT ไหม ข้อนั้นถามว่า OT ที่มีสั้นเกินไปแล้วจะทำอย่างไร '
       + 'ใบที่ถูกตัดด้วยข้อนี้จะไม่ถูกปัดขึ้นเป็น 1 ชม. และไม่ติดธง เพราะไม่มี OT ให้ปัด '
-      + '· เปลี่ยนแล้วจะคำนวณใบทุกใบใหม่ รวมใบที่อนุมัติแล้ว ใบที่คำนวณแล้วเหลือ 0 ชม. จะถูกข้ามและรายงานว่าไม่สำเร็จ '
-      + 'โดยยังคงชั่วโมงเดิมไว้',
+      + '· เมื่อคำนวณใบใหม่ ใบที่เหลือ 0 ชม. จะถูกข้ามและรายงานว่าไม่สำเร็จ โดยยังคงชั่วโมงเดิมไว้',
   },
   {
-    section: 2,
+    section: 3,
     key: 'belowMinimum', open: 4, label: 'ต่ำกว่าขั้นต่ำ 1 ชม.',
     options: [
       ['accept', 'รับตามชั่วโมงจริง (ติดธงให้ HR)'],
@@ -6505,7 +6562,7 @@ const POLICY_FIELDS = [
     ],
   },
   {
-    section: 2,
+    section: 3,
     key: 'minimumHoursScope', open: 4, label: 'ขั้นต่ำ 1 ชม. นับต่อใบหรือต่อช่อง',
     options: [
       ['sheet', 'ต่อใบ — รวมทุกช่องก่อนเทียบกับขั้นต่ำ (ค่าเริ่มต้น)'],
@@ -6518,7 +6575,7 @@ const POLICY_FIELDS = [
       + '· เปลี่ยนเป็นต่อช่องแล้ว ถ้าค่าข้างบนคือปัดขึ้นหรือไม่รับ ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยน',
   },
   {
-    section: 2,
+    section: 3,
     key: 'otStartsAtCoreEnd', open: 5, label: 'OT เริ่มนับที่', bool: true,
     options: [
       [true, '17:00 (นับเต็ม 3 ชม. สำหรับ 17:00–20:00)'],
@@ -6528,29 +6585,44 @@ const POLICY_FIELDS = [
       + '· เลือก 17:01 คือถือตามตัวอักษร นาที 17:00–17:01 ไม่ใช่ OT '
       + 'ทำให้ 17:00–20:00 เหลือ 2 ชม. 59 นาที และเมื่อปัดเศษ 30 นาทีแบบปัดลงจะเหลือ 2.5 ชม. '
       + '· วันหยุดใช้เส้นแบ่งเดียวกัน นาทีนั้นจะค้างอยู่ในช่อง ×1.5 วันหยุด ไม่เข้าช่อง ×3 '
-      + '· ไม่กระทบเส้น 08:00 ตอนเช้า — OT ก่อนเข้างานยังนับถึง 08:00 เท่าเดิม '
-      + '· เปลี่ยนแล้วจะคำนวณใบทุกใบใหม่ รวมใบที่อนุมัติแล้ว',
+      + '· ไม่กระทบเส้น 08:00 ตอนเช้า — OT ก่อนเข้างานยังนับถึง 08:00 เท่าเดิม ',
   },
   {
-    section: 3,
+    section: 4,
     key: 'birthdayHolidayEnabled', label: 'วันเกิดพนักงานเป็นวันหยุดของคนนั้น', bool: true,
     options: [
       [true, 'ใช่ — วันเกิดที่ตรงจันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น'],
       [false, 'ไม่ — วันเกิดเป็นวันทำงานปกติ (ค่าเริ่มต้น)'],
     ],
-    hint: 'เปิดแล้วจะคำนวณใบทุกใบใหม่ รวมใบที่อนุมัติแล้ว '
-      + '· วันเกิดที่ตรงเสาร์–อาทิตย์หรือวันหยุดบริษัทอยู่แล้ว ไม่มีผลเพิ่ม '
+    hint: 'วันเกิดที่ตรงเสาร์–อาทิตย์หรือวันหยุดบริษัทอยู่แล้ว ไม่มีผลเพิ่ม '
       + '· พนักงานที่ยังไม่มีวันเกิดในระบบจะขึ้นเตือนในหน้าตรวจสอบประจำเดือน',
   },
   {
-    section: 3,
+    section: 4,
     key: 'birthdayLeapFallback', label: 'วันเกิด 29 ก.พ. ในปีที่ไม่ใช่อธิกสุรทิน',
     options: [
       ['feb28', '28 ก.พ. (ค่าเริ่มต้น)'],
       ['mar01', '1 มี.ค.'],
       ['none', 'ไม่มีสวัสดิการวันเกิดในปีนั้น'],
     ],
+  },  {
+    section: 4,
+    key: 'birthdaySplit', label: 'วันเกิด — วิธีแบ่ง ×1.5 / ×3',
+    options: [
+      ['clock', 'ตามนาฬิกา เหมือนวันหยุด (ค่าเริ่มต้น)'],
+      ['worked', 'ตามชั่วโมงที่ทำ — 8 ชม. แรก ×1.5 ที่เหลือ ×3'],
+    ],
+    hint: 'ตัวอย่าง วันเกิด 05:00–17:00 — ตามนาฬิกา: 05:00–08:00 ×3 · 08:00–17:00 ×1.5 '
+      + '· ตามชั่วโมงที่ทำ: 05:00–14:00 ×1.5 · 14:00–17:00 ×3 '
+      + '· “8 ชม.” คือเวลาทำงานปกติลบพักเที่ยง ย้ายตามกลุ่ม 1',
   },
+  {
+    section: 4,
+    key: 'birthdayOnHoliday', label: 'วันเกิดที่ตรงเสาร์–อาทิตย์หรือวันหยุดบริษัท',
+    options: [['birthday', 'ใช้กฎวันเกิด (ค่าเริ่มต้น)'], ['holiday', 'ใช้กฎวันหยุดทั่วไป']],
+    hint: 'ใช้กฎวันหยุดทั่วไป = วันนั้นไม่สนวิธีแบ่งของวันเกิด และช่องไม่พักเที่ยงขึ้นตามปกติ',
+  },
+
   /* “ฝ่ายบุคคลบันทึก OT ให้จากรายการวันเกิด” (`hrDirectApproveBirthday`) was a
      row here until 2026-09-03. It chose between บันทึกและอนุมัติในขั้นตอนเดียว
      and บันทึกแล้วส่งให้หัวหน้าอนุมัติตามปกติ, for requests filed from
@@ -6561,22 +6633,22 @@ const POLICY_FIELDS = [
   // (HR, 2026-08-10) and สรุป OT ส่งบัญชี always prints it beside the row it
   // explains. Neither is a setting — see src/config/policy.js.
   {
-    section: 4,
+    section: 5,
     key: 'hrMayReject', open: 7, label: 'HR ปฏิเสธรายการที่หัวหน้าอนุมัติแล้วได้หรือไม่', bool: true,
     options: [[true, 'ได้'], [false, 'ไม่ได้']],
   },
   {
-    section: 4,
+    section: 5,
     key: 'hrRejectReturnsTo', open: 7, label: 'เมื่อ HR ปฏิเสธ ส่งกลับไปที่',
     options: [['employee', 'พนักงาน (แก้ไขและส่งใหม่)'], ['manager', 'หัวหน้างาน']],
   },
   {
-    section: 4,
+    section: 5,
     key: 'capBehaviour', open: 8, label: 'เมื่อเกินเพดานแผนก',
     options: [['warn', 'เตือนแต่ให้ส่งได้ ให้ HR ตัดสิน'], ['block', 'ไม่ให้ส่ง']],
   },
   {
-    section: 4,
+    section: 5,
     key: 'capBasis', open: 9, label: 'เพดานนับชั่วโมงแบบใด',
     options: [
       ['clock', 'นับจากชั่วโมงทำงานจริง (OT วันหยุด 2 ชม. = นับ 2 ชม.)'],
@@ -6586,7 +6658,7 @@ const POLICY_FIELDS = [
       + '(ไม่มีผลต่อการคำนวณเงินค่า OT ที่จ่ายจริง)',
   },
   {
-    section: 4,
+    section: 5,
     key: 'weekStartsOn', open: 9, label: 'สัปดาห์เริ่มวันใด (เพดานรายสัปดาห์)', num: true,
     options: [
       [1, 'จันทร์ – อาทิตย์ (ค่าเริ่มต้น)'],
@@ -6599,7 +6671,7 @@ const POLICY_FIELDS = [
       + '· ธงบนรายการที่บันทึกไว้แล้วยังเป็นค่าที่อ่านตอนยื่น จนกว่าจะมีการคำนวณใหม่',
   },
   {
-    section: 4,
+    section: 5,
     key: 'hrSummaryBasis', open: 12, label: 'ช่อง OT ×1.5 / ×3 ในใบฟอร์ม',
     options: [['raw', 'ชั่วโมงดิบ ยังไม่คูณ'], ['multiplied', 'คูณอัตราแล้ว']],
     hint: 'ตัวอย่าง: ทำ OT วันปกติ 2 ชม. — “ชั่วโมงดิบ” พิมพ์ 2.00 ลงช่อง ×1.5 (ฝ่ายบัญชีคูณ 1.5 เอง) '
@@ -6609,7 +6681,7 @@ const POLICY_FIELDS = [
       + 'แต่ใบที่พิมพ์ไปแล้วยังเป็นแบบเดิม — เปลี่ยนกลางเดือนแล้วพิมพ์ซ้ำ ตัวเลขบนใบสองใบจะไม่เท่ากัน',
   },
   {
-    section: 4,
+    section: 5,
     key: 'formPrintScope', label: 'นโยบายการพิมพ์ใบขออนุมัติ OT',
     /**
      * THE SHIPPED ANSWER IS FIRST, and it changed again on 2026-09-09. The
@@ -6696,17 +6768,22 @@ const POLICY_FIELDS = [
     warn: (value) => {
       if (['signed', 'approved'].includes(value)) return '';
       if (value === 'draft') {
-        return 'ℹ️ ใบที่พิมพ์จะมีรายการที่ยังไม่มีใครอนุมัติอยู่ด้วย โดยช่อง “ลงชื่อหัวหน้างาน” '
-          + 'ของแถวนั้นจะเว้นว่างไว้จนกว่าจะมีคนกดอนุมัติจริง — หากรายการนั้นถูกปฏิเสธในภายหลัง '
-          + 'ยอดบนกระดาษที่พิมพ์ไปแล้วจะไม่ตรงกับยอดจ่ายจริงในระบบ';
+        // Shortened 2026-10-08 — asked for in as many words, กระชับข้อความ.
+        return 'ℹ️ ใบที่พิมพ์มีรายการที่ยังไม่อนุมัติ ช่องลงชื่อหัวหน้าเว้นว่างไว้ '
+          + '· ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ';
       }
-      return '⚠️ คำเตือน: เอกสารที่พิมพ์จะรวมรายการที่ยังไม่มีใครอนุมัติเข้ามาด้วย '
-        + 'หากนำไปลงลายเซ็นอาจทำให้ยอดในกระดาษไม่ตรงกับยอดจ่ายจริงในระบบ '
-        + 'หากรายการนั้นถูกปฏิเสธในภายหลัง';
+      return '⚠️ ใบที่พิมพ์อาจมีรายการที่ยังไม่อนุมัติ · ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ';
     },
-  },
-  {
+  },  {
     section: 5,
+    key: 'replayApproved', bool: true, label: 'เปลี่ยนนโยบายแล้วคำนวณใบใหม่',
+    options: [[true, 'รวมใบที่อนุมัติแล้ว (ค่าเริ่มต้น)'], [false, 'เฉพาะใบที่รออนุมัติ']],
+    hint: 'ทั้งสองแบบ ใบที่วันทำงานอยู่ก่อนวันเริ่มใช้ยังคิดตามกฎเดิม '
+      + '· มีผลกับการบันทึกครั้งถัดไป เปลี่ยนข้อนี้เองไม่คำนวณอะไร',
+  },
+
+  {
+    section: 6,
     key: 'maxAdvanceSubmissionDays', num: true, nullable: true,
     label: 'จำนวนวันที่อนุญาตให้ยื่น OT ล่วงหน้า (วัน)',
     /**
@@ -6776,7 +6853,7 @@ const POLICY_FIELDS = [
       : ''),
   },
   {
-    section: 5,
+    section: 6,
     key: 'maxPastSubmissionDays', num: true, nullable: true,
     label: 'จำนวนวันที่อนุญาตให้ยื่น OT ย้อนหลัง (วัน)',
     /**
@@ -6817,7 +6894,7 @@ const POLICY_FIELDS = [
         + '· ระบบไม่มีช่องผ่อนผันรายใบสำหรับข้อนี้'),
   },
   {
-    section: 5,
+    section: 6,
     key: 'cancelCutoffDay', num: true, nullable: true,
     /**
      * THE LABEL NAMES ALL THREE VERBS, AND IT IS LONG BECAUSE OF IT.
@@ -6870,7 +6947,7 @@ const POLICY_FIELDS = [
       + `· ใบที่ยื่นย้อนหลังข้ามเดือนจะเลยวันที่ ${value} ตั้งแต่วินาทีที่ยื่น`),
   },
   {
-    section: 6,
+    section: 7,
     key: 'flatDailyPositionMode',
     label: 'ช่องเหมารายวัน แสดงกับตำแหน่งใด',
     options: [
@@ -6898,7 +6975,7 @@ const POLICY_FIELDS = [
       : ''),
   },
   {
-    section: 6,
+    section: 7,
     key: 'flatDailyPositions', positions: true,
     label: 'ตำแหน่งของช่องเหมารายวัน',
     hint: 'เลือกได้หลายตำแหน่ง · รายชื่อมาจากตำแหน่งที่มีอยู่จริงในทะเบียนพนักงาน '
@@ -6906,7 +6983,7 @@ const POLICY_FIELDS = [
       + 'จะยังอยู่ในรายการและติ๊กค้างไว้ ไม่หายไปเงียบ ๆ เพราะคนลาออก',
   },
   {
-    section: 6,
+    section: 7,
     key: 'flatDailyDayScope',
     label: 'ช่องเหมารายวัน แสดงในวันแบบใด',
     options: [
@@ -6926,7 +7003,7 @@ const POLICY_FIELDS = [
       : ''),
   },
   {
-    section: 6,
+    section: 7,
     key: 'noBreakPositionMode',
     label: 'ช่องไม่พักเที่ยง แสดงกับตำแหน่งใด',
     options: [
@@ -6943,7 +7020,7 @@ const POLICY_FIELDS = [
     },
   },
   {
-    section: 6,
+    section: 7,
     key: 'noBreakPositions', positions: true,
     label: 'ตำแหน่งของช่องไม่พักเที่ยง',
     hint: 'เลือกได้หลายตำแหน่ง · รายชื่อมาจากตำแหน่งที่มีอยู่จริงในทะเบียนพนักงาน '
@@ -6951,7 +7028,7 @@ const POLICY_FIELDS = [
       + 'จะยังอยู่ในรายการและติ๊กค้างไว้ ไม่หายไปเงียบ ๆ เพราะคนลาออก',
   },
   {
-    section: 6,
+    section: 7,
     key: 'noBreakDayScope',
     label: 'ช่องไม่พักเที่ยง แสดงในวันแบบใด',
     options: [
@@ -6966,6 +7043,16 @@ const POLICY_FIELDS = [
       workDays: 'วันทำงานปกติเท่านั้น',
       all: 'ไม่จำกัดวัน',
     },
+  },
+  {
+    section: 7,
+    key: 'birthdayNoBreak', label: 'ช่องไม่พักเที่ยงในวันเกิด',
+    options: [
+      ['hide', 'ซ่อน — หักพักเที่ยงเสมอ (ค่าเริ่มต้น)'],
+      ['scope', 'แสดงตามข้อ “ช่องไม่พักเที่ยง แสดงในวันแบบใด”'],
+    ],
+    hint: 'ซ่อนบนฟอร์มยื่นแทนด้วย ช่องที่หายไปจึงบอกหัวหน้าว่ามีคนในใบเกิดวันนั้น '
+      + '· ข้อนี้เปลี่ยนชั่วโมงด้วย: ซ่อนแล้วติ๊กที่ค้างอยู่ไม่ถูกนับ',
   },
 ];
 
@@ -6983,29 +7070,39 @@ const POLICY_FIELDS = [
  * against DEFAULT_POLICY by a test. A flag that changes sides moves the heading
  * with it; a sentence would have stayed where it was and been believed.
  */
-const SECTION_NOTE = Object.fromEntries(POLICY_SECTIONS.map((sec) => {
-  const fields = POLICY_FIELDS.filter((f) => f.section === sec.id);
-  const moves = fields.filter((f) => ARITHMETIC_KEYS.includes(f.key)).length;
-  const recompute = 'แก้แล้วใบทุกใบจะถูกคำนวณใหม่ทันที รวมใบที่อนุมัติแล้ว';
+/** Whether a row moves hours — a two-key row does when either key does. */
+function isArithmetic(field) {
+  return (field.keys || [field.key]).some((k) => ARITHMETIC_KEYS.includes(k));
+}
+
+/**
+ * A FUNCTION SINCE 2026-10-08, because the sentence about what a save replays
+ * now depends on a setting (`replayApproved`, ข้อ เปลี่ยนนโยบายแล้วคำนวณใบใหม่).
+ */
+function sectionNote(id, replayApproved = true) {
+  const fields = POLICY_FIELDS.filter((f) => f.section === id);
+  const moves = fields.filter(isArithmetic).length;
+  const recompute = replayApproved
+    ? 'แก้แล้วใบทุกใบจะถูกคำนวณใหม่ทันที รวมใบที่อนุมัติแล้ว'
+    : 'แก้แล้วใบที่ยังไม่อนุมัติจะถูกคำนวณใหม่ทันที ใบที่อนุมัติแล้วไม่ขยับ';
   if (moves === 0) {
-    return [sec.id, `${fields.length} ข้อ · ไม่มีข้อใดในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง `
-      + '— เปลี่ยนเฉพาะสิทธิ์หรือวิธีแสดงผล'];
+    return `${fields.length} ข้อ · ไม่มีข้อใดในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง — เปลี่ยนเฉพาะสิทธิ์หรือวิธีแสดงผล`;
   }
   if (moves === fields.length) {
-    return [sec.id, `${fields.length} ข้อ · ทุกข้อในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง — ${recompute}`];
+    return `${fields.length} ข้อ · ทุกข้อในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง — ${recompute}`;
   }
-  return [sec.id, `${fields.length} ข้อ · ${moves} ข้อในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง — ${recompute}`];
-}));
+  return `${fields.length} ข้อ · ${moves} ข้อในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง — ${recompute}`;
+}
 
 /** The heading between two blocks — a rule with a name on it, not a card. */
-function PolicyBlockHead({ block }) {
+function PolicyBlockHead({ block, replayApproved }) {
   return (
     <div className="policy-block">
       <div className="policy-section-title">
         <span className="n">กลุ่มที่ {block.id}</span>
         <span>{block.title}</span>
       </div>
-      <div className="policy-section-note">{SECTION_NOTE[block.id]}</div>
+      <div className="policy-section-note">{sectionNote(block.id, replayApproved)}</div>
     </div>
   );
 }
@@ -7032,22 +7129,44 @@ function PolicyBlockHead({ block }) {
  * field moved away from its own siblings would be visibly wrong on the page
  * rather than quietly renumbered behind it.
  */
-const OPEN_LABEL = (() => {
-  const total = {};
-  for (const f of POLICY_FIELDS) if (f.open) total[f.open] = (total[f.open] || 0) + 1;
+const ROW_LABEL = (() => {
+  // กลุ่ม.ลำดับ — 1.1, 1.2 … — since 2026-10-08, asked for as *เรียงตามเลขข้อ*.
+  // It printed the requirements' [OPEN n] number until then, which ran 1, 3,
+  // 3.1 … with gaps and blanks; that number now opens the row's คำอธิบาย.
   const nth = {};
   return POLICY_FIELDS.map((f) => {
-    if (!f.open) return '';
-    if (total[f.open] === 1) return String(f.open);
-    nth[f.open] = (nth[f.open] || 0) + 1;
-    return `${f.open}.${nth[f.open]}`;
+    nth[f.section] = (nth[f.section] || 0) + 1;
+    return `${f.section}.${nth[f.section]}`;
   });
 })();
+
+const TH_DAY_NAMES = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+const TH_DAY_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+/** Monday first, the way the week is read here. */
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+/** What a row holds — one key, or the pair a time row spans. */
+function valueOf(field, policy) {
+  return field.keys ? field.keys.map((k) => policy?.[k]) : policy?.[field.key];
+}
+
+/** The PATCH a row's answer is. */
+function patchOf(field, value) {
+  return field.keys
+    ? Object.fromEntries(field.keys.map((k, i) => [k, value[i]]))
+    : { [field.key]: value };
+}
+
+/** A row's options, worded from the policy where the wording names a figure. */
+function fieldOptions(field, policy) {
+  return field.optionsFor ? field.optionsFor(policy || {}) : field.options;
+}
 
 
 /** One policy value as its dropdown words it — 'accept' → 'รับตามชั่วโมงจริง…'. */
 function valueLabel(key, value) {
-  const field = POLICY_FIELDS.find((f) => f.key === key);
+  const field = POLICY_FIELDS.find((f) => f.key === key || f.keys?.includes(key));
+  if (field?.keys) return minuteLabel(value);
   return field ? optionLabel(field, value) : String(value);
 }
 
@@ -7094,8 +7213,8 @@ function coerce(field, raw) {
  * the same answer, and a reader coming down the left column should not have to
  * cross to find out what it currently is.
  */
-function PolicyReading({ field, value }) {
-  const said = optionLabel(field, value);
+function PolicyReading({ field, value, policy }) {
+  const said = optionLabel(field, value, policy);
   if (!said) return null;
   return (
     <div className="hint" style={{ marginTop: 5 }}>
@@ -7157,6 +7276,8 @@ function Policy({ user }) {
    * while it is being read.
    */
   const [pending, setPending] = useState(null);
+  /** Which rows have their คำอธิบาย open. */
+  const [explained, setExplained] = useState(() => new Set());
   /**
    * ตำแหน่งที่มีอยู่จริงในทะเบียน — the vocabulary the two ตำแหน่ง rows choose from.
    *
@@ -7260,13 +7381,13 @@ function Policy({ user }) {
    * policy value, which records a version and replays every entry in flight.
    * A sign-off must reach neither, so it does not go through it.
    */
-  async function save(key, value) {
+  async function save(patch) {
     setBusy(true);
     setError('');
     setPending(null);
     try {
       const res = await api.patch('/settings/policy', {
-        policy: { [key]: value }, note, effectiveFrom,
+        policy: patch, note, effectiveFrom,
       });
       setPolicy(res.policy);
 
@@ -7332,14 +7453,14 @@ function Policy({ user }) {
    * still up — which is the same rule the row's own `shown` follows, applied to
    * the list instead of to one row.
    */
-  const proposed = pending ? { ...policy, [pending.field.key]: pending.value } : policy;
+  const proposed = pending ? { ...policy, ...patchOf(pending.field, pending.value) } : policy;
 
   return (
     <div className="card">
       <h2>นโยบายการคำนวณ</h2>
       <div className="hint">
         ทุกข้อในหน้านี้คือคำถามที่ยังรอคำตอบจากฝ่ายบุคคล ค่าเริ่มต้นคือข้อเสนอแนะจากเอกสารข้อกำหนด
-        · การแก้ข้อที่มีผลต่อการคำนวณจะคำนวณใบทุกใบใหม่ทันที รวมใบที่อนุมัติแล้ว
+        · การแก้ข้อที่มีผลต่อการคำนวณจะคำนวณใบใหม่ทันทีตามข้อ “เปลี่ยนนโยบายแล้วคำนวณใบใหม่”
         — ใบที่วันทำงานอยู่ก่อนวันเริ่มใช้ยังคิดตามกฎเดิม
       </div>
       {error && <Alert kind="error">{error}</Alert>}
@@ -7427,7 +7548,7 @@ function Policy({ user }) {
              up rather than the stored one. Everything on the row that depends on
              the answer reads this, so the dropdown and the note under it cannot
              end up describing two different values. */
-          const shown = pending?.field.key === f.key ? pending.value : policy[f.key];
+          const shown = pending?.field.key === f.key ? pending.value : valueOf(f, policy);
           const warning = f.warn ? f.warn(shown, policy) : '';
           /* Whether this row's answer does anything at all — decided by the
              other rows, read off `proposed` so the note and every dropdown on
@@ -7438,20 +7559,42 @@ function Policy({ user }) {
              of the nineteen rules explain neither themselves nor their options.
              It counted a third thing — ที่มาของค่าที่ใช้อยู่, off the withdrawn
              HR_UNCONFIRMED list — until 2026-09-08. */
-          const detail = Boolean(f.hint || f.optionHints);
+          const detail = Boolean(f.hint || f.optionHints || f.open);
+          /* คำอธิบาย — the toggle sits after the title since 2026-10-08 and
+             opens under the answer line. It was a Disclosure reading อ่านต่อ
+             below that line until then. */
+          const explainedOpen = explained.has(f.key);
+          const helpId = `policy-help-${f.key}`;
 
           return (
             <React.Fragment key={f.key}>
-              {opensBlock && <PolicyBlockHead block={block} />}
+              {opensBlock && <PolicyBlockHead block={block} replayApproved={policy.replayApproved !== false} />}
               <div className="policy-row">
                 <div className="policy-row-q">
                   {/* Always rendered, empty or not: it is the left column of
                       .policy-row-q's own grid, and a title with no number in
                       front of it has to start where the numbered ones do. */}
                   <span className="policy-num">
-                    {OPEN_LABEL[i] ? `ข้อ ${OPEN_LABEL[i]}` : ''}
+                    {`ข้อ ${ROW_LABEL[i]}`}
                   </span>
-                  <div className="policy-label">{f.label}</div>
+                  <div className="policy-label">
+                    {f.label}
+                    {detail && (
+                      <button
+                        type="button"
+                        className="link policy-explain"
+                        aria-expanded={explainedOpen}
+                        aria-controls={helpId}
+                        onClick={() => setExplained((cur) => {
+                          const next = new Set(cur);
+                          if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
+                          return next;
+                        })}
+                      >
+                        คำอธิบาย {explainedOpen ? '▴' : '▾'}
+                      </button>
+                    )}
+                  </div>
                   {/* THE ANSWER, THEN ONE FOLD — 2026-09-07, and the shape this
                       page settled on after three in a day.
 
@@ -7465,9 +7608,14 @@ function Policy({ user }) {
                       `shown` and not `policy[f.key]`: while a change is in its
                       confirm dialog this line says what is about to be, which
                       is the value the dialog is asking about. */}
-                  <PolicyReading field={f} value={shown} />
+                  <PolicyReading field={f} value={shown} policy={proposed} />
                   {detail && (
-                    <Disclosure as="div" lines={0} className="policy-detail" of={f.label}>
+                    <div id={helpId} className="policy-detail" hidden={!explainedOpen}>
+                      {/* The requirements' own question number, which the ข้อ
+                          column printed until 2026-10-08. */}
+                      {f.open && (
+                        <div className="policy-ref">คำถามข้อ {f.open} ในเอกสารข้อกำหนด</div>
+                      )}
                       {/* What the rule does. Twelve of the nineteen explain
                           themselves here and the longest runs to 671
                           characters. */}
@@ -7477,7 +7625,7 @@ function Policy({ user }) {
                           nothing, which is every other row on this page. */}
                       {f.optionHints && (
                         <dl className="policy-options">
-                          {f.options
+                          {fieldOptions(f, proposed)
                             .filter(([v]) => f.optionHints[String(v)])
                             .map(([v, l]) => (
                               <React.Fragment key={String(v)}>
@@ -7487,7 +7635,7 @@ function Policy({ user }) {
                             ))}
                         </dl>
                       )}
-                    </Disclosure>
+                    </div>
                   )}
                 </div>
                 <div className="policy-row-a">
@@ -7529,7 +7677,56 @@ function Policy({ user }) {
 
                       DISABLED UNTIL THE ROSTER ARRIVES. A picker that opens on
                       an empty list reads as a rule with nothing to choose. */}
-                  {f.positions ? (
+                  {f.time ? (
+                    /* Two PickTimes — the form's own picker, so a time here is
+                       chosen the way a time on บันทึก OT is. Either half opens
+                       the confirm dialog with the pair it would make. */
+                    <div className="policy-time-pair">
+                      {[0, 1].map((half) => (
+                        <React.Fragment key={half}>
+                          {half === 1 && <span className="policy-time-to">ถึง</span>}
+                          <PickTime
+                            label={`${f.label} — ${half ? 'สิ้นสุด' : 'เริ่ม'}`}
+                            disabled={!canEdit || busy}
+                            value={minuteLabel(shown?.[half])}
+                            onChange={(v) => {
+                              const m = /^(\d{2}):(\d{2})$/.exec(v || '');
+                              if (!m) return;
+                              const next = [...shown];
+                              next[half] = Number(m[1]) * 60 + Number(m[2]);
+                              if (next[half] !== shown[half]) setPending({ field: f, value: next });
+                            }}
+                          />
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  ) : f.days ? (
+                    /* Seven toggles, Monday first — `filter-chip`, the pressed
+                       button ตรวจสอบประจำเดือน already uses. Each press is a
+                       change of its own and goes through the dialog. */
+                    <div className="policy-days" role="group" aria-label={f.label}>
+                      {DAY_ORDER.map((d) => {
+                        const list = Array.isArray(shown) ? shown : [];
+                        const on = list.includes(d);
+                        return (
+                          <button
+                            type="button"
+                            key={d}
+                            className={`filter-chip${on ? ' on' : ''}`}
+                            aria-pressed={on}
+                            aria-label={TH_DAY_NAMES[d]}
+                            disabled={!canEdit || busy}
+                            onClick={() => setPending({
+                              field: f,
+                              value: on ? list.filter((x) => x !== d) : [...list, d].sort((a, b) => a - b),
+                            })}
+                          >
+                            {TH_DAY_SHORT[d]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : f.positions ? (
                     <PickMany
                       label={f.label}
                       hideLabel
@@ -7564,7 +7761,7 @@ function Policy({ user }) {
                        value on its own — there is no second copy to reset. */
                     value={String(shown)}
                     onChange={(v) => setPending({ field: f, value: coerce(f, v) })}
-                    options={f.options.map(([v, l]) => ({ value: String(v), label: l }))}
+                    options={fieldOptions(f, proposed).map(([v, l]) => ({ value: String(v), label: l }))}
                   />
                   )}
                   {/* Against the control rather than against the question: it is
@@ -7589,7 +7786,7 @@ function Policy({ user }) {
                       above it and answered that second question until
                       2026-09-08; with the pill withdrawn, nothing on this page
                       does, and this line means what it says and no more. */}
-                  {overrides.includes(f.key) && (
+                  {(f.keys || [f.key]).some((k) => overrides.includes(k)) && (
                     <div className="policy-override">ตั้งทับค่าตั้งต้น</div>
                   )}
                 </div>
@@ -7618,14 +7815,14 @@ function Policy({ user }) {
         <ConfirmPolicyChange
           field={pending.field}
           policy={policy}
-          from={policy[pending.field.key]}
+          from={valueOf(pending.field, policy)}
           to={pending.value}
           effectiveFrom={effectiveFrom}
           todayISO={todayISO}
           note={note}
           busy={busy}
           onCancel={() => setPending(null)}
-          onConfirm={() => save(pending.field.key, pending.value)}
+          onConfirm={() => save(patchOf(pending.field, pending.value))}
         />
       )}
     </div>
@@ -7641,8 +7838,17 @@ function Policy({ user }) {
  * chosen. This is read by three things that must agree: ค่าที่ใช้อยู่ under the
  * question, the closed control, and the ยืนยันการเปลี่ยนกฎ dialog's `เก่า → ใหม่`.
  */
-function optionLabel(field, value) {
-  if (!field.options) {
+function optionLabel(field, value, policy) {
+  if (field.time) {
+    return Array.isArray(value) ? `${minuteLabel(value[0])}–${minuteLabel(value[1])}` : '';
+  }
+  if (field.days) {
+    const set = new Set(Array.isArray(value) ? value : []);
+    const names = DAY_ORDER.filter((d) => set.has(d)).map((d) => TH_DAY_NAMES[d]);
+    return names.length ? names.join(' · ') : 'ไม่มี';
+  }
+  const options = fieldOptions(field, policy);
+  if (!options) {
     const list = Array.isArray(value) ? value : [];
     // "ไม่ได้เลือกไว้" AND NOT AN EMPTY STRING: `PolicyReading` draws nothing on
     // a falsy label, and a row whose answer is "none" would then be the one row
@@ -7651,7 +7857,7 @@ function optionLabel(field, value) {
     // the tick off for everybody, so it has to be legible.
     return list.length ? list.join(' · ') : 'ไม่ได้เลือกไว้';
   }
-  const found = field.options.find(([v]) => String(v) === String(value));
+  const found = options.find(([v]) => String(v) === String(value));
   return found ? found[1] : String(value);
 }
 
@@ -7684,7 +7890,7 @@ function optionLabel(field, value) {
 function ConfirmPolicyChange({
   field, policy, from, to, effectiveFrom, todayISO, note, busy, onCancel, onConfirm,
 }) {
-  const arithmetic = ARITHMETIC_KEYS.includes(field.key);
+  const arithmetic = isArithmetic(field);
   const announced = effectiveFrom > todayISO;
   /**
    * The same sentence the row carries, about the answer being proposed rather
@@ -7718,7 +7924,7 @@ function ConfirmPolicyChange({
    *   change so a row that was already inert is not reported as a consequence
    *   of this one.
    */
-  const after = { ...policy, [field.key]: to };
+  const after = { ...policy, ...patchOf(field, to) };
   const inert = inertReason(field.key, after);
   const disables = INERT_KEYS.filter(
     (key) => key !== field.key && inertReason(key, after) && !inertReason(key, policy),
@@ -7742,9 +7948,9 @@ function ConfirmPolicyChange({
     >
       <div className="policy-confirm">
         <div className="change">
-          <span className="was">{optionLabel(field, from)}</span>
+          <span className="was">{optionLabel(field, from, policy)}</span>
           <span className="to">→</span>
-          <span className="now">{optionLabel(field, to)}</span>
+          <span className="now">{optionLabel(field, to, after)}</span>
         </div>
 
         <Alert kind={arithmetic ? 'warn' : 'info'}>
@@ -7782,8 +7988,11 @@ function ConfirmPolicyChange({
               and คิดใหม่ is the more exact word for what a policy replay does. */}
           <div className="say">
             {arithmetic
-              ? 'ข้อนี้เปลี่ยนจำนวนชั่วโมง — ระบบจะคำนวณใบทุกใบใหม่ทันทีหลังบันทึก รวมใบที่อนุมัติแล้ว '
-                + '· ใบที่วันทำงานอยู่ก่อนวันเริ่มใช้ยังคิดตามกฎเดิม'
+              ? (after.replayApproved !== false
+                ? 'ข้อนี้เปลี่ยนจำนวนชั่วโมง — ระบบจะคำนวณใบทุกใบใหม่ทันทีหลังบันทึก รวมใบที่อนุมัติแล้ว '
+                  + '· ใบที่วันทำงานอยู่ก่อนวันเริ่มใช้ยังคิดตามกฎเดิม'
+                : 'ข้อนี้เปลี่ยนจำนวนชั่วโมง — ระบบจะคำนวณใบที่ยังไม่อนุมัติใหม่ทันทีหลังบันทึก '
+                  + '· ใบที่อนุมัติแล้วไม่ถูกคิดใหม่')
               : 'ข้อนี้ไม่เปลี่ยนจำนวนชั่วโมงของใบใดเลย ไม่มีการคำนวณใหม่ '
                 + '· เปลี่ยนเฉพาะสิทธิ์หรือวิธีแสดงผล'}
           </div>

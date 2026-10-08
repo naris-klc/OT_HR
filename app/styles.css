@@ -8868,6 +8868,31 @@ tbody tr:hover { background: var(--green-wash); }
    explains what is being asked, and the answer to it is opposite. */
 .policy-help { margin-top: 5px; }
 
+/* คำอธิบาย — 2026-10-08. The toggle rides on the title line, after the words,
+   and opens what is under the answer line. It was a Disclosure below that line
+   reading อ่านต่อ; asked for in as many words: *เปลี่ยนเป็น "คำอธิบาย" และย้ายไป
+   อยู่หลังชื่อหัวข้อ*. */
+.policy-label .policy-explain {
+  margin-left: 8px; vertical-align: 1px;
+  font: 500 12px/1.5 var(--sans); white-space: nowrap;
+}
+.policy-detail { margin-top: 5px; }
+/* The requirements' question number, which the ข้อ gutter printed until the
+   rows were numbered กลุ่ม.ลำดับ. */
+.policy-ref { font: 600 11.5px/1.5 var(--sans); color: var(--muted-2); }
+
+/* เวลาทำงานปกติ · ช่วงพักเที่ยง — two PickTimes and the word between them. */
+.policy-time-pair { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.policy-time-pair > :not(.policy-time-to) { flex: 1 1 0; min-width: 0; }
+.policy-time-to { font: 400 13px/1.5 var(--sans); color: var(--muted); white-space: nowrap; }
+
+/* วันหยุดประจำสัปดาห์ — seven `filter-chip`s, Monday first. */
+.policy-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.policy-days .filter-chip { min-width: 40px; text-align: center; }
+@media (max-width: 860px) {
+  .policy-days .filter-chip { flex: 1 0 40px; min-height: 44px; }
+}
+
 /* ── ค่าที่ต่างจากค่าตั้งต้น, as chips ─────────────────────────────────────
 
    The banner on นโยบายการคำนวณ listed one line per override — `ชื่อข้อ: เก่า →

@@ -356,8 +356,9 @@ test('and the approved entry still reproduces from the version it kept', () => {
  */
 test('บันทึกนโยบาย — คำนวณใหม่ทุกใบที่ยังมีผล รวมใบอนุมัติแล้ว ไม่ต้องเลือก', () => {
   const src = readFileSync(new URL('../lib/policySave.js', import.meta.url), 'utf8');
-  assert.match(src, /const includeApproved = true;/);
-  assert.match(src, /status: \{ \$in: \['pending_mgr', 'pending_hr', 'approved'\] \}/);
+  // Since 2026-10-08 a setting, default on: ข้อ เปลี่ยนนโยบายแล้วคำนวณใบใหม่.
+  assert.match(src, /const includeApproved = policy\.replayApproved !== false;/);
+  assert.equal(DEFAULT_POLICY.replayApproved, true);
   assert.ok(!/const includeApproved = recompute/.test(src));
   assert.ok(!/authorizeReplay\(/.test(src));
 

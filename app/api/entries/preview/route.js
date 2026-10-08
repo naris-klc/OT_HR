@@ -202,11 +202,15 @@ export const POST = route(async (req) => {
    * rather than refused — the batch is checked again, per person, when it is
    * sent.
    */
-  let noBreakOff = (result?.segments || []).some((x) => x.dayReason === 'birthday');
+  // Only while `birthdayNoBreak` hides it — a setting since 2026-10-08, read
+  // from the version in force on the date like every other rule on this ใบ.
+  const hidesOnBirthday = ctx.policy?.birthdayNoBreak !== 'scope';
+  let noBreakOff = hidesOnBirthday
+    && (result?.segments || []).some((x) => x.dayReason === 'birthday');
   const others = Array.isArray(payload.employeeIds)
     ? [...new Set(payload.employeeIds.map(String))].filter((id) => id !== String(employeeId))
     : [];
-  for (const id of noBreakOff ? [] : others) {
+  for (const id of noBreakOff || !hidesOnBirthday ? [] : others) {
     const other = await Employee.findById(id).populate('department').catch(() => null);
     if (!other) continue;
     if (!['hr', 'admin'].includes(user.role) && String(other._id) !== String(user._id)

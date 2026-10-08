@@ -769,6 +769,33 @@ export const DEFAULT_POLICY = Object.freeze({
   noBreakPositions: ['เจ้าหน้าที่บริการ'],
   /** ไม่พักเที่ยง — วัน: เฉพาะวันหยุด (HR, 2026-09-08). */
   noBreakDayScope: 'offDays',
+
+  // ── แก้ได้บนหน้าตั้งค่า — 2026-10-08 ─────────────────────────────────────────
+  // The rules settled in conversation that day, each made a flag so the next
+  // change is a setting rather than a commit: *ทำให้แก้ไขได้ผ่าน ui ได้แบบยืดหยุ่น
+  // ต่อไปจะได้ไม่ต้องมาแก้โค้ดอีก*. Every default is the behaviour that shipped
+  // before the flag existed, and the engine merges DEFAULT_POLICY under any
+  // recorded version — so a version written before these keys reads them at
+  // these values and no stored hour moves by their arrival.
+
+  /** อัตรา OT วันหยุด ในเวลางาน (coreStart–OT start) — 1.5 or 3, the two
+      columns F-HR-027 and the accounting file have. */
+  holidayCoreRate: 1.5,
+  /** อัตรา OT วันหยุด นอกเวลางาน. */
+  holidayOuterRate: 3,
+  /** วันที่ติ๊กไม่พักเที่ยง — 'clock' follows the two rates above; 'all15' puts
+      every hour of that day in ×1.5. */
+  noBreakRate: 'clock',
+  /** วันเกิด — 'clock': the holiday rates, ×1.5 capped at the standard day;
+      'worked': the first standard day of hours WORKED ×1.5, the rest ×3. */
+  birthdaySplit: 'clock',
+  /** วันเกิดที่ตรงเสาร์–อาทิตย์หรือวันหยุดบริษัท — 'birthday' or 'holiday'. */
+  birthdayOnHoliday: 'birthday',
+  /** ช่องไม่พักเที่ยงในวันเกิด — 'hide' (and the tick is ignored) or 'scope'
+      (whatever noBreakDayScope says). */
+  birthdayNoBreak: 'hide',
+  /** บันทึกนโยบายแล้วคำนวณใบอนุมัติแล้วใหม่ด้วยไหม. */
+  replayApproved: true,
 });
 
 /** โหมดของเงื่อนไขตำแหน่ง — ค่าที่ `*PositionMode` รับได้. */
