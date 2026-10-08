@@ -7307,51 +7307,37 @@ td > .approver-line { margin-top: 5px; }
    bought 188 → 170 by widening the column; this gives eight of those eighteen
    back, on the rows that carry a finding, and that is the trade — a row that
    is legible at a glance against a row that is shorter. */
-.stack-table td.when-cell .entry-mark { margin-top: 8px; }
+/* ⚠ THE CELL IS TWO LINES SINCE 2026-10-08 (แบบ C) — *"กระชับเป็น 2 แถว"*.
+   The three spacings above described a stack of times / mark / punches; the
+   mark now ENDS the punches line (`.when-scan`), because it is a verdict on
+   them. Inline rather than flex, so the line follows the cell's own
+   text-align: left on the desktop row, right on the phone card — one rule for
+   both widths and nothing for the 860px block to re-space. A pair too long for
+   the column wraps the chip under the punches instead of overflowing. */
+.stack-table td.when-cell .when-scan { margin-top: 2px; }
+.stack-table td.when-cell .when-scan > .cell-sub.th { display: inline; }
+.entry-table.stack-table tbody td.when-cell .when-scan .entry-mark {
+  display: inline-block; vertical-align: middle; margin: 0;
+}
+.stack-table td.when-cell .when-scan > .cell-sub.th + .entry-mark { margin-left: 6px; }
 .stack-table td.when-cell .entry-mark .cell-sub.th {
   margin-top: 4px;
   font-size: 11.5px; line-height: 1.5;
   color: var(--muted-2);
 }
-.stack-table td.when-cell > .cell-sub.th { margin-top: 6px; }
-
-/* ── TWO BADGES THAT NO LONGER FIT SIDE BY SIDE ─────────────────────────────
-   Reported on 2026-09-07 as "แท็กมันซ้อน ๆ กัน" and measured: on a row carrying
-   both `ไม่ได้สแกนเข้า OT` (104px) and `ไม่ครบ · ขาด 47 นาที` (120px) the pair
-   wants 230px and the cell has 191, so the second wraps — and it wrapped into
-   the two defects below. The column being widened this same day is what made
-   the pair NEARLY fit, which is why this surfaced now rather than in September.
-
-   ONE — THE PILLS TOUCHED. Measured gap: **0px**. `.chip` is `inline-block`, so
-   two of them on consecutive line boxes stack their margin boxes edge to edge:
-   an amber pill's top border sitting on a grey pill's bottom border, which is
-   what reads as one badge overlapping another. 4px is the same step `.entry-mark`
-   uses everywhere else in this cell.
-
-   TWO — THE SECOND ONE WAS INDENTED 6px. `.entry-mark .chip + .chip` puts the
-   gap on the SECOND chip's left, which is right while they share a line and
-   becomes a left indent the moment they do not: the wrapped pill started 6px in
-   from the pill above it and from the two lines below it, so nothing in the
-   cell lined up. The gap moves to the first chip's RIGHT, where it means the
-   same thing on one line and nothing at all on two.
-
-   ONLY THE HORIZONTAL HALF IS DESKTOP-SCOPED, and that is not tidiness: below
-   860px this cell is a card field whose value is RIGHT-aligned, so a trailing
-   margin-right would push the pill 6px off the edge every other value on the
-   card lines up with. The vertical 4px is unscoped because a stack is a stack
-   in both layouts. Measured at 360px: the two pills sit side by side there (the
-   field is wider than the desktop column), so neither rule changes anything —
-   which is the answer this scoping is written to guarantee, not an accident.
-
-   `:not(:last-of-type)` and not `:first-child`: the last SPAN in this cell is
-   the last chip (the explanation under them is a `div`), so the trailing pill
-   never carries a margin into whatever follows it. A one-chip row — most rows —
-   matches nothing here and costs nothing. */
-.stack-table td.when-cell .entry-mark .chip:not(:last-of-type) { margin-bottom: 4px; }
-@media (min-width: 861px) {
-  .stack-table td.when-cell .entry-mark .chip { margin-left: 0; }
-  .stack-table td.when-cell .entry-mark .chip:not(:last-of-type) { margin-right: 6px; }
+/* เหมารายวัน / วันเกิด under the date (2026-10-08) — a fact about the DAY, so it
+   sits with the day. Block and not the desktop row's inline `.entry-mark`: under
+   the date is the ask, beside it would widen the one column that never wraps. */
+.entry-table.stack-table tbody td.stack-name .day-mark {
+  display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0 0;
 }
+
+/* ── TWO BADGES THAT NO LONGER FIT SIDE BY SIDE — WITHDRAWN 2026-10-08 ──────
+   Two rules spaced a pair of chips in จาก–ถึง (reported 2026-09-07 as "แท็กมัน
+   ซ้อน ๆ กัน"). The pair was เหมารายวัน beside a scan mark, and เหมารายวัน
+   moved under the date — a pair there is spaced by `.day-mark`'s flex gap, which
+   cannot touch or indent. The scan mark never draws on a flat day, so จาก–ถึง
+   holds one chip at most. */
 
 /* ── the two columns that hold prose ───────────────────────────────────────
    ตรวจสอบใบของพนักงาน is nine columns of figures, times and dates plus two that

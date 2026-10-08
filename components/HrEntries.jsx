@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayAbbr, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  Alert, CancelledMark, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, Modal, ProxyMark,
+  Alert, BirthdayWelfareMark, CancelledMark, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark,
+  Modal, ProxyMark,
   RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
   NoticeStack, RowAction, ShowMore, StatusChip, editsOf, trailOf,
 } from './common.jsx';
-import { hasAuditTrail, isProxyFiled } from '@/lib/entries.js';
+import { hasAuditTrail, isBirthdayWelfare, isProxyFiled } from '@/lib/entries.js';
 import {
   describeBreaches, OVER_CEILING_REASON_APPROVE, OVER_CEILING_REASON_SAY, overCeilingApproveHead,
 } from '@/lib/caps.js';
@@ -898,6 +899,18 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                     <td className="stack-name">
                       <span className="cell-sub th when-day">{dayAbbr(e.workDate)}</span>
                       {thaiDate(e.workDate)}
+                      {/* ── เหมารายวัน / วันเกิด UNDER THE DATE — 2026-10-08 ──
+                          *"สถานะ เหมารายวัน / วันเกิด ไปอยู่ใต้วันที่"*. Both
+                          say what the DAY is, not what the scanner saw, so
+                          they leave จาก–ถึง to the scan mark alone. วันเกิด was
+                          not on this screen at all before; it reads
+                          `segments[].dayReason`, which this list carries. */}
+                      {(e.flatDaily || isBirthdayWelfare(e)) && (
+                        <div className="entry-mark day-mark">
+                          <FlatDailyMark entry={e} />
+                          <BirthdayWelfareMark entry={e} />
+                        </div>
+                      )}
                     </td>
                     {/* `when-cell` — a CLASS, and the `data-label` beside it
                         stays because that is what the phone card prints as the
@@ -909,43 +922,26 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                         `when-col` on the `th` is a class. */}
                     <td className="when-cell" data-label="จาก–ถึง">
                       {e.startTime}–{e.endTime}
-                      {/* BESIDE THE TIMES, not beside the description with the
-                          other marks. This one is about these two numbers and
-                          nothing else on the row; the reader whose eye it has to
-                          catch is already looking at the cell it disagrees with.
-                          `entry-mark` gives it the same 6px and the same width
-                          cap the description's chips get on a phone card. */}
-                      {/* TWO MARKS, ONE CELL, AND THE GATES ARE DIFFERENT.
-                          `เหมารายวัน` is a fact about the FILING — true on a
-                          month nobody has imported a scanner file for — so it
-                          is drawn from `e.flatDaily` alone. The scan warning
-                          needs evidence to have been compared, so it is gated
-                          on `scanChecked`. Only one of the two ever draws on a
-                          given row: `ScanMismatchMark` stands down on a flat
-                          day, because there the difference is expected and the
-                          green chip is the answer.
+                      {/* ── TWO LINES: THE TIMES, THEN WHAT THE SCANNER SAW
+                          AND WHAT THAT MEANS — แบบ C, 2026-10-08 ─────────────
+                          It was three: the times, the mark, the punches. Asked
+                          for as *"กระชับเป็น 2 แถว"*, with three mockups; the
+                          mark went to the END OF THE PUNCHES LINE because it
+                          is a verdict on those punches — "เริ่ม 19:58" then
+                          "เวลาเริ่มไม่ตรงกับสแกน" reads as one sentence, and
+                          the times above stay alone on their line.
 
-                          IT WAS THREE FROM 2026-09-04 TO 2026-09-09. The grey
-                          `ไม่ได้สแกนเข้า OT` said what the machine did not
-                          witness at the start, on a row whose verdict was fine
-                          — which was most of them, 25 of 27 on a real month.
-                          ฝ่ายบุคคล withdrew it: *ปกติพนักงานก็ไม่สแกนกันอยู่แล้ว*,
-                          so the mark was true of nearly every row and told a
-                          reader nothing about the one in front of them. The
-                          day's scan line under these chips still shows whoever
-                          wants to know. */}
-                      {(e.flatDaily || (scanChecked && e.scanCheck)) && (
-                        <div className="entry-mark">
-                          <FlatDailyMark entry={e} />
-                          {scanChecked && <ScanMismatchMark entry={e} />}
+                          GATED ON `scanChecked` for both halves: the mark needs
+                          evidence to have been compared. เหมารายวัน, which does
+                          not, went to the date cell the same day. A line too
+                          long for the column wraps the chip under the punches
+                          rather than overflowing. */}
+                      {scanChecked && e.scanCheck && (
+                        <div className="when-scan">
+                          <ScanDayPunches entry={e} />
+                          <div className="entry-mark"><ScanMismatchMark entry={e} /></div>
                         </div>
                       )}
-                      {/* THE DAY'S SCANS, ON EVERY ROW THAT HAS ANY — under
-                          the chips and under the times they exist to be read
-                          against. NOT inside `entry-mark`: that class caps its
-                          content against the phone card because it holds pills,
-                          and this is a line of text that should wrap. */}
-                      {scanChecked && <ScanDayPunches entry={e} />}
                     </td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
