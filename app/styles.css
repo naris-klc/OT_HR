@@ -2154,11 +2154,36 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    comment over `.month-notices` in components/HrView.jsx for why the condition
    is here and not in the JSX. */
 .month-notices {
-  display: flex; flex-direction: column; gap: 10px;
-  padding: 12px 18px; border-bottom: 1px solid var(--line-soft);
+  display: flex; flex-direction: column;
+  margin: 12px 18px; padding: 2px 14px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm, 10px);
+  background: var(--neutral-wash);
 }
 .month-notices:empty { display: none; }
 .month-notices > * { margin: 0; }
+
+/* ── ONE BOX, ONE ROW PER MATTER — 2026-10-08, *"รวมเป็นแบนเนอร์เดียวกัน"* ──
+
+   The three notices used to be three boxes with three washes, three borders and
+   a gap between them. The band is the box now, and what is inside it is rows:
+   each child (`.period-strip`, `.scan-compare`, `.alert`, `.alerts-recall`)
+   gives up its own ground, border and radius and keeps its content, its mark
+   and its own logic. A hairline between rows is the only separator.
+
+   THE BOX TAKES THE AMBER WHEN ANY ROW IS AMBER — "the colour is the worst of
+   them", the rule `MonthAlerts` already states for its own list. A green
+   ✓ row beside an amber one keeps its green mark; the ground is not a mark. */
+.month-notices > * + * { border-top: 1px solid var(--line-soft); }
+.month-notices .box:is(.warn, .ok, .info, .error),
+.month-notices .alert:is(.warn, .ok, .info, .error),
+.month-notices .scan-compare .alert:is(.warn, .ok, .info, .error) {
+  /* `:is(...)` is for specificity: `.box.warn` and `.alert.tight` are declared
+     further down and tie a bare `.month-notices .box`, and the later one wins. */
+  background: transparent; border: 0; border-radius: 0; box-shadow: none;
+  padding-left: 0; padding-right: 0;
+}
+.month-notices:has(.warn) { background: var(--amber-bg); border-color: var(--amber-line); }
+.month-notices:has(.warn) > * + * { border-top-color: var(--amber-line); }
 
 /* ── ลิ้นชักนำเข้าไฟล์สแกน — components/ScanImport.jsx ──────────────────────
 

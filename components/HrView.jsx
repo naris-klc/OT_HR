@@ -553,6 +553,9 @@ export default function HrView({
    * The hint under the table that explains that about ค้นหา covers this too.
    */
   const [onlyFlagged, setOnlyFlagged] = useState(false);
+  // ONE control for the month's notice box — the scan tally and the policy list
+  // open together (2026-10-08, mockup A).
+  const [noticesOpen, setNoticesOpen] = useState(false);
 
   /**
    * ── ใครถูกติ๊กไว้ — a Set of EMPLOYEE ids, not entry ids ──────────────────
@@ -1592,6 +1595,8 @@ export default function HrView({
                  2026-09-11 screenshot caught: two controls that open a drawer,
                  stacked above the drawer, open. */
               importOpen={scanOpen}
+              detailOpen={noticesOpen}
+              onToggleDetail={() => setNoticesOpen((v) => !v)}
             />
           )}
 
@@ -1612,6 +1617,10 @@ export default function HrView({
               policy={data.policy}
               hrVerifiedCount={data.hrVerifiedCount}
               rowAction={openRowLabel(mayCorrect)}
+              /* The scan row owns the shared ดูรายละเอียด whenever it has a
+                 tally to open; without one this notice keeps its own. */
+              shared={readsScans && !!scan?.punchCount && !!scan?.compare?.counts}
+              open={noticesOpen}
             />
           )}
 
@@ -2888,8 +2897,11 @@ function MonthAlerts({
    * when the button says Y is a dead end for the one person following it.
    */
   rowAction,
+  /** `shared`: the scan row above holds the one ดูรายละเอียด; `open` is its state. */
+  shared = false, open: sharedOpen = false,
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = shared ? sharedOpen : ownOpen;
   const [shut, setShut] = useState(alertsDismissed);
 
   const notices = [];
@@ -2973,19 +2985,21 @@ function MonthAlerts({
           words, and a screen that says them twice fourteen pixels apart is a
           screen a reader has to check for a difference that is not there. */}
       <div className="alerts-say">
-        <strong className="alerts-head">
-          {`แจ้งเตือนของ ${periodName}`}
-          {notices.length > 1 && ` · ${notices.length} ข้อความ`}
-        </strong>
-        {!open && <span>{'— '}{notices.map((n) => n.label).join(' · ')}</span>}
-        <button
-          type="button"
-          className="fold-pill"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? 'ซ่อน ▲' : 'ดูรายละเอียด ▼'}
-        </button>
+        {/* ONE ROW IN THE SHARED BOX (2026-10-08): the box is the heading now, so
+            this is only the labels — what each notice is about — and the press
+            that opens them, unless the scan row above already holds that press. */}
+        {!open && <span>{notices.map((n) => n.label).join(' · ')}</span>}
+        {open && <strong className="alerts-head">{`แจ้งเตือนของ ${periodName}`}</strong>}
+        {!shared && (
+          <button
+            type="button"
+            className="fold-pill"
+            aria-expanded={open}
+            onClick={() => setOwnOpen((v) => !v)}
+          >
+            {open ? 'ซ่อน ▲' : 'ดูรายละเอียด ▼'}
+          </button>
+        )}
       </div>
       {/* ⚠ ONE ITEM IS ONE FLOW SINCE 2026-09-11, AND IT WAS TWO BLOCKS — the
           statement and its figures on one line, the instruction in brackets on
