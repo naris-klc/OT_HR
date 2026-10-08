@@ -77,14 +77,13 @@ test('the submit button is the plain green .btn — no variant to dilute it', ()
   assert.match(code, /passwordShapePermission\(next\)/, 'the form checks a rule of its own');
 });
 
-test('a grey button says why it is grey — and stands down when a field already has', () => {
+test('an empty box says so itself once visited — no standing "fill all three" line', () => {
   const code = sourceOf(PROFILE);
-  assert.match(
-    code,
-    /\{!ready && !busy && shape\.ok && !unchanged && !mismatch && \(/,
-    'the readiness note must not talk over a field-level error',
-  );
-  assert.match(code, /กรอกให้ครบทั้งสามช่อง/);
+  assert.ok(!/กรอกให้ครบทั้งสามช่อง/.test(code), 'the sentence under the button is back');
+  for (const msg of ['กรุณากรอกรหัสผ่านเดิม', 'กรุณากรอกรหัสผ่านใหม่', 'กรุณายืนยันรหัสผ่านใหม่']) {
+    assert.ok(code.includes(msg), `${msg} is gone — the box no longer says it is empty`);
+  }
+  assert.match(code, /onBlur=\{visit\('current'\)\}/);
   assert.match(styles(), /\.profile-submit \{[^}]*align-items: flex-start[^}]*\}/);
 });
 

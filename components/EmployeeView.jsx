@@ -921,8 +921,10 @@ export default function EmployeeView({ user, onChanged, openSignal = 0, notices 
             {/* Required here and optional on ยกเลิก, and the note says which:
                 this asks somebody to take back what they signed, and the person
                 deciding cannot decide without knowing why. */}
-            <span className="field-note">
-              จำเป็นต้องกรอก — หัวหน้างานที่เซ็นอนุมัติไว้และฝ่ายบุคคลจะเห็นข้อความนี้ และจะถูกบันทึกไว้ในประวัติรายการถาวร
+            <span className={`field-note${askReason.trim() ? '' : ' error'}`}>
+              {askReason.trim()
+                ? 'หัวหน้างานที่เซ็นอนุมัติไว้และฝ่ายบุคคลจะเห็นข้อความนี้ และจะถูกบันทึกไว้ในประวัติรายการถาวร'
+                : 'ต้องระบุเหตุผลก่อนจึงจะถอนใบได้'}
             </span>
           </div>
           {/* ⚠ THIS PANEL SAID THE OPPOSITE UNTIL 2026-09-18, and it was the

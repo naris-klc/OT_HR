@@ -1309,7 +1309,7 @@ const SECTIONS = [
                   <span className="mk-dlg">
                     <span className="mk-dlg-h">ถอนใบที่อนุมัติแล้ว</span>
                     <MkField label="เหตุผลที่ถอน" on>เช่น งานถูกยกเลิกกะทันหัน</MkField>
-                    <MkNote>จำเป็นต้องกรอก — หัวหน้าที่เซ็นไว้จะเห็นข้อความนี้</MkNote>
+                    <MkNote>ต้องระบุเหตุผลก่อนจึงจะถอนใบได้</MkNote>
                     <span className="mk-acts">
                       <MkBtn ghost>ปิด</MkBtn>
                       <MkBtn>ถอนใบ</MkBtn>

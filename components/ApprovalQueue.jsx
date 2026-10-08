@@ -2644,10 +2644,14 @@ function ConfirmModal({
               is telling somebody to fill in — the short form is what is left to
               say, and it is the one ไม่อนุมัติ has printed under its own box
               since it existed. */}
-          <div className="field-note">
-            {`ต้องกรอกเหตุผลก่อนจึงจะ${verb}ได้`}
-            {many && ' · เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้'}
-          </div>
+          {/* A VALIDATION STATE, NOT A STANDING SENTENCE — same shape as
+              RejectFields: red while the box is empty, and what is left to say
+              once it is filled. */}
+          {!why.trim() ? (
+            <div className="field-note error">{`ต้องกรอกเหตุผลก่อนจึงจะ${verb}ได้`}</div>
+          ) : many && (
+            <div className="field-note">เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้</div>
+          )}
         </div>
       )}
 

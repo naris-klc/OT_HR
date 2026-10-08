@@ -308,6 +308,18 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
   /**
+   * A BOX THAT WAS LEFT EMPTY SAYS SO ON ITS OWN, once it has been visited —
+   * the login screen's rule (`.invalid` + a red `.field-note`, shown after the
+   * fact and not while somebody is still on the way there). It replaced the
+   * standing line "กรอกให้ครบทั้งสามช่อง" under the button, which told people
+   * what the grey button was waiting for and was gone the moment it was no
+   * longer true: the same fact, drawn once as a sentence and once as the
+   * button's state.
+   */
+  const [touched, setTouched] = useState({});
+  const visit = (k) => () => setTouched((t) => ({ ...t, [k]: true }));
+  const blank = (k, v) => touched[k] && v.length === 0;
+  /**
    * THREE FLAGS, NOT ONE. Revealing รหัสผ่านใหม่ to check what was typed must
    * not also put the old password on screen — the two are different secrets and
    * only one of them is being chosen. It is also the pair the form asks somebody
@@ -429,9 +441,13 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
             onToggle={() => setShowCurrent((v) => !v)}
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
+            onBlur={visit('current')}
+            className={blank('current', current) ? 'invalid' : undefined}
+            aria-invalid={blank('current', current) || undefined}
             {...NO_AUTOFILL}
             required
           />
+          {blank('current', current) && <div className="field-note error">กรุณากรอกรหัสผ่านเดิม</div>}
         </div>
 
         <div className="field">
@@ -442,10 +458,14 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
             onToggle={() => setShowNext((v) => !v)}
             value={next}
             onChange={(e) => setNext(e.target.value)}
+            onBlur={visit('next')}
+            className={blank('next', next) ? 'invalid' : undefined}
+            aria-invalid={blank('next', next) || undefined}
             {...NO_AUTOFILL}
             minLength={MIN_LENGTH}
             required
           />
+          {blank('next', next) && <div className="field-note error">กรุณากรอกรหัสผ่านใหม่</div>}
           {!shape.ok && <div className="field-note error">{shape.error}</div>}
           {unchanged && <div className="field-note error">รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม</div>}
         </div>
@@ -458,27 +478,21 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
             onToggle={() => setShowConfirm((v) => !v)}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
+            onBlur={visit('confirm')}
+            className={blank('confirm', confirm) ? 'invalid' : undefined}
+            aria-invalid={blank('confirm', confirm) || undefined}
             {...NO_AUTOFILL}
             required
           />
+          {blank('confirm', confirm) && <div className="field-note error">กรุณายืนยันรหัสผ่านใหม่</div>}
           {mismatch && <div className="field-note error">รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน</div>}
         </div>
 
         {/* THE GREEN IS THE ANSWER TO "IS THIS READY?" — `.btn` fills green the
-            moment `ready` turns true, and the app's disabled rule paints it
-            grey with a border until then, which is what the screen shows for
-            most of the time somebody is on it.
-
-            What was missing is the sentence saying so. A grey box that never
-            reacts reads as a broken button, not as a button waiting: the three
-            per-field notes only appear once a rule is actually broken, so a
-            form with รหัสผ่านเดิม still empty said nothing at all. This line
-            names the condition and names the colour, so the change to green is
-            read as the form agreeing rather than as a coincidence.
-
-            It stands down as soon as a field has its own complaint — repeating
-            "กรอกให้ครบ" under "ทั้งสองช่องไม่ตรงกัน" would be the screen talking
-            over itself. */}
+            moment `ready` turns true, and the app's disabled rule paints it grey
+            with a border until then. What is missing is said by the boxes
+            themselves (above), not by a sentence here: until 2026-10-08 a line
+            "กรอกให้ครบทั้งสามช่อง" stood under the button. */}
         <div className="profile-submit">
           <div className="profile-actions">
             <button className="btn" disabled={busy || !ready}>
@@ -486,9 +500,6 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
             </button>
             {children}
           </div>
-          {!ready && !busy && shape.ok && !unchanged && !mismatch && (
-            <div className="field-note">กรอกให้ครบทั้งสามช่อง</div>
-          )}
         </div>
       </form>
     </div>
