@@ -947,7 +947,7 @@ function LogList({
 
           `search` ON THE FIRST FIELD is what gives it twice the basis of the
           five dropdowns beside it — `.queue-tools .field.search`. */}
-      <div className="queue-tools" style={{ marginBottom: 12 }}>
+      <div className="queue-tools log-tools" style={{ marginBottom: 12 }}>
         {/* THE NOTE MOVED INTO THE PLACEHOLDER, which is where an example of
             what to type belongs: `ค้นได้จากเส้นทาง ชื่อ รหัสพนักงาน และหมายเลข
             ไอพี` was a line under the box saying in words what the box was
