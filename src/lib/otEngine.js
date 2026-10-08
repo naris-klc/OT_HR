@@ -418,7 +418,7 @@ export function roundingGraceOf(policy = {}) {
   return grace > 0 && grace < inc ? grace : 0;
 }
 
-function roundMinutes(minutes, policy) {
+export function roundMinutes(minutes, policy) {
   // 'exact' — คิดตามจริงเป็นทศนิยม. A fourth answer to [OPEN 3] rather than a
   // fourth block, so the increment is not read and not cleared: switching back
   // to floor/ceil/nearest restores whichever block HR last chose.

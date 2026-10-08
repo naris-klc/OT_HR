@@ -8874,8 +8874,31 @@ tbody tr:hover { background: var(--green-wash); }
   white-space: nowrap;
 }
 
-/* Where the value came from, under the value it is about. */
-.policy-override { font: 400 11.5px/1.5 var(--sans); color: var(--muted); }
+/* Where the value came from, under the value it is about. An amber pill since
+   2026-10-08 (แบบ B) — it was grey 11.5px text, which read as one more line of
+   explanation rather than as the row's standing. */
+.policy-override {
+  font: 500 12px/1.5 var(--sans);
+  background: var(--amber-bg); color: var(--amber-ink);
+  padding: 1px 9px; border-radius: 999px;
+}
+
+/* The sentence under the title — what the answer in force does
+   (lib/policyReading.js). A shade up from `.hint`: it is the answer, not a
+   note. Muted when another row has switched the rule off. */
+.hint.policy-reading { font-size: 13.5px; color: var(--ink-2); }
+.hint.policy-reading.inert { color: var(--muted); }
+
+/* ตัวอย่างตามค่าที่ใช้อยู่ — the first thing in คำอธิบาย. */
+.policy-example {
+  margin-bottom: 6px; padding: 6px 10px;
+  border-radius: var(--radius-xs);
+  background: var(--neutral-wash); color: var(--ink-2);
+}
+.policy-example-head { font: 600 12.5px/1.5 var(--sans); color: var(--ink); }
+/* SANS WITH TABULAR FIGURES, NOT --mono: these lines are Thai sentences with
+   numbers in them, and IBM Plex Mono carries no Thai glyph. */
+.policy-example-line { font: 400 12.5px/1.55 var(--sans); font-variant-numeric: tabular-nums; }
 
 /* The explanation, under the question rather than beside the control: it
    explains what is being asked, and the answer to it is opposite. */

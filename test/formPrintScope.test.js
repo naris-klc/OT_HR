@@ -554,9 +554,10 @@ test('the row says what is being asked once, and what each answer is for', () =>
   const field = row.slice(0, row.indexOf('\n  },'));
 
   // One sentence, not the whole rule — see the note over `hint` in AdminView.
+  // It ended in "…เมื่อสั่งพิมพ์เอกสาร" until 2026-10-08 (แบบ B).
   assert.match(
     field,
-    /hint: 'กำหนดข้อมูลที่จะนำมาแสดงในใบขออนุมัติ OT \(F-HR-027\) เมื่อสั่งพิมพ์เอกสาร'/,
+    /hint: 'กำหนดข้อมูลที่จะนำมาแสดงในใบขออนุมัติ OT \(F-HR-027\) เมื่อสั่งพิมพ์'/,
   );
 
   // Every answer the dropdown offers is glossed. A fourth option added without

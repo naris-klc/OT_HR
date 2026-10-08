@@ -218,6 +218,11 @@ const READABLE = [
   ['--ink', '--green-bg'],
   ['--ink-2', '--green-bg'],
   ['--muted', '--green-bg'],
+  // นโยบายการคำนวณ, 2026-10-08 (แบบ B): the ตั้งทับค่าตั้งต้น pill, and the
+  // ตัวอย่างตามค่าที่ใช้อยู่ box — its heading and its lines.
+  ['--amber-ink', '--amber-bg'],
+  ['--ink', '--neutral-wash'],
+  ['--ink-2', '--neutral-wash'],
 ];
 
 test('ธีมมืด — ตัวหนังสืออ่านออกทุกคู่ ตามมาตรฐาน AA', () => {

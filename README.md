@@ -2112,7 +2112,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     159 files, run by `npm test`. Six named below as a
+test/                     160 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2125,9 +2125,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2833 tests
-across 159 files**, measured 2026-10-08 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2842 tests
+across 160 files**, measured 2026-10-08 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2833 tests across 159 files" until **ค่าที่ใช้อยู่ แบบ B** (2026-10-08)
+— `policyReading` is file 160: every row on นโยบายการคำนวณ has a sentence for
+every answer, and the arithmetic rows a worked example.
 It read "2828 tests across 159 files" until **แถบเปลี่ยนหน้าบรรทัดเดียว**
 (2026-10-08), which added five cases to `tablePager`.
 It read "2813 tests across 158 files … measured 2026-09-21" until **นโยบายการ
@@ -14352,9 +14355,12 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2833 tests**, about 5 s, measured 2026-10-08 across 159
-  files, all green (it read "2828 tests" until the one-line pager round added
-  five cases to `tablePager`). **`policySettings` is the newest file** — every
+- `npm test` — **2842 tests**, about 8 s, measured 2026-10-08 across 160
+  files, all green. **`policyReading` is the newest file** — the one-sentence
+  answer line and the worked examples on นโยบายการคำนวณ (แบบ B). It read
+  "2833 tests … across 159 files" before that (and "2828 tests" until the
+  one-line pager round added five cases to `tablePager`), when
+  **`policySettings` was the newest file** — every
   rule made a setting on นโยบายการคำนวณ on 2026-10-08. It read
   "2813 tests … across 158 files" before that, and what follows was the
   newest file then: **`requestInputGuards` is the new file of the last round**

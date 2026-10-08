@@ -262,14 +262,24 @@ test('a policy row is cut by CONTENT: the answer stands, everything else folds',
     'ค่าที่ใช้อยู่ ต้องอยู่เหนือคำอธิบาย ไม่ใช่ในนั้น',
   );
   assert.match(admin, /<PolicyReading field=\{f\} value=\{shown\} policy=\{proposed\} \/>/);
-  assert.match(admin, /ค่าที่ใช้อยู่: <strong>\{said\}<\/strong>/);
+  // ONE SENTENCE SAYING WHAT THE ANSWER DOES since 2026-10-08 (แบบ B), read off
+  // lib/policyReading.js. It read `ค่าที่ใช้อยู่: <strong>{said}</strong>` — the
+  // dropdown's own words a second time — until then.
+  assert.match(admin, /const said = policyReading\(field\.key, value, policy\);/);
+  assert.doesNotMatch(admin, /ค่าที่ใช้อยู่: <strong>/);
+  assert.match(admin, /className=\{`hint policy-reading\$\{said\.inert \? ' inert' : ''\}`\}/);
   assert.equal((row.match(/<Disclosure\b/g) || []).length, 0, 'ไม่มีรอยพับในแถวแล้ว');
   const fold = row.slice(row.indexOf('className="policy-detail"'));
+  // The worked example opens the fold, ahead of the hint.
+  assert.ok(fold.indexOf('className="policy-example"') > 0, 'ไม่มีกล่องตัวอย่างในคำอธิบาย');
+  assert.ok(fold.indexOf('className="policy-example"') < fold.indexOf('policy-help'), 'ตัวอย่างต้องมาก่อนคำอธิบาย');
+  assert.match(fold, /ตัวอย่างตามค่าที่ใช้อยู่/);
   assert.match(fold, /\{f\.hint && <div className="hint policy-help">\{f\.hint\}<\/div>\}/);
   assert.match(fold, /\{f\.optionHints && \(/);
   assert.match(row, /aria-expanded=\{explainedOpen\}/);
   // a row with nothing behind its answer draws no control at all
-  assert.match(admin, /const detail = Boolean\(f\.hint \|\| f\.optionHints \|\| f\.open\);/);
+  // — and a row whose only content is its example still gets one.
+  assert.match(admin, /const detail = Boolean\(example \|\| f\.hint \|\| f\.optionHints \|\| f\.open\);/);
 });
 
 test('the fold on that page is answering a real length', () => {
@@ -278,13 +288,26 @@ test('the fold on that page is answering a real length', () => {
    * hint on นโยบายการคำนวณ is ever short enough to fit two lines, the fold has
    * stopped earning its place and this is the line that says so.
    */
-  const fields = admin.slice(admin.indexOf('const POLICY_FIELDS = ['));
-  const hints = [...fields.matchAll(/hint: ((?:'(?:[^'\\]|\\.)*'\s*\+?\s*)+),/g)]
-    .map((m) => m[1].match(/'(?:[^'\\]|\\.)*'/g).join('').replace(/'\s*'/g, '').length);
-  assert.ok(hints.length >= 8, `มีคำอธิบายใต้ข้อ ${hints.length} ข้อ`);
+  /*
+   * MEASURED PER ROW, HINT AND optionHints TOGETHER, since 2026-10-08. The
+   * hints were trimmed that day (แบบ B) — the worked examples moved into the
+   * fold's own box — and the longest alone is under 200 characters now. What
+   * the fold still has to hold is a row's whole explanation, and on the rows
+   * that gloss every answer that is the glosses.
+   */
+  const start = admin.indexOf('const POLICY_FIELDS = [');
+  const fields = admin.slice(start, admin.indexOf('\n];', start));
+  const strings = (src) => (src.match(/'(?:[^'\\]|\\.)*'/g) || []).join('').replace(/'\s*'/g, '').length;
+  const rows = fields.split(/\{\s*\n\s*section: /).slice(1).map((row) => {
+    const hint = row.match(/hint: ((?:'(?:[^'\\]|\\.)*'\s*\+?\s*)+),/);
+    const glossAt = row.indexOf('optionHints: {');
+    const gloss = glossAt < 0 ? '' : row.slice(glossAt, row.indexOf('\n    },', glossAt));
+    return (hint ? strings(hint[1]) : 0) + strings(gloss);
+  }).filter(Boolean);
+  assert.ok(rows.length >= 8, `มีคำอธิบายใต้ข้อ ${rows.length} ข้อ`);
   assert.ok(
-    Math.max(...hints) > 400,
-    `คำอธิบายที่ยาวที่สุดเหลือ ${Math.max(...hints)} ตัวอักษร — สั้นพอจะไม่ต้องพับแล้ว`,
+    Math.max(...rows) > 400,
+    `คำอธิบายที่ยาวที่สุดเหลือ ${Math.max(...rows)} ตัวอักษร — สั้นพอจะไม่ต้องพับแล้ว`,
   );
 });
 
