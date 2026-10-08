@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api } from '@/lib/api.js';
+import { api, periodLabel } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 // The word itself, from the one place that owns it — the same constant the
 // accounting paper, both report screens and accounting.csv print.
@@ -117,6 +117,7 @@ export default function DepartmentPrint({ period, onClose }) {
     <>
       <PrintChrome
         onClose={onClose}
+        title={`ใบสรุป OT แยกแผนก · ${periodLabel(period)}`}
         filename={printName.department({ period })}
         hints={[{ label: 'หมายเหตุ', text: '1 แผนกต่อ 1 หน้า ปิดท้ายด้วยใบรวมทุกแผนก' }]}
         footer="ช่อง 1.50 และ 3.00 เป็นชั่วโมงดิบ ยังไม่คูณอัตรา"

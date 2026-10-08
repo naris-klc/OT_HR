@@ -48,6 +48,7 @@ export default function PasswordSlips({ rows, onClose }) {
     <>
       <PrintChrome
         onClose={onClose}
+        title={`สลิปรหัสผ่าน · ${rows.length} คน`}
         filename={printName.slips({ count: rows.length })}
         /**
          * THE ONE PRINT VIEW WITH NO บันทึกเป็น PDF BUTTON, and the reason is

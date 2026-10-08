@@ -355,7 +355,7 @@ const ICONS = {
    *   trash   ลบ                                key     รีเซ็ตรหัสผ่าน
    *   send    ส่งใหม่                           printer พิมพ์
    *   reset   คืนค่าตั้งต้น                     download บันทึก PDF · ได้ไฟล์
-   *   help    วิธีพิมพ์ · วิธีใช้
+   *   help    วิธีพิมพ์ · วิธีใช้                chevronLeft กลับ (ออกจากหน้าพิมพ์)
    *
    * `ban` AND `trash` ARE DIFFERENT ON PURPOSE. ยกเลิก and ถอนใบ leave the ใบ in
    * the record with a status that says so; ลบ takes a holiday or a department
@@ -406,6 +406,9 @@ const ICONS = {
 
   /** บันทึก PDF — a file that simply arrives, not a dialog to walk through. */
   download: <path d="M12 4.5v10.5M7.5 10.75 12 15.25l4.5-4.5M5 19.25h14" />,
+
+  /** กลับ — out of a print view, back to the screen that opened it. */
+  chevronLeft: <path d="M14.5 6 8.5 12l6 6" />,
 
   /** วิธีพิมพ์ — the instructions folded behind a pill. */
   help: (

@@ -3229,15 +3229,25 @@ export function SheetScroll({ className, hint = '← ปัดซ้าย-ข�
  * บันทึก PDF · help วิธีพิมพ์ ทั้งหกจอพิมพ์พร้อมกัน เพราะความหมายเดียวต้องเป็น
  * ไอคอนเดียวทั้งแอป
  *
- * `head` คือหัวข้อกับตัวกรองของจอ เมื่อส่งมา แถบปุ่มจะย้ายเข้าไปอยู่ในการ์ดใบเดียว
- * กับมัน — `.card.flush` > `.queue-tools.print-head` แถวเดียว: หัวข้อซ้าย ตัวกรอง
- * กับปุ่มขวา แทนที่สามชั้นเดิม (หัวการ์ด · แถบตัวกรอง · แถวปุ่ม) · ⚠ แบบนี้แถบ
- * ไม่หนึบบนมือถือ เพราะมันอยู่ในการ์ดแล้ว (ดูย่อหน้าบน) — จอที่ใช้ `head` วันนี้คือ
- * ใบของพนักงานเองใบเดียว ซึ่งยาวหนึ่งหน้า
+ * ── ทุกหน้าพิมพ์เป็นการ์ดแถวเดียว และ ปิด เป็น ‹ กลับ — 2026-10-08 (บ่าย) ────
+ *
+ * รอบแรกของวันนี้ทำการ์ดให้ใบของพนักงานเองหน้าเดียว (พร็อพ `head`) แล้วผู้ใช้
+ * ส่งภาพหน้าพิมพ์รายงานแยกแผนกมา: *"design layout ไม่เข้ากับหน้าอื่น"* — แถบปุ่ม
+ * ลอยเดี่ยว ไม่บอกว่าเป็นเอกสารอะไร และ `footer` ลอยตัวเล็กจัดกลางใต้แถบ ·
+ * เลือกแบบ A จาก mockup และ *"เปลี่ยนปุ่มปิดเป็นปุ่มกลับ เอาไว้ก่อนปุ่มพิมพ์"*
+ *
+ * `title` คือชื่อเอกสารบนการ์ด (`.t`) · `sub` ประโยคอธิบายใต้มัน · `tools` ตัวกรอง
+ * ของจอ (ประจำเดือนบนใบของพนักงาน) · `footer` ย้ายจากบรรทัดลอยใต้แถบมาเป็น
+ * `.hint` ใต้ชื่อ · ทั้งหมดอยู่ใน `.card.flush` > `.queue-tools.print-head` แถว
+ * เดียว: ชื่อซ้าย ตัวกรองกับปุ่มขวา · `head` ถูกถอด — `title`/`sub`/`tools` แทน ·
+ * ไม่ส่ง `title` = แถบเปล่าแบบเดิม ซึ่งวันนี้ไม่มีผู้เรียกแล้ว
+ *
+ * ⚠ แถบในการ์ดไม่หนึบบนมือถือ (ดูย่อหน้าบน เรื่องพี่น้อง) ทุกหน้าพิมพ์ รวมใบรวม
+ * ทั้งเดือนที่ยาวหลายสิบหน้า — ผู้ใช้ได้รับแจ้งก่อนเลือก
  */
 export function PrintChrome({
   onClose, disabled = false, graphics = 'แถบสีหัวตาราง', hints = [], footer = null,
-  filename = null, pdf = true, head = null,
+  filename = null, pdf = true, title = null, sub = null, tools = null,
 }) {
   const [saving, setSaving] = React.useState(false);
   const [failed, setFailed] = React.useState('');
@@ -3339,17 +3349,17 @@ export function PrintChrome({
 
   const bar = (
     <div className="print-bar no-print" ref={barRef}>
+      {onClose && (
+        <button className="btn ghost with-icon" onClick={onClose}>
+          <Icon name="chevronLeft" className="btn-icon" />กลับ
+        </button>
+      )}
       <button className="btn with-icon print-go" onClick={() => window.print()} disabled={disabled}>
         <Icon name="printer" className="btn-icon" />พิมพ์
       </button>
       {canSave && (
         <button className="btn with-icon" onClick={save} disabled={disabled || saving}>
           <Icon name="download" className="btn-icon" />{saving ? 'กำลังสร้างไฟล์…' : 'บันทึก PDF'}
-        </button>
-      )}
-      {onClose && (
-        <button className="btn ghost with-icon" onClick={onClose}>
-          <Icon name="cross" className="btn-icon" />ปิด
         </button>
       )}
       {/* ฝาพับของการ์ดข้างล่าง อยู่ในแถวนี้ตามที่ขอ — และเป็น `.fold-pill` ตัวเดียว
@@ -3373,10 +3383,15 @@ export function PrintChrome({
 
   return (
     <>
-      {head ? (
+      {title ? (
         <div className="card flush no-print">
           <div className="queue-tools print-head">
-            {head}
+            <div className="print-head-t">
+              <div className="t">{title}</div>
+              {sub && <div className="hint">{sub}</div>}
+              {footer && <div className="hint">{footer}</div>}
+            </div>
+            {tools}
             {bar}
           </div>
         </div>
@@ -3405,7 +3420,7 @@ export function PrintChrome({
         ))}
       </ul>
 
-      {footer && <div className="print-foot no-print">{footer}</div>}
+      {footer && !title && <div className="print-foot no-print">{footer}</div>}
     </>
   );
 }

@@ -2304,21 +2304,17 @@ function MyForm() {
           ชั้นซ้อนกัน (หัวการ์ด · แถบตัวกรอง · แถวปุ่มพิมพ์ ≈220px ก่อนถึงใบ) ·
           เลือกแบบ B จาก mockup: การ์ดเดียว `.queue-tools` แถวเดียว หัวข้อกับ
           ประโยคอธิบายซ้าย ประจำเดือนกับปุ่มพิมพ์ขวา · การ์ดนั้นวาดโดย
-          `PrintChrome` (`head`) เพราะปุ่มเป็นของมัน — ดูหัวคอมโพเนนต์ใน
-          components/common.jsx */}
+          `PrintChrome` (`title` · `sub` · `tools`) เพราะปุ่มเป็นของมัน และหน้า
+          พิมพ์ทุกหน้าเป็นการ์ดแบบนี้ — ดูหัวคอมโพเนนต์ใน components/common.jsx */}
       <PrintForm
         period={period}
-        head={(
-          <>
-            <div className="print-head-t">
-              <div className="t">ใบขออนุมัติทำงานล่วงเวลา · {periodLabel(period)}</div>
-              <div className="hint">รวมรายการที่อนุมัติแล้วและที่ยังรออนุมัติ · ลงนามแล้วส่งฝ่ายบุคคล</div>
-            </div>
-            <div className="field">
-              <div className="field-head"><label>ประจำเดือน</label></div>
-              <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
-            </div>
-          </>
+        title={`ใบขออนุมัติทำงานล่วงเวลา · ${periodLabel(period)}`}
+        sub="รวมรายการที่อนุมัติแล้วและที่ยังรออนุมัติ · ลงนามแล้วส่งฝ่ายบุคคล"
+        tools={(
+          <div className="field">
+            <div className="field-head"><label>ประจำเดือน</label></div>
+            <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
+          </div>
         )}
       />
     </div>

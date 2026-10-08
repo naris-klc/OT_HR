@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { accountingLabel, api, THAI_MONTHS } from '@/lib/api.js';
+import { accountingLabel, api, periodLabel, THAI_MONTHS } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { cyclePeriods, shortMonth } from '@/lib/accountingCycle.js';
@@ -114,6 +114,7 @@ export default function AccountingPrint({
     <>
       <PrintChrome
         onClose={onClose}
+        title={`สรุป OT ส่งบัญชี · ${periods.map(periodLabel).join(' + ')}`}
         filename={printName.accounting({ periods, company })}
         hints={[
           { label: 'หมายเหตุ', text: '1 บริษัทต่อ 1 หน้า' },
