@@ -171,7 +171,7 @@ test('ระบบรู้เอง — วันเกิดที่เก็
   const colleague = run(session, '1990-11-23');
   const nobody = run(session, null);
 
-  assert.equal(theirs.buckets[BUCKETS.OT15_HOLIDAY], 3);
+  assert.equal(theirs.buckets[BUCKETS.OT3_HOLIDAY], 3);
   assert.equal(theirs.segments[0].dayReason, 'birthday');
   assert.equal(colleague.buckets[BUCKETS.OT15_WEEKDAY], 3);
   assert.equal(nobody.buckets[BUCKETS.OT15_WEEKDAY], 3);
@@ -221,7 +221,7 @@ test('ฟอร์มบอกเองว่าวันนั้นเป็�
     /\{preview && !proxy && !hrEdit && isOwnBirthday\(preview\) && \(/,
     'ประกาศเหนือช่วงเวลาไม่ได้ขึ้นทุกใบที่ตรงวันเกิดแล้ว',
   );
-  assert.match(form, /8 ชั่วโมงแรกที่ทำเข้าช่อง OT วันหยุด ×1\.5/);
+  assert.match(form, /ช่วง 08:00–17:00 \(ไม่เกิน 8 ชั่วโมง\) เข้าช่อง OT วันหยุด ×1\.5/);
 
   // Withheld on บันทึก OT แทนพนักงาน: it would tell a หัวหน้า when their team
   // member was born. The HOURS are unaffected — the server reads the stored
