@@ -376,7 +376,7 @@ test('the dialog refuses to submit an empty reason and says the press is final',
   assert.match(hrEntries, /<Alert kind="warn">/);
   assert.match(hrEntries, /แก้กลับไม่ได้<\/strong>/);
   assert.match(hrEntries, /maxLength=\{200\}/);
-  assert.match(hrEntries, /จำเป็นต้องกรอก/);
+  assert.match(hrEntries, /ต้องระบุเหตุผลก่อนจึงจะยกเลิกได้/);
   // A question and an answer, not a question and a shrug.
   assert.match(hrEntries, /ไม่ยกเลิกแล้ว/);
   assert.match(hrEntries, /ยืนยันการยกเลิก/);

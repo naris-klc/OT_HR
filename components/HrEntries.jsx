@@ -159,10 +159,11 @@ function BatchApproveModal({ entries, choosable, busy, onClose, onConfirm }) {
             placeholder="เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมด่วน · ปิดงบสิ้นเดือน"
             onChange={(ev) => setWhy(ev.target.value)}
           />
-          <div className="field-note">
-            ต้องกรอกเหตุผลก่อนจึงจะอนุมัติได้
-            {sel.length > 1 && ' · เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้'}
-          </div>
+          {!why.trim() ? (
+            <div className="field-note error">ต้องกรอกเหตุผลก่อนจึงจะอนุมัติได้</div>
+          ) : sel.length > 1 && (
+            <div className="field-note">เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้</div>
+          )}
         </div>
       )}
 
@@ -547,7 +548,9 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
         />
         {/* The server requires it too (`cancelPermission` → 400). Said here so
             the reader is not taught about a rule by watching a request fail. */}
-        <span className="field-note">จำเป็นต้องกรอก — พนักงานจะเห็นข้อความนี้ในประวัติของรายการ</span>
+        <span className={`field-note${cancelNote.trim() ? '' : ' error'}`}>
+          {cancelNote.trim() ? 'พนักงานจะเห็นข้อความนี้ในประวัติของรายการ' : 'ต้องระบุเหตุผลก่อนจึงจะยกเลิกได้'}
+        </span>
       </div>
     </Modal>
   );

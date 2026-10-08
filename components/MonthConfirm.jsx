@@ -165,10 +165,9 @@ export default function MonthConfirm({
             placeholder="เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมด่วน · ปิดงบสิ้นเดือน"
             onChange={(ev) => setWhy(ev.target.value)}
           />
-          <div className="field-note">
-            ต้องกรอกเหตุผลก่อนจึงจะยืนยันได้
-            {' · '}เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้
-          </div>
+          {why.trim()
+            ? <div className="field-note">เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้</div>
+            : <div className="field-note error">ต้องกรอกเหตุผลก่อนจึงจะยืนยันได้</div>}
         </div>
       )}
 
