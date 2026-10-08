@@ -6,7 +6,7 @@ import { DELEGATED_APPROVAL_RECORDED } from '@/lib/delegation.js';
 import { Alert, Empty, Field, Modal, PickOne, RowAction } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
-import { PickDate } from './PickDate.jsx';
+import { DateRange } from './PickDate.jsx';
 
 /**
  * ผู้รับช่วงอนุมัติแทน — setting up, reading and ending a stand-in.
@@ -437,19 +437,16 @@ function DelegationForm({ user, all, onClose, onSaved }) {
         <section className="form-group">
           <div className="gh">ช่วงเวลา</div>
           <div className="form-grid">
-            <Field label="ตั้งแต่วันที่">
-              <PickDate
-                label="ตั้งแต่วันที่"
-                value={form.fromDate}
-                onChange={(v) => set('fromDate', v)}
-                disabled={busy}
-              />
-            </Field>
-            <Field label="ถึงวันที่" note="นับรวมวันสุดท้าย · หมดอายุเองหลังจากนั้น">
-              <PickDate
-                label="ถึงวันที่"
-                value={form.toDate}
-                onChange={(v) => set('toDate', v)}
+            {/* ONE BOX FOR BOTH DATES, 2026-10-08 — the same `DateRange` as the
+                log's filters. The note rides under the one box instead of under
+                the second only, which is what the alignment fix above was
+                working around. */}
+            <Field label="ช่วงวันที่" note="นับรวมวันสุดท้าย · หมดอายุเองหลังจากนั้น" className="daterange">
+              <DateRange
+                from={form.fromDate}
+                to={form.toDate}
+                onFrom={(v) => set('fromDate', v)}
+                onTo={(v) => set('toDate', v)}
                 disabled={busy}
               />
             </Field>

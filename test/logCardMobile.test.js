@@ -143,11 +143,13 @@ test('the two buttons are on the filter bar, and take a thumb-sized line', () =>
      exact trap; it has caught assertions in this suite three times. */
   const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
   assert.ok(!/\.log-actions\s*[,{]/.test(rules), '.log-actions กลับมาแล้ว — ปุ่มหลุดออกจากแถบตัวกรอง');
-  const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.queue-tools .compliance-actions {')));
+  // 2026-10-08: the pair moved from the bar to the card's head
+  // (`.log-head-actions`), still one shared rule for every tab.
+  const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.log-head-actions {')));
   const block560 = narrow.slice(0, narrow.indexOf('\n}\n'));
-  assert.match(block560, /\.queue-tools \.compliance-actions \{[^}]*width: 100%/);
-  assert.match(block560, /\.queue-tools \.compliance-actions \.btn \{[^}]*min-height: 44px/);
-  const bar = jsx.slice(jsx.indexOf('<div className="queue-tools" style={{ marginBottom: 12 }}>'));
+  assert.match(block560, /\.log-head-actions \{[^}]*width: 100%/);
+  assert.match(block560, /\.log-head-actions \.btn \{[^}]*min-height: 44px/);
+  const bar = jsx.slice(jsx.indexOf('<div className="card-head log-head">'));
   const upToTable = bar.slice(0, bar.indexOf('{error &&'));
   assert.ok(upToTable.includes('ดาวน์โหลด CSV ตามตัวกรอง'), 'ปุ่มดาวน์โหลดไม่ได้อยู่ในแถบตัวกรอง');
   assert.ok(upToTable.includes('ล้างตัวกรองทั้งหมด'), 'ปุ่มล้างตัวกรองไม่ได้อยู่ในแถบตัวกรอง');

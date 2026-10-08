@@ -82,7 +82,7 @@ const BARS = [
   ['components/HrView.jsx', ['ค้นหาพนักงาน', 'สถานะที่นับ', 'แผนก', 'ประจำเดือน']],
   ['components/AccountingView.jsx', ['บริษัท', 'ประจำเดือน']],
   ['components/DepartmentView.jsx', ['แผนก', 'ประจำเดือน']],
-  ['components/LogSystem.jsx', ['ค้นหา', 'กรองตามบัญชี', 'ตั้งแต่วันที่']],
+  ['components/LogSystem.jsx', ['ค้นหา', 'กรองตามบัญชี', 'ช่วงวันที่']],
   ['components/AdminView.jsx', ['ค้นหาพนักงาน', 'ตำแหน่ง', 'แผนก', 'บทบาท']],
   /* TWO SCREENS IN ONE FILE — ทะเบียนพนักงาน above and ประวัติการแก้ทะเบียน
      here, which became the app's last `.form-grid` filter bar on 2026-09-15. */
