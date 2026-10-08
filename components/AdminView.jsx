@@ -8167,97 +8167,75 @@ function LivePolicy({ policy, defaults, overrides }) {
 
   const arithmetic = moved.filter((d) => d.arithmetic).length;
 
+  /* ONE ROW — asked for 2026-10-08 (*"แบนเนอร์รกมาก … ให้กระชับ"*), picked from
+     three mockups. It was four layers: a heading, a line saying the same thing
+     again, a chip per value, and a button — most of it said on every visit to a
+     page whose rows already carry their own amber ตั้งทับค่าตั้งต้น tag.
+
+     So the row is the heading and the count of what moves hours, and the chips
+     sit behind ดูรายละเอียด with the pinned ones. The `display: contents`
+     mechanism is `.scan-drawer-head`'s, line for line (styles.css).
+
+     THE ALARM IS STILL IN THE ROW: how many values differ, and how many of them
+     change hours. What folds is WHICH values — each is already tagged beside its
+     own question, so the chips are the index and not the warning. */
   return (
     <Alert kind={arithmetic ? 'warn' : 'info'}>
-      {/* NO EMOJI IN THE HEADING. `Alert` draws its own mark — the circled
-          glyph at the left of every notice in this app — and a ⚠️ typed into
-          the text beside it is a second icon saying the same thing. */}
-      {moved.length > 0 ? (
-        <strong>มีการปรับแต่งค่าจากโปรแกรมเดิม {moved.length} รายการ</strong>
-      ) : (
-        <strong>ไม่มีค่าใดต่างจากโปรแกรมเดิม — แต่มี {pinned.length} ข้อที่ถูกเก็บค่าไว้แล้ว</strong>
-      )}
-
-      {/* ONE LINE, AND IT DOES NOT NAME WHO. A value can arrive here from this
-          page or from a migration, and the screen cannot tell the two apart —
-          who changed what is ประวัติเวอร์ชันนโยบาย's question and it is two
-          cards down. What this line has to carry is where the reader goes
-          next, which is the column on the right of the row they came for. */}
-      {moved.length > 0 && (
-        <div className="hint" style={{ marginTop: 2 }}>
-          ระบบกำลังใช้งานค่าที่ถูกแก้จากค่าตั้งต้นของโปรแกรม
-          {' '}(ดูค่าปัจจุบันได้ทางขวามือของแต่ละหัวข้อ)
-        </div>
-      )}
-
-      {/* CHIPS, NOT A PARAGRAPH EACH — 2026-09-07. Three overrides were three
-          lines of `ชื่อข้อ: เก่า → ใหม่ (มีผลต่อชั่วโมง)` under a heading and a
-          sentence, which is most of a phone screen before the first question.
-
-          The label is the field's own, read off `CHANGE_LABEL`, so a chip
-          cannot drift from the row it is about. The VALUES stay raw: the option
-          labels on this page are whole sentences — 'ใช่ — วันเกิดที่ตรง
-          จันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น' is one of them — and a chip
-          holding two of those is not a chip.
-
-          ONE COLOUR FOR "CHANGED", AND IT IS THE AMBER ONE. It read the
-          arithmetic flag off the chip's colour until 2026-09-08 — amber for the
-          values that move hours, grey for the ones that do not — which put a
-          grey chip in the banner's top half that was indistinguishable from the
-          grey chips of ตรึงไว้เท่ากับค่าตั้งต้น in the folded half, two
-          different meanings in one shade. Every chip up here is a value this
-          installation changed, which is the whole subject of the banner, so
-          every one of them is amber; whether it moves hours is said in WORDS in
-          the chip, which is where it had to be said anyway — colour alone is
-          not something a reader by ear or without it can act on. */}
-      {moved.length > 0 && (
-        <div className="policy-diffs">
-          {moved.map((d) => (
-            <span
-              key={d.key}
-              className="chip edited"
-              title={d.arithmetic ? 'ค่านี้มีผลต่อชั่วโมงที่คำนวณได้' : 'ค่านี้ไม่มีผลต่อชั่วโมง'}
-            >
-              {CHANGE_LABEL[d.key] || d.key}: {JSON.stringify(d.from)} → <strong>{JSON.stringify(d.to)}</strong>
-              {d.arithmetic && ' · มีผลต่อชั่วโมง'}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* THE ONE FOLD INSIDE AN ALERT IN THIS APP, AND WHAT STANDS ABOVE IT IS
-          WHY IT IS ALLOWED.
-
-          The heading, the line under it and the chips are the warning, and none
-          of them is behind a press. What folds is the other half — the values
-          stored at the same figure the program ships TODAY. Nothing is wrong
-          about those and nothing is being asked; they matter on the day a
-          release moves a default and this installation does not follow it,
-          which is a fact about a future deploy rather than about this screen.
-
-          `test/disclosure.test.js` names this component as the only place a
-          fold may appear inside an `Alert`. A second name added there is a
-          decision, not a fix for a failing case. */}
-      {pinned.length > 0 && (
+      {/* NO EMOJI IN THE HEADING. `Alert` draws its own mark. */}
+      <div className="live-policy-head">
+        <strong className="live-policy-title">
+          {moved.length > 0
+            ? `ปรับค่าจากโปรแกรมเดิม ${moved.length} รายการ${arithmetic ? ` · ${arithmetic} มีผลต่อชั่วโมง` : ''}`
+            : `ไม่มีค่าใดต่างจากโปรแกรมเดิม — แต่มี ${pinned.length} ข้อที่ถูกเก็บค่าไว้แล้ว`}
+        </strong>
         <Disclosure
           as="div"
           lines={0}
-          of="ค่าที่ตรึงไว้เท่ากับค่าตั้งต้น"
-          more="ดูรายละเอียด"
-          less="ซ่อนรายละเอียด"
+          of="ค่าที่ปรับจากโปรแกรมเดิม"
+          more="ดูรายละเอียด ▾"
+          less="ซ่อนรายละเอียด ▴"
         >
-          <div className="hint">ตรึงไว้เท่ากับค่าตั้งต้นวันนี้:</div>
-          <div className="policy-diffs">
-            {pinned.map((k) => (
-              <span key={k} className="chip muted">{CHANGE_LABEL[k] || k}</span>
-            ))}
-          </div>
-          <div className="hint" style={{ marginTop: 6 }}>
-            เท่ากันอยู่ตอนนี้ แต่ถูกเก็บค่าไว้แล้ว — ถ้าโปรแกรมเวอร์ชันใหม่เปลี่ยนค่าตั้งต้นของข้อเหล่านี้
-            ระบบนี้จะไม่เปลี่ยนตาม
-          </div>
+          {/* CHIPS, NOT A PARAGRAPH EACH (2026-09-07), AND ONE COLOUR FOR
+              "CHANGED" — amber, always: every chip here is a value this
+              installation changed. Whether it moves hours is said in WORDS,
+              because colour alone is not something a reader by ear can act on.
+              The label is the field's own (`CHANGE_LABEL`) so a chip cannot
+              drift from its row; the VALUES stay raw because the option labels
+              on this page are whole sentences. */}
+          {moved.length > 0 && (
+            <div className="policy-diffs">
+              {moved.map((d) => (
+                <span
+                  key={d.key}
+                  className="chip edited"
+                  title={d.arithmetic ? 'ค่านี้มีผลต่อชั่วโมงที่คำนวณได้' : 'ค่านี้ไม่มีผลต่อชั่วโมง'}
+                >
+                  {CHANGE_LABEL[d.key] || d.key}: {JSON.stringify(d.from)} → <strong>{JSON.stringify(d.to)}</strong>
+                  {d.arithmetic && ' · มีผลต่อชั่วโมง'}
+                </span>
+              ))}
+            </div>
+          )}
+          {/* Values stored at the figure the program ships TODAY. Nothing is
+              wrong about them; they matter the day a release moves a default
+              and this installation does not follow. Grey, and grey means only
+              this. */}
+          {pinned.length > 0 && (
+            <>
+              <div className="hint" style={{ marginTop: 8 }}>ตรึงไว้เท่ากับค่าตั้งต้นวันนี้:</div>
+              <div className="policy-diffs">
+                {pinned.map((k) => (
+                  <span key={k} className="chip muted">{CHANGE_LABEL[k] || k}</span>
+                ))}
+              </div>
+              <div className="hint" style={{ marginTop: 6 }}>
+                เท่ากันอยู่ตอนนี้ แต่ถูกเก็บค่าไว้แล้ว — ถ้าโปรแกรมเวอร์ชันใหม่เปลี่ยนค่าตั้งต้นของข้อเหล่านี้
+                ระบบนี้จะไม่เปลี่ยนตาม
+              </div>
+            </>
+          )}
         </Disclosure>
-      )}
+      </div>
     </Alert>
   );
 }
