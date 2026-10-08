@@ -218,6 +218,12 @@ worktree full of files does not surface in everybody else's `git status`.
   2026-10-08: *ยึดไว้ 1 port สำหรับโปรเจ็คนี้เสมอ* และ *port สำหรับ mockup ก็
   เช่นกันคงที่ไว้ 1 port*
   - **3005 — build ของแอปที่ให้ผู้ใช้ดู** (`VERIFY_DIST_DIR=… npx next start -p 3005 -H 127.0.0.1`)
+    — **server ตัวเดียวที่ทุก session ใช้ร่วมกัน** สั่งไว้ 2026-10-08 · build
+    จาก main หลัง merge แล้ว (`VERIFY_DIST_DIR=.next-preview`) และเปิดพร้อม
+    `BACKUP_DIR=/home/app_sales/primus-ot/backups` · ถ้าเปิดจาก worktree โดยไม่ตั้ง
+    ค่านี้ แอปจะหา `backups/` ใน worktree ซึ่งไม่มี แล้วขึ้นแบนเนอร์
+    "ไม่พบโฟลเดอร์สำรองข้อมูล" ทั้งที่ข้อมูลสำรองจริงไม่มีปัญหา · session ที่เจอ
+    server นี้เปิดอยู่ ปิดแล้วเปิดใหม่จาก main ล่าสุดได้เลย ไม่ต้องถาม
   - **3006 — mockup** เสิร์ฟจากโฟลเดอร์ `mockups/`
     (`python3 -m http.server 3006 --bind 127.0.0.1`) ไม่ใช่จากรากของ repo
     เพราะรากมี `.env` · ลิงก์คือ `http://localhost:3006/<ชื่อ mockup>/`
