@@ -550,7 +550,9 @@ test('the two columns that hold prose are the two that were widened', () => {
    * argument.
    */
   const descRule = /\.stack-table th\.desc-col \{ width: (\d+)%; \}/.exec(css);
-  assert.ok(Number(descRule[1]) >= 30, `รายละเอียดงานที่ทำ fell to ${descRule[1]}%`);
+  // 29 since 2026-10-08, when จาก–ถึง took three points for its two-line
+  // cell; re-measured in Chromium against this stylesheet, 29% is 232px at 1440.
+  assert.ok(Number(descRule[1]) >= 29, `รายละเอียดงานที่ทำ fell to ${descRule[1]}%`);
   const entryDesc = css.indexOf('.entry-desc {');
   assert.ok(
     !/text-overflow:\s*ellipsis/.test(css.slice(entryDesc, entryDesc + 400)),
@@ -610,8 +612,10 @@ test('จาก–ถึง has a width, and its floor is a pixel one', () => {
   // 180px of content is what a three-punch scan line needs to stop at two
   // lines and let the row close to 170px; the cell's own padding is 12px each
   // side. Below this the tallest row goes back to 188.
+  // 290 since 2026-10-08: the punches line ends in the scan mark now, and a
+  // two-punch line plus the longest mark measured needs it (see the CSS note).
   assert.ok(
-    Number(rule[1]) >= 204,
+    Number(rule[1]) >= 290,
     `the floor fell to ${rule[1]}px — under 204 the tallest row goes back to 188`,
   );
 
