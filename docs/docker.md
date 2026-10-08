@@ -155,12 +155,14 @@ compose ผูก `./backups` ของ repo เข้ากับ `/app/backups
 รันบน host ได้เพราะ mongod ฟังที่ 127.0.0.1 ของเครื่องเดียวกัน (`crontab -e`):
 
 ```
-0 2 * * * PATH=/home/app_sales/.nvm/versions/node/v22.23.2/bin:/usr/bin:/bin /home/app_sales/primus-ot/scripts/backup.sh /home/app_sales/primus-ot/backups 30 >/dev/null 2>&1
+0 2 * * * PATH=/home/app_sales/.nvm/versions/node/v22.23.2/bin:/usr/bin:/bin /bin/sh /home/app_sales/primus-ot/scripts/backup.sh /home/app_sales/primus-ot/backups 30 >/dev/null 2>&1
 ```
 
 - `PATH` ต้องใส่เอง — cron ไม่โหลด nvm และหา `npm` ไม่เจอ **อัปเกรด node เมื่อไหร่
   ต้องแก้เลขเวอร์ชันในบรรทัดนี้ด้วย** ไม่อย่างนั้นงานจะล้มเงียบ ๆ จนแบนเนอร์ขึ้น
+- เรียกผ่าน `/bin/sh` เพราะ `scripts/backup.sh` ใน repo ไม่มีบิต execute
 - ผลแต่ละรอบอยู่ใน `backups/backup.log`
+- ลง crontab ของ `app_sales` แล้วเมื่อ 2026-10-08
 - ชุดสำรองต้องเป็น `backups/primus_ot-…/manifest.json` ชั้นเดียว โฟลเดอร์ที่
   คัดลอกมาซ้อนกันสองชั้นจะถูกนับเป็น "สำรองไม่จบ" (เคยเกิดกับชุด 20260909-013005)
 
