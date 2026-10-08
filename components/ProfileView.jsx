@@ -27,47 +27,45 @@ export default function ProfileView({ user, jumpTo = null, onPasswordChanged, on
        restating every queue, table and modal in the app. See the rule beside
        `.profile-form`. */
     <div className="stack profile-page">
-      <Details user={user} />
+      {/* สองคอลัมน์ (แบบ A, เลือกไว้ 2026-10-08): ซ้ายคือข้อมูลกับธีม ขวาคือรหัสผ่านกับทางออก
+          — ฟอร์มรหัสผ่านกว้างแค่ 380px ฝั่งขวาของการ์ดเดิมจึงว่างทั้งหน้า · ต่ำกว่า
+          860px เรียงลงเป็นคอลัมน์เดียว */}
+      <div className="profile-grid">
+        <div className="profile-col">
+          <Details user={user} />
+          <ThemeChoice />
+        </div>
+        {/* `pending` is the flag itself: this is where the reminder strip on the
+            landing tab sends somebody, and since the first-login screen was
+            deleted it is the only screen that explains what their current
+            password is. The form is the same one either way — the flag adds the
+            two sentences that screen used to carry.
+
+            `jump` is that same arrival seen from the other end: the strip names
+            เปลี่ยนรหัสผ่าน and this card scrolls itself onto the screen rather
+            than leaving somebody to find it. Nothing else on this page sets it. */}
+        <ChangePassword
+          pending={user.mustChangePassword}
+          jump={jumpTo === 'password'}
+          onDone={onPasswordChanged}
+        >
+          {/* On mobile the sidebar — and with it the ออกจากระบบ button — is not on
+              screen, and the appbar avatar opens this page instead of signing
+              out, so this is the only sign-out there; two on desktop is better
+              than a phone with none.
+
+              A RED OUTLINE (`.btn.ghost.danger`), the voice the app already uses
+              for a button that refuses or undoes. Outlined and not filled: the
+              filled red is reserved for what cannot be taken back, and signing
+              out is undone by signing in. It sits in the password card's button
+              row, away from the green save so the two are not mistaken. */}
+          <button type="button" className="btn ghost danger" onClick={onLogout}>ออกจากระบบ</button>
+        </ChangePassword>
+      </div>
       {/* Where a หัวหน้า arranges their own cover — on the page they are
           already on when they know they will be away. ฝ่ายบุคคล have the same
           screen under ตั้งค่าระบบ for the หัวหน้า who is already gone. */}
       {isSigner(user.role) && <Delegation user={user} scope="mine" />}
-      <ThemeChoice />
-      {/* `pending` is the flag itself: this is where the reminder strip on the
-          landing tab sends somebody, and since the first-login screen was
-          deleted it is the only screen that explains what their current
-          password is. The form is the same one either way — the flag adds the
-          two sentences that screen used to carry.
-
-          `jump` is that same arrival seen from the other end: the strip names
-          เปลี่ยนรหัสผ่าน and this card is the fourth one down the page, so it
-          scrolls itself onto the screen rather than leaving somebody to find
-          it. Nothing else on this page sets it — walking here from the avatar
-          or the sidebar lands at the top, where ข้อมูลของคุณ is. */}
-      <ChangePassword
-        pending={user.mustChangePassword}
-        jump={jumpTo === 'password'}
-        onDone={onPasswordChanged}
-      />
-      {/* On mobile the sidebar — and with it the ออกจากระบบ button — is not on
-          screen, and the appbar avatar now opens this page instead of signing
-          out. This is the only sign-out there, so it is not hidden on desktop
-          either: two of them is better than a phone with none. */}
-      <div className="card">
-        {/* A RED OUTLINE, not the grey ghost it was. This is the only button on
-            the page that takes something away: the session goes, and with it
-            anything half-typed in another tab. Drawn as `.btn.ghost` it was the
-            same object as ธีมสีหน้าจอ's three choices and บันทึกรหัสผ่านใหม่'s own
-            disabled state — a grey box among grey boxes, sitting directly under
-            a form somebody has just been tabbing through, on a phone.
-
-            `.btn.ghost.danger` is the voice this app already uses for a button
-            that refuses or undoes — ไม่อนุมัติ, ยกเลิกคำขอ, ปลดล็อกงวด — so it is
-            recognised here rather than invented. Outlined and not filled: the
-            filled red is reserved for what cannot be taken back, and signing
-            out is undone by signing in. */}
-        <button className="btn ghost danger" onClick={onLogout}>ออกจากระบบ</button>
-      </div>
     </div>
   );
 }
@@ -133,26 +131,24 @@ function ThemeChoice() {
   }
 
   return (
-    <div className="card">
-      <h2>ธีมสีหน้าจอ</h2>
-      <div className="hint">
-        จำไว้เฉพาะเบราว์เซอร์นี้
-      </div>
-      <div className="seg" style={{ marginTop: 12 }} role="group" aria-label="ธีมสีหน้าจอ">
+    <div className="card profile-theme">
+      {/* "จำไว้เฉพาะเบราว์เซอร์นี้" was a hint beside the buttons and was squeezed
+          to one word a line at 360px; it is a tooltip now, with the per-theme
+          sentences on the buttons themselves. */}
+      <h2 title="จำไว้เฉพาะเบราว์เซอร์นี้">ธีมสีหน้าจอ</h2>
+      <div className="seg" role="group" aria-label="ธีมสีหน้าจอ">
         {THEMES.map((t) => (
           <button
             key={t.key}
             type="button"
             className={choice === t.key ? 'active' : ''}
             aria-pressed={choice === t.key}
+            title={t.hint}
             onClick={() => pick(t.key)}
           >
             {t.label}
           </button>
         ))}
-      </div>
-      <div className="hint" style={{ marginTop: 8 }}>
-        {THEMES.find((t) => t.key === choice)?.hint}
       </div>
     </div>
   );
@@ -162,24 +158,24 @@ function ThemeChoice() {
 
 function Details({ user }) {
   const company = COMPANIES.find((c) => c.key === user.company);
+  const initials = (user.code || '').replace(/[^A-Za-z0-9]/g, '').slice(-2).toUpperCase();
 
+  // รหัสพนักงาน ชื่อ และตำแหน่งอยู่หัวการ์ด — ที่เหลือเป็นข้อเท็จจริงสี่ช่อง
   const fields = [
-    ['รหัสพนักงาน', user.code],
-    ['ชื่อ-สกุล', user.name],
-    ['ตำแหน่ง', user.position],
     ['วันเกิด', user.birthDate ? thaiDate(user.birthDate) : null],
-    ['แผนก', user.department?.name],
     ['บทบาท', ROLE_LABEL[user.role]],
+    ['แผนก', user.department?.name],
     ['บริษัท', company?.label],
   ];
 
   return (
     <div className="card">
-      <h2>ข้อมูลส่วนตัว</h2>
-      <div className="hint">
-        <span title="ข้อมูลมาจากทะเบียนพนักงานของฝ่ายบุคคล · ชื่อ-สกุลเป็นชื่อที่พิมพ์ลงใบ F-HR-027">
-          แก้ไม่ได้ — แจ้งฝ่ายบุคคล
-        </span>
+      <div className="profile-id">
+        <div className="avatar" aria-hidden="true">{initials}</div>
+        <div>
+          <h2>{user.name}</h2>
+          <div className="hint">{[user.code, user.position].filter(Boolean).join(' · ')}</div>
+        </div>
       </div>
 
       <dl className="profile-facts">
@@ -190,6 +186,11 @@ function Details({ user }) {
           </div>
         ))}
       </dl>
+      <div className="hint profile-note">
+        <span title="ข้อมูลมาจากทะเบียนพนักงานของฝ่ายบุคคล · ชื่อ-สกุลเป็นชื่อที่พิมพ์ลงใบ F-HR-027">
+          แก้ไม่ได้ — แจ้งฝ่ายบุคคล
+        </span>
+      </div>
     </div>
   );
 }
@@ -267,7 +268,7 @@ const NO_AUTOFILL = {
  * as soon as the flag does. Passing nothing is fine — the form then simply says
  * it worked.
  */
-export function ChangePassword({ onDone, pending = false, jump = false }) {
+export function ChangePassword({ onDone, pending = false, jump = false, children = null }) {
   /**
    * THE CARD SCROLLS ITSELF INTO VIEW WHEN SOMETHING SENT SOMEBODY HERE FOR
    * IT — set by `jumpTo` on ProfileView, which is set by เปลี่ยนรหัสผ่าน on
@@ -479,9 +480,12 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
             "กรอกให้ครบ" under "ทั้งสองช่องไม่ตรงกัน" would be the screen talking
             over itself. */}
         <div className="profile-submit">
-          <button className="btn" disabled={busy || !ready}>
-            {busy ? 'กำลังบันทึก…' : 'บันทึกรหัสผ่านใหม่'}
-          </button>
+          <div className="profile-actions">
+            <button className="btn" disabled={busy || !ready}>
+              {busy ? 'กำลังบันทึก…' : 'บันทึกรหัสผ่านใหม่'}
+            </button>
+            {children}
+          </div>
           {!ready && !busy && shape.ok && !unchanged && !mismatch && (
             <div className="field-note">กรอกให้ครบทั้งสามช่อง</div>
           )}
