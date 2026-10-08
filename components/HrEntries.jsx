@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
+import { api, hours, thaiDate, dayAbbr, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
   Alert, CancelledMark, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, Modal, ProxyMark,
   RateHead,
@@ -627,10 +627,17 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                         from those classes. Two screens quoting one fact in two
                         type sizes is what the classes exist to prevent, and an
                         inline style is also the one thing the 860px block cannot
-                        reach. */}
+                        reach.
+
+                        "จ.05/10/2569" — THE FORM คิวรออนุมัติ PRINTS, 2026-10-08.
+                        It read "05/10/2569" then "วันจันทร์" until that day, and
+                        on the one-line desktop row "จันทร์" broke onto a line of
+                        its own (*ปรับการแสดงวันที่ให้เป็นรูปแบบเดียวกับหน้า
+                        รออนุมัติ*). Same span, same classes, same rule in
+                        app/styles.css — see `.cell-sub.when-day`. */}
                     <td className="stack-name">
+                      <span className="cell-sub th when-day">{dayAbbr(e.workDate)}</span>
                       {thaiDate(e.workDate)}
-                      <div className="cell-sub th">วัน{dayName(e.workDate)}</div>
                     </td>
                     {/* `when-cell` — a CLASS, and the `data-label` beside it
                         stays because that is what the phone card prints as the

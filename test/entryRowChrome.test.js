@@ -83,10 +83,28 @@ test('nothing in a row writes its own type size any more', () => {
     !/style=\{\{ fontSize:/.test(code),
     'an inline font size came back into a row',
   );
-  assert.match(jsx, /<div className="cell-sub th">วัน\{dayName\(e\.workDate\)\}<\/div>/);
   assert.match(jsx, /className="cell-note"/);
   // The same class, on the screen that shares these rows.
   assert.match(read('components/ApprovalQueue.jsx'), /className="cell-note"/);
+});
+
+test('the date reads "จ.05/10/2569", the form คิวรออนุมัติ prints, and does not wrap', () => {
+  // ASKED FOR 2026-10-08 — *ปรับการแสดงวันที่ให้เป็นรูปแบบเดียวกับหน้า รออนุมัติ*.
+  // It was "05/10/2569 วันจันทร์", and on a narrow table จันทร์ fell onto a
+  // line of its own. The same span on both screens, character for character.
+  const day = '<span className="cell-sub th when-day">{dayAbbr(e.workDate)}</span>';
+  const cell = /<td className="stack-name">([\s\S]*?)<\/td>/.exec(code);
+  assert.ok(cell, 'ไม่พบเซลล์วันที่ของรายการ OT');
+  assert.equal(cell[1].replace(/\s+/g, ''), `${day}{thaiDate(e.workDate)}`.replace(/\s+/g, ''));
+  const queue = /<td className="when-col">([\s\S]*?)<\/td>/.exec(read('components/ApprovalQueue.jsx'));
+  assert.ok(queue && queue[1].replace(/\s+/g, '').includes(`${day}{thaiDate(e.workDate)}`.replace(/\s+/g, '')),
+    'คิวรออนุมัติเปลี่ยนรูปแบบวันที่ไปแล้ว — สองจอต้องเหมือนกัน');
+  assert.doesNotMatch(code, /dayName/, 'ชื่อวันเต็มกลับมาในแถว');
+  // ONE RULE FOR BOTH SCREENS, not a copy scoped to each.
+  assert.match(rule('.cell-sub.when-day'), /display: inline; margin: 0 2px 0 0;/);
+  assert.ok(!css.includes('td.when-col .when-day {'), 'กฎของคิวกลับมาแยกอีกชุด');
+  assert.ok(!css.includes('td.stack-name .cell-sub {'), 'กฎ inline เดิมที่ใส่ margin ซ้าย 6px กลับมา');
+  assert.match(rule('.entry-table.stack-table tbody td.stack-name'), /white-space: nowrap;/);
 });
 
 test('the two of them share one row, and the sentence is not on the buttons’ baseline', () => {
