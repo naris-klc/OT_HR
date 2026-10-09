@@ -1959,6 +1959,41 @@ export default function ApprovalQueue({
                         2026-09-08. Asked for in those words; see `.cell-flag`
                         in app/styles.css for why it is not a chip. */}
                     {e.noBreakTaken && <div className="cell-flag">ไม่พักเที่ยง</div>}
+                    {/* ── WHAT KIND OF DAY THIS IS ─────────────────────────────────
+                        Asked for on 2026-09-07: the two ticks on the filing form
+                        that change what the day IS — เหมารายวัน and วันเกิด —
+                        were visible to the person who filed and to ฝ่ายบุคคล on
+                        รายการ OT, and nowhere on the screen where somebody signs.
+                        A reviewer reading 08:00–20:00 against 8.00 ชม., or three
+                        holiday-rate hours on what the วัน column calls a Tuesday,
+                        had nothing on the row to explain either figure.
+
+                        UNDER เวลา SINCE 2026-10-09, with ไม่พักเที่ยง — *"ย้าย
+                        มาแสดงใต้เวลาทั้งหมด"*. It sat first in รายละเอียด until
+                        then, so the three marks that explain the HOURS were
+                        split across two columns; now they are all beside the
+                        figure they explain. One chip per line (`.span-col
+                        .entry-mark` in app/styles.css) so the 108px column is
+                        not widened by two chips side by side.
+
+                        The same two components the employee's own screen and
+                        รายการ OT draw — one vocabulary for one fact, so a chip
+                        does not come to mean something different depending on
+                        which screen it is read from. `FlatDailyMark` prints the
+                        rule underneath as well (why eight hours), which is the
+                        thing this cell was missing.
+
+                        Neither is a tick READ BACK off the form: `flatDaily` is
+                        stored on the request, and วันเกิด is `dayReason` off the
+                        segments the engine computed — see `isBirthdayWelfare`.
+                        A row whose owner's วันเกิด was corrected after filing
+                        therefore says what the hours ARE, not what was claimed. */}
+                    {(e.flatDaily || isBirthdayWelfare(e)) && (
+                      <div className="entry-mark">
+                        <BirthdayWelfareMark entry={e} />
+                        <FlatDailyMark entry={e} />
+                      </div>
+                    )}
                   </td>
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
@@ -1992,39 +2027,6 @@ export default function ApprovalQueue({
                   <td className="num cap-col"><CapUsage usage={e.usage} /></td>
                   <td className="why-col">
                     {e.description}
-                    {/* ── WHAT KIND OF DAY THIS IS, BEFORE ANYTHING ABOUT WHO
-                        TOUCHED IT ─────────────────────────────────────────────
-                        Asked for on 2026-09-07: the two ticks on the filing form
-                        that change what the day IS — เหมารายวัน and วันเกิด —
-                        were visible to the person who filed and to ฝ่ายบุคคล on
-                        รายการ OT, and nowhere on the screen where somebody signs.
-                        A reviewer reading 08:00–20:00 against 8.00 ชม., or three
-                        holiday-rate hours on what the วัน column calls a Tuesday,
-                        had nothing on the row to explain either figure.
-
-                        FIRST IN THE CELL because the marks under it answer "who
-                        wrote this" and "has it changed", and both of those are
-                        questions about a request whose hours the reader has
-                        already understood.
-
-                        The same two components the employee's own screen and
-                        รายการ OT draw — one vocabulary for one fact, so a chip
-                        does not come to mean something different depending on
-                        which screen it is read from. `FlatDailyMark` prints the
-                        rule underneath as well (why eight hours), which is the
-                        thing this cell was missing.
-
-                        Neither is a tick READ BACK off the form: `flatDaily` is
-                        stored on the request, and วันเกิด is `dayReason` off the
-                        segments the engine computed — see `isBirthdayWelfare`.
-                        A row whose owner's วันเกิด was corrected after filing
-                        therefore says what the hours ARE, not what was claimed. */}
-                    {(e.flatDaily || isBirthdayWelfare(e)) && (
-                      <div className="entry-mark">
-                        <BirthdayWelfareMark entry={e} />
-                        <FlatDailyMark entry={e} />
-                      </div>
-                    )}
                     {/* ใบที่ผู้อ่านเซ็นแทนหัวหน้า — a handed-over team, or a
                         ใบ whose แผนก has no signer at all. `TeamMark` decides
                         which rows wear it (and draws nothing on the rest); the

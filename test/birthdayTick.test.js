@@ -325,7 +325,8 @@ test('ใบเก่าที่ segment ไม่มี dayReason — ไม�
  */
 test('หน้ารออนุมัติ — ป้าย OT สวัสดิการวันเกิด ขึ้นทั้งในแถวและในป๊อปอัปรายละเอียด', () => {
   const queue = read('components/ApprovalQueue.jsx');
-  const row = queue.slice(queue.indexOf('<td className="why-col">'), queue.indexOf('<td className="act-col">'));
+  // ใต้เวลา (`span-col`) ตั้งแต่ 2026-10-09 — เดิมอยู่ในช่อง รายละเอียด
+  const row = queue.slice(queue.indexOf('<td className="span-col">'), queue.indexOf('<td className="num rate-col">'));
   const detail = queue.slice(queue.indexOf('<Section title="คำขอ">'), queue.indexOf('<ReasonCard'));
 
   for (const [where, code] of [['แถวในคิว', row], ['ป๊อปอัปรายละเอียด', detail]]) {
