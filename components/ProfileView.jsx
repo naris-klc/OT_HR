@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { isSigner, roleLabel } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
-import { Alert, PasswordInput } from './common.jsx';
+import { Alert, PasswordInput, TablePager, pageWindow } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
 
@@ -63,6 +63,82 @@ export default function ProfileView({ user, jumpTo = null, onPasswordChanged, on
           already on when they know they will be away. ฝ่ายบุคคล have the same
           screen under ตั้งค่าระบบ for the หัวหน้า who is already gone. */}
       {isSigner(user.role) && <Delegation user={user} scope="mine" />}
+      {isSigner(user.role) && <MyTeam />}
+    </div>
+  );
+}
+
+// ── ผู้ใต้บังคับบัญชาที่อนุมัติ ─────────────────────────────────────────────
+
+/** 10 to a page, and a pager only past that — asked for in as many words. */
+const TEAM_PAGE = 10;
+
+/**
+ * ผู้ใต้บังคับบัญชาที่อนุมัติ — the people whose first step this person signs,
+ * at the foot of the page. แบบ C, chosen from three mockups on 2026-10-09:
+ * grouped by แผนก with a count on each heading, no รายคน/ตามแผนก tag — the
+ * reader asked WHO, and how HR wired each one is ทะเบียนพนักงาน's business.
+ *
+ * Groups are cut per page: a แผนก that runs across the page break shows its
+ * heading again on the next page, counting the rows on THAT page, so no row
+ * ever sits under a heading the reader cannot see.
+ */
+function MyTeam() {
+  const [people, setPeople] = useState(null);
+  const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(TEAM_PAGE);
+
+  useEffect(() => {
+    api.get('/employees/me/team')
+      .then((r) => setPeople(r.people || []))
+      .catch((e) => setError(e.message || 'โหลดรายชื่อไม่สำเร็จ'));
+  }, []);
+
+  const total = people?.length || 0;
+  const paged = total > TEAM_PAGE;
+  const win = pageWindow(page, pageSize, total, paged);
+  const rows = (people || []).slice(win.from, win.to);
+  const groups = [];
+  for (const p of rows) {
+    const last = groups[groups.length - 1];
+    if (last && last.name === p.department) last.rows.push(p);
+    else groups.push({ name: p.department, rows: [p] });
+  }
+
+  return (
+    <div className="card my-team">
+      <h2>ผู้ใต้บังคับบัญชาที่อนุมัติ</h2>
+      <div className="hint">
+        {people ? `${total} คน · ` : ''}แก้ไม่ได้ — แจ้งฝ่ายบุคคล
+      </div>
+      {error && <Alert kind="error">{error}</Alert>}
+      {people && total === 0 && <div className="hint team-empty">ยังไม่มีพนักงานที่คุณอนุมัติ</div>}
+      {groups.map((g, i) => (
+        <section key={`${g.name}-${i}`} className="team-group">
+          <div className="team-head">{g.name || '—'} · {g.rows.length} คน</div>
+          <ul className="team-list">
+            {g.rows.map((p) => (
+              <li key={p.id}>
+                <span className="team-name">{p.name}</span>
+                <span className="team-sub">{[p.code, p.position].filter(Boolean).join(' · ')}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+      {paged && (
+        <TablePager
+          page={win.at}
+          pageSize={pageSize}
+          total={total}
+          onPage={setPage}
+          onPageSize={(n) => { setPageSize(n); setPage(1); }}
+          label="ผู้ใต้บังคับบัญชาที่อนุมัติ"
+          unit="คน"
+          always
+        />
+      )}
     </div>
   );
 }

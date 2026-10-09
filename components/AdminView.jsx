@@ -22,7 +22,7 @@ import { companyOf, companyLabel } from '@/src/config/companies.js';
 import PasswordSlips from './PasswordSlips.jsx';
 import { PickDate } from './PickDate.jsx';
 import {
-  approvalDepartments, idOf, viewerId, minuteLabel, isDepartmentManager, maySignRoleOf,
+  approvalDepartments, idOf, viewerId, minuteLabel, isDepartmentManager, maySignRoleOf, deptReach,
 } from '@/lib/entries.js';
 import { PickTime } from './PickTime.jsx';
 import { ROLES, ROLE_LABEL_TH, isSigner, hrHeadsDepartment } from '@/lib/roles.js';
@@ -2173,12 +2173,7 @@ function PersonalApprovalField({ me, value, onChange, roster, depts, disabled, s
    * appears here exactly when that person's request would reach this signer.
    * A แผนก that `signedByHr` sends to ฝ่ายบุคคล outright reaches nobody.
    */
-  const viaDept = signer ? (roster || []).filter((p) => p.active !== false
-    && String(p._id) !== meId
-    && !(value || []).includes(String(p._id))
-    && !hrHeadsDepartment((depts || []).find((d) => String(d._id) === String(idOf(p.department))))
-    && isDepartmentManager(signer, p.department, companyOf(p), p)
-    && maySignRoleOf(signer, p)) : [];
+  const viaDept = signer ? deptReach(signer, roster, depts, value || []) : [];
   // A หัวหน้างาน of a big แผนก would otherwise draw the whole team here.
   const more = useShowMore(viaDept, { unit: 'คน' });
 

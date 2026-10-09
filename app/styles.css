@@ -6010,6 +6010,22 @@ td > .approver-line { margin-top: 5px; }
 /* ข้อมูลส่วนตัว, read-only. A description list rather than a table: it is one
    person's facts, not rows to compare. Four facts in two columns under the
    name; the name, รหัสพนักงาน and ตำแหน่ง are the card's header. */
+/* ผู้ใต้บังคับบัญชาที่อนุมัติ — the last card on ข้อมูลส่วนตัว (แบบ C,
+   2026-10-09). A heading per แผนก with its count, then one 44px row per person:
+   name, then รหัส · ตำแหน่ง in grey. Names wrap at the space (keep-all), and a
+   row is a flex child that may shrink (`min-width: 0`). */
+.my-team .team-group { margin-top: 12px; }
+.my-team .team-head { font: 600 12.5px/1.4 var(--sans); color: var(--muted); padding-bottom: 4px; }
+.my-team .team-list { list-style: none; margin: 0; padding: 0; }
+.my-team .team-list li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0;
+  min-height: 44px; padding: 10px 0; border-top: 1px solid var(--line); box-sizing: border-box;
+}
+.my-team .team-name { font: 600 14px/1.4 var(--sans); color: var(--ink); word-break: keep-all; min-width: 0; }
+.my-team .team-sub { font: 400 12.5px/1.4 var(--sans); color: var(--muted); min-width: 0; }
+.my-team .team-empty { margin-top: 10px; }
+.my-team .table-pager { margin-top: 10px; }
+
 .profile-facts {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px;
   margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--line);
