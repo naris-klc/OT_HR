@@ -10749,16 +10749,6 @@ table.mini tbody tr:hover { background: none; }
    being on separate lines, which they already are. */
 .modal-head .s-who { display: block; }
 .modal-head .s-when { display: block; color: var(--ink); }
-/* AND A THIRD LINE ON ONE POP-UP ONLY — "ยื่นคำขอเมื่อ …" on the employee's own
-   รายละเอียด. It is a third date in a header that already carries two, so it
-   goes BELOW the ladder rather than on it: smaller than `.s` and in `--muted`,
-   which is the ink every secondary line in this app uses and one step under the
-   pair above. The distinction the two rules above draw is between WHO and WHEN;
-   this is neither, it is when the paperwork was filed, and it must not read as
-   a competing answer to the date the request is about. */
-.modal-head .s-filed {
-  display: block; font: 400 12px/1.5 var(--sans); color: var(--muted); margin-top: 1px;
-}
 
 /* ── the ceiling, as chips ────────────────────────────────────────────────
    Three sentences became three numbers with a word in front of each. The mono
@@ -10876,7 +10866,6 @@ table.mini tbody tr:hover { background: none; }
   border-radius: var(--radius-xs); background: var(--neutral-wash); border: 1px solid var(--line-soft);
   font: 500 12.5px/1.5 var(--sans); color: var(--ink-2);
 }
-.modal-head .s-tag + .s-filed { margin-top: 4px; }
 .head-meta .total { display: flex; align-items: baseline; gap: 4px; }
 .head-meta .total .k { font: 500 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted-2); }
 .head-meta .total .v { font: 600 20px/1 var(--mono); font-variant-numeric: tabular-nums; }
