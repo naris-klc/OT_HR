@@ -83,7 +83,7 @@ import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, PickMany,
   NoticeRow, NoticeStack, RowAction, ClearFilters,
   ClearButton, PAGE_SIZE, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
-  pageQuery, pageWindow, serverRows, useKeptFetch, usePageClamp,
+  pageQuery, useShowMore, pageWindow, serverRows, useKeptFetch, usePageClamp,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
@@ -2145,12 +2145,30 @@ function ApprovalBadge({ role, department, extras, company, depts, named = 0 }) 
  * adding somebody here takes them off that person's queue — the one
  * consequence of this field nobody can see from the form.
  */
-function PersonalApprovalField({ me, value, onChange, roster, depts, disabled }) {
+function PersonalApprovalField({ me, value, onChange, roster, depts, disabled, signer }) {
   const [adding, setAdding] = useState(false);
   const meId = String(me || '');
   const byId = new Map((roster || []).map((p) => [String(p._id), p]));
   const rows = (value || []).map((id) => byId.get(id) || { _id: id, code: id, name: '' });
   const signers = (roster || []).filter((p) => p.active !== false && isSigner(p.role));
+
+  /**
+   * ตามแผนก — the people this signer reaches through the แผนก field, in the
+   * same table, wearing a chip where รายคน wear เอาออก (แบบ A, agreed
+   * 2026-10-09: HR read the table as "whom does the CEO sign for" and found the
+   * HR and จัดซื้อ staff missing from it). LIVE off the form like
+   * `ApprovalBadge`, and decided by the same two rules the queue uses, so a row
+   * appears here exactly when that person's request would reach this signer.
+   * A แผนก that `signedByHr` sends to ฝ่ายบุคคล outright reaches nobody.
+   */
+  const viaDept = signer ? (roster || []).filter((p) => p.active !== false
+    && String(p._id) !== meId
+    && !(value || []).includes(String(p._id))
+    && !hrHeadsDepartment((depts || []).find((d) => String(d._id) === String(idOf(p.department))))
+    && isDepartmentManager(signer, p.department, companyOf(p), p)
+    && maySignRoleOf(signer, p)) : [];
+  // A หัวหน้างาน of a big แผนก would otherwise draw the whole team here.
+  const more = useShowMore(viaDept, { unit: 'คน' });
 
   const candidates = (roster || []).filter((p) => p.active !== false
     && String(p._id) !== meId
@@ -2172,7 +2190,7 @@ function PersonalApprovalField({ me, value, onChange, roster, depts, disabled })
   return (
     <div className="field personal-approvals">
       <div className="field-head personal-head">
-        <label>อนุมัติรายคน · {rows.length} คน</label>
+        <label>พนักงานที่อนุมัติ · {rows.length + viaDept.length} คน</label>
         {!disabled && !adding && (
           <button type="button" className="btn ghost sm" onClick={() => setAdding(true)}>
             เพิ่มพนักงาน
@@ -2189,7 +2207,7 @@ function PersonalApprovalField({ me, value, onChange, roster, depts, disabled })
           noteOf={(p) => <span className="chip warn person-now">{nowSigning(p)}</span>}
         />
       )}
-      {rows.length > 0 && (
+      {rows.length + viaDept.length > 0 && (
         <div className="table-wrap personal-table">
           <table className="stack-table">
             <thead>
@@ -2224,12 +2242,31 @@ function PersonalApprovalField({ me, value, onChange, roster, depts, disabled })
                   )}
                 </tr>
               ))}
+              {more.visible.map((p) => (
+                <tr key={String(p._id)}>
+                  <td className="stack-name person-code">{p.code}</td>
+                  <td data-label="ชื่อ">
+                    {p.name}
+                    {p.position && <span className="cell-sub"> · {p.position}</span>}
+                  </td>
+                  <td data-label="แผนก">
+                    {nameOfDept(depts, idOf(p.department)) || '—'}
+                    {p.company && <span className="cell-sub"> · {companyLabel(p.company)}</span>}
+                  </td>
+                  {!disabled && (
+                    <td className="person-act">
+                      <span className="chip person-via" title="มาจากช่อง แผนก ด้านบน">ตามแผนก</span>
+                    </td>
+                  )}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
+      {more.controls}
       <div className="field-note">
-        คนในรายการนี้ ผู้อนุมัติตามแผนกจะไม่เห็นใบอีก · ใบไปที่คนนี้ก่อนแล้วจึงไปฝ่ายบุคคล
+        รายคน: ผู้อนุมัติตามแผนกจะไม่เห็นใบอีก · ตามแผนก: แก้ที่ช่อง แผนก ด้านบน
       </div>
     </div>
   );
@@ -4955,6 +4992,14 @@ function EditEmployee({
                 roster={roster}
                 depts={depts}
                 disabled={disabled()}
+                signer={{
+                  _id: employee._id,
+                  role: form.role,
+                  department: form.department,
+                  approvesDepartments: form.approvesDepartments,
+                  // '' is ทุกบริษัท on the form and null on the row.
+                  approvesCompany: form.approvesCompany || null,
+                }}
               />
               <ApprovalBadge
                 role={form.role}
