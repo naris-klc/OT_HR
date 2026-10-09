@@ -441,7 +441,7 @@ test('the owner sees both the pair and the list, under one heading', () => {
   const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
   // แผงขวาของหน้ารายละเอียดแบบ 1 (2026-10-09) แทน <Section title="ผู้อนุมัติ">
   const section = mine.slice(mine.indexOf('<div className="kicker-sm">ผู้อนุมัติ</div>'));
-  const head = section.slice(0, section.indexOf('<EntryHistoryFold'));
+  const head = section.slice(0, section.indexOf('<EntryHistoryBlock'));
   assert.match(head, /<SignatureFacts entry=\{e\} \/>/, 'คู่ผู้ยื่น–ผู้อนุมัติหายไป');
   assert.match(head, /\{decided && \(/, 'รายการลายเซ็นไม่ได้ถูกกั้นด้วย decided');
   assert.match(head, /<ApprovalSteps entry=\{e\} \/>/, 'รายการลายเซ็นหายไป');
@@ -461,8 +461,8 @@ test('the owner sees both the pair and the list, under one heading', () => {
 test('the owner’s history section draws on any request that has one', () => {
   const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
   has(mine, "{(e.history || []).length > 0 && (");
-  // พับไว้ท้ายหน้า (`EntryHistoryFold`) ตั้งแต่ 2026-10-09 — เดิมเป็น <Section>
-  has(mine, "<EntryHistoryFold title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>");
+  // พับไว้ท้ายหน้า (`EntryHistoryBlock`) ตั้งแต่ 2026-10-09 — เดิมเป็น <Section>
+  has(mine, "<EntryHistoryBlock title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>");
   // The ข้อมูลเดิม explanation is still there, and is still only said on the
   // rows it is about: on those the trail carries เดิม → ใหม่ blocks, and a
   // reader has to be told which version F-HR-027 prints.
