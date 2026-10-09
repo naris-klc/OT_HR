@@ -124,7 +124,7 @@ OT ทุกตัวอักษร** (`.queue-table tbody tr.row-open`, `.hr-t
 | กรอบ | `Modal` (กลางจอ · sheet บนมือถือ) |
 | เหตุผลที่ขอถอน / ผู้ขอ / วันที่ขอ | `Section` + `Fact` + `fact-grid` |
 | รายละเอียดงาน | `ReasonCard` |
-| ชั่วโมงแยกอัตรา | `.split.ot-split` + `BUCKETS`/`BUCKET_LABEL` |
+| ชั่วโมงแยกอัตรา | ~~`.split.ot-split`~~ (ออกไป 2026-10-09 → ตาราง `SegmentRates`) + `BUCKETS`/`BUCKET_LABEL` |
 | เทียบไฟล์สแกน | `ScanDayPunches` + `ScanMismatchMark` |
 | ประวัติของใบ | `EntryHistory` |
 | ผู้อนุมัติเดิม | `SignatureFacts` |

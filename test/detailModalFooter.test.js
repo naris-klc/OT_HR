@@ -371,13 +371,27 @@ test('the decisions are on screen at every scroll position', () => {
  * รวม is never marked — a total of 0.00 is a fact about the request, not an
  * empty bucket.
  */
-test('a bucket with no hours steps out of the way on a phone', () => {
-  has(code, "className={(e.buckets?.[b] || 0) === 0 ? 'box zero' : 'box'}");
-  has(css, '.ot-split .box.zero { display: none; }');
-  const strip = code.slice(code.indexOf('ot-split'), code.indexOf('className="note"'));
-  assert.ok(!/box total[^]*zero|zero[^]*box total/.test(strip.split('box total')[1] || ''),
-    'กล่องรวมถูกซ่อนไปด้วย');
-  has(strip, '<div className="box total">');
+test('a bucket with no hours is drawn faint, and the total row reads the stored buckets', () => {
+  // กล่องอัตราสี่กล่อง (`ot-split`, ซ่อนช่องที่เป็น 0 บนมือถือ) ออกไป 2026-10-09 —
+  // ตาราง `SegmentRates` แทน: ช่อง 0 ยังอยู่แต่จาง เพราะ "×3 เป็น 0" ก็เป็นคำตอบ
+  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8').replace(/\r\n/g, '\n');
+  const from = common.indexOf('export function SegmentRates(');
+  assert.ok(from > 0, 'SegmentRates หายไปจาก common.jsx');
+  const rates = common.slice(from, common.indexOf('\n}\n', from));
+  has(rates, "className={(e.buckets?.[b] || 0) === 0 ? 'num zero' : 'num'}>{hours(e.buckets?.[b])}");
+  has(rates, '<tr className="sum">');
+  has(css, '.dm-rates td.zero { color: var(--muted-2); }');
+  assert.ok(!css.includes('.ot-split .box.zero'), 'กฎของกล่องอัตราเดิมยังค้างอยู่');
+  has(code, '<SegmentRates entry={e} />');
+});
+
+test('แก้ไขชั่วโมง อยู่ท้ายกล่อง ก่อน ไม่อนุมัติ และไม่ร่วมคู่คำตอบ', () => {
+  has(code, '<button className="btn ghost foot-edit" title="แก้ไขชั่วโมง" disabled={busy || editing} onClick={() => setEditing(true)}>');
+  // ก่อน foot-split ทั้งสองแบบที่ตัดสินได้/ถูกล็อก — ไม่อยู่ในแถบปฏิเสธ
+  assert.equal((code.match(/\{editButton\}\n    <div className="foot-split"/g) || []).length, 2);
+  const rejecting = code.slice(code.indexOf("const footer = mode === 'rejecting' ? ("), code.indexOf(') : blocked ? ('));
+  assert.ok(!rejecting.includes('editButton'), 'ปุ่มแก้ไขโผล่ในแถบไม่อนุมัติ');
+  assert.ok(!/action=\{!editing/.test(code), 'ปุ่มแก้ไขกลับไปอยู่บนหัวส่วน');
 });
 
 /**

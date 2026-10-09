@@ -675,6 +675,60 @@ export function SegmentList({ segments }) {
   );
 }
 
+/** หัวคอลัมน์อัตรา สองบรรทัด — คำเดียวกับหัวตารางคิว */
+const RATE_HEAD = {
+  [BUCKETS.OT15_WEEKDAY]: ['×1.5', 'ปกติ'],
+  [BUCKETS.OT15_HOLIDAY]: ['×1.5', 'วันหยุด'],
+  [BUCKETS.OT3_HOLIDAY]: ['×3', 'วันหยุด'],
+};
+
+/**
+ * ชั่วโมงแยกอัตรา ต่อช่วงเวลา — ตารางเดียวแทน `SegmentList` + กล่องอัตราสี่กล่อง
+ * (2026-10-09, ป๊อปอัปแบบ B) · แถวละช่วง ตัวเลขลงคอลัมน์ตาม `bucket` ของช่วง
+ * (src/lib/otEngine.js เขียนไว้ทุกช่วง) · แถว รวม อ่านจาก `e.buckets` ไม่ใช่ผลบวก
+ * ของแถวบน ให้ตรงกับตัวเลขที่ส่งออกเสมอ · อัตราที่เป็น 0 ยังอยู่แต่จาง เพราะ
+ * "×3 เป็น 0" ก็เป็นคำตอบ
+ */
+export function SegmentRates({ entry: e }) {
+  const cols = Object.values(BUCKETS);
+  return (
+    <div className="dm-rates-wrap">
+      <table className="dm-rates">
+        <thead>
+          <tr>
+            <th>ช่วง</th>
+            {/* หัวสองบรรทัดแบบเดียวกับตารางคิว (`RateHead`) — ป้ายเต็ม `BUCKET_LABEL`
+                บรรทัดเดียวกว้างจนตารางล้นการ์ดที่จอ 360 */}
+            {cols.map((b) => <th key={b} className="num" title={BUCKET_LABEL[b]}><RateHead rate={RATE_HEAD[b][0]} of={RATE_HEAD[b][1]} /></th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {(e.segments || []).map((s, i) => (
+            <tr key={i}>
+              <td>
+                <span className="nb">{s.date} {s.start}–{s.end}</span>
+                <div className="hint">
+                  {s.dayType === 'holiday' ? 'วันหยุด' : 'วันทำงาน'}
+                  {DAY_REASON_LABEL[s.dayReason] ? ` (${DAY_REASON_LABEL[s.dayReason]})` : ''}
+                </div>
+              </td>
+              {cols.map((b) => (
+                <td key={b} className={s.bucket === b ? 'num' : 'num zero'}>{s.bucket === b ? hours(s.hours) : '0'}</td>
+              ))}
+            </tr>
+          ))}
+          <tr className="sum">
+            <td>รวม {hours(e.totals?.otHours)} ชม.</td>
+            {cols.map((b) => (
+              <td key={b} className={(e.buckets?.[b] || 0) === 0 ? 'num zero' : 'num'}>{hours(e.buckets?.[b])}</td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /**
  * The engine warnings a screen shows — every one but `NORMAL_HOURS_IGNORED`.
  *

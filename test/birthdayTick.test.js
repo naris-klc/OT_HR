@@ -327,7 +327,8 @@ test('หน้ารออนุมัติ — ป้าย OT สวัส�
   const queue = read('components/ApprovalQueue.jsx');
   // ใต้เวลา (`span-col`) ตั้งแต่ 2026-10-09 — เดิมอยู่ในช่อง รายละเอียด
   const row = queue.slice(queue.indexOf('<td className="span-col">'), queue.indexOf('<td className="num rate-col">'));
-  const detail = queue.slice(queue.indexOf('<Section title="คำขอ">'), queue.indexOf('<ReasonCard'));
+  // ป๊อปอัปเป็นสองคอลัมน์ตั้งแต่ 2026-10-09 — เดิมเริ่มที่ <Section title="คำขอ">
+  const detail = queue.slice(queue.indexOf('<div className="dm-grid">'), queue.indexOf('<ReasonCard', queue.indexOf('<div className="dm-grid">')));
 
   for (const [where, code] of [['แถวในคิว', row], ['ป๊อปอัปรายละเอียด', detail]]) {
     assert.match(code, /<BirthdayWelfareMark entry=\{e\} \/>/, `ป้ายวันเกิดหายจาก${where}`);
