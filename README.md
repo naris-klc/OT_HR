@@ -2127,9 +2127,11 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2842 tests
-across 160 files**, measured 2026-10-08 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2844 tests
+across 160 files**, measured 2026-10-09 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2842 tests across 160 files" until **แท็บสถานะบนตรวจสอบประจำเดือน**
+(2026-10-09) — `monthStatusFilter` was rewritten for the tabs and gained two.
 It read "2833 tests across 159 files" until **ค่าที่ใช้อยู่ แบบ B** (2026-10-08)
 — `policyReading` is file 160: every row on นโยบายการคำนวณ has a sentence for
 every answer, and the arithmetic rows a worked example.
@@ -7723,8 +7725,8 @@ over the reader's whole reading, unnarrowed by the pick, and
 
 - it counts **people**, matching the rows — pick ผลิต1 and the table draws
   exactly the figure the list quoted;
-- it follows **สถานะที่นับ**, the other control that decides what is on the
-  table, and not **ค้นหา** or **ดูเฉพาะคนที่ต้องตรวจ**, which narrow what is
+- it follows **สถานะที่นับ** (the tabs on the card head since 2026-10-09), the
+  other control that decides what is on the table, and not **ค้นหา** or **ดูเฉพาะคนที่ต้องตรวจ**, which narrow what is
   drawn out of a month already fetched (the queue leaves its own search out of
   its counts for the same reason);
 - it is the reader's own reading and never wider — `departmentScope` asked a
@@ -8387,6 +8389,10 @@ sections instead of three:
 └───────────────────────────────────────────────────────────┘
 ```
 
+> Since 2026-10-09 `· 24 คน` is gone from `.card-head` and สถานะที่นับ from
+> `.queue-tools`: both became the tabs `ทั้งหมด · รอ HR · รอหัวหน้า · อนุมัติแล้ว`,
+> on a line of their own under the heading, each carrying its count of people.
+
 **No permission rule, route, query or figure moved in this round.** `readsScans`,
 `mayCorrect` and `approvable` are the same tests they were; every change is where
 an element sits and what it is painted with.
@@ -8742,7 +8748,8 @@ four beside it"* until later the same day — there is no first row on a bar any
 more, and the section below is why.
 **ล้างตัวกรอง** joins it, the queue's own escape hatch; ประจำเดือน is not one of
 the things it clears, because a month is always chosen here and สถานะที่นับ goes
-back to `DEFAULT_STATUS` rather than to empty.
+back to `DEFAULT_STATUS` rather than to empty — since 2026-10-09 that is the
+ทั้งหมด tab, which it still resets although the tabs are on the card head.
 
 **What this bought on a phone, without a line of CSS being written for it.**
 `.card-head` already has the 860px rules the old markup did not: the count chip
@@ -9194,6 +9201,16 @@ both. What the screen says, with dates, is which rows those are.
 > unmarked sheet now; the rule that produced the two answers still runs, for the
 > screen.
 
+**Since 2026-10-09 สถานะที่นับ is four tabs on the card head, and they pick
+PEOPLE**: ทั้งหมด · รอ HR (anyone with a `pending_hr` row, hours counted over
+`approved,pending_hr`) · รอหัวหน้า (anyone with a `pending_mgr` row, hours over
+`pending_mgr`) · อนุมัติแล้ว (only people with nothing pending at all). The
+status string each tab sends is one of the four below, unchanged, so the CSVs and
+the `screen` print scope still read it as before; what is new is `keep` in
+components/HrView.jsx, which drops the rows the tab does not describe, and
+`tabCounts` on the route, which counts people for the numbers on the tabs. See
+§Status for the round.
+
 **Since 2026-10-08 ตรวจสอบประจำเดือน opens on ทั้งหมด**, which is what the
 shipped `draft` sheet prints — asked for as *ให้เริ่มที่ทั้งหมด*, in the same
 round that cut สถานะที่นับ from five rows to four: **รอหัวหน้า** (`pending_mgr`) ·
@@ -9253,7 +9270,8 @@ same figure at their defaults** (still true at ทั้งหมด), which the
 2026-09-04. The queue's headline is approved hours — a หัวหน้า has not yet
 decided the rest — and this screen now counts the step *after* theirs, which is
 the step it exists to carry out. Put สถานะที่นับ on อนุมัติแล้ว (อนุมัติแล้วเท่านั้น
-until 2026-10-08) and the two agree again, which is what `test/queueCapUsage.test.js` compares them at.
+until 2026-10-08) and the two agree again on every row it shows — since
+2026-10-09 that tab shows only people with nothing pending, which is what `test/queueCapUsage.test.js` compares them at.
 The เพดาน column is unaffected either way: it has been coloured from every
 request still alive, at every filter, since the same day.
 
@@ -13100,6 +13118,25 @@ build แล้ว
 
 **Verified**
 
+- **ตรวจสอบประจำเดือน: ดรอปดาวน์ `สถานะที่นับ` กลายเป็นแท็บบนหัวการ์ด —
+  `ทั้งหมด` · `รอ HR` · `รอหัวหน้า` · `อนุมัติแล้ว` กรอง *คน* ไม่ใช่เลือกนับใบ** —
+  2026-10-09 · ผู้ใช้ถามพร้อมภาพว่า *ทำไมกรองอนุมัติแล้ว แต่ยังมีรายการรอhr*
+  (คุณเกษร `2/13` กับนาฬิกา `รอ HR 11 ใบ` ใต้ตัวกรอง อนุมัติแล้ว) และบอกว่าจอ
+  *ดูงงว่ายังเหลือรายการไหนต้องตรวจสอบ* → mockup สามแบบ เลือกแบบแท็บ ·
+  **นิยามของผู้ใช้**: `อนุมัติแล้ว` = *เฉพาะคนที่เคลียร์หมดแล้ว* · `รอ HR` = คนที่มีใบ
+  รอ HR แต่ชั่วโมงนับทั้งเดือน (อนุมัติแล้ว + รอ HR) · `รอหัวหน้า` = คนที่มีใบรอ
+  หัวหน้า นับเฉพาะใบนั้น · `ทั้งหมด` เปิดมาเป็นค่าแรก · **เลขบนแท็บคือจำนวนคน
+  ทั้งเดือน** จาก `tabCounts` ที่เราต์นับจากชุดเดียวกับคอลัมน์เพดาน (แผนกที่เลือก
+  มีผล) · **การส่งออกไม่เปลี่ยน** — CSV ปุ่มพิมพ์ และผลเทียบสแกนยังได้สตริงสถานะเดิม
+  (`approved` ฯลฯ) ซึ่งนับใบของทุกคน ไม่ได้ตัดคนตามแท็บ · ตัวที่ตัดคนคือ `keep`
+  ในเบราว์เซอร์ อ่านจาก `monthStatus` · ป้าย `60 คน` ข้างปุ่ม ไฟล์สแกน ออกไปด้วย
+  เพราะผู้ใช้อ่านเป็นจำนวนที่นำเข้าไฟล์สแกน และแท็บ ทั้งหมด บอกเลขเดียวกันแล้ว ·
+  **แท็บอยู่บรรทัดของตัวเองใต้ชื่อการ์ดทุกความกว้าง** — mockup วางไว้ระหว่างชื่อกับ
+  ปุ่ม แต่ที่ 1024 (มีแถบเมนู) หัวการ์ดแตกเป็นสามบรรทัด · ใช้ `.queue-tabs` ที่ว่าง
+  อยู่ ไม่ใช่แท็บชุดใหม่ · มือถือแบ่งสี่ช่องเท่ากัน ชื่อบนเลขล่าง วัดที่ 360 ไม่ตก
+  บรรทัด · ✅ เทสต์ผ่านหมด · ✅ build `--webpack` ผ่านบน distDir แยก · ⚠️ วัดด้วย
+  หน้าจำลองที่ใช้ `app/styles.css` จริง ยังไม่ได้เปิดบนแอปที่ล็อกอินอยู่
+
 - **`สถานะที่นับ` เหลือสี่แถว เปิดมาที่ `ทั้งหมด` · คอลัมน์ `รายการ` เป็น
   `ที่นับ/ทั้งเดือน` กับนาฬิกา** — 2026-10-08 · ผู้ใช้บอกว่าห้าแถวเดิมกับคอลัมน์
   รายการ "ซ้ำซ้อน" → mockup สามแบบ เลือกแบบดรอปดาวน์ แล้วกำหนดเอง: `รอหัวหน้า` ·
@@ -14467,8 +14504,9 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2842 tests**, about 8 s, measured 2026-10-08 across 160
-  files, all green. **`policyReading` is the newest file** — the one-sentence
+- `npm test` — **2844 tests**, about 8 s, measured 2026-10-09 across 160
+  files, all green (it read "2842 tests" until the status tabs on ตรวจสอบ
+  ประจำเดือน rewrote `monthStatusFilter`). **`policyReading` is the newest file** — the one-sentence
   answer line and the worked examples on นโยบายการคำนวณ (แบบ B). It read
   "2833 tests … across 159 files" before that (and "2828 tests" until the
   one-line pager round added five cases to `tablePager`), when

@@ -51,10 +51,10 @@ test('the screen asks the roster’s own search, not one of its own', () => {
   // `query` and not `find` since the debounce landed — the string the screen was
   // filtered BY, which is also what the count, the empty state, the highlight
   // and the suggestion list read. See the live-search section at the foot.
-  assert.match(
-    hrView,
-    /\(data\?\.employees \|\| \[\]\)\.filter\(\(row\) => personMatches\(row\.employee, query\)\)/,
-  );
+  // `inTab` since 2026-10-09: the search narrows the tab that is open, which
+  // is itself `data.employees` cut by the tab's `keep`.
+  assert.match(hrView, /inTab\.filter\(\(row\) => personMatches\(row\.employee, query\)\)/);
+  assert.match(hrView, /\(data\?\.employees \|\| \[\]\)\.filter\(\(row\) => !row\.monthStatus \|\| tab\.keep\(row\.monthStatus\)\)/);
   // No second rule written by hand beside it.
   assert.ok(!/toLowerCase\(\)\.includes/.test(hrView), 'a hand-rolled match crept in beside personMatches');
 });
@@ -254,7 +254,15 @@ test('ประจำเดือน and ค้นหา are one row, above the 
   // had anything to point with. The assertion follows the label rather than the
   // tag: what it is here to hold down is that the words are on this screen and
   // on the heading row, not which element carries them.
-  assert.match(hrView, /<PickOne\s+label="สถานะที่นับ"/);
+  //
+  // ⚠ IT LEFT THE BAR ON 2026-10-09 for four tabs on the card head (`MONTH_TABS`,
+  // `.month-tabs`) — so what is held down now is that it is NOT on the bar, and
+  // that the tabs are on the head above it.
+  assert.ok(!/label="สถานะที่นับ"/.test(hrView), 'the status dropdown came back beside the tabs');
+  assert.ok(
+    hrView.indexOf('className="queue-tabs month-tabs"') < from,
+    'the status tabs are not on the card head above the bar',
+  );
   // THE BAR IS IN THE CARD, AND THE ACTION IS ABOVE IT. `.export-row` is gone:
   // พิมพ์ / ส่งออก sits in `.card-head` beside the count, which is where every
   // other card in this app puts its one action, and the bar of filters is the
@@ -382,7 +390,9 @@ test('the notices band takes itself off the page when there is nothing to say', 
 });
 
 test('the scan drawer is opened from the card head, with the card’s other verbs', () => {
-  const from = hrView.indexOf('{data && <span className="chip muted">');
+  // From the tabs since 2026-10-09, when the `N คน` chip that opened this
+  // group went — the tabs carry the count.
+  const from = hrView.indexOf('className="queue-tabs month-tabs"');
   const block = hrView.slice(from, hrView.indexOf('<NoticeStack id="month"', from));
   assert.ok(block.includes('className="btn ghost sm scan-toggle"'), 'ไฟล์สแกน is not on the card head');
   assert.ok(block.indexOf('scan-toggle') < block.indexOf('<ExportMenu'), 'ไฟล์สแกน is under พิมพ์ / ส่งออก');
@@ -422,10 +432,11 @@ test('ค้นหา comes first on the bar, in the order รออนุมั
     row.indexOf('className="searchbox"') < row.indexOf('<label>ประจำเดือน</label>'),
     'the month moved above the search box again',
   );
-  // …and สถานะ then แผนก between them, which is the queue's own three.
+  // …and แผนก between them. สถานะ stood before แผนก until 2026-10-09, when it
+  // became the card head's tabs.
   assert.ok(
-    row.indexOf('label="สถานะที่นับ"') < row.indexOf('label="แผนก"'),
-    'สถานะ and แผนก swapped places on the bar',
+    row.indexOf('className="searchbox"') < row.indexOf('label="แผนก"'),
+    'แผนก moved above the search box',
   );
   assert.ok(
     row.indexOf('label="แผนก"') < row.indexOf('<label>ประจำเดือน</label>'),

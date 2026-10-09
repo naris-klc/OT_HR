@@ -1,4 +1,5 @@
 import OtEntry from '@/src/models/OtEntry.js';
+import Employee from '@/src/models/Employee.js';
 import { SIGNER_ROLES } from '@/lib/roles.js';
 import PolicyVersion from '@/src/models/PolicyVersion.js';
 import Setting from '@/src/models/Setting.js';
@@ -188,6 +189,38 @@ export const GET = route(async (req, { params }) => {
    * different conclusions about the same month — see `capEntriesByEmployee`.
    */
   const capByEmployee = await capEntriesByEmployee(filter, { inHand: all });
+
+  /**
+   * ตัวเลขบนแท็บ ทั้งหมด · รอ HR · รอหัวหน้า · อนุมัติแล้ว — จำนวน **คน** ทั้งเดือน
+   * 2026-10-09 · นับจาก `capByEmployee` (ทุกใบที่ยังไม่ถูกปฏิเสธ ไม่สน สถานะที่นับ
+   * แต่สนแผนก) เพราะ `employees` มีเฉพาะคนที่แท็บที่เปิดอยู่นับ — แท็บอื่นจะได้เลข
+   * ของแท็บนี้ไป
+   *
+   * คนหนึ่งมีใบทั้งรอหัวหน้าและรอ HR ได้ จึงนับในทั้งสองแท็บ · อนุมัติแล้ว = ไม่มี
+   * ใบค้างเลย ซึ่งเป็นกติกาเดียวกับ `keep` ของแท็บใน components/HrView.jsx
+   *
+   * ⚠ ผู้เซ็นที่เซ็นให้บริษัทเดียว: `capEntriesByEmployee` อ่านซ้ำด้วย `filter` ซึ่ง
+   * ไม่มีเงื่อนไขบริษัท (ตัวกรองบริษัทของ `all` ทำในหน่วยความจำ) — จึงอ่านบริษัท
+   * ของคนที่เหลือมาตัดออก ไม่งั้นแท็บนับคนของอีกบริษัทที่ตารางไม่มีวันแสดง
+   */
+  let tabPeople = [...capByEmployee.keys()];
+  if (teamOnly && user.approvesCompany) {
+    const known = await Employee.find({ _id: { $in: tabPeople } }).select('company code').lean();
+    const ok = new Set(known
+      .filter((e) => signsForCompany(user, companyOf(e)))
+      .map((e) => String(e._id)));
+    tabPeople = tabPeople.filter((id) => ok.has(String(id)));
+  }
+  const tabCounts = { all: 0, pendingHr: 0, pendingMgr: 0, approved: 0 };
+  for (const id of tabPeople) {
+    const rows = capByEmployee.get(id);
+    const hr = rows.some((e) => e.status === 'pending_hr');
+    const mgr = rows.some((e) => e.status === 'pending_mgr');
+    tabCounts.all += 1;
+    if (hr) tabCounts.pendingHr += 1;
+    if (mgr) tabCounts.pendingMgr += 1;
+    if (!hr && !mgr) tabCounts.approved += 1;
+  }
 
   const byEmployee = new Map();
   for (const entry of entries) {
@@ -480,6 +513,7 @@ export const GET = route(async (req, { params }) => {
   return json({
     period,
     employees,
+    tabCounts,
     grandTotal: grand,
     hrSection: hrSummary(grand, policy),
     /** Superseded filings left out of every figure above — reported, not silent. */

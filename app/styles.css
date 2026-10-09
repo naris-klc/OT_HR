@@ -6020,6 +6020,27 @@ td > .approver-line { margin-top: 5px; }
 }
 .queue-tabs button.active .count { background: var(--amber); color: var(--on-amber); }
 
+/* ตรวจสอบประจำเดือน's four tabs — ทั้งหมด · รอ HR · รอหัวหน้า · อนุมัติแล้ว,
+   2026-10-09. The same bar, not a second one, and the count is people, from
+   `tabCounts`.
+
+   ON A LINE OF ITS OWN UNDER THE TITLE AND THE BUTTONS, at every width. The
+   mockup had it between the two, and that only fits from about 1250px of
+   content: at 1024 with the sidebar the head broke into title / tabs /
+   buttons, three lines. A line of its own is one rule and no new breakpoint.
+   `::after` is the line break — a zero-height item a whole line wide, ordered
+   between the head's row and the tabs — so the bar keeps its own width
+   instead of being stretched across the card; `row-gap: 6px` because that
+   empty line pays the gap twice. Each tab is its label's width
+   above 860px; below it the tabs split the line four ways (see the 860px
+   block). */
+.card-head:has(> .month-tabs) { row-gap: 6px; }
+.card-head:has(> .month-tabs)::after { content: ''; flex-basis: 100%; order: 1; }
+.month-tabs { order: 2; }
+.month-tabs button { flex: none; }
+.month-tabs .count,
+.month-tabs button.active .count { background: var(--neutral-wash); color: var(--ink-2); }
+
 /* ตั้งค่าระบบ's eight section buttons — the same job as .queue-tabs above, but
    eight choices instead of two, so they have to be allowed to wrap and cannot
    be one segmented bar.
@@ -12421,6 +12442,15 @@ table.mini tbody tr:hover { background: none; }
      hands it to the button, whose label is the one thing in this head that
      must not be cut — which is what the report was about. */
   .card-head:has(> .row .btn) > .row { width: 100%; }
+  /* ตรวจสอบประจำเดือน's tabs on a line of their own, split evenly four ways,
+     label over count so อนุมัติแล้ว 41 fits a quarter of 360px — see
+     `.month-tabs` above. */
+  .card-head:has(> .month-tabs)::after { display: none; }
+  .month-tabs { padding: 3px; gap: 3px; }
+  .month-tabs button {
+    flex: 1; min-width: 0; flex-direction: column; gap: 2px;
+    padding: 6px 0; min-height: 44px; font-size: 12.5px; white-space: nowrap;
+  }
   /* EVERY CONTROL IN THE GROUP, NOT ONLY THE BUTTON. On the queue the button is
      the only one left at this width — the count chip beside it is
      `display: none`, and a display:none element is not a flex item — so it

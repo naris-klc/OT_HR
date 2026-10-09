@@ -79,7 +79,8 @@ const rule = (selector) => {
 /** Every screen that draws a filter bar, and the label on each control of it. */
 const BARS = [
   ['components/ApprovalQueue.jsx', ['ค้นหา', 'แผนก', 'เดือน']],
-  ['components/HrView.jsx', ['ค้นหาพนักงาน', 'สถานะที่นับ', 'แผนก', 'ประจำเดือน']],
+  /* สถานะที่นับ left this bar on 2026-10-09 — it is tabs on the card head now. */
+  ['components/HrView.jsx', ['ค้นหาพนักงาน', 'แผนก', 'ประจำเดือน']],
   ['components/AccountingView.jsx', ['บริษัท', 'ประจำเดือน']],
   ['components/DepartmentView.jsx', ['แผนก', 'ประจำเดือน']],
   ['components/LogSystem.jsx', ['ค้นหา', 'กรองตามบัญชี', 'ช่วงวันที่']],
