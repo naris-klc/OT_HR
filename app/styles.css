@@ -12062,8 +12062,10 @@ table.mini tbody tr:hover { background: none; }
      children of the foot; these two are one step further in, so the wrapper is
      what has to be told to fill the width. */
   .modal-foot .foot-split { flex: 1; gap: 8px; }
-  .modal-foot .btn.foot-edit { flex: none; width: var(--btn-h); padding: 0; }
-  .modal-foot .btn.foot-edit span { display: none; }
+  /* แก้ไข keeps its word on a phone (2026-10-09): there is no hover to carry a
+     tooltip. Measured on the built app: 83px beside a 115px pair at 360 — the
+     narrowest width this app is checked at — with nothing clipped. */
+  .modal-foot .btn.foot-edit { flex: none; padding: 0 12px; gap: 6px; }
 
   /* ── the header, in one band ────────────────────────────────────────────
      The figure and the status chip sat one above the other at the right-hand
