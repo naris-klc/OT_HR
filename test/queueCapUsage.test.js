@@ -1070,11 +1070,13 @@ test('the รายละเอียด pop-up still shows the whole story', ()
    * `capExceeded` stays in the grid: what the ceilings said on the day this was
    * filed IS a property of the request. This card is what they say now.
    */
-  const gridFrom = queue.indexOf('<dl className="fact-grid">');
+  // `fact-grid` สี่ช่องกลายเป็นบรรทัด `.dm-time` ใต้เวลา (ป๊อปอัปแบบ B, 2026-10-09)
+  // — คำถามเดิม: ของที่เป็นของใบอยู่ฝั่งซ้าย เพดานเดือนอยู่การ์ดของมันฝั่งขวา
+  const gridFrom = queue.indexOf('<div className="dm-time">');
   const grid = queue.slice(gridFrom, queue.indexOf('<ReasonCard', gridFrom));
   assert.ok(gridFrom > 0 && grid.length < 4000, 'the คำขอ grid or the card after it moved');
   assert.doesNotMatch(grid, /สะสม \/ เพดาน/, 'the ceiling is back among the request\'s own facts');
-  assert.match(grid, /k="เกินเพดานแผนก"/, 'the filed-day breach left the grid with it');
+  assert.match(grid, /เกินเพดานแผนก — \{describeBreaches\(e\)/, 'the filed-day breach left the grid with it');
   /*
    * AND THE TINT IS STILL THE SERVER'S ANSWER, NOT THE CARD'S.
    *

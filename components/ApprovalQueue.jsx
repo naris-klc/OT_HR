@@ -25,7 +25,7 @@ import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
   Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
-  RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, Section, SegmentList, ShowMore,
+  RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, ShowMore,
   NoticeRow, NoticeStack, SignatureFacts,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
@@ -2880,6 +2880,15 @@ function DetailModal({
    * names its object and a หัวหน้า's does not.
    */
   const approveLabel = isHr ? 'อนุมัติใบ OT' : 'อนุมัติ';
+  /* แก้ไขชั่วโมง ท้ายกล่อง ก่อน ไม่อนุมัติ (2026-10-09, ขอมาพร้อมแบบ B) — เดิมอยู่
+     บนหัว การแบ่งช่วงเวลา · อยู่นอก `.foot-split` เพราะคู่นั้นคือสองคำตอบที่ต้อง
+     กว้างเท่ากัน ปุ่มนี้ไม่ใช่คำตอบ · ระหว่างแก้ปิดไว้ แผงแก้ไขมีปุ่มบันทึกของมันเอง */
+  const editButton = (
+    <button className="btn ghost foot-edit" title="แก้ไขชั่วโมง" disabled={busy || editing} onClick={() => setEditing(true)}>
+      <Icon name="pencil" />
+      <span>แก้ไขชั่วโมง</span>
+    </button>
+  );
   const footer = mode === 'rejecting' ? (
     <div className="foot-split">
       {/* NOT a way out: it goes back to the reading, which is the whole reason
@@ -2910,11 +2919,16 @@ function DetailModal({
      * printed in full at the top of the body, which is the room the row's 96px
      * action column never had.
      */
+    <>
+    {editButton}
     <div className="foot-split" title={blocked.short} aria-label={blocked.short} role="note">
       <button className="btn ghost danger" disabled aria-hidden="true">ไม่อนุมัติ</button>
       <button className="btn" disabled aria-hidden="true">{approveLabel}</button>
     </div>
+    </>
   ) : (
+    <>
+    {editButton}
     <div className="foot-split">
       {/* Both decisions are shut while the hours are open for editing: a
           correction half-typed is not a basis for either one. */}
@@ -2946,6 +2960,7 @@ function DetailModal({
         {approveLabel}
       </button>
     </div>
+    </>
   );
 
   return (
@@ -3090,147 +3105,101 @@ function DetailModal({
             </Alert>
           )}
 
-          <Section title="คำขอ">
-            {/* ── THE SAME TWO MARKS THE ROW CARRIES, ABOVE THE FIGURES THEY
-                EXPLAIN ──────────────────────────────────────────────────────
-                The pop-up is where the decision is made and where the four
-                bucket boxes are read, so the answer to "why is a twelve-hour
-                shift 8.00" and "why are these hours in a วันหยุด column on a
-                Tuesday" has to be here and not only on the row behind it. A
-                fact that shows up in the list and vanishes when the list is
-                opened is a fact whose truth appears to depend on the width of
-                the window.
+          {/* ── สองคอลัมน์ (mockup detail-modal แบบ B, 2026-10-09) ─────────────
+              *"redesign modal นี้ให้แสดงผลกระชับ แต่ยังได้รายละเอียดครบถ้วน"* ·
+              ซ้าย = สิ่งที่ถูกขอให้ตัดสิน: เวลา ข้อเท็จจริงของวัน ชั่วโมงแยกอัตรา
+              ต่อช่วง และงานที่ทำ · ขวา = บริบท: เพดานเดือน ผู้อนุมัติ ประวัติ ·
+              จอแคบเรียงซ้อนกัน (`.dm-grid` ใน app/styles.css)
 
-                ABOVE `dl.fact-grid`, because เวลาที่ขอ is the first thing under
-                it and on a เหมารายวัน day those times are exactly what the mark
-                is warning the reader not to multiply out.
-
-                `entry-mark` is the 6px-and-wrap the same chips get on รายการ OT
-                — see the note over it in components/HrEntries.jsx. */}
-            {(e.flatDaily || isBirthdayWelfare(e)) && (
-              <div className="entry-mark">
-                <BirthdayWelfareMark entry={e} />
-                <FlatDailyMark entry={e} />
+              แทนของเดิม: `fact-grid` สี่ช่อง กล่องอัตราสี่กล่อง (`ot-split`) และ
+              `SegmentList` — สามที่ที่บอกชั่วโมงชุดเดียวกัน รวมเป็นตารางเดียว
+              (`SegmentRates`) · ปุ่ม แก้ไขชั่วโมง ย้ายไปท้ายกล่อง ก่อน ไม่อนุมัติ */}
+          <div className="dm-grid">
+            <div className="dm-main">
+              <div className="dm-time">
+                <span className="dm-span">{e.startTime}–{e.endTime}</span>
+                <span className="dm-facts">
+                  {e.noBreakTaken ? 'ไม่พักเที่ยง' : 'หักพักเที่ยงตามนโยบาย'}
+                  {' · '}นาฬิกา {hours(e.totals?.clockHours)} ชม.
+                  {' · '}
+                  {e.capExceeded
+                    ? <span className="dm-over">เกินเพดานแผนก — {describeBreaches(e).map((b) => b.text).join(' · ')}</span>
+                    : 'ไม่เกินเพดานแผนก'}
+                </span>
               </div>
-            )}
-            <dl className="fact-grid">
-              <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}`} />
-              <Fact k="พักเที่ยง" v={e.noBreakTaken ? 'ไม่พัก' : 'หักตามนโยบาย'} />
-              <Fact k="ชั่วโมงตามนาฬิกา" v={`${hours(e.totals?.clockHours)} ชม.`} />
-              <Fact
-                k="เกินเพดานแผนก"
-                v={e.capExceeded
-                  ? describeBreaches(e).map((b) => b.text).join(' · ')
-                  : 'ไม่'}
-              />
-            </dl>
-            {/* `ot-split` is what turns these into one horizontal strip on a
-                phone — see app/styles.css. Four stacked boxes there were most of
-                a screen for four numbers, three of which are usually 0.00. */}
-            <div className="split ot-split" style={{ marginTop: 12 }}>
-              {/*
-                A BUCKET AT ZERO IS MARKED, NOT DROPPED.
-
-                Most entries are one bucket and two noughts: an ordinary weekday
-                evening is ×1.5 วันปกติ and nothing else. On a phone those two
-                noughts are two more boxes in a strip that is already competing
-                with five sections for the height of one screen, so the sheet
-                hides them (`.ot-split .box.zero` in app/styles.css).
-
-                A CLASS AND NOT A FILTER, because a desktop reviewer reading the
-                same pop-up beside the printed form wants the buckets that did
-                NOT fill as much as the one that did — "×3 is 0.00" is an answer,
-                and on a wide screen it costs nothing to give it. One layout
-                decides it, in the stylesheet, at the width where it matters.
-              */}
-              {Object.values(BUCKETS).map((b) => (
-                <div className={(e.buckets?.[b] || 0) === 0 ? 'box zero' : 'box'} key={b}>
-                  <div className="k">{BUCKET_LABEL[b]}</div>
-                  <div className="v">{hours(e.buckets?.[b])}</div>
-                </div>
-              ))}
-              <div className="box total">
-                <div className="k">รวม</div>
-                <div className="v">{hours(e.totals?.otHours)}</div>
-              </div>
-            </div>
-          </Section>
-
-          {/* Why the request exists, and where the month stands — both cards
-              now live in common.jsx, because หน้ารายการ OT ของฉัน draws the same
-              two. See the note over them there. */}
-          <ReasonCard description={e.description} extraNote={e.extraNote} />
-          <CapCard month={e.usage?.month} counted={e.usage?.counted} />
-
-          <Section
-            title="การแบ่งช่วงเวลา"
-            action={!editing && (
-              <button className="btn ghost sm" onClick={() => setEditing(true)}>
-                แก้ไขชั่วโมง
-              </button>
-            )}
-          >
-            {editing ? (
-              <QuickEdit
-                entry={e}
-                user={user}
-                onDirty={setEditDirty}
-                onCancel={() => { setEditing(false); setEditDirty(false); }}
-                onSaved={(updated) => {
-                  setEditing(false);
-                  setEditDirty(false);
-                  onEntryChanged(updated, `แก้ไขชั่วโมงของ ${updated.employee?.name} แล้ว — ${hours(updated.totals?.otHours)} ชม.`);
-                }}
-              />
-            ) : (
-              <>
-                <SegmentList segments={e.segments} />
-                {shownWarnings(e.warnings).map((w) => <div key={w.code + (w.bucket || '')} className="hint">{w.message}</div>)}
-              </>
-            )}
-          </Section>
-
-          {/* The two names and the two minutes — shared with หน้ารายการ OT
-              ของฉัน, which asks the same question of the same history. See
-              `SignatureFacts` in common.jsx. */}
-          <Section title="ผู้อนุมัติ">
-            <SignatureFacts entry={e} />
-          </Section>
-
-          {/* One request's history, or the whole chain when this one replaced
-              a refused request. The trail arrives a moment after the pop-up
-              does, so until it lands this row's own history stands in rather
-              than the section flickering empty.
-
-              `hideSystem` — WHAT A REVIEWER IS BEING ASKED ABOUT. This list is
-              read while somebody decides whether to sign, and the question it
-              answers is who filed this, who has signed it already, and whether
-              anybody changed it after it was filed. ระบบคำนวณใหม่ตามนโยบาย
-              answers none of those: it is a run that walked the month, and
-              after a policy change or a holiday-calendar edit EVERY request in
-              the queue carries one, pushing the three rows that matter below
-              the fold on a phone. The rows are not deleted and nothing stops
-              anybody reading them — ประวัติ OT ของฉัน, ตรวจสอบประจำเดือน and
-              the trail endpoint all still draw them in full. See
-              `SYSTEM_LOG_ACTIONS` in lib/entries.js.
-
-              And the emptiness test moves with it: `humanHistory` rather than
-              `e.history`, or an entry whose whole history is replays would get
-              a heading standing over nothing. */}
-          {trail?.requests?.length > 1 ? (
-            <Section title="ประวัติรายการ (รวมคำขอเดิม)">
-              <RequestTrail requests={trail.requests} liveStatus={e.status} hideSystem />
-              {trail.truncated && (
-                <div className="hint">
-                  แสดงย้อนหลังได้สูงสุด 20 คำขอ · อาจมีคำขอเก่ากว่านี้ที่ไม่ได้แสดง
+              {/* วันเกิด · เหมารายวัน เหนือตัวเลขที่มันอธิบาย — "ทำไมกะสิบสองชั่วโมง
+                  ได้ 8" และ "ทำไมวันอังคารลงช่องวันหยุด" ต้องตอบได้ในกล่องที่ใช้
+                  ตัดสิน ไม่ใช่แค่บนแถวข้างหลัง */}
+              {(e.flatDaily || isBirthdayWelfare(e)) && (
+                <div className="entry-mark">
+                  <BirthdayWelfareMark entry={e} />
+                  <FlatDailyMark entry={e} />
                 </div>
               )}
-            </Section>
-          ) : humanHistory(e).length > 0 && (
-            <Section title="ประวัติรายการ">
-              <EntryHistory entry={e} hideSystem />
-            </Section>
-          )}
+              {editing ? (
+                <QuickEdit
+                  entry={e}
+                  user={user}
+                  onDirty={setEditDirty}
+                  onCancel={() => { setEditing(false); setEditDirty(false); }}
+                  onSaved={(updated) => {
+                    setEditing(false);
+                    setEditDirty(false);
+                    onEntryChanged(updated, `แก้ไขชั่วโมงของ ${updated.employee?.name} แล้ว — ${hours(updated.totals?.otHours)} ชม.`);
+                  }}
+                />
+              ) : (
+                <>
+                  <SegmentRates entry={e} />
+                  {shownWarnings(e.warnings).map((w) => <div key={w.code + (w.bucket || '')} className="hint">{w.message}</div>)}
+                </>
+              )}
+              <ReasonCard description={e.description} extraNote={e.extraNote} />
+            </div>
+            <aside className="dm-side">
+              <CapCard month={e.usage?.month} counted={e.usage?.counted} />
+              <div>
+                <div className="kicker-sm">ผู้อนุมัติ</div>
+                <SignatureFacts entry={e} />
+              </div>
+              {/* One request's history, or the whole chain when this one replaced
+                  a refused request. The trail arrives a moment after the pop-up
+                  does, so until it lands this row's own history stands in rather
+                  than the section flickering empty.
+
+                  `hideSystem` — WHAT A REVIEWER IS BEING ASKED ABOUT. This list is
+                  read while somebody decides whether to sign, and the question it
+                  answers is who filed this, who has signed it already, and whether
+                  anybody changed it after it was filed. ระบบคำนวณใหม่ตามนโยบาย
+                  answers none of those: it is a run that walked the month, and
+                  after a policy change or a holiday-calendar edit EVERY request in
+                  the queue carries one, pushing the three rows that matter below
+                  the fold on a phone. The rows are not deleted and nothing stops
+                  anybody reading them — ประวัติ OT ของฉัน, ตรวจสอบประจำเดือน and
+                  the trail endpoint all still draw them in full. See
+                  `SYSTEM_LOG_ACTIONS` in lib/entries.js.
+
+                  And the emptiness test moves with it: `humanHistory` rather than
+                  `e.history`, or an entry whose whole history is replays would get
+                  a heading standing over nothing. */}
+              {trail?.requests?.length > 1 ? (
+                <div>
+                  <div className="kicker-sm">ประวัติรายการ (รวมคำขอเดิม)</div>
+                  <RequestTrail requests={trail.requests} liveStatus={e.status} hideSystem />
+                  {trail.truncated && (
+                    <div className="hint">
+                      แสดงย้อนหลังได้สูงสุด 20 คำขอ · อาจมีคำขอเก่ากว่านี้ที่ไม่ได้แสดง
+                    </div>
+                  )}
+                </div>
+              ) : humanHistory(e).length > 0 && (
+                <div>
+                  <div className="kicker-sm">ประวัติรายการ</div>
+                  <EntryHistory entry={e} hideSystem />
+                </div>
+              )}
+            </aside>
+          </div>
         </>
       )}
     </Modal>
