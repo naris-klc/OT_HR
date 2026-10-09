@@ -12133,11 +12133,14 @@ table.mini tbody tr:hover { background: none; }
   }
   .modal-head:has(.head-meta) .modal-x { position: absolute; top: 8px; right: 10px; }
   .modal-head:has(.head-meta) .head-meta { justify-content: flex-start; }
-  /* หัวแบบ 3 (2026-10-09) บนมือถือ: วันที่อยู่บรรทัดเดียวกับชิป รวม/สถานะ
-     ชิดซ้าย — ชิดขวาใต้ตัวเลขคือรูปของจอกว้าง ที่นี่มันจะกินอีกบรรทัด */
-  .modal-head:has(.head-meta) .head-side {
-    flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 10px;
-  }
+  /* หัวแบบ 3 บนมือถือ (2026-10-09, ผู้ใช้ขอรอบสอง): ก้อนขวาอยู่มุมขวาบน
+     ข้าง ✕ เป็นสองแถว — รวม n ชม. [สถานะ] / พฤ. 08/10/2569 — เหมือนจอกว้าง ·
+     รอบแรกวันที่ต่อท้ายชิปชิดซ้าย ผู้ใช้ไม่เอา · ชื่อจึงได้ความกว้างที่เหลือ
+     และตัดขึ้นบรรทัดใหม่ได้แทนการ … */
+  .modal-head:has(.head-side) { flex-direction: row; align-items: flex-start; gap: 10px; }
+  .modal-head:has(.head-side) .t { white-space: normal; overflow: visible; }
+  .modal-head:has(.head-side) .head-meta { justify-content: flex-end; }
+  .head-side .head-meta .total .k { display: inline; font-size: 10.5px; letter-spacing: 0; }
 
   /* ── the rhythm between sections ────────────────────────────────────────
      20px between one section and the next (10 of gap, 10 of rule-padding) down

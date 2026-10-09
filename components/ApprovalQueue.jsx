@@ -3001,7 +3001,7 @@ function DetailModal({
             </div>
             <StatusChip status={e.status} />
           </div>
-          <span className="head-when">{thaiDate(e.workDate)} (วัน{dayName(e.workDate)})</span>
+          <span className="head-when">{dayAbbr(e.workDate)} {thaiDate(e.workDate)}</span>
         </div>
       )}
       onClose={onClose}

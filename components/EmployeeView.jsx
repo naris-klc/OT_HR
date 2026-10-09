@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
+import { api, hours, thaiDate, dayName, dayAbbr, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
   ApprovalSteps, ApproverLine, BirthdayWelfareMark, CancelledMark, CapCard, StatusChip, Alert,
   ConfirmDialog, Empty, EditedMark, EntryHistory, EntryHistoryBlock, EntryLead, Fact, Modal, ProxyMark,
@@ -1094,7 +1094,7 @@ function EntryDetail({
             </div>
             <StatusChip status={e.status} />
           </div>
-          <span className="head-when">{thaiDate(e.workDate)} (วัน{dayName(e.workDate)})</span>
+          <span className="head-when">{dayAbbr(e.workDate)} {thaiDate(e.workDate)}</span>
         </div>
       )}
       onClose={onClose}
