@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import {
   DECIDE_POPULATE, POPULATE, isDepartmentManager, maySignFirstStep, maySignRoleOf,
   signsPersonallyFor, hasPersonalApprovers, withPersonal,
+  deptReach,
 } from '../lib/entries.js';
 import { approvalPermission, nobodyCanSign } from '../lib/delegation.js';
 import { initialStatus, proxyPermission } from '../lib/proxyFiling.js';
@@ -241,4 +242,42 @@ test('the team reports apply it too — the CEO’s รายงาน OT ปร
   ]) {
     assert.match(src(file), /if \(teamOnly\) filter = await teamReportFilter\(user, filter,/, file);
   }
+});
+
+// ── ผู้ใต้บังคับบัญชาที่อนุมัติ — ข้อมูลส่วนตัว (2026-10-09) ─────────────────
+
+test('deptReach lists who the แผนก sends to a signer, by the queue’s own rule', () => {
+  const ceo = {
+    _id: 'ceo', role: 'managing_director', department: 'EXEC',
+    approvesDepartments: ['HR', 'PUR'], approvesCompany: null, active: true,
+  };
+  const roster = [
+    ceo,
+    { _id: 'a', code: 'PM1', role: 'employee', department: 'PUR', company: 'primus' },
+    { _id: 'b', code: 'THT1', role: 'employee', department: 'HR', company: 'themtech' },
+    { _id: 'hr', code: 'PM2', role: 'hr', department: 'HR', company: 'primus' },
+    { _id: 'gone', code: 'PM3', role: 'employee', department: 'PUR', company: 'primus', active: false },
+    { _id: 'far', code: 'PM4', role: 'employee', department: 'IT', company: 'primus' },
+    { _id: 'other', code: 'PM5', role: 'employee', department: 'PUR', company: 'primus', personalApprovers: ['x'] },
+    { _id: 'sh', code: 'PM6', role: 'employee', department: 'SHR', company: 'primus' },
+  ];
+  const depts = [{ _id: 'SHR', signedByHr: true }];
+  const ceoSh = { ...ceo, approvesDepartments: ['HR', 'PUR', 'SHR'] };
+  // ฝ่ายบุคคล files straight to HR, a named person belongs to their approver,
+  // and a แผนก that `signedByHr` reaches nobody.
+  assert.deepEqual(deptReach(ceoSh, roster, depts).map((p) => p._id), ['a', 'b']);
+  assert.deepEqual(deptReach(ceo, roster, depts, ['a']).map((p) => p._id), ['b']);
+  assert.deepEqual(deptReach({ ...ceo, role: 'employee' }, roster, depts), []);
+});
+
+test('ข้อมูลส่วนตัว lists the team from one route, ten to a page', () => {
+  const route = src('app/api/employees/me/team/route.js');
+  assert.match(route, /deptReach\(me, roster, depts, named\.map/);
+  assert.match(route, /requireAuth/);
+  const profile = src('components/ProfileView.jsx');
+  assert.match(profile, /isSigner\(user\.role\) && <MyTeam \/>/);
+  assert.match(profile, /const TEAM_PAGE = 10;/);
+  assert.match(profile, /const paged = total > TEAM_PAGE;/);
+  // The form on ทะเบียนพนักงาน reads the same rule, not a copy of it.
+  assert.match(src('components/AdminView.jsx'), /deptReach\(signer, roster, depts, value \|\| \[\]\)/);
 });

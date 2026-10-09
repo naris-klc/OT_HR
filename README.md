@@ -2170,9 +2170,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2866 tests
+and the engine know nothing about Next.js, so the whole suite — **2868 tests
 across 161 files**, measured 2026-10-09 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2866 tests" until ผู้ใต้บังคับบัญชาที่อนุมัติ reached ข้อมูลส่วนตัว (2026-10-09).
 It read "2864 tests" until ผู้อนุมัติรายคน reached the team report (2026-10-09).
 It read "2850 tests across 160 files" until **ผู้อนุมัติรายคน** (2026-10-09) —
 `personalApprovers` is the new file.
@@ -14584,8 +14585,9 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2866 tests**, about 9 s, measured 2026-10-09 across 161
-  files, all green (it read "2850 tests … across 160 files" until ผู้อนุมัติ
+- `npm test` — **2868 tests**, about 9 s, measured 2026-10-09 across 161
+  files, all green (it read "2866 tests" until ผู้ใต้บังคับบัญชาที่อนุมัติ;
+  "2850 tests … across 160 files" until ผู้อนุมัติ
   รายคน added `personalApprovers`; "2842 tests" until the status tabs on ตรวจสอบ
   ประจำเดือน rewrote `monthStatusFilter`). **`policyReading` is the newest file** — the one-sentence
   answer line and the worked examples on นโยบายการคำนวณ (แบบ B). It read
@@ -15870,10 +15872,11 @@ build แล้ว
   `test/seedEntryPoint.test.js` holds the list, checks it behaviourally, and
   fails if `package.json` learns to start a `src/` file that is not on it.
 - `npm run build` — **passes 2026-09-04**, Next 16.3 under Turbopack, and the
-  route table it prints is **54 `/api/*` routes** plus `/`, `/_not-found` and
-  `/icon.png`. Compared against the 54 `app/api/**/route.js` files on disk, in
+  route table it prints is **55 `/api/*` routes** plus `/`, `/_not-found` and
+  `/icon.png`. Compared against the 55 `app/api/**/route.js` files on disk, in
   both directions: nothing on disk went unbuilt and nothing was built that has
-  no file. It read "**55** `/api/*` routes … 55 files" until 2026-09-18, when
+  no file. It read "**54** … 54 files" until 2026-10-09, when
+  `/api/employees/me/team` (ผู้ใต้บังคับบัญชาที่อนุมัติ) was added. It read "**55** `/api/*` routes … 55 files" until 2026-09-18, when
   `/api/entries/[id]/withdraw/decide` was deleted — ถอนใบ is one press by the
   owner of the entry and there is no decision left to POST. ⚠ **The date on
   this line is 2026-09-04 and the count is 2026-09-18's**: the route was removed
