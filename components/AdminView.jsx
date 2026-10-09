@@ -40,7 +40,7 @@ import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
 import { inertReason, INERT_KEYS } from '@/lib/policyInert.js';
 import { policyReading, policyExample } from '@/lib/policyReading.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
-import { searchPeople, personMatches } from '@/lib/personSearch.js';
+import { searchPeople, personMatches, textMatches } from '@/lib/personSearch.js';
 /* ตำแหน่ง · แผนก · บทบาท — which rows the three boxes leave, and what the boxes
    are allowed to offer. Pure, and tested as such: see test/rosterFilters.test.js. */
 import {
@@ -2144,9 +2144,21 @@ function ApprovalBadge({ role, department, extras, company, depts, named = 0 }) 
  * The search row says who signs for each person TODAY, in amber, because
  * adding somebody here takes them off that person's queue — the one
  * consequence of this field nobody can see from the form.
+ *
+ * TYPING A แผนก'S NAME OFFERS THE WHOLE DEPARTMENT (แบบ A, agreed
+ * 2026-10-09): one row per matching แผนก above the people, "+ เพิ่มทั้งแผนก",
+ * and that department's people listed under it to take one at a time. It adds
+ * the people whose สังกัดหลัก is that แผนก TODAY, one by one — somebody who
+ * joins later is not added, which HR accepted. A แผนก that should stay covered
+ * for good belongs in the แผนก field above instead. Skips the same people the
+ * search does: HR, admin, MD, this person, and anyone already listed.
+ *
+ * One line per person on a desktop: ตำแหน่ง moves into the name's tooltip
+ * there, and comes back as a second line on the phone card, which has no
+ * tooltip.
  */
 function PersonalApprovalField({ me, value, onChange, roster, depts, disabled, signer }) {
-  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState('');
   const meId = String(me || '');
   const byId = new Map((roster || []).map((p) => [String(p._id), p]));
   const rows = (value || []).map((id) => byId.get(id) || { _id: id, code: id, name: '' });
@@ -2187,33 +2199,64 @@ function PersonalApprovalField({ me, value, onChange, roster, depts, disabled, s
       : 'ตอนนี้: ส่งตรงฝ่ายบุคคล';
   };
 
+  /** แผนก whose name matches what was typed — nothing for an empty box. */
+  const deptHits = (q) => (String(q || '').trim()
+    ? (depts || []).filter((d) => d.active !== false && textMatches(d.nameTh || d.name, q))
+    : []);
+  // Not the people the แผนก field already reaches — naming them changes nothing.
+  const via = new Set(viaDept.map((p) => String(p._id)));
+  const inDept = (d) => candidates.filter((p) => String(idOf(p.department)) === String(d._id)
+    && !via.has(String(p._id)));
+  const add = (ids, said) => { onChange([...(value || []), ...ids.map(String)]); setAdded(said); };
+
+  const deptRows = (q) => deptHits(q).map((d) => {
+    const ids = inDept(d).map((p) => p._id);
+    return {
+      value: `dept:${d._id}`,
+      label: d.nameTh || d.name,
+      off: ids.length === 0,
+      note: (
+        <span className={`chip person-now ${ids.length ? 'green' : 'muted'}`}>
+          {ids.length ? `+ เพิ่มทั้งแผนก · ${ids.length} คน` : 'ไม่มีคนให้เพิ่ม'}
+        </span>
+      ),
+      pick: () => add(ids, `เพิ่ม ${ids.length} คนจาก${d.nameTh || d.name}`),
+    };
+  });
+  /** The people the name matches, then the people of every แผนก it matches. */
+  const searchWithDepts = (people, q) => {
+    const hit = searchPeople(people, q);
+    const ds = new Set(deptHits(q).map((d) => String(d._id)));
+    if (!ds.size) return hit;
+    const seen = new Set(hit.map((p) => String(p._id)));
+    return [...hit, ...people.filter((p) => ds.has(String(idOf(p.department))) && !seen.has(String(p._id)))];
+  };
+
   return (
     <div className="field personal-approvals">
       <div className="field-head personal-head">
         <label>พนักงานที่อนุมัติ · {rows.length + viaDept.length} คน</label>
-        {!disabled && !adding && (
-          <button type="button" className="btn ghost sm" onClick={() => setAdding(true)}>
-            เพิ่มพนักงาน
-          </button>
-        )}
       </div>
-      {adding && (
+      {!disabled && (
         <PickPerson
           people={candidates}
           value=""
           allLabel={null}
-          placeholder="พิมพ์ชื่อ หรือ รหัสพนักงาน…"
-          onChange={(id) => { if (id) onChange([...(value || []), String(id)]); }}
+          placeholder="พิมพ์ชื่อ รหัส หรือชื่อแผนก…"
+          onChange={(id) => { if (id) add([id], ''); }}
           noteOf={(p) => <span className="chip warn person-now">{nowSigning(p)}</span>}
+          extraRows={deptRows}
+          search={searchWithDepts}
         />
       )}
+      {added && <div className="field-note added" role="status">{added}</div>}
       {rows.length + viaDept.length > 0 && (
         <div className="table-wrap personal-table">
           <table className="stack-table">
             <thead>
               <tr>
                 <th>รหัส</th>
-                <th>ชื่อ · ตำแหน่ง</th>
+                <th>ชื่อ</th>
                 <th>แผนก · บริษัท</th>
                 {!disabled && <th aria-label="จัดการ" />}
               </tr>
@@ -2222,11 +2265,11 @@ function PersonalApprovalField({ me, value, onChange, roster, depts, disabled, s
               {rows.map((p) => (
                 <tr key={String(p._id)}>
                   <td className="stack-name person-code">{p.code}</td>
-                  <td data-label="ชื่อ">
+                  <td className="person-name" data-label="ชื่อ" title={p.position ? `${p.name} · ${p.position}` : p.name}>
                     {p.name}
-                    {p.position && <span className="cell-sub"> · {p.position}</span>}
+                    {p.position && <span className="cell-sub person-pos"> · {p.position}</span>}
                   </td>
-                  <td data-label="แผนก">
+                  <td className="person-dept" data-label="แผนก" title={[nameOfDept(depts, idOf(p.department)), p.company && companyLabel(p.company)].filter(Boolean).join(' · ')}>
                     {nameOfDept(depts, idOf(p.department)) || '—'}
                     {p.company && <span className="cell-sub"> · {companyLabel(p.company)}</span>}
                   </td>
@@ -2236,7 +2279,7 @@ function PersonalApprovalField({ me, value, onChange, roster, depts, disabled, s
                         icon="trash"
                         label="เอาออก"
                         name={p.name}
-                        onClick={() => onChange((value || []).filter((id) => id !== String(p._id)))}
+                        onClick={() => { setAdded(''); onChange((value || []).filter((id) => id !== String(p._id))); }}
                       />
                     </td>
                   )}
@@ -2245,11 +2288,11 @@ function PersonalApprovalField({ me, value, onChange, roster, depts, disabled, s
               {more.visible.map((p) => (
                 <tr key={String(p._id)}>
                   <td className="stack-name person-code">{p.code}</td>
-                  <td data-label="ชื่อ">
+                  <td className="person-name" data-label="ชื่อ" title={p.position ? `${p.name} · ${p.position}` : p.name}>
                     {p.name}
-                    {p.position && <span className="cell-sub"> · {p.position}</span>}
+                    {p.position && <span className="cell-sub person-pos"> · {p.position}</span>}
                   </td>
-                  <td data-label="แผนก">
+                  <td className="person-dept" data-label="แผนก" title={[nameOfDept(depts, idOf(p.department)), p.company && companyLabel(p.company)].filter(Boolean).join(' · ')}>
                     {nameOfDept(depts, idOf(p.department)) || '—'}
                     {p.company && <span className="cell-sub"> · {companyLabel(p.company)}</span>}
                   </td>
@@ -4716,7 +4759,9 @@ function EditEmployee({
           refusal in it. The headings are what let somebody open this dialog to
           fix a surname and never read the rest.
         */
-        <div className="edit-form">
+        /* `compact` — 36px boxes and half the spacing (แบบ A, 2026-10-09): this
+           dialog is five groups long and HR scrolled it to reach อนุมัติรายคน. */
+        <div className="edit-form compact">
           <section className="form-group">
             <div className="gh">ข้อมูลส่วนตัว</div>
             <div className="form-grid">

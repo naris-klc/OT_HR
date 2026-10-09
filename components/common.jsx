@@ -4159,6 +4159,17 @@ export function PickPerson({
    * way that box says who signs for each person today.
    */
   noteOf = null,
+  /**
+   * Rows that are not people, listed ABOVE them under their own heading —
+   * `extraRows(query)` returns `{ value, label, note, off, pick }`. A row's
+   * `pick()` runs instead of `onChange`. อนุมัติรายคน uses it for แผนก:
+   * typing a department's name offers "เพิ่มทั้งแผนก" before the people.
+   * `search` replaces the person match, so that box can also list the people
+   * of a department whose name was typed.
+   */
+  extraRows = null,
+  extraHeading = 'แผนก',
+  search = searchPeople,
 }) {
   const listId = React.useId();
   const lead = allLabel === null ? 0 : 1;
@@ -4172,9 +4183,10 @@ export function PickPerson({
   const labelOf = (p) => `${p.code} · ${p.name}`;
 
   const matches = React.useMemo(
-    () => (open ? searchPeople(roster, query) : []),
-    [open, roster, query],
+    () => (open ? search(roster, query) : []),
+    [open, roster, query, search],
   );
+  const extras = open && extraRows ? extraRows(query) : [];
 
   /**
    * ทุกคน is always the first row, and never filtered out.
@@ -4186,6 +4198,7 @@ export function PickPerson({
    */
   const rows = [
     ...(lead ? [{ value: '', label: allLabel }] : []),
+    ...extras.map((r) => ({ ...r, extra: true })),
     ...matches.map((p) => ({ value: String(p._id), label: labelOf(p), person: p })),
   ];
   // Clamped rather than trusted: a keystroke that narrows the list to nothing
@@ -4216,6 +4229,13 @@ export function PickPerson({
     setQuery(null);
   }
 
+  /** An extra row runs its own `pick` and never touches `value`. */
+  function choose(row) {
+    if (row.off) return;
+    if (row.pick) { row.pick(); revert(); return; }
+    pick(row);
+  }
+
   function pick(row) {
     onChange(row.value);
     setOpen(false);
@@ -4236,7 +4256,7 @@ export function PickPerson({
       // preventDefault whether or not the list is open: this box is meant to be
       // usable inside a form, and Enter must not submit one behind it.
       e.preventDefault();
-      if (open && rows[at]) pick(rows[at]);
+      if (open && rows[at]) choose(rows[at]);
       return;
     }
     if (e.key === 'Escape' && open) {
@@ -4311,23 +4331,32 @@ export function PickPerson({
           onMouseDown={(e) => e.preventDefault()}
         >
           {rows.map((r, i) => (
+            <React.Fragment key={r.value || 'all'}>
+            {/* The two headings exist only while there are extra rows: a list of
+                people alone needs no label saying it is a list of people. */}
+            {extras.length > 0 && i === lead && <li className="group" role="presentation">{extraHeading}</li>}
+            {extras.length > 0 && matches.length > 0 && i === lead + extras.length && (
+              <li className="group" role="presentation">พนักงาน</li>
+            )}
             <li
-              key={r.value || 'all'}
               id={`${listId}-${i}`}
               role="option"
               aria-selected={r.value === String(value || '')}
+              aria-disabled={r.off || undefined}
               data-active={i === at ? '1' : undefined}
-              className={r.value === '' ? 'all' : undefined}
-              onClick={() => pick(r)}
+              className={r.value === '' ? 'all' : r.extra ? `extra${r.off ? ' off' : ''}` : undefined}
+              onClick={() => choose(r)}
               // Follows the pointer, so the row under the cursor is the row
               // Enter takes — one notion of "the current row", not two.
               onMouseMove={() => setActive(i)}
             >
               {r.label}
+              {r.extra && r.note}
               {noteOf && r.person && noteOf(r.person)}
             </li>
+            </React.Fragment>
           ))}
-          {matches.length === 0 && <li className="none" role="presentation">{emptyLabel}</li>}
+          {matches.length === 0 && extras.length === 0 && <li className="none" role="presentation">{emptyLabel}</li>}
         </ul>
       )}
     </div>

@@ -4144,6 +4144,43 @@ td > .approver-line { margin-top: 5px; }
 .personal-table td { padding-top: 4px; padding-bottom: 4px; vertical-align: middle; }
 .personal-table td.person-code { font-family: var(--mono); white-space: nowrap; }
 .personal-table td.person-act { width: 40px; text-align: right; }
+.personal-approvals .field-note.added { color: var(--green-dark); margin-top: 4px; }
+/* ONE LINE PER PERSON on a desktop (แบบ A, 2026-10-09). Fixed columns, and a
+   name or แผนก too long for its column ends in "…" with the whole of it in the
+   cell's tooltip; ตำแหน่ง lives only in that tooltip here. The phone card below
+   860px has no tooltip, so it keeps ตำแหน่ง and wraps as before. */
+@media (min-width: 861px) {
+  .personal-table table { table-layout: fixed; }
+  .personal-table th:nth-child(1) { width: 92px; }
+  .personal-table th:nth-child(3) { width: 38%; }
+  .personal-table th:nth-child(4) { width: 44px; }
+  /* Wide enough for the ตามแผนก chip only when a row carries one. */
+  .personal-table table:has(.person-via) th:nth-child(4) { width: 84px; }
+  .personal-table table:has(.person-via) th:nth-child(3) { width: 34%; }
+  .personal-table td {
+    padding-top: 2px; padding-bottom: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .personal-table td.person-act { overflow: visible; }
+  .personal-table .person-pos { display: none; }
+}
+/* แผนก rows in the อนุมัติรายคน search, and the two small headings around them. */
+.pick-menu li.group {
+  min-height: 0; padding: 8px 10px 2px; cursor: default;
+  font: 600 10.5px/1 var(--mono); letter-spacing: .1em; color: var(--muted-2);
+}
+.pick-menu li.extra { font: 600 13.5px/1.4 var(--sans); }
+.pick-menu li.extra.off { cursor: default; color: var(--muted); }
+
+/* แก้ไขข้อมูลพนักงาน, compact (แบบ A, 2026-10-09). The same tokens every box
+   reads, set lower on this one form, so the inputs, the dropdowns, the date
+   box and the แผนก chips all follow without a rule of their own. */
+.edit-form.compact { --field-h: 36px; --field-pad-y: 7px; --field-size: 14px; --chip-h: 26px; }
+.edit-form.compact .field { gap: 5px; }
+.edit-form.compact .form-grid { gap: 10px 14px; }
+.edit-form.compact .form-group + .form-group { margin-top: 12px; padding-top: 12px; }
+.edit-form.compact .form-group > .gh { margin-bottom: 9px; }
+.edit-form.compact .personal-approvals { margin-top: 10px; }
 /* ตามแผนก — the chip a row reached through the แผนก field wears instead of เอาออก. */
 .personal-table .person-via { white-space: nowrap; }
 .pick-menu li .person-now {
@@ -4153,7 +4190,24 @@ td > .approver-line { margin-top: 5px; }
 @media (max-width: 860px) {
   .pick-menu li:has(.person-now) { flex-wrap: wrap; row-gap: 2px; }
   .pick-menu li .person-now { margin-left: 0; padding-left: 0; }
-  .personal-table td.person-act { width: auto; text-align: left; }
+  /* Two lines per person, not a labelled card (แบบ A, 2026-10-09): รหัส and
+     ชื่อ · ตำแหน่ง on the first, แผนก · บริษัท under it, the bin at the right of
+     both. `.stack-table`'s card put each field on a line of its own with its
+     heading in front — 150–190px a person, measured at 390px. */
+  .personal-table .stack-table > tbody { padding: 0; gap: 0; }
+  .personal-table .stack-table > tbody > tr {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 10px; align-items: center;
+    padding: 6px 2px; border: 0; border-bottom: 1px solid var(--line-soft);
+    border-radius: 0; background: none;
+  }
+  .personal-table .stack-table > tbody > tr > td { text-align: left; }
+  .personal-table .stack-table > tbody > tr > td::before { content: none; }
+  .personal-table td.person-code { grid-column: 1; grid-row: 1; }
+  .personal-table td.person-name { grid-column: 2; grid-row: 1; }
+  .personal-table td.person-dept { grid-column: 1 / 3; grid-row: 2; font-size: 12.5px; color: var(--muted); }
+  .personal-table td.person-act { grid-column: 3; grid-row: 1 / 3; width: auto; }
+  .personal-table td.person-act .btn-word { display: none; }
 }
 
 /* ══ ช่องค้นหา — a text box with a ✕ in it ══════════════════════════════════
