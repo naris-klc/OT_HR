@@ -26,7 +26,7 @@ import {
   Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, EntryLead, EntryHistoryBlock, ShowMore,
-  NoticeRow, NoticeStack, SignatureFacts,
+  NoticeRow, NoticeStack,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -3109,13 +3109,18 @@ function DetailModal({
             </Alert>
           )}
 
-          {/* ── แบบ 1 ของ mockup detail-modal-2 (2026-10-09) ────────────────────
-              แถบนำเต็มกว้าง (`EntryLead`) · สองแผงกว้างเท่ากันสูงเท่ากัน — ซ้าย
-              ชั่วโมงแยกอัตรา + งาน · ขวา เพดานเดือน + ผู้อนุมัติ · ประวัติพับไว้
-              ท้ายสุด (`EntryHistoryBlock`) เพราะมันคือสิ่งที่ทำให้แบบ B ไม่สมมาตร ·
-              ฝั่งพนักงาน (EmployeeView `EntryDetail`) ใช้โครงเดียวกัน
-              แบบ B ที่ถูกแทน: สองคอลัมน์ 1.35 : 1 และประวัติอยู่คอลัมน์ขวา */}
+          {/* ── แบบ ก2 ของ mockup detail-no-approver (2026-10-09) ────────────────
+              แถบนำ (`EntryLead`) · แถบเพดานเต็มกว้าง (`dm-cap-strip`) · สองแผง
+              กว้างเท่ากัน — ซ้าย ชั่วโมงแยกอัตรา · ขวา รายละเอียดงาน · ประวัติ
+              เต็มท้ายสุด (`EntryHistoryBlock`) · ฝั่งพนักงาน (EmployeeView
+              `EntryDetail`) ใช้โครงเดียวกัน
+              ก่อนหน้า (แบบ 1): แผงขวาเป็น เพดาน + ผู้อนุมัติ (`SignatureFacts`) —
+              ผู้อนุมัติตัดออกเพราะซ้ำกับประวัติที่แสดงเต็มแล้ว *"ตัดออกได้เลย
+              ถ้าอะไรซ้ำซ้อน"* */}
           <EntryLead entry={e} />
+          <div className="dm-cap-strip">
+            <CapCard month={e.usage?.month} counted={e.usage?.counted} />
+          </div>
           <div className="dm-grid">
             <div className="dm-panel">
               {editing ? (
@@ -3136,14 +3141,9 @@ function DetailModal({
                   {shownWarnings(e.warnings).map((w) => <div key={w.code + (w.bucket || '')} className="hint">{w.message}</div>)}
                 </>
               )}
-              <ReasonCard description={e.description} extraNote={e.extraNote} />
             </div>
             <div className="dm-panel">
-              <CapCard month={e.usage?.month} counted={e.usage?.counted} />
-              <div>
-                <div className="kicker-sm">ผู้อนุมัติ</div>
-                <SignatureFacts entry={e} />
-              </div>
+              <ReasonCard description={e.description} extraNote={e.extraNote} />
             </div>
           </div>
             {/* One request's history, or the whole chain when this one replaced
