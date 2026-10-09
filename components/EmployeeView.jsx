@@ -5,13 +5,13 @@ import { api, hours, thaiDate, dayName, dayAbbr, currentPeriod, periodLabel, BUC
 import {
   ApprovalSteps, ApproverLine, BirthdayWelfareMark, CancelledMark, CapCard, StatusChip, Alert,
   ConfirmDialog, Empty, EditedMark, EntryHistory, EntryHistoryBlock, EntryLead, Fact, Modal, ProxyMark,
-  RateHead, ReasonCard, RefiledNote, RequestTrail, SegmentRates, SignatureFacts, editsOf, stamp,
+  RateHead, ReasonCard, RefiledNote, RequestTrail, SegmentRates, SignatureFacts, editsOf,
   trailOf, RowAction, NoticeStack,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { approvalSteps } from '@/lib/approverLine.js';
 import {
-  awaitingFirstSignature, cancelCutoffRefusal, filingOf, isBirthdayWelfare,
+  awaitingFirstSignature, cancelCutoffRefusal, isBirthdayWelfare,
   isProxyFiled, refileState,
 } from '@/lib/entries.js';
 import { withdrawEligibility } from '@/lib/withdrawal.js';
@@ -1038,9 +1038,6 @@ function EntryDetail({
    * yet reads as a signature that failed to load.
    */
   const decided = approvalSteps(e).length > 0;
-  /* When it was put in — the header's third line. `filingOf` and not
-     history[0], because a re-filed request's own first row is `resubmit`. */
-  const filed = filingOf(e);
   /**
    * THE CEILING CARD IS DRAWN ONLY FOR THE MONTH THE FIGURES ARE ABOUT.
    *
@@ -1070,19 +1067,12 @@ function EntryDetail({
        */
       title={e.employee?.name || user.name}
       /* ชื่อ แล้วป้ายรหัส · แผนก · วันที่อยู่ใต้ รวม ชม. ชิดขวา — หัวเดียวกับ
-         ฝั่งผู้อนุมัติ (2026-10-09 แบบ 3) */
+         ฝั่งผู้อนุมัติ (2026-10-09 แบบ 3) · บรรทัด "ยื่นคำขอเมื่อ …" ใต้ป้าย
+         ตัดออกวันเดียวกัน: ประวัติรายการที่แสดงเต็มท้ายหน้ามีเวลานั้นอยู่แล้ว */
       subtitle={(
-        <>
-          <span className="s-tag">
-            {e.employee?.code} · {e.department?.nameTh || e.department?.name}
-          </span>
-          {/* AND WHEN IT WAS PUT IN, which is a different date and the one an
-              employee asking "how long has this been sitting there" is
-              counting from. Quiet, below the tag: it dates the paperwork, not
-              the work. Absent on a row written before histories carried a
-              name, rather than drawn empty. */}
-          {filed?.at && <span className="s-filed">ยื่นคำขอเมื่อ {stamp(filed.at)}</span>}
-        </>
+        <span className="s-tag">
+          {e.employee?.code} · {e.department?.nameTh || e.department?.name}
+        </span>
       )}
       meta={(
         <div className="head-side">
