@@ -4128,6 +4128,27 @@ td > .approver-line { margin-top: 5px; }
    weighted here, so they can be found without reading the sentence twice. */
 .approval-summary b { font-weight: 600; color: var(--green-dark); }
 
+/* อนุมัติรายคน (`PersonalApprovalField`, 2026-10-09) — แบบ B: a dense table
+   under the two approval controls, cards below 860px through `.stack-table`.
+   The label and its เพิ่มพนักงาน button share one line; the search opens
+   under it. The amber "ตอนนี้: …" note sits at the END of a search row, after
+   the code and name, so the person stays the first thing read. */
+.personal-approvals { margin-top: 14px; min-width: 0; }
+.personal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.personal-approvals .personal-table { margin-top: 6px; }
+.personal-table td { padding-top: 4px; padding-bottom: 4px; vertical-align: middle; }
+.personal-table td.person-code { font-family: var(--mono); white-space: nowrap; }
+.personal-table td.person-act { width: 40px; text-align: right; }
+.pick-menu li .person-now {
+  margin-left: auto; padding-left: 8px; flex: none;
+  font: 500 11.5px/1.4 var(--sans); white-space: nowrap;
+}
+@media (max-width: 860px) {
+  .pick-menu li:has(.person-now) { flex-wrap: wrap; row-gap: 2px; }
+  .pick-menu li .person-now { margin-left: 0; padding-left: 0; }
+  .personal-table td.person-act { width: auto; text-align: left; }
+}
+
 /* ══ ช่องค้นหา — a text box with a ✕ in it ══════════════════════════════════
    Shared by the two controls that search the roster, which are NOT the same
    control: PickPerson (components/common.jsx) picks one person to filter a

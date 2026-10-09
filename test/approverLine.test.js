@@ -318,8 +318,10 @@ test('the endpoint asks the same "who may sign" the approve path asks', () => {
   const src = readFileSync(join(ROOT, 'app/api/entries/approvers/route.js'), 'utf8');
   // A second reading of this rule is how a screen names somebody the server
   // then refuses — see unsignedStaff, which consults the same function.
-  has(src, "import { isDepartmentManager } from '@/lib/entries.js'");
-  has(src, 'isDepartmentManager(m, departmentId, company)');
+  has(src, "isDepartmentManager, hasPersonalApprovers, personalApproverIds, maySignRoleOf,\n} from '@/lib/entries.js'");
+  // `user` is the applicant: ผู้อนุมัติรายคน are asked the same way.
+  has(src, 'isDepartmentManager(m, departmentId, company, user)');
+  has(src, 'maySignRoleOf(m, user)');
   // Revoked and expired delegations must not be offered as a desk to go to.
   has(src, 'isLive(d, day)');
   // No parameters: it answers about the caller only.

@@ -4153,8 +4153,16 @@ export function PickPerson({
   placeholder = 'พิมพ์ชื่อ หรือ รหัสพนักงาน…',
   emptyLabel = 'ไม่พบพนักงานที่ตรงกับคำค้น',
   disabled = false,
+  /**
+   * `allLabel={null}` drops the ทุกคน row — for a box that ADDS somebody
+   * (อนุมัติรายคน on ทะเบียนพนักงาน) rather than filters, where "nobody" is
+   * not a choice. `noteOf(person)` draws a short note at the row's end, the
+   * way that box says who signs for each person today.
+   */
+  noteOf = null,
 }) {
   const listId = React.useId();
+  const lead = allLabel === null ? 0 : 1;
   const [query, setQuery] = React.useState(null);
   const [open, setOpen] = React.useState(false);
   const [active, setActive] = React.useState(0);
@@ -4178,8 +4186,8 @@ export function PickPerson({
    * list. The ✕ is the same act for a pointer.
    */
   const rows = [
-    { value: '', label: allLabel },
-    ...matches.map((p) => ({ value: String(p._id), label: labelOf(p) })),
+    ...(lead ? [{ value: '', label: allLabel }] : []),
+    ...matches.map((p) => ({ value: String(p._id), label: labelOf(p), person: p })),
   ];
   // Clamped rather than trusted: a keystroke that narrows the list to nothing
   // leaves `active` pointing past the end, and aria-activedescendant would then
@@ -4200,7 +4208,7 @@ export function PickPerson({
     // Where ↓ starts from: the row already chosen. With an empty query every
     // person matches, so the index is exact — +1 for the ทุกคน row above them.
     const i = roster.findIndex((p) => String(p._id) === String(value));
-    setActive(i < 0 ? 0 : i + 1);
+    setActive(i < 0 ? 0 : i + lead);
   }
 
   /** Close without choosing: the typed text goes, the choice stays. */
@@ -4278,7 +4286,7 @@ export function PickPerson({
           // The first match, not the row that was active a keystroke ago: the
           // list underneath is now a different list, and Enter has to mean the
           // thing currently at the top of it.
-          setActive(1);
+          setActive(lead);
           if (!open) setOpen(true);
         }}
         onBlur={revert}
@@ -4317,6 +4325,7 @@ export function PickPerson({
               onMouseMove={() => setActive(i)}
             >
               {r.label}
+              {noteOf && r.person && noteOf(r.person)}
             </li>
           ))}
           {matches.length === 0 && <li className="none" role="presentation">{emptyLabel}</li>}

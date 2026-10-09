@@ -1,9 +1,11 @@
 import Employee from '@/src/models/Employee.js';
-import { SIGNER_ROLES, mayApproveRole, hrHeadsDepartment } from '@/lib/roles.js';
+import { SIGNER_ROLES, hrHeadsDepartment } from '@/lib/roles.js';
 import ApprovalDelegation from '@/src/models/ApprovalDelegation.js';
 import { route, json } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { isDepartmentManager } from '@/lib/entries.js';
+import {
+  isDepartmentManager, hasPersonalApprovers, personalApproverIds, maySignRoleOf,
+} from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { isLive } from '@/lib/delegation.js';
 import { today } from '@/lib/today.js';
@@ -48,7 +50,10 @@ export const GET = route(async (req) => {
    * `user.department` is populated by `requireAuth`, so the flag is readable
    * without a second query.
    */
-  if (hrHeadsDepartment(user.department)) return json({ departmentId, people: [] });
+  // ผู้อนุมัติรายคน replace the แผนก, ฝ่ายบุคคล-headed or not — see
+  // `personalApprovers` and `initialStatus`.
+  const named = hasPersonalApprovers(user);
+  if (!named && hrHeadsDepartment(user.department)) return json({ departmentId, people: [] });
 
 
   /**
@@ -65,7 +70,9 @@ export const GET = route(async (req) => {
    * to stop.
    */
   const managers = await Employee.find({
-    $or: [{ department: departmentId }, { approvesDepartments: departmentId }],
+    ...(named
+      ? { _id: { $in: personalApproverIds(user) } }
+      : { $or: [{ department: departmentId }, { approvesDepartments: departmentId }] }),
     role: { $in: SIGNER_ROLES },
     active: { $ne: false },
   }).select('code name position role department company approvesCompany approvesDepartments').lean();
@@ -85,9 +92,9 @@ export const GET = route(async (req) => {
    *     holds four หัวหน้างาน; none of them signs for another, so listing all
    *     four under "รอการอนุมัติจาก" would name three people who cannot.
    */
-  const eligible = managers.filter((m) => isDepartmentManager(m, departmentId, company))
+  const eligible = managers.filter((m) => isDepartmentManager(m, departmentId, company, user))
     .filter((m) => String(m._id) !== String(user._id))
-    .filter((m) => mayApproveRole(m.role, user.role));
+    .filter((m) => maySignRoleOf(m, user));
 
   /**
    * And whoever is standing in for them today.

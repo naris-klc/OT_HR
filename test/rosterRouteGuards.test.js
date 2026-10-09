@@ -258,6 +258,10 @@ test('what the dialog shows before saving is what the server will record', () =>
   // with the first today.
   const screen = read('components/AdminView.jsx');
   assert.match(screen, /import \{[^}]*rosterChanges[^}]*\} from '@\/lib\/rosterAudit\.js'/);
-  assert.match(screen, /const changes = rosterChanges\(before, form\)/);
-  assert.match(read(PATCH), /const changes = rosterChanges\(before, \{/);
+  // `effective` is the form with อนุมัติรายคน emptied when the row stops
+  // signing — what the server does to it — so the review shows that too.
+  assert.match(screen, /const changes = rosterChanges\(before, effective\)/);
+  // The server records อนุมัติรายคน as รหัสพนักงาน rather than ids.
+  assert.match(read(PATCH),
+    /const changes = rosterChanges\(\{ \.\.\.before, approvesEmployees: codes\(before\.approvesEmployees\) \}, \{/);
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { isSigner, roleLabel, visibleRolesFor } from '@/lib/roles.js';
+import { ROLES, isSigner, roleLabel, visibleRolesFor } from '@/lib/roles.js';
 import {
   api, hours, thaiDate, dayName, dayAbbr, BUCKETS, BUCKET_LABEL,
   STATUS,
@@ -695,7 +695,9 @@ export default function ApprovalQueue({
       if (id) counts.set(id, (counts.get(id) || 0) + 1);
     }
     const mine = (user.coversDepartments || []).map(String);
-    const scoped = (roster || []).filter((d) => !mine.length || mine.includes(String(d._id)));
+    // `counts` too: a ผู้อนุมัติรายคน signs for people outside the แผนก they hold.
+    const scoped = (roster || []).filter((d) => !mine.length || mine.includes(String(d._id))
+      || counts.has(String(d._id)));
     // The roster is one fetch and it can fail; the rows are always in hand, so
     // a refused or slow /departments leaves the queue exactly as it was before
     // this existed rather than leaving it with no แผนก filter at all.
@@ -786,7 +788,10 @@ export default function ApprovalQueue({
      * up the ladder. Sorting by label would put การเงิน first and stand
      * ผู้จัดการฝ่าย above ผู้จัดการแผนก — the ladder upside down in two places.
      */
-    return visibleRolesFor(user.role)
+    // Plus any บทบาท a ผู้อนุมัติรายคน was handed off the ladder — the CEO
+    // signs a ผู้จัดการฝ่าย's request although no rung reaches it.
+    const ladder = visibleRolesFor(user.role);
+    return ROLES.filter((r) => ladder.includes(r) || seen.has(r))
       .map((r) => ({ value: r, label: roleLabel(r), count: seen.get(r) }));
   }, [entries, user.role, passes]);
 

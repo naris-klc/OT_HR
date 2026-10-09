@@ -938,7 +938,7 @@ test('the badge is drawn from the form and says both halves of the grant', () =>
   // A preview that arrives once the grant is made is a receipt. And neither box
   // says what the PAIR comes to — the join is where the mistake lives.
   const code = sourceOf('components/AdminView.jsx');
-  assert.match(code, /function ApprovalBadge\(\{ role, department, extras, company, depts \}\)/);
+  assert.match(code, /function ApprovalBadge\(\{ role, department, extras, company, depts, named = 0 \}\)/);
   assert.match(code, /if \(!isSigner\(role\)\) return null;/);
   assert.match(code, /department=\{form\.department\}/);
   assert.match(code, /extras=\{form\.approvesDepartments\}/);

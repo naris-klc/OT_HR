@@ -130,7 +130,7 @@ test('ช่องเหมารายวัน — ตำแหน่งขอ
 
   // ตำแหน่งของ “คนที่ใบนี้เป็นของเขา” — populated on every row this queue reads.
   assert.ok(read('lib/entries.js').includes(
-    "{ path: 'employee', select: 'code name position role company' }",
+    "{ path: 'employee', select: 'code name position role company personalApprovers' }",
   ), 'ตำแหน่งไม่ได้ถูก populate มากับใบ — กฎนี้จะตอบ false เงียบ ๆ ทุกแถว');
   // และไม่ใช่ฟิลด์ส่วนตัวที่ publicEmployee ตัดทิ้ง.
   assert.ok(!read('lib/employees.js').includes("PERSONAL_FIELDS = Object.freeze(['birthDate', 'email', 'position'"));

@@ -5,7 +5,7 @@ import { api, thaiDate, thaiStamp, dayName, periodLabel, COMPANIES } from '@/lib
 import { today } from '@/lib/today.js';
 import {
   HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
-  chosenPasswordPermission, defaultPassword, dropsAnAdmin, unsignedStaff,
+  chosenPasswordPermission, defaultPassword, dropsAnAdmin, unsignedStaff, UNNAMEABLE_ROLES,
 } from '@/lib/employees.js';
 import {
   ACCOUNTING_SENSITIVE, AUDITED_FIELDS, FIELD_LABEL, rosterChanges,
@@ -21,7 +21,9 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 import { companyOf, companyLabel } from '@/src/config/companies.js';
 import PasswordSlips from './PasswordSlips.jsx';
 import { PickDate } from './PickDate.jsx';
-import { approvalDepartments, idOf, viewerId, minuteLabel } from '@/lib/entries.js';
+import {
+  approvalDepartments, idOf, viewerId, minuteLabel, isDepartmentManager, maySignRoleOf,
+} from '@/lib/entries.js';
 import { PickTime } from './PickTime.jsx';
 import { ROLES, ROLE_LABEL_TH, isSigner, hrHeadsDepartment } from '@/lib/roles.js';
 // Pure as well — the settings screen names the modes and the write paths refuse
@@ -2104,7 +2106,7 @@ function DeptCombo({ home, extras, onChange, depts, disabled }) {
  * Nothing at all for anybody who is not a หัวหน้า: they approve nothing, and a
  * badge saying so on every พนักงาน's dialog is furniture.
  */
-function ApprovalBadge({ role, department, extras, company, depts }) {
+function ApprovalBadge({ role, department, extras, company, depts, named = 0 }) {
   if (!isSigner(role)) return null;
 
   const ids = [...new Set([String(department || ''), ...(extras || [])].filter(Boolean))];
@@ -2119,12 +2121,116 @@ function ApprovalBadge({ role, department, extras, company, depts }) {
           <strong>คุมอนุมัติ {names.length} แผนก:</strong> <b>{names.join(', ')}</b>
           {' · '}
           เซ็นให้พนักงานสังกัด <b>{where}</b>
+          {named > 0 && <>{' · '}<strong>อนุมัติรายคน {named} คน</strong></>}
         </span>
       ) : (
         /* The create form before anything is ticked. "คุมอนุมัติ 0 แผนก" is a
            sentence claiming the grant is empty; it is not decided yet. */
         <span>ยังไม่ได้เลือกแผนก — ติ๊กอย่างน้อยหนึ่งแผนก แล้วบรรทัดนี้จะสรุปสิทธิ์ให้</span>
       )}
+    </div>
+  );
+}
+
+/**
+ * อนุมัติรายคน — the people this signer is named for one by one (แบบ B,
+ * agreed 2026-10-09). Stored on THEIR rows as `personalApprovers`; edited
+ * here because HR thinks of it as "whom does the CEO sign for".
+ *
+ * A dense table, not chips: the seven people it was built for sit in five
+ * แผนก and two companies, and a chip has no room to say which. `stack-table`
+ * turns it into cards below 860px like every plain list in the app.
+ *
+ * The search row says who signs for each person TODAY, in amber, because
+ * adding somebody here takes them off that person's queue — the one
+ * consequence of this field nobody can see from the form.
+ */
+function PersonalApprovalField({ me, value, onChange, roster, depts, disabled }) {
+  const [adding, setAdding] = useState(false);
+  const meId = String(me || '');
+  const byId = new Map((roster || []).map((p) => [String(p._id), p]));
+  const rows = (value || []).map((id) => byId.get(id) || { _id: id, code: id, name: '' });
+  const signers = (roster || []).filter((p) => p.active !== false && isSigner(p.role));
+
+  const candidates = (roster || []).filter((p) => p.active !== false
+    && String(p._id) !== meId
+    && !UNNAMEABLE_ROLES.includes(p.role)
+    && !(value || []).includes(String(p._id)));
+
+  /** Who signs for `p` today, without this form's edit — the amber note. */
+  const nowSigning = (p) => {
+    const named = (p.personalApprovers || []).map(String).filter((id) => id !== meId);
+    const who = named.length
+      ? named.map((id) => byId.get(id)).filter(Boolean)
+      : signers.filter((s) => String(s._id) !== String(p._id)
+        && isDepartmentManager(s, p.department, companyOf(p), p) && maySignRoleOf(s, p));
+    return who.length
+      ? `ตอนนี้: ${who.map((w) => w.name).join(', ')}`
+      : 'ตอนนี้: ส่งตรงฝ่ายบุคคล';
+  };
+
+  return (
+    <div className="field personal-approvals">
+      <div className="field-head personal-head">
+        <label>อนุมัติรายคน · {rows.length} คน</label>
+        {!disabled && !adding && (
+          <button type="button" className="btn ghost sm" onClick={() => setAdding(true)}>
+            เพิ่มพนักงาน
+          </button>
+        )}
+      </div>
+      {adding && (
+        <PickPerson
+          people={candidates}
+          value=""
+          allLabel={null}
+          placeholder="พิมพ์ชื่อ หรือ รหัสพนักงาน…"
+          onChange={(id) => { if (id) onChange([...(value || []), String(id)]); }}
+          noteOf={(p) => <span className="chip warn person-now">{nowSigning(p)}</span>}
+        />
+      )}
+      {rows.length > 0 && (
+        <div className="table-wrap personal-table">
+          <table className="stack-table">
+            <thead>
+              <tr>
+                <th>รหัส</th>
+                <th>ชื่อ · ตำแหน่ง</th>
+                <th>แผนก · บริษัท</th>
+                {!disabled && <th aria-label="จัดการ" />}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((p) => (
+                <tr key={String(p._id)}>
+                  <td className="stack-name person-code">{p.code}</td>
+                  <td data-label="ชื่อ">
+                    {p.name}
+                    {p.position && <span className="cell-sub"> · {p.position}</span>}
+                  </td>
+                  <td data-label="แผนก">
+                    {nameOfDept(depts, idOf(p.department)) || '—'}
+                    {p.company && <span className="cell-sub"> · {companyLabel(p.company)}</span>}
+                  </td>
+                  {!disabled && (
+                    <td className="person-act">
+                      <RowAction
+                        icon="trash"
+                        label="เอาออก"
+                        name={p.name}
+                        onClick={() => onChange((value || []).filter((id) => id !== String(p._id)))}
+                      />
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="field-note">
+        คนในรายการนี้ ผู้อนุมัติตามแผนกจะไม่เห็นใบอีก · ใบไปที่คนนี้ก่อนแล้วจึงไปฝ่ายบุคคล
+      </div>
     </div>
   );
 }
@@ -3733,6 +3839,7 @@ function Employees({ user }) {
           employee={editing}
           depts={depts}
           user={user}
+          roster={rows}
           /**
            * Whether anybody ELSE could still administer the system if this row
            * stopped doing so. Counted from the roster the table already has, so
@@ -4199,7 +4306,7 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
 }
 
 /** One roster row as the edit dialog holds it — the audited fields, nothing else. */
-const formOf = (employee) => ({
+const formOf = (employee, roster = []) => ({
   code: employee.code || '',
   name: employee.name || '',
   email: employee.email || '',
@@ -4222,6 +4329,11 @@ const formOf = (employee) => ({
    * the stored fact stay two different things on purpose.
    */
   approvesDepartments: (employee.approvesDepartments || []).map(String),
+  // อนุมัติรายคน — read off the OTHER rows (`personalApprovers`), see
+  // `PersonalApprovalField`.
+  approvesEmployees: (roster || [])
+    .filter((p) => (p.personalApprovers || []).some((a) => String(a) === String(employee._id)))
+    .map((p) => String(p._id)),
   active: employee.active !== false,
 });
 
@@ -4234,7 +4346,7 @@ const formOf = (employee) => ({
  * where one is available, printed raw where it is not: a department that has
  * since been deleted still has to print as something a person can search for.
  */
-function showValue(field, value, depts = []) {
+function showValue(field, value, depts = [], people = []) {
   /**
    * Before the blank check, not after it: unset here is not "missing", it is
    * ทุกบริษัท — the widest scope there is. Printing it as — would read as a
@@ -4253,6 +4365,15 @@ function showValue(field, value, depts = []) {
     return String(value).split(',')
       .map((id) => nameOfDept(depts, id) || id)
       .join(', ');
+  }
+  // Ids on the confirmation list, รหัสพนักงาน on the trail (the server records
+  // codes) — either reads back as a person where the roster knows them.
+  if (field === 'approvesEmployees') {
+    if (!value) return 'ไม่มี';
+    return String(value).split(',').map((v) => {
+      const p = people.find((x) => String(x._id) === v || x.code === v);
+      return p ? `${p.code} ${p.name}` : v;
+    }).join(', ');
   }
   if (value == null || value === '') return '—';
   if (field === 'department') return nameOfDept(depts, value) || value;
@@ -4298,7 +4419,7 @@ function showValue(field, value, depts = []) {
  * nobody is invited to type something that will be refused.
  */
 function EditEmployee({
-  employee, depts, user, otherActiveAdmins = 0, onClose, onSave, onReset,
+  employee, depts, user, roster = [], otherActiveAdmins = 0, onClose, onSave, onReset,
 }) {
   const isAdmin = user?.role === 'admin';
   /** ฝ่ายบุคคล opening the ผู้ดูแลระบบ row: readable, not writable. */
@@ -4355,7 +4476,7 @@ function EditEmployee({
    */
   const mayReset = !rowLocked && !isSelf;
 
-  const before = formOf(employee);
+  const before = formOf(employee, roster);
   const [form, setForm] = useState(before);
   const [reason, setReason] = useState('');
   /** 'edit' → the form · 'confirm' → what is about to happen. */
@@ -4374,7 +4495,14 @@ function EditEmployee({
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
-  const changes = rosterChanges(before, form);
+  /**
+   * A row that stops being an active signer loses its อนุมัติรายคน on the
+   * server (`personalApprovers`); the form says so in the review rather than
+   * letting the save do something the list above did not show.
+   */
+  const signsAfter = isSigner(form.role) && form.active !== false;
+  const effective = signsAfter ? form : { ...form, approvesEmployees: [] };
+  const changes = rosterChanges(before, effective);
   const changed = (field) => changes.some((c) => c.field === field);
   const codeChanged = changed('code');
   /**
@@ -4457,7 +4585,7 @@ function EditEmployee({
       // Required on the model — an empty string would fail validation rather
       // than clear it, and there is no "no department" to ask for here.
       else if (c.field === 'department') { if (form.department) out.department = form.department; }
-      else out[c.field] = form[c.field];
+      else out[c.field] = effective[c.field];
     }
     if (codeChanged) out.reason = reason.trim();
     return out;
@@ -4820,12 +4948,21 @@ function EditEmployee({
                   another has to do the join in their head, and the join is
                   where the mistake lives: that pair signs for nobody at all in
                   สำนักงาน if สำนักงาน has no เดมเทค staff. */}
+              <PersonalApprovalField
+                me={employee._id}
+                value={form.approvesEmployees}
+                onChange={(v) => set({ approvesEmployees: v })}
+                roster={roster}
+                depts={depts}
+                disabled={disabled()}
+              />
               <ApprovalBadge
                 role={form.role}
                 department={form.department}
                 extras={form.approvesDepartments}
                 company={form.approvesCompany}
                 depts={depts}
+                named={signsAfter ? form.approvesEmployees.length : 0}
               />
             </section>
           )}
@@ -4843,9 +4980,9 @@ function EditEmployee({
             {changes.map((c) => (
               <li key={c.field}>
                 <span className="k">{FIELD_LABEL[c.field] || c.field}</span>
-                <span className="was">{showValue(c.field, c.from, depts)}</span>
+                <span className="was">{showValue(c.field, c.from, depts, roster)}</span>
                 <span className="to">→</span>
-                <span className="now">{showValue(c.field, c.to, depts)}</span>
+                <span className="now">{showValue(c.field, c.to, depts, roster)}</span>
               </li>
             ))}
           </ul>

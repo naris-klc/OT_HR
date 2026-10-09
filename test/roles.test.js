@@ -34,13 +34,15 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // ── the list itself ─────────────────────────────────────────────────────────
 
-test('there are seven บทบาท, lowest first', () => {
+// It read "there are seven" until กรรมการผู้จัดการ joined on 2026-10-09.
+test('there are eight บทบาท, lowest first', () => {
   assert.deepEqual(ROLES, [
     'employee',
     'supervisor',
     'finance',
     'dept_manager',
     'division_manager',
+    'managing_director',
     'hr',
     'admin',
   ]);
@@ -107,8 +109,9 @@ test('an unknown บทบาท outranks nothing and is outranked by nothing', 
 
 // ── who holds a แผนก ────────────────────────────────────────────────────────
 
-test('four บทบาท sign the first step; ฝ่ายบุคคล and ผู้ดูแลระบบ are not among them', () => {
-  assert.deepEqual(SIGNER_ROLES, ['supervisor', 'finance', 'dept_manager', 'division_manager']);
+test('five บทบาท sign the first step; ฝ่ายบุคคล and ผู้ดูแลระบบ are not among them', () => {
+  assert.deepEqual(SIGNER_ROLES,
+    ['supervisor', 'finance', 'dept_manager', 'division_manager', 'managing_director']);
   // Not an oversight: those two sign the SECOND step, which every request
   // passes through, and this list is about holding a department.
   assert.equal(isSigner('hr'), false);
@@ -524,7 +527,8 @@ test('nobody is offered as the person who will sign their own request', () => {
   const route = src('app/api/entries/approvers/route.js');
   assert.match(route, /String\(m\._id\) !== String\(user\._id\)/);
   // and only บทบาท the matrix actually puts on this person's request
-  assert.match(route, /mayApproveRole\(m\.role, user\.role\)/);
+  // (`maySignRoleOf` — the matrix, or a name HR wrote on the applicant's row)
+  assert.match(route, /maySignRoleOf\(m, user\)/);
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -545,7 +549,7 @@ test('nobody is offered as the person who will sign their own request', () => {
  * they can now see may be given a button that changes it.
  */
 
-test('three บทบาท read every แผนก’s month; the other three signers read their own', () => {
+test('three บทบาท read every แผนก’s month; the other four signers read their own', () => {
   assert.deepEqual(COMPANY_REPORT_ROLES, ['finance', 'hr', 'admin']);
   for (const role of ['finance', 'hr', 'admin']) {
     assert.equal(readsCompanyReports(role), true, role);
@@ -553,7 +557,8 @@ test('three บทบาท read every แผนก’s month; the other three s
   }
   assert.deepEqual(
     ROLES.filter(readsOwnTeamOnly),
-    ['supervisor', 'dept_manager', 'division_manager'],
+    // กรรมการผู้จัดการ too: HR's word on 2026-10-09 was เห็นเฉพาะที่เซ็นให้.
+    ['supervisor', 'dept_manager', 'division_manager', 'managing_director'],
   );
   // A พนักงาน reads neither — they are on no report screen at all, and this
   // predicate must not become the thing that decides that.
@@ -738,7 +743,7 @@ test('the same two rules the approve route decides by, not a second reading', ()
   // asking "who signs this" to the wrong desk — which is what this endpoint
   // exists to prevent, so it may not answer the question its own way.
   const route = src('app/api/entries/approvers/route.js');
-  assert.match(route, /isDepartmentManager\(m, departmentId, company\)/);
+  assert.match(route, /isDepartmentManager\(m, departmentId, company, user\)/);
   assert.match(route, /from '@\/lib\/roles\.js'/);
 });
 
@@ -845,8 +850,9 @@ test('the list route asks the ladder, and as $and so ?employee= cannot widen it'
 
 test('the clause keeps the reader’s own row, because ownership is not a บทบาท', () => {
   const q = src('lib/delegationQuery.js');
-  assert.match(q, /export async function visibleEmployeeClause\(user\)/);
-  assert.match(q, /\[\.\.\.people\.map\(\(p\) => p\._id\), user\._id\]/);
+  assert.match(q, /export async function visibleEmployeeClause\(user, date = today\(\)\)/);
+  // `mine` — the people HR named this reader for one by one (ผู้อนุมัติรายคน).
+  assert.match(q, /\[\.\.\.people\.map\(\(p\) => p\._id\), \.\.\.mine, user\._id\]/);
   // ฝ่ายบุคคล and ผู้ดูแลระบบ get no clause at all rather than one listing
   // every employee in the company.
   assert.match(q, /if \(seesEveryRole\(user\?\.role\)\) return null;/);

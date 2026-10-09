@@ -10,7 +10,9 @@ import { ROLES, isSigner, mayApproveRole } from '@/lib/roles.js';
 /** Queue counts for the manager's daily review and HR's monthly review (§2). */
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
-  const { scope, delegated: coveredScope, covered } = await resolveScope(user);
+  const {
+    scope, delegated: coveredScope, covered, personal,
+  } = await resolveScope(user);
 
   /**
    * THE BADGE COUNTS WHAT THIS READER CAN SIGN, NOT WHAT IS IN THEIR แผนก.
@@ -37,7 +39,16 @@ export const GET = route(async (req) => {
     const people = await Employee
       .find({ role: { $in: roles }, department: { $in: approvalDepartments(user) } })
       .select('_id').lean();
-    signable = { employee: { $in: people.map((p) => p._id).filter((id) => String(id) !== String(user._id)) } };
+    // ผู้อนุมัติรายคน: the people named for this reader are signable whatever
+    // their บทบาท, and people named for somebody else are not, whatever their
+    // แผนก — the same two edits `withPersonal` makes to the scope.
+    const elsewhere = new Set(personal.named.map(String));
+    const own = personal.own.map(String);
+    const ids = [
+      ...people.map((p) => String(p._id)).filter((id) => !elsewhere.has(id)),
+      ...own,
+    ].filter((id) => id !== String(user._id));
+    signable = { employee: { $in: ids } };
   }
 
   /**
