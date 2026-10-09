@@ -6088,6 +6088,9 @@ td > .approver-line { margin-top: 5px; }
 @media (min-width: 861px) {
   .queue-tools:has(> .month-tabs) .field { flex-basis: 150px; }
   .queue-tools:has(> .month-tabs) .field.search { flex-basis: 240px; min-width: 240px; }
+  /* เดือนที่ล้างได้ (คิวรออนุมัติ OT, 2026-10-09) มีปุ่ม ✕ อีกปุ่ม — 150 ตัด
+     `กันยายน 2569` เป็น `กันยาย…` */
+  .queue-tools:has(> .month-tabs) .field:has(.pick-box-wrap.has-clear) { flex-basis: 190px; }
 }
 .month-tabs .count,
 .month-tabs button.active .count { background: var(--neutral-wash); color: var(--ink-2); }

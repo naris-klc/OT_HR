@@ -78,7 +78,8 @@ test('nothing imports the deleted panel any more', () => {
  */
 test('the approval queue has one pile again, and no batch button for the other', () => {
   const src = bare('components/ApprovalQueue.jsx');
-  assert.ok(!/queue-tabs/.test(src), 'the segmented control is back');
+  // แท็บ สถานะ (`queue-tabs month-tabs`, 2026-10-09) ไม่ใช่สองกองที่กลับมา
+  assert.ok(!/queue-tabs(?! month-tabs)/.test(src), 'the segmented control is back');
   assert.ok(!/setPile|onWithdraw|hasWithdraw|batchSignal/.test(src), 'the pile state is back');
   assert.ok(!/อนุมัติให้ถอนทั้งหมด/.test(src));
   assert.match(css, /\.queue-tabs \{/, 'the class itself stays — it has been reused twice already');

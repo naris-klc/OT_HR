@@ -743,6 +743,17 @@ export default function ApprovalQueue({
     return listed.map((s) => ({ value: s, label: STATUS[s]?.label || s, count: seen.get(s) }));
   }, [entries, isHr, stage, passes]);
 
+  /** แท็บ ทั้งหมด / รอ HR / รอหัวหน้า บนแถบกรองของฝ่ายบุคคล — ลำดับเดียวกับ
+   * ตรวจสอบประจำเดือน · ทั้งหมด คือผลรวมของสถานะในคิว */
+  const statusTabs = useMemo(() => {
+    const order = ['pending_hr', 'pending_mgr'];
+    const rank = (v) => (order.includes(v) ? order.indexOf(v) : order.length);
+    return [
+      { value: '', label: 'ทั้งหมด', count: statuses.reduce((n, o) => n + (o.count || 0), 0) },
+      ...[...statuses].sort((a, b) => rank(a.value) - rank(b.value)).map((o) => ({ ...o, count: o.count || 0 })),
+    ];
+  }, [statuses]);
+
   /**
    * THE บทบาท OPTIONS, IN THE LADDER'S ORDER — `ROLES`, which is lowest first
    * and is load-bearing there for a different reason (it builds `RANK`).
@@ -1378,6 +1389,29 @@ export default function ApprovalQueue({
       {entries && (
         <>
         <div className="queue-tools">
+          {/* ── แท็บสถานะ — 2026-10-09, แทนดรอปดาวน์ สถานะ ─────────────────────
+              *"ย้ายไปเป็นแถบเหมือนหน้าตรวจสอบ มีแท็บ ทั้งหมด/รอ HR/รอหัวหน้า"* ·
+              `.queue-tabs month-tabs` ชุดเดียวกับ ตรวจสอบประจำเดือน (HrView) ทั้งขนาด
+              สีของเลข และการตัดบรรทัดบนมือถือ · ลำดับแท็บตามหน้านั้น ไม่ใช่ลำดับของ
+              `listed` · เลขนับตามตัวกรองอื่นที่เลือกอยู่ (`statuses`) เหมือนเลขใน
+              ดรอปดาวน์เดิม · เฉพาะฝ่ายบุคคล เพราะคิวของหัวหน้ามีสถานะเดียว */}
+          {isHr && (
+            <div className="queue-tabs month-tabs" role="tablist" aria-label="สถานะ">
+              {statusTabs.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={t.value === st}
+                  className={t.value === st ? 'active' : ''}
+                  onClick={() => setSt(t.value)}
+                >
+                  {t.label}
+                  <span className={`count${t.value && t.count ? ` st-${t.value}` : ''}`}>{t.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="field search">
             {/* `.field-head` around a label with no (?) beside it. It read *"the
                 point of the rule is that it reserves the same 18px first row as
@@ -1405,48 +1439,6 @@ export default function ApprovalQueue({
             />
             </div>
           </div>
-          {/*
-            `PickOne` AND NOT A `<select>`, on both of these, since 2026-09-01.
-
-            The box was always the app's; the list that dropped out of it never
-            was. A `<select>`'s options are drawn by the browser and the OS, not
-            from this document — so on ธีมมืด these two opened as a white sheet
-            carrying the system's blue selection bar, in the middle of a screen
-            that is otherwise charcoal and green. Nothing in `app/styles.css`
-            could reach it, because there is nothing there to reach.
-
-            `PickOne` is `PickPerson`'s panel with no search box in it, so what
-            opens here is the same list HR already knows from ค้นหาพนักงาน —
-            `--card-lift` fill, `--line-lift` edge, and one green row under the
-            pointer or the arrow keys. See components/common.jsx.
-
-            THE COUNT LEFT THE OPTION TEXT. `แผนกผลิต (12)` was one string
-            because an `<option>` can hold nothing else; it is two spans now,
-            with the figure in mono against the right edge where the counts line
-            up into a column.
-
-            THERE ARE THREE OF THEM SINCE 2026-09-03, and สถานะ is FIRST —
-            between ค้นหา and แผนก, where it was asked to be. It reads in the
-            order the filters narrow: which step of the flow, then whose
-            department, then which month. It is ฝ่ายบุคคล's alone, on the same
-            `isHr` test แผนก uses and for the same kind of reason: a หัวหน้า's
-            queue holds one status by construction, and a dropdown that cannot
-            change the screen is furniture on a toolbar three fields wide.
-
-            DRAWN EVEN WHEN THE QUEUE HAPPENS TO HOLD ONE STATUS TODAY. It is a
-            control on a toolbar, not a notice: one that came and went as the
-            last รอหัวหน้า row was signed would move แผนก and เดือน sideways
-            underneath somebody mid-filter.
-          */}
-          {isHr && (
-            <PickOne
-              label="สถานะ"
-              value={st}
-              onChange={setSt}
-              options={statuses}
-              allLabel="ทุกสถานะ"
-            />
-          )}
           {/*
             บทบาท — THE SAME SLOT, THE OTHER READER, 2026-09-04.
 

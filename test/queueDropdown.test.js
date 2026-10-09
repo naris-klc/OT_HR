@@ -60,8 +60,10 @@ const queueCode = strip(queue);
 // ── the queue no longer asks the operating system to draw anything ──────────
 
 test('the stripper actually strips — the ban below proves nothing otherwise', () => {
-  assert.ok(queue.includes('`<select>`'), 'the comment this guards against is gone');
-  assert.ok(!queueCode.includes('<select>'), 'the stripper left a comment behind');
+  // คอมเมนต์ที่อธิบายเรื่อง `<select>` ออกไปกับดรอปดาวน์ สถานะ (2026-10-09) ·
+  // ใช้คอมเมนต์ของแท็บแทน
+  assert.ok(queue.includes('`.queue-tabs month-tabs` ชุดเดียวกับ'), 'the comment this guards against is gone');
+  assert.ok(!queueCode.includes('ชุดเดียวกับ ตรวจสอบประจำเดือน'), 'the stripper left a comment behind');
   assert.ok(queueCode.includes('const shown = useMemo('), 'the stripper ate the code as well');
 });
 
@@ -74,7 +76,7 @@ test('ไม่มี <select> เหลืออยู่บนหน้า ร
   assert.ok(!/<select\b/.test(queueCode), 'ApprovalQueue ยังมี <select> อยู่ — เมนูของ OS จะกลับมา');
 });
 
-test('สถานะ บทบาท แผนก ใช้ PickOne · เดือน ใช้ PickMonth เหมือนทุกจอ', () => {
+test('บทบาท แผนก ใช้ PickOne · เดือน ใช้ PickMonth · สถานะ เป็นแท็บ เหมือนทุกจอ', () => {
   // Including the month box, which is the half of the request that is easy to
   // leave behind: it is the one HR opens most and it is a second control, not a
   // second kind of control.
@@ -85,7 +87,12 @@ test('สถานะ บทบาท แผนก ใช้ PickOne · เด�
   // it: a third control drawn any other way is the OS menu back on one field.
   assert.match(common, /export function PickOne\(/);
   assert.match(queue, /import \{[\s\S]*?\bPickOne\b[\s\S]*?\} from '\.\/common\.jsx'/);
-  assert.match(queue, /<PickOne\s+label="สถานะ"[\s\S]*?allLabel="ทุกสถานะ"/);
+  // สถานะ เลิกเป็น `PickOne` 2026-10-09 — แท็บ ทั้งหมด / รอ HR / รอหัวหน้า
+  // ชุดเดียวกับ ตรวจสอบประจำเดือน
+  assert.ok(!/<PickOne\s+label="สถานะ"/.test(queue), 'สถานะ กลับไปเป็นดรอปดาวน์');
+  assert.match(queue, /<div className="queue-tabs month-tabs" role="tablist" aria-label="สถานะ">/);
+  assert.match(queue, /\{ value: '', label: 'ทั้งหมด'/);
+  assert.match(queue, /const order = \['pending_hr', 'pending_mgr'\]/);
   assert.match(queue, /<PickOne\s+label="บทบาท"[\s\S]*?allLabel="ทุกบทบาท"/);
   assert.match(queue, /<PickOne\s+label="แผนก"[\s\S]*?allLabel="ทุกแผนก"/);
   // เดือน เลิกเป็น `PickOne` 2026-10-09 — ปฏิทินเดือนตัวเดียวกับทุกจอ ว่างได้
@@ -95,7 +102,7 @@ test('สถานะ บทบาท แผนก ใช้ PickOne · เด�
   // FOUR SINCE 2026-09-04. บทบาท is the signers' half of the first slot — see
   // test/queueRoleFilter.js — and it takes the same control for the same
   // reason: a filter bar has one kind of dropdown on it.
-  assert.equal((queue.match(/<PickOne\b/g) || []).length, 3);
+  assert.equal((queue.match(/<PickOne\b/g) || []).length, 2);
 });
 
 test('ตัวเลขข้างตัวเลือกนับตามตัวกรองอื่นที่เลือกอยู่', () => {
@@ -118,14 +125,16 @@ test('ตัวเลขข้างตัวเลือกนับตาม�
  * month. Pinned as source ORDER rather than as a rendered position, for the
  * reason every other assertion in this file is source: there is no DOM here.
  */
-test('สถานะ อยู่ระหว่างช่องค้นหากับ แผนก', () => {
+test('แท็บ สถานะ ขึ้นต้นแถบ ก่อนช่องค้นหา แผนก เดือน', () => {
+  // เดิม สถานะ อยู่ระหว่างช่องค้นหากับ แผนก · เป็นแท็บตั้งแต่ 2026-10-09 และขึ้นต้นแถบ
+  // เหมือน ตรวจสอบประจำเดือน
   const search = queueCode.indexOf('placeholder="ชื่อพนักงาน');
-  const status = queueCode.indexOf('label="สถานะ"');
+  const status = queueCode.indexOf('aria-label="สถานะ"');
   const dept = queueCode.indexOf('label="แผนก"');
   const month = queueCode.indexOf('label="เดือน"');
   assert.ok(search > 0 && status > 0 && dept > 0 && month > 0, 'ตัวกรองหายไปหนึ่งตัว');
-  assert.ok(search < status, 'สถานะ ต้องอยู่หลังช่องค้นหา');
-  assert.ok(status < dept, 'สถานะ ต้องอยู่ก่อน แผนก');
+  assert.ok(status < search, 'แท็บ สถานะ ต้องอยู่ก่อนช่องค้นหา');
+  assert.ok(search < dept, 'ช่องค้นหา ต้องอยู่ก่อน แผนก');
   assert.ok(dept < month, 'แผนก ต้องอยู่ก่อน เดือน');
 });
 
