@@ -354,7 +354,7 @@ const ICONS = {
    *   cross   ไม่อนุมัติ                        ban     ยกเลิก · ถอนใบ
    *   trash   ลบ                                key     รีเซ็ตรหัสผ่าน
    *   send    ส่งใหม่                           printer พิมพ์
-   *   reset   คืนค่าตั้งต้น                     download บันทึก PDF · ได้ไฟล์
+   *   reset   คืนค่าตั้งต้น · ล้างตัวกรอง       download บันทึก PDF · ได้ไฟล์
    *   help    วิธีพิมพ์ · วิธีใช้                chevronLeft กลับ (ออกจากหน้าพิมพ์)
    *
    * `ban` AND `trash` ARE DIFFERENT ON PURPOSE. ยกเลิก and ถอนใบ leave the ใบ in

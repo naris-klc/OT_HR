@@ -2333,6 +2333,43 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    right-hand group is what a wide screen reads. See the two comments at the
    heading in ApprovalQueue.jsx for why it is drawn twice rather than moved. */
 .card-head .t-count { display: none; font-weight: 400; color: var(--muted); }
+/* ── ชื่อกับบรรทัดใต้ชื่ออยู่บรรทัดเดียวกัน ทั้งแอป — 2026-10-09 ─────────────
+   ขอไว้ว่า *"ทั้งแอปปรับชื่อกับข้อความใต้ชื่อให้อยู่บรรทัดเดียวกัน"* หลังเห็น
+   mockup compact-head (ตรวจสอบประจำเดือน · กันยายน 2569 ในบรรทัดเดียว)
+
+   กฎเดียวจับทุกหัวเรื่อง แทนการไล่แก้ทีละจอ: กล่องที่ลูกมีแค่ ชื่อ (`.t`
+   `h2` `h3` `.form-head`) ตามด้วย `.hint` และอาจมี `.kicker-sm` — ไม่มีอะไรอื่น
+   เงื่อนไข "ไม่มีอะไรอื่น" คือ `:not(:has(> :not(…)))` และเป็นตัวกันไม่ให้
+   การ์ดหรือฟอร์มทั้งก้อนกลายเป็นแถว · `.card` ตัดออกเผื่อการ์ดที่มีแค่ h2 + hint
+
+   flex-wrap คือส่วนที่ทำให้ไม่ต้องมีจุดเปลี่ยนความกว้าง: บรรทัดใต้ชื่อที่สั้น
+   (เดือน · รหัส) นั่งข้างชื่อ ส่วนคำอธิบายยาวกว้างเกินที่เหลือก็ตกลงบรรทัดใหม่
+   เองเหมือนเดิม · margin ของชื่อเป็น 0 เพราะ margin ใน flex ไม่ยุบรวมกัน
+   `row-gap: 4px` คือระยะ 4px เดิมของ `.card h2` สำหรับกรณีที่ตกบรรทัด
+   ป้าย kicker (แผนกที่ 3) อยู่บนชื่อตามเดิม — เต็มบรรทัด
+
+   หัวป๊อปอัป (`.modal-head .who`) ไม่เข้ากฎนี้: บรรทัดใต้ชื่อของมันเป็น
+   ข้อมูลหลายบรรทัด (ใคร / วันไหน) ไม่ใช่คำบรรยายสั้น */
+div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2, h3, .form-head, .hint, .kicker-sm))) {
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 4px; min-width: 0;
+}
+div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2, h3, .form-head, .hint, .kicker-sm))) > :is(.t, h2, h3, .form-head, .hint) {
+  margin: 0;
+}
+div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2, h3, .form-head, .hint, .kicker-sm))) > .kicker-sm {
+  flex-basis: 100%;
+}
+/* บนหัวการ์ด กล่องชื่อรับที่ที่เหลือจากปุ่ม (`flex: 1 1 240px`) แทนที่จะกว้าง
+   เท่าเนื้อหา — ไม่งั้นชื่อที่ยาวขึ้นเพราะบรรทัดใต้ชื่อขึ้นมาอยู่ข้าง ๆ จะดันปุ่ม
+   ลงบรรทัดใหม่ (วัดที่จอ 861: หัวการ์ด 72 → 102px) · แบบนี้ถ้าที่ไม่พอ บรรทัด
+   ใต้ชื่อตกลงไปเอง ปุ่มยังอยู่บรรทัดชื่อ · 240 คือขั้นต่ำก่อนที่ปุ่มจะยอมลง
+   เฉพาะ 861px ขึ้นไป: ใต้นั้นหัวการ์ดหลายใบเป็น `flex-direction: column` และ
+   240px ของ basis จะกลายเป็นความสูง (วัดได้หัวการ์ด 319px) */
+@media (min-width: 861px) {
+  .card-head > div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2, h3, .form-head, .hint, .kicker-sm))) {
+    flex: 1 1 240px;
+  }
+}
 /* Which of the two payroll entities this card is — sits above its name, in the
    same mono voice the appbar uses for a page's kicker. */
 .kicker-sm {
@@ -3152,6 +3189,12 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap;
   }
+}
+/* ล้างตัวกรอง (`ClearFilters`, 2026-10-09) บนแถบกรองสูงเท่าช่องกรอง (46px)
+   ไม่ใช่ 32px ของแถวตาราง — สี่เหลี่ยมเล็กข้างช่องสูง 46px อ่านเป็นของหลงมา
+   ที่อื่น (หัวการ์ดข้างปุ่ม .btn.sm) ใช้ 32px ตามปุ่มข้าง ๆ */
+@media (min-width: 861px) {
+  .queue-tools .btn.act-icon.clear-filters { width: var(--field-h); height: var(--field-h); }
 }
 
 /* The bubble `TipLayer` draws. Inverted — `--ink` under `--card` — so it reads
@@ -6024,20 +6067,28 @@ td > .approver-line { margin-top: 5px; }
    2026-10-09. The same bar, not a second one, and the count is people, from
    `tabCounts`.
 
-   ON A LINE OF ITS OWN UNDER THE TITLE AND THE BUTTONS, at every width. The
-   mockup had it between the two, and that only fits from about 1250px of
-   content: at 1024 with the sidebar the head broke into title / tabs /
-   buttons, three lines. A line of its own is one rule and no new breakpoint.
-   `::after` is the line break — a zero-height item a whole line wide, ordered
-   between the head's row and the tabs — so the bar keeps its own width
-   instead of being stretched across the card; `row-gap: 6px` because that
-   empty line pays the gap twice. Each tab is its label's width
-   above 860px; below it the tabs split the line four ways (see the 860px
-   block). */
-.card-head:has(> .month-tabs) { row-gap: 6px; }
-.card-head:has(> .month-tabs)::after { content: ''; flex-basis: 100%; order: 1; }
-.month-tabs { order: 2; }
-.month-tabs button { flex: none; }
+   ต้นแถบกรอง ไม่ใช่หัวการ์ด — ย้ายเมื่อ 2026-10-09 (mockup compact-head แบบ D)
+   บนหัวการ์ดมันต้องมีบรรทัดของตัวเอง เพราะชื่อ + แท็บ + ปุ่มกว้างราว 1,030px
+   และการ์ดที่จอ 1024 มีแค่ ~680 · ในแถบกรอง จอกว้างได้บรรทัดเดียวกับช่องค้นหา
+   จอแคบตัดลงบรรทัดใหม่เองตาม flex-wrap ของแถบ ไม่ต้องมีจุดเปลี่ยนความกว้างใหม่
+
+   บางลง: กล่อง 3px ปุ่ม 30px — สูงกว่านี้แท็บจะเป็นของที่หนาที่สุดบนแถบ ·
+   `align-self: center` เพราะแถบจัดชิดล่าง (ให้ช่องกรองที่สูงไม่เท่ากันยืนเส้นเดียว)
+   และแท็บที่เตี้ยกว่าช่องควรอยู่กลางช่อง ไม่ใช่ติดพื้น
+
+   ขนาดตั้งต้นของช่องในแถบนี้เล็กกว่าแถบอื่น (ค้นหา 240 · ช่องอื่น 150 แทน
+   300/200) เพราะ flex ตัดบรรทัดตามขนาดตั้งต้น ไม่ใช่ขนาดที่บีบได้ — ด้วยค่าเดิม
+   แท็บ + สามช่อง + ปุ่มล้าง ต้องการ ~1,260px ซึ่งจอ 1440 ที่มีเมนูซ้ายไม่มี ·
+   ค่าใหม่รวม ~1,050 อยู่บรรทัดเดียว และที่เหลือยังขยายเต็มแถบ · เฉพาะ 861px
+   ขึ้นไป ใต้นั้นแถบกรองมีเลย์เอาต์มือถือของมันเองที่ต้องไม่ถูกทับ · ช่องค้นหา
+   `min-width` 240 ให้จอ 1024 ตัดแท็บไปบรรทัดของมัน แทนที่จะบีบช่องค้นหาจน
+   คำค้นตกบรรทัด */
+.queue-tools > .month-tabs { flex: none; align-self: center; padding: 3px; gap: 3px; border-radius: 10px; }
+.month-tabs button { flex: none; gap: 6px; padding: 4px 10px; min-height: 30px; border-radius: 7px; font-size: 13px; }
+@media (min-width: 861px) {
+  .queue-tools:has(> .month-tabs) .field { flex-basis: 150px; }
+  .queue-tools:has(> .month-tabs) .field.search { flex-basis: 240px; min-width: 240px; }
+}
 .month-tabs .count,
 .month-tabs button.active .count { background: var(--neutral-wash); color: var(--ink-2); }
 
@@ -12442,11 +12493,10 @@ table.mini tbody tr:hover { background: none; }
      hands it to the button, whose label is the one thing in this head that
      must not be cut — which is what the report was about. */
   .card-head:has(> .row .btn) > .row { width: 100%; }
-  /* ตรวจสอบประจำเดือน's tabs on a line of their own, split evenly four ways,
-     label over count so อนุมัติแล้ว 41 fits a quarter of 360px — see
-     `.month-tabs` above. */
-  .card-head:has(> .month-tabs)::after { display: none; }
-  .month-tabs { padding: 3px; gap: 3px; }
+  /* ตรวจสอบประจำเดือน's tabs on the filter bar's first line, the whole width,
+     split evenly four ways, label over count so อนุมัติแล้ว 41 fits a quarter
+     of 360px — see `.month-tabs` above. */
+  .queue-tools > .month-tabs { flex: 1 1 100%; }
   .month-tabs button {
     flex: 1; min-width: 0; flex-direction: column; gap: 2px;
     padding: 6px 0; min-height: 44px; font-size: 12.5px; white-space: nowrap;

@@ -2826,6 +2826,23 @@ export function RowAction({
 }
 
 /**
+ * ล้างตัวกรอง — ปุ่มเดียวกันทุกแถบกรองในแอป ตั้งแต่ 2026-10-09
+ *
+ * เป็นไอคอน `reset` (คืนค่าตั้งต้น — ล้างตัวกรองก็คือพาตัวกรองกลับไปค่าตั้งต้น
+ * ความหมายเดียวกัน ไอคอนเดียวกัน) คำอยู่ใน tooltip · มันคือ `RowAction` ไม่ใช่
+ * ปุ่มชุดใหม่ ใต้ 860px จึงมีคำต่อท้ายไอคอนเหมือนปุ่มจัดการทุกปุ่ม
+ * ขอไว้ว่า *"เปลี่ยน design system ปุ่มล้างตัวกรองทั้งแอปให้กระชับหรือใช้ไอคอน
+ * แทน"* แล้วเลือกแบบ 1 ของ mockup compact-head · ในแถบกรองมันสูงเท่าช่องกรอง
+ * (`.queue-tools .clear-filters` ใน app/styles.css)
+ *
+ * ปุ่มในข้อความว่าง (ไม่พบ… → ล้างตัวกรอง) ยังเป็นคำ: ตรงนั้นมันคือทางออกที่
+ * ต่อจากประโยค ไม่ใช่เครื่องมือบนแถบ
+ */
+export function ClearFilters({ onClear, label = 'ล้างตัวกรอง' }) {
+  return <RowAction icon="reset" label={label} className="clear-filters" onClick={onClear} />;
+}
+
+/**
  * The tooltip every `[data-tip]` on the page shares — mounted once, in App.
  *
  * ONE LAYER AND NOT ONE PER BUTTON: a table of forty rows would otherwise hold

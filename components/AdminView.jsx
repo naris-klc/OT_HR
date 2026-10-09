@@ -79,7 +79,7 @@ const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 // the printed sheets use it.
 import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, PickMany,
-  NoticeRow, NoticeStack, RowAction,
+  NoticeRow, NoticeStack, RowAction, ClearFilters,
   ClearButton, PAGE_SIZE, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
   pageQuery, pageWindow, serverRows, useKeptFetch, usePageClamp,
 } from './common.jsx';
@@ -3492,13 +3492,7 @@ function Employees({ user }) {
             register back, and a button that leaves the search box narrowing the
             table has not done what its label says. */}
         {(find || filtering) && (
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() => { setFind(''); setFilters(NO_FILTERS); }}
-          >
-            ล้างตัวกรอง
-          </button>
+          <ClearFilters onClear={() => { setFind(''); setFilters(NO_FILTERS); }} />
         )}
         {/* ON A FILTER AS WELL AS ON A SEARCH, since the boxes arrived. A
             filtered table is a table lying by omission — nine rows where the
@@ -5737,12 +5731,10 @@ function RosterAudit() {
             shape บันทึกประวัติระบบ had its two buttons in until 2026-09-10.
             Drawn only while something is filtering, like every other one. */}
         {narrowed && (
-          <button
-            className="btn ghost sm"
-            onClick={() => setFilters({ employee: '', field: '', action: '', by: '' })}
-          >
-            ล้างตัวกรองทั้งหมด
-          </button>
+          <ClearFilters
+            label="ล้างตัวกรองทั้งหมด"
+            onClear={() => setFilters({ employee: '', field: '', action: '', by: '' })}
+          />
         )}
       </div>
 

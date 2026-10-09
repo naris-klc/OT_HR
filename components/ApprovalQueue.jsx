@@ -24,7 +24,7 @@ import {
 } from '@/lib/delegation.js';
 import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
-  Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
+  Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, Section, SegmentList, ShowMore,
   NoticeRow, NoticeStack, SignatureFacts,
@@ -1520,13 +1520,7 @@ export default function ApprovalQueue({
             allLabel="ทุกเดือน"
           />
           {(q || dept || per || st || applicant) && (
-            <button
-              type="button"
-              className="btn ghost sm"
-              onClick={() => { setQ(''); setDept(''); setPer(''); setSt(''); setApplicant(''); }}
-            >
-              ล้างตัวกรอง
-            </button>
+            <ClearFilters onClear={() => { setQ(''); setDept(''); setPer(''); setSt(''); setApplicant(''); }} />
           )}
         </div>
         {/*

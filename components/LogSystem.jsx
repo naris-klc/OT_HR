@@ -8,7 +8,7 @@ import {
   EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
 } from '@/lib/accessLog.js';
 import {
-  Alert, Empty, Field, Modal, NoticeRow, NoticeStack, PickOne, ClearButton, PAGE_SIZE, TablePager, TipButton,
+  Alert, Empty, Field, Modal, NoticeRow, NoticeStack, PickOne, ClearButton, ClearFilters, PAGE_SIZE, TablePager, TipButton,
   useScrollEdge,
   pageQuery, pageWindow, serverRows, useKeptFetch, usePageClamp, usePageReset,
 } from './common.jsx';
@@ -656,9 +656,10 @@ function Compliance() {
         </div>
         <div className="log-head-actions">
           {(range.from || range.to || only) && (
-            <button className="btn ghost sm" onClick={() => { setRange({ from: '', to: '' }); setOnly(''); }}>
-              ล้างตัวกรองทั้งหมด
-            </button>
+            <ClearFilters
+              label="ล้างตัวกรองทั้งหมด"
+              onClear={() => { setRange({ from: '', to: '' }); setOnly(''); }}
+            />
           )}
           <button className="btn outline sm" onClick={download} disabled={!data?.total}>
             ดาวน์โหลด CSV ตามตัวกรอง
@@ -955,9 +956,7 @@ function LogList({
         </div>
         </div>
         <div className="log-head-actions">
-          {narrowed && (
-            <button className="btn ghost sm" onClick={onClearFilters}>ล้างตัวกรองทั้งหมด</button>
-          )}
+          {narrowed && <ClearFilters label="ล้างตัวกรองทั้งหมด" onClear={onClearFilters} />}
           {/* The reason this screen has an export at all: the request comes from
               somebody who will never be given a login. See the route.
               `.outline` — see the note at `.btn.outline`. */}
