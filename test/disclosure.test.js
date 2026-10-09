@@ -464,17 +464,18 @@ test("a card's subtitle is drawn in full, on every screen in the app", () => {
    * is pinned to exactly one fold below.
    */
   const users = components.filter((n) => /<Disclosure\b/.test(sourceOf(`components/${n}`))).sort();
+  // ProfileView.jsx LEFT on 2026-10-09 (แบบ C): เปลี่ยนรหัสผ่าน's subtitle is
+  // one line now and its rules sit under the boxes as input validation.
   assert.deepEqual(users, [
     'AdminView.jsx', 'HrEntries.jsx', 'ManualView.jsx',
-    'ProfileView.jsx', 'ScanImport.jsx', 'common.jsx',
+    'ScanImport.jsx', 'common.jsx',
   ]);
   // PolicyVersion.jsx left the list on 2026-10-08 — its banner is a `NoticeRow`.
   for (const f of ['HrEntries.jsx']) {
     assert.equal((sourceOf(`components/${f}`).match(/<Disclosure\b/g) || []).length, 1, `${f} พับได้ที่เดียว`);
   }
   const profile = sourceOf('components/ProfileView.jsx');
-  assert.equal((profile.match(/<Disclosure\b/g) || []).length, 1, 'ข้อมูลส่วนตัวพับได้ที่เดียว คือคำอธิบายของ เปลี่ยนรหัสผ่าน');
-  assert.match(profile, /<h2>เปลี่ยนรหัสผ่าน<\/h2>[^]*?<Disclosure as="div" className="hint"/);
+  assert.match(profile, /<h2>เปลี่ยนรหัสผ่าน<\/h2>[^]*?<div className="hint">เครื่องอื่นที่เข้าระบบค้างไว้/);
 
   /* …and the line above the fold is still above it. A later tidy-up that swept
      the subtitle in with the rest would pass the list check and lose the only

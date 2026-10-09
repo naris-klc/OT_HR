@@ -1,16 +1,12 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { isSigner } from '@/lib/roles.js';
+import { isSigner, roleLabel } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
-import { Alert, Disclosure, PasswordInput } from './common.jsx';
+import { Alert, PasswordInput } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
-
-const ROLE_LABEL = {
-  employee: 'พนักงาน', manager: 'หัวหน้างาน', hr: 'ฝ่ายบุคคล', admin: 'ผู้ดูแลระบบ',
-};
 
 /**
  * ข้อมูลส่วนตัว — what the signed-in person may see and change about
@@ -165,7 +161,9 @@ function Details({ user }) {
   // รหัสพนักงาน ชื่อ และตำแหน่งอยู่หัวการ์ด — ที่เหลือเป็นข้อเท็จจริงสี่ช่อง
   const fields = [
     ['วันเกิด', user.birthDate ? thaiDate(user.birthDate) : null],
-    ['บทบาท', ROLE_LABEL[user.role]],
+    // roleLabel — the one spelling. A local table of four stood here until
+    // 2026-10-09 and drew กรรมการผู้จัดการ (and every บทบาท after 09-03) as —.
+    ['บทบาท', user.role ? roleLabel(user.role) : null],
     ['แผนก', user.department?.name],
     ['บริษัท', company?.label],
   ];
@@ -214,8 +212,7 @@ const MIN_LENGTH = PASSWORD_MIN_LENGTH; // one number, shared with the server
  * Said in one line rather than as a list of classes: the point of the change is
  * that Thai works, so Thai is named first.
  */
-const PASSWORD_HELP = `รหัสผ่านต้องมีความยาวอย่างน้อย ${MIN_LENGTH} ตัวอักษร `
-  + '(สามารถใช้ตัวอักษรไทย ตัวอักษรอังกฤษ ตัวเลข หรืออักขระพิเศษได้)';
+const PASSWORD_HELP = `อย่างน้อย ${MIN_LENGTH} ตัวอักษร · ใช้ไทย อังกฤษ ตัวเลข หรืออักขระพิเศษได้`;
 
 /**
  * WHAT THE BROWSER AND ITS EXTENSIONS MUST NOT DO TO THIS FORM.
@@ -379,36 +376,14 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
   return (
     <div className="card profile-password" ref={cardRef}>
       <h2>เปลี่ยนรหัสผ่าน</h2>
-      {/* FOLDED TO TWO LINES WITH …อ่านต่อ — asked for on 2026-09-10, and the
-          one card subtitle in the app that folds (see "a card's subtitle is
-          drawn in full" in test/disclosure.test.js, which names it). It is not
-          two or three lines: for somebody still on the issued password it is
-          five on a 360px phone, standing between the heading and the three
-          boxes they came to fill in.
-
-          Nothing is lost behind it. The fact that matters to that reader —
-          รหัสผ่านเดิม is their รหัสพนักงาน — is said again in the amber Alert
-          below, which since 2026-09-14 has no fold of its own and is therefore
-          always whole. On a laptop the plain sentence fits in two
-          lines, and `Disclosure` measures that and draws no control at all.
-
-          The 14px under it moves from the paragraph to the fold's wrapper, in
-          the rule beside `.profile-password`; left on the paragraph it would
-          sit between the text and ย่อข้อความ. */}
-      <Disclosure as="div" className="hint" of="คำอธิบายการเปลี่ยนรหัสผ่าน">
-        {/* The line the deleted first-login screen used to carry, drawn for the
-            people it was written for: whoever has never changed their password
-            does not know what to type in รหัสผ่านเดิม, and "รหัสที่ฝ่ายบุคคล
-            แจ้งให้ทราบ" is not an answer to somebody who was told nothing and
-            guessed. Everybody else already knows their own password and gets
-            the plain sentence. */}
-        {pending && <>
-          “รหัสผ่านเดิม” คือ<strong>รหัสผ่านเริ่มต้นสำหรับเข้าใช้งานครั้งแรก หรือหลังการรีเซ็ต
-          {' '}ซึ่งคือรหัสพนักงานของคุณ</strong> (หรือรหัสอื่นที่ฝ่ายบุคคลแจ้งให้ทราบ) ·{' '}
-        </>}
-        {PASSWORD_HELP}
-        {' '}· เซสชันที่เปิดค้างอยู่บนเครื่องอื่นจะยังใช้ได้จนหมดอายุ
-      </Disclosure>
+      {/* ONE LINE, NO FOLD — แบบ C, 2026-10-09. It was a `Disclosure` of
+          five lines on a phone (…อ่านต่อ) from 2026-09-10. The two facts a
+          reader needs WHILE TYPING went under their own boxes: รหัสผ่านเดิม
+          says what the issued password is, and รหัสผ่านใหม่ checks its rule
+          as an input validation (grey → ✓ green → red), asked for in as many
+          words: *เงื่อนไขให้แสดงแบบ input validation*. What is left here is
+          the one fact no box owns. */}
+      <div className="hint">เครื่องอื่นที่เข้าระบบค้างไว้ ยังใช้ได้จนหมดเวลา</div>
 
       {/*
         ⚠ THIS BOX HAD A ▲/▼ FROM 2026-09-10 TO 2026-09-14, with
@@ -424,7 +399,8 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
 
         WHAT THE FOLD WAS CAREFUL TO LEAVE OUTSIDE IT is the middle of the
         sentence now — the password in use is the รหัสพนักงาน — and that is
-        what the `Disclosure` above leans on in order to be foldable at all.
+        what the card's explanation leaned on to be foldable (until 2026-10-09,
+        when it stopped folding and moved under the boxes).
       */}
       {pending && !ok && (
         <Alert kind="warn">
@@ -449,7 +425,11 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
             {...NO_AUTOFILL}
             required
           />
-          {blank('current', current) && <div className="field-note error">กรุณากรอกรหัสผ่านเดิม</div>}
+          {blank('current', current)
+            ? <div className="field-note error">กรุณากรอกรหัสผ่านเดิม</div>
+            /* The line the deleted first-login screen carried, for whoever has
+               never changed their password and does not know what to type. */
+            : pending && <div className="field-note">รหัสพนักงานของคุณ (หรือรหัสที่ฝ่ายบุคคลแจ้ง)</div>}
         </div>
 
         <div className="field">
@@ -467,8 +447,13 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
             minLength={MIN_LENGTH}
             required
           />
+          {/* The rule as an input validation: grey before typing, ✓ green once
+              the server's own rule passes, the rule's refusal in red when not. */}
           {blank('next', next) && <div className="field-note error">กรุณากรอกรหัสผ่านใหม่</div>}
           {!shape.ok && <div className="field-note error">{shape.error}</div>}
+          {!blank('next', next) && shape.ok && (
+            <div className={`field-note${next ? ' ok' : ''}`}>{next ? '✓ ' : ''}{PASSWORD_HELP}</div>
+          )}
           {unchanged && <div className="field-note error">รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม</div>}
         </div>
 
@@ -488,6 +473,7 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
           />
           {blank('confirm', confirm) && <div className="field-note error">กรุณายืนยันรหัสผ่านใหม่</div>}
           {mismatch && <div className="field-note error">รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน</div>}
+          {confirm.length > 0 && !mismatch && <div className="field-note ok">✓ ตรงกัน</div>}
         </div>
 
         {/* THE GREEN IS THE ANSWER TO "IS THIS READY?" — `.btn` fills green the

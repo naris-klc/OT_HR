@@ -3,6 +3,7 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api, thaiStamp } from '@/lib/api.js';
+import { ROLE_LABEL_TH } from '@/lib/roles.js';
 import { DateRange } from './PickDate.jsx';
 import {
   EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
@@ -92,9 +93,9 @@ const TAB_QUERY = {
   all: {},
 };
 
-const ROLE_LABEL = {
-  employee: 'พนักงาน', manager: 'หัวหน้างาน', hr: 'ฝ่ายบุคคล', admin: 'ผู้ดูแลระบบ',
-};
+// The one table of names (lib/roles.js). A local copy of four stood here until
+// 2026-10-09 and printed the raw key for every บทบาท added since.
+const ROLE_LABEL = ROLE_LABEL_TH;
 
 /**
  * Bangkok, in the reader's own zone — see the timezone comments on the two
