@@ -4044,7 +4044,7 @@ const LOCK_SHORT = {
  * and it is now three lines up instead.
  */
 const PASSWORD_NOTE = {
-  short: 'ไม่มีช่องรหัสผ่านให้แก้ในหน้านี้ — ใช้ปุ่ม “รีเซ็ตรหัส” ในหัวข้อ สิทธิ์และสถานะ ด้านบน',
+  short: 'ไม่มีช่องรหัสผ่านให้แก้ในหน้านี้ — ใช้ปุ่ม “รีเซ็ตรหัส” ข้างปุ่มยกเลิก',
   full: 'ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสที่พนักงานตั้งเองได้ '
     + '· การรีเซ็ตจะตั้งรหัสผ่านกลับเป็นรหัสพนักงานเสมอ ไม่ใช่ค่าที่พิมพ์เอง '
     + '· ประวัติการแก้ทะเบียนไม่เคยบันทึกตัวรหัสผ่าน บันทึกเพียงว่ามีการรีเซ็ต',
@@ -4609,8 +4609,8 @@ function EditEmployee({
   const ready = changes.length > 0 && !reasonMissing && !rowLocked;
 
   /**
-   * Why รีเซ็ตรหัสผ่าน cannot be pressed right now, or '' — the button's title
-   * and the sentence beside it, from one expression so the two cannot differ.
+   * Why รีเซ็ตรหัสผ่าน cannot be pressed right now, or '' — the title of the
+   * button in the dialog's foot.
    *
    * Order matters: an unsaved form is the one of the three that is the reader's
    * to clear, so it must not be hidden behind a permission sentence they can do
@@ -4703,6 +4703,33 @@ function EditEmployee({
       // that discards silently.
       footer={(requestClose) => (step === 'edit' ? (
         <>
+          {/*
+            รีเซ็ตรหัสผ่าน, on the record as well as on the table row — somebody
+            dealing with "สมชายเข้าระบบไม่ได้" opens the person's record, and a
+            note sending them back to the table was an errand (2026-09-02).
+
+            IN THE FOOT, BEFORE ยกเลิก, since 2026-10-09 (asked for): it is an
+            action on the record, not a field of it, and in สิทธิ์และสถานะ it
+            took a row and a sentence of the form. The sentence is now the
+            confirmation's own — ResetPassword names the value it resets to.
+
+            NOT A FIELD ON THIS FORM. It hands off to the same ResetPassword
+            dialog the table opens, so บันทึก never also changes a password.
+            It waits for a clean form because handing off closes this dialog,
+            and a button that closed it from the inside would walk past the
+            unsaved-typing question. Greyed with the reason in its title rather
+            than dropped (`RESET_LOCK`: never one's own row, an ผู้ดูแลระบบ row
+            only by another ผู้ดูแลระบบ).
+          */}
+          <button
+            type="button"
+            className="btn ghost foot-reset"
+            onClick={onReset}
+            disabled={busy || !mayReset || changes.length > 0}
+            title={resetBlocked || `ตั้งรหัสผ่านกลับเป็นรหัสพนักงาน (${defaultPassword(employee.code)})`}
+          >
+            <Icon name="key" /><span className="btn-word">รีเซ็ตรหัส</span>
+          </button>
           <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
           <button
             className="btn"
@@ -4829,18 +4856,6 @@ function EditEmployee({
                   autoComplete="off"
                 />
               </Field>
-              {/* `allowBlank` only while the row genuinely has no department:
-                  the model requires one, so offering "— ไม่กำหนด —" on a row
-                  that has one would be offering a save the server refuses. */}
-              <DepartmentField
-                role={form.role}
-                department={form.department}
-                extras={form.approvesDepartments}
-                onChange={set}
-                depts={depts}
-                disabled={disabled()}
-                allowBlank={!before.department}
-              />
               {/* `allLabel` only while it IS blank: the model has no "no
                   company" state to go back to, so offering it on a row that has
                   one would be offering a save the server refuses. */}
@@ -4853,6 +4868,24 @@ function EditEmployee({
                 allLabel={before.company ? undefined : '— เดาจากรหัส —'}
                 options={COMPANIES.map((c) => ({ value: c.key, label: c.label }))}
               />
+              {/* `allowBlank` only while the row genuinely has no department:
+                  the model requires one, so offering "— ไม่กำหนด —" on a row
+                  that has one would be offering a save the server refuses.
+
+                  FULL WIDTH AND LAST in the group (2026-10-09): in half a row
+                  a หัวหน้า's three แผนก chips stacked one per line, which was
+                  the tallest box on the form. A whole row holds them on one. */}
+              <div className="span-all">
+                <DepartmentField
+                  role={form.role}
+                  department={form.department}
+                  extras={form.approvesDepartments}
+                  onChange={set}
+                  depts={depts}
+                  disabled={disabled()}
+                  allowBlank={!before.department}
+                />
+              </div>
             </div>
 
             {/* Out of the grid and full width: it appears mid-edit, and a box
@@ -4935,61 +4968,6 @@ function EditEmployee({
               />
             </div>
 
-            {/*
-              รีเซ็ตรหัสผ่าน, in the group it belongs to rather than only on the
-              table row behind this dialog.
-
-              WHY IT IS HERE AS WELL. Somebody dealing with "สมชายเข้าระบบไม่ได้"
-              opens the person's record — that is where a record is looked at —
-              and until 2026-09-02 what they found was a sentence telling them
-              to close the dialog and find a button in the table. A note that
-              says where the button is, on a screen that could hold the button,
-              is a screen sending its reader on an errand.
-
-              NOT A FIELD ON THIS FORM. It hands off to the same ResetPassword
-              dialog the table opens: a reset is its own request with its own
-              confirmation, and folding it into ordinary field edits would make
-              บันทึก sometimes also change a password — which is exactly what
-              `resetPassword` on the PATCH is careful to keep separate.
-
-              WHICH IS WHY IT WAITS FOR AN UNSAVED FORM. Handing off closes this
-              dialog, and this dialog's ✕ asks before dropping typing
-              (`dirty={changes.length > 0}`); a button that closed it from the
-              inside would walk straight past that question and take the typing
-              with it. Greyed with the reason on it, rather than opening a second
-              modal over the first — "which of these two am I confirming" is not
-              a question to ask somebody about a password.
-
-              The two refusals are the table's, unchanged and for the same
-              reasons (`RESET_LOCK`): never on one's own row, and an ผู้ดูแลระบบ
-              row only by another ผู้ดูแลระบบ. The button is rendered greyed
-              rather than dropped, so somebody looking for it finds the sentence
-              saying why instead of finding nothing.
-            */}
-            <div className="row" style={{ marginTop: 12, gap: 10, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={onReset}
-                disabled={busy || !mayReset || changes.length > 0}
-                title={resetBlocked || 'ตั้งรหัสผ่านกลับเป็นรหัสพนักงาน'}
-              >
-                <Icon name="key" />รีเซ็ตรหัส
-              </button>
-              <div className="field-note" style={{ margin: 0, flex: '1 1 220px' }}>
-                {resetBlocked || (
-                  <>
-                    รหัสผ่านจะกลับเป็นรหัสพนักงาน
-                    {/* nowrap on the value, and it is not cosmetic: at 390px
-                        `PM-0100` broke after the hyphen onto two lines, and a
-                        password with a line break in the middle of it is one
-                        somebody types wrong. The brackets go with it. */}
-                    {' '}<strong style={{ whiteSpace: 'nowrap' }}>({defaultPassword(employee.code)})</strong>
-                    {' '}และพนักงานต้องตั้งรหัสของตัวเองเมื่อเข้าระบบครั้งถัดไป
-                  </>
-                )}
-              </div>
-            </div>
           </section>
 
           {/* ── ขอบเขตการอนุมัติ — its own group, and only for a หัวหน้างาน ──
