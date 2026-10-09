@@ -294,29 +294,17 @@ test('the refusal red is a token with a dark half, not a light-mode hex', () => 
 });
 
 /**
- * WHO on one line, WHEN on the next.
+ * ชื่อ / ป้ายรหัส · แผนก · วันที่ชิดขวาใต้ รวม ชม. (2026-10-09 แบบ 3)
  *
- * The subtitle was one string — code · แผนก · date · day-name — which on a
- * phone is three lines of grey with no way to see which part answers which
- * question. They are two questions: who this is, and what day is being decided
- * about. The second is the decision's subject and gets a line of its own.
+ * จนถึง 2026-10-09 หัวนี้เป็นสามบรรทัด: ชื่อ / `s-who` / `s-when` · ผู้ใช้ขอ
+ * ให้เหลือสองบรรทัด และวันที่ไปอยู่ใต้ตัวเลขที่ตัดสิน
  */
-test('the header says who, then when', () => {
-  has(code, '<span className="s-who">');
-  has(code, '<span className="s-when">');
-  has(css, '.modal-head .s-who { display: block; }');
-  // `--ink`, and it read `--muted` and then `--ink-2` earlier on 2026-08-28.
-  // THE LEAD IS RELATIVE: `.s` above it climbed `--muted-2` → `--muted` →
-  // `--ink-2` the same day, once for legibility and once for dark mode
-  // specifically (`--muted` measures 6.57 on the dark card — over AA, under
-  // AAA), and each time this line had to step up too or the distinction the
-  // pair exists to draw would have closed to nothing.
-  has(css, '.modal-head .s-when { display: block; color: var(--ink); }');
-  // WHAT IS PINNED IS THAT THEY ARE NOT THE SAME TOKEN — and this is now the
-  // last rung: there is no ink above `--ink`, so a further brightening of `.s`
-  // cannot be paid for by moving this one again.
-  const s = css.slice(css.indexOf('.modal-head .s {'), css.indexOf('}', css.indexOf('.modal-head .s {')));
-  assert.ok(!/var\(--ink\)/.test(s), 'บรรทัดคำอธิบายกับบรรทัดวันที่กลายเป็นสีเดียวกัน');
+test('the header is name, then a code · แผนก tag, with the date under the total', () => {
+  has(code, '<span className="s-tag">');
+  assert.ok(!code.includes('className="s-when"'), 'วันที่กลับมาอยู่ใต้ชื่ออีก');
+  has(code, '<div className="head-side">');
+  has(code, '<span className="head-when">{thaiDate(e.workDate)} (วัน{dayName(e.workDate)})</span>');
+  has(css, '.head-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }');
   // On the sheet the figure and the status chip share the name's line instead
   // of stacking under the ✕ — a whole line of a 375px screen.
   has(css, '.head-meta { flex-direction: row; align-items: center; gap: 6px; }');

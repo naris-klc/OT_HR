@@ -759,17 +759,16 @@ export function EntryLead({ entry: e, marks = true }) {
 }
 
 /**
- * ประวัติรายการ พับไว้ท้ายหน้ารายละเอียดใบ OT (2026-10-09, แบบ 1) — มันคือส่วน
- * ที่ยาวที่สุดและอ่านน้อยที่สุดตอนตัดสินใจ วางในแผงข้างทำให้สองแผงไม่สมมาตร ·
- * `<details>` ของเบราว์เซอร์ เปิดด้วยคีย์บอร์ดได้เอง · ลูกศร `chevronDown`
- * ตามพจนานุกรมไอคอน หมุนเมื่อเปิด
+ * ประวัติรายการ ท้ายหน้ารายละเอียดใบ OT — แสดงเต็มเสมอ (2026-10-09) · เดิมพับ
+ * ไว้ใน `<details>` แต่ผู้ใช้ขอให้เห็นทันทีโดยไม่ต้องกดเปิด · อยู่ท้ายสุด นอก
+ * สองแผง เพราะเป็นส่วนที่ยาวที่สุด
  */
-export function EntryHistoryFold({ title, children }) {
+export function EntryHistoryBlock({ title, children }) {
   return (
-    <details className="dm-history">
-      <summary><Icon name="chevronDown" />{title}</summary>
+    <section className="dm-history">
+      <h3 className="dm-history-t">{title}</h3>
       <div>{children}</div>
-    </details>
+    </section>
   );
 }
 

@@ -25,7 +25,7 @@ import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
   Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
-  RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, EntryLead, EntryHistoryFold, ShowMore,
+  RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, EntryLead, EntryHistoryBlock, ShowMore,
   NoticeRow, NoticeStack, SignatureFacts,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
@@ -2979,36 +2979,29 @@ function DetailModal({
       wide
       title={e.employee?.name}
       /*
-       * WHO, THEN WHEN — two lines, not one run-on.
-       *
-       * It was one string: code · department · date · day-name, which on a
-       * phone is three lines of 12.5px grey under the name and no way to tell
-       * at a glance which part answers which question. They are two different
-       * questions. Who this is — the code and the แผนก — identifies the person
-       * and belongs against the name. When it was — the date and its day — is
-       * what the decision is actually about, and it now has a line to itself.
+       * ชื่อ แล้วป้ายรหัส · แผนก — สองบรรทัด (2026-10-09 แบบ 3) · วันที่ย้าย
+       * ไปอยู่ใต้ รวม ชม. ชิดขวา: ตัวเลขที่ตัดสินกับวันที่ของมันอยู่ที่เดียวกัน
+       * และหัวไม่ต้องสูงสามบรรทัด
        */
       subtitle={(
-        <>
-          <span className="s-who">
-            {e.employee?.code} · {e.department?.nameTh || e.department?.name}
-          </span>
-          <span className="s-when">
-            {thaiDate(e.workDate)} (วัน{dayName(e.workDate)})
-          </span>
-        </>
+        <span className="s-tag">
+          {e.employee?.code} · {e.department?.nameTh || e.department?.name}
+        </span>
       )}
       /* The number being decided about, kept out of the scroll area — it is
          the one thing that must not move while the body does, and the one
          Quick Edit changes. */
       meta={(
-        <div className="head-meta">
-          <div className="total">
-            <span className="k">รวม</span>
-            <span className="v">{hours(e.totals?.otHours)}</span>
-            <span className="u">ชม.</span>
+        <div className="head-side">
+          <div className="head-meta">
+            <div className="total">
+              <span className="k">รวม</span>
+              <span className="v">{hours(e.totals?.otHours)}</span>
+              <span className="u">ชม.</span>
+            </div>
+            <StatusChip status={e.status} />
           </div>
-          <StatusChip status={e.status} />
+          <span className="head-when">{thaiDate(e.workDate)} (วัน{dayName(e.workDate)})</span>
         </div>
       )}
       onClose={onClose}
@@ -3119,7 +3112,7 @@ function DetailModal({
           {/* ── แบบ 1 ของ mockup detail-modal-2 (2026-10-09) ────────────────────
               แถบนำเต็มกว้าง (`EntryLead`) · สองแผงกว้างเท่ากันสูงเท่ากัน — ซ้าย
               ชั่วโมงแยกอัตรา + งาน · ขวา เพดานเดือน + ผู้อนุมัติ · ประวัติพับไว้
-              ท้ายสุด (`EntryHistoryFold`) เพราะมันคือสิ่งที่ทำให้แบบ B ไม่สมมาตร ·
+              ท้ายสุด (`EntryHistoryBlock`) เพราะมันคือสิ่งที่ทำให้แบบ B ไม่สมมาตร ·
               ฝั่งพนักงาน (EmployeeView `EntryDetail`) ใช้โครงเดียวกัน
               แบบ B ที่ถูกแทน: สองคอลัมน์ 1.35 : 1 และประวัติอยู่คอลัมน์ขวา */}
           <EntryLead entry={e} />
@@ -3174,18 +3167,18 @@ function DetailModal({
                 `e.history`, or an entry whose whole history is replays would get
                 a heading standing over nothing. */}
           {trail?.requests?.length > 1 ? (
-            <EntryHistoryFold title="ประวัติรายการ (รวมคำขอเดิม)">
+            <EntryHistoryBlock title="ประวัติรายการ (รวมคำขอเดิม)">
               <RequestTrail requests={trail.requests} liveStatus={e.status} hideSystem />
               {trail.truncated && (
                 <div className="hint">
                   แสดงย้อนหลังได้สูงสุด 20 คำขอ · อาจมีคำขอเก่ากว่านี้ที่ไม่ได้แสดง
                 </div>
               )}
-            </EntryHistoryFold>
+            </EntryHistoryBlock>
           ) : humanHistory(e).length > 0 && (
-            <EntryHistoryFold title="ประวัติรายการ">
+            <EntryHistoryBlock title="ประวัติรายการ">
               <EntryHistory entry={e} hideSystem />
-            </EntryHistoryFold>
+            </EntryHistoryBlock>
           )}
         </>
       )}

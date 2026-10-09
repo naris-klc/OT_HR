@@ -1074,7 +1074,7 @@ test('the รายละเอียด pop-up still shows the whole story', ()
   // — คำถามเดิม: ของที่เป็นของใบอยู่ฝั่งซ้าย เพดานเดือนอยู่การ์ดของมันฝั่งขวา
   // แถบนำ `EntryLead` ใน common.jsx ตั้งแต่ 2026-10-09 (แบบ 1)
   const gridFrom = common.indexOf('export function EntryLead(');
-  const grid = common.slice(gridFrom, common.indexOf('export function EntryHistoryFold(', gridFrom));
+  const grid = common.slice(gridFrom, common.indexOf('export function EntryHistoryBlock(', gridFrom));
   assert.ok(gridFrom > 0 && grid.length < 4000, 'the คำขอ grid or the card after it moved');
   assert.doesNotMatch(grid, /สะสม \/ เพดาน/, 'the ceiling is back among the request\'s own facts');
   assert.match(grid, /เกินเพดานแผนก — \{describeBreaches\(e\)/, 'the filed-day breach left the grid with it');

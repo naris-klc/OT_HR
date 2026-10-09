@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
   ApprovalSteps, ApproverLine, BirthdayWelfareMark, CancelledMark, CapCard, StatusChip, Alert,
-  ConfirmDialog, Empty, EditedMark, EntryHistory, EntryHistoryFold, EntryLead, Fact, Modal, ProxyMark,
+  ConfirmDialog, Empty, EditedMark, EntryHistory, EntryHistoryBlock, EntryLead, Fact, Modal, ProxyMark,
   RateHead, ReasonCard, RefiledNote, RequestTrail, SegmentRates, SignatureFacts, editsOf, stamp,
   trailOf, RowAction, NoticeStack,
 } from './common.jsx';
@@ -1069,33 +1069,32 @@ function EntryDetail({
        * they are answering are now looking at the same header.
        */
       title={e.employee?.name || user.name}
+      /* ชื่อ แล้วป้ายรหัส · แผนก · วันที่อยู่ใต้ รวม ชม. ชิดขวา — หัวเดียวกับ
+         ฝั่งผู้อนุมัติ (2026-10-09 แบบ 3) */
       subtitle={(
         <>
-          <span className="s-who">
+          <span className="s-tag">
             {e.employee?.code} · {e.department?.nameTh || e.department?.name}
-          </span>
-          {/* What the request is ABOUT, which is the line the decision and the
-              pay both turn on — see `.modal-head .s-when`, where it is given
-              the stronger ink for exactly this reason. */}
-          <span className="s-when">
-            {thaiDate(e.workDate)} (วัน{dayName(e.workDate)})
           </span>
           {/* AND WHEN IT WAS PUT IN, which is a different date and the one an
               employee asking "how long has this been sitting there" is
-              counting from. Quiet, below both: it dates the paperwork, not the
-              work. Absent on a row written before histories carried a name,
-              rather than drawn empty. */}
+              counting from. Quiet, below the tag: it dates the paperwork, not
+              the work. Absent on a row written before histories carried a
+              name, rather than drawn empty. */}
           {filed?.at && <span className="s-filed">ยื่นคำขอเมื่อ {stamp(filed.at)}</span>}
         </>
       )}
       meta={(
-        <div className="head-meta">
-          <div className="total">
-            <span className="k">รวม</span>
-            <span className="v">{hours(e.totals?.otHours)}</span>
-            <span className="u">ชม.</span>
+        <div className="head-side">
+          <div className="head-meta">
+            <div className="total">
+              <span className="k">รวม</span>
+              <span className="v">{hours(e.totals?.otHours)}</span>
+              <span className="u">ชม.</span>
+            </div>
+            <StatusChip status={e.status} />
           </div>
-          <StatusChip status={e.status} />
+          <span className="head-when">{thaiDate(e.workDate)} (วัน{dayName(e.workDate)})</span>
         </div>
       )}
       onClose={onClose}
@@ -1241,7 +1240,7 @@ function EntryDetail({
         two versions the printed form uses.
       */}
       {(e.history || []).length > 0 && (
-        <EntryHistoryFold title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>
+        <EntryHistoryBlock title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>
           {hasPast && (
             <div className="hint" style={{ margin: '0 0 6px' }}>
               ด้านล่าง = ข้อมูลเดิมก่อนแก้
@@ -1251,7 +1250,7 @@ function EntryDetail({
           {trail
             ? <RequestTrail requests={trail} liveStatus={e.status} />
             : <EntryHistory entry={e} />}
-        </EntryHistoryFold>
+        </EntryHistoryBlock>
       )}
     </Modal>
   );

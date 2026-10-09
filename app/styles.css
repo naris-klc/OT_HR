@@ -10637,16 +10637,9 @@ table.mini tbody tr:hover { background: none; }
 .dm-rates tr.sum td.zero { font-weight: 400; }
 .dm-rates th:first-child, .dm-rates td:first-child { padding-left: 0; }
 .dm-rates th:last-child, .dm-rates td:last-child { padding-right: 0; }
+/* ประวัติรายการแสดงเต็ม ไม่พับ (2026-10-09) */
 .dm-history { border-top: 1px solid var(--line-soft); padding-top: 10px; }
-.dm-history > summary {
-  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none;
-  font: 600 13px/1.4 var(--sans); color: var(--ink-2);
-}
-.dm-history > summary::-webkit-details-marker { display: none; }
-.dm-history > summary svg { width: 16px; height: 16px; transition: transform .16s; }
-.dm-history[open] > summary svg { transform: rotate(180deg); }
-.dm-history > summary + * { margin-top: 10px; }
-@media (prefers-reduced-motion: reduce) { .dm-history > summary svg { transition: none; } }
+.dm-history-t { margin: 0 0 10px; font: 600 14px/1.4 var(--sans); color: var(--ink); }
 @media (max-width: 860px) {
   .dm-grid { grid-template-columns: minmax(0, 1fr); }
 }
@@ -10874,6 +10867,16 @@ table.mini tbody tr:hover { background: none; }
 /* The figure being decided about, kept out of the scroll area — and the one
    Quick Edit moves, so it doubles as the receipt for an edit. */
 .head-meta { display: flex; align-items: center; gap: 10px; flex: none; }
+/* หัวหน้ารายละเอียดใบ OT (2026-10-09 แบบ 3): ฝั่งขวาเป็นสองชั้น — รวม ชม. +
+   สถานะ แล้ววันที่ทำงานชิดขวาใต้มัน · ฝั่งซ้ายเหลือ ชื่อ / ป้ายรหัส · แผนก */
+.head-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.head-when { font: 600 13px/1.3 var(--sans); color: var(--ink); white-space: nowrap; }
+.modal-head .s-tag {
+  display: inline-block; max-width: 100%; margin-top: 2px; padding: 1px 8px;
+  border-radius: var(--radius-xs); background: var(--neutral-wash); border: 1px solid var(--line-soft);
+  font: 500 12.5px/1.5 var(--sans); color: var(--ink-2);
+}
+.modal-head .s-tag + .s-filed { margin-top: 4px; }
 .head-meta .total { display: flex; align-items: baseline; gap: 4px; }
 .head-meta .total .k { font: 500 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted-2); }
 .head-meta .total .v { font: 600 20px/1 var(--mono); font-variant-numeric: tabular-nums; }
@@ -12128,6 +12131,11 @@ table.mini tbody tr:hover { background: none; }
   }
   .modal-head:has(.head-meta) .modal-x { position: absolute; top: 8px; right: 10px; }
   .modal-head:has(.head-meta) .head-meta { justify-content: flex-start; }
+  /* หัวแบบ 3 (2026-10-09) บนมือถือ: วันที่อยู่บรรทัดเดียวกับชิป รวม/สถานะ
+     ชิดซ้าย — ชิดขวาใต้ตัวเลขคือรูปของจอกว้าง ที่นี่มันจะกินอีกบรรทัด */
+  .modal-head:has(.head-meta) .head-side {
+    flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+  }
 
   /* ── the rhythm between sections ────────────────────────────────────────
      20px between one section and the next (10 of gap, 10 of rule-padding) down

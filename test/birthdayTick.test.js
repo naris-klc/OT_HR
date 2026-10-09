@@ -331,7 +331,7 @@ test('หน้ารออนุมัติ — ป้าย OT สวัส�
   // ป้ายย้ายเข้าแถบนำ `EntryLead` (common.jsx) ตั้งแต่ 2026-10-09 — ป๊อปอัปวาดแถบนั้น
   const common0 = read('components/common.jsx');
   assert.match(queue, /<EntryLead entry=\{e\} \/>/);
-  const detail = common0.slice(common0.indexOf('export function EntryLead('), common0.indexOf('export function EntryHistoryFold('));
+  const detail = common0.slice(common0.indexOf('export function EntryLead('), common0.indexOf('export function EntryHistoryBlock('));
 
   for (const [where, code] of [['แถวในคิว', row], ['ป๊อปอัปรายละเอียด', detail]]) {
     assert.match(code, /<BirthdayWelfareMark entry=\{e\} \/>/, `ป้ายวันเกิดหายจาก${where}`);
