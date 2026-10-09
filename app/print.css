@@ -135,6 +135,14 @@
 .f027 table tbody tr:last-child td { border-bottom: 0.25mm solid #000; }
 .f027 table tbody tr:hover { background: none; }
 
+/* วันหยุดประจำสัปดาห์และวันหยุดบริษัท ระบายเหลืองทั้งแถว เหมือนกระดาษ
+   F-HR-027 — วันเกิดไม่ระบาย (`row.isHoliday` ไม่รู้วันเกิด) */
+.f027 tbody tr.hol td {
+  background: #ffff00;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
 /* The three จำนวนชั่วโมง headings are highlighted yellow on the paper form.
    Browsers drop background colour when printing unless told otherwise. */
 .f027 th.hl {

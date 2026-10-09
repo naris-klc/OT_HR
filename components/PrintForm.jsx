@@ -483,7 +483,10 @@ export function F027Sheet({ form, sheet = null }) {
               // Keyed by the DAY NUMBER, which every row has: the three rows a
               // February sheet ends with have no date, and `${row.date}-${i}`
               // would give all three the key `null-0`.
-              <tr key={`${row.day}-${i}`}>
+              <tr key={`${row.day}-${i}`} className={row.isHoliday ? 'hol' : undefined}>
+                {/* วันหยุดระบายเหลืองทั้งแถวเหมือนกระดาษ F-HR-027 (2026-10-09)
+                    — `row.isHoliday` คือวันหยุดประจำสัปดาห์กับวันหยุดบริษัท
+                    และไม่เคยรู้วันเกิด (`formDayTypes`) วันเกิดจึงไม่ระบาย */}
                 {/* The day number and nothing under it. A birthday note
                     used to sit here to explain a Tuesday in the วันหยุด
                     column; HR asked for it off the controlled form, and the

@@ -138,7 +138,7 @@ test('a dateless row can never be matched by a segment', () => {
 test('the sheet keys its rows by the day number, not by the date', () => {
   // Three rows with `date: null` would share the React key `null-0`.
   const code = sourceOf(SHEET);
-  assert.match(code, /<tr key=\{`\$\{row\.day\}-\$\{i\}`\}>/);
+  assert.match(code, /<tr key=\{`\$\{row\.day\}-\$\{i\}`\}[ >]/);
   assert.doesNotMatch(code, /<tr key=\{`\$\{row\.date\}/);
 });
 
