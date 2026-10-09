@@ -305,7 +305,7 @@ test('ตัวกรองสี่ช่องของ ประวัติ�
   for (const label of ['กรองตามพนักงาน', 'กรองตามสิ่งที่ถูกแก้', 'กรองตามประเภท', 'กรองตามบัญชีผู้แก้ไข']) {
     assert.ok(bar.includes(`label="${label}"`), `${label} ไม่ได้อยู่บนแถบ`);
   }
-  assert.match(bar, /\{narrowed && \(\s*\n\s*<button/, 'ปุ่มล้างตัวกรองไม่ได้อยู่บนแถบ');
+  assert.match(bar, /\{narrowed && \(\s*\n\s*<ClearFilters/, 'ปุ่มล้างตัวกรองไม่ได้อยู่บนแถบ');
   assert.ok(!code.includes('<div className="row" style={{ marginBottom: 12 }}>'),
     'แถวของปุ่มล้างตัวกรองยังอยู่ใต้แถบ');
 });
@@ -415,4 +415,27 @@ test('สองจอนั้นเป็น card flush + queue-tools เหม
   // a taller field are gone — the bar ends its items on one line by itself.
   assert.match(emp, /<div className="queue-tools">[\s\S]{0,400}?ล่าสุด/);
   assert.ok(!emp.includes("minHeight: 'var(--field-h)'"), 'ปุ่มยังชดเชยความสูงของแถว label อยู่');
+});
+
+test('ล้างตัวกรองบนทุกแถบเป็นไอคอน ClearFilters ตัวเดียวกัน', () => {
+  // 2026-10-09, mockup compact-head แบบ 1: ไอคอน `reset` คำอยู่ใน tooltip ·
+  // ปุ่มที่เป็นคำเหลือแค่ในข้อความว่าง ซึ่งเป็นทางออกต่อจากประโยค
+  const kit = read('components/common.jsx');
+  assert.match(kit, /export function ClearFilters\(\{ onClear, label = 'ล้างตัวกรอง' \}\) \{\n\s*return <RowAction icon="reset"/);
+  for (const f of ['HrView', 'AdminView', 'ApprovalQueue', 'LogSystem']) {
+    const code = read(`components/${f}.jsx`);
+    assert.ok(code.includes('<ClearFilters'), `${f} ไม่ได้ใช้ ClearFilters`);
+    // ปุ่มคำที่ยังเหลือต้องอยู่ใน <Empty> หรือ .empty-act เท่านั้น
+    for (const m of code.matchAll(/>\s*ล้างตัวกรอง(?:ทั้งหมด)?\s*<\/button>/g)) {
+      const before = code.slice(Math.max(0, m.index - 600), m.index);
+      assert.ok(before.includes('empty-act'), `${f} ยังมีปุ่มล้างตัวกรองที่เป็นคำนอกข้อความว่าง`);
+    }
+  }
+  assert.match(css, /\.queue-tools \.btn\.act-icon\.clear-filters \{ width: var\(--field-h\); height: var\(--field-h\); \}/);
+});
+
+test('ชื่อกับบรรทัดใต้ชื่ออยู่บรรทัดเดียวกัน ด้วยกฎเดียวทั้งแอป', () => {
+  const sel = 'div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2, h3, .form-head, .hint, .kicker-sm)))';
+  assert.ok(css.includes(`${sel} {\n  display: flex; flex-wrap: wrap; align-items: baseline;`),
+    'กฎชื่อ + บรรทัดใต้ชื่อหายไป');
 });

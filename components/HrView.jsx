@@ -7,7 +7,7 @@ import {
 } from '@/lib/api.js';
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
-  Alert, ClearButton, Empty, NoticeRow, NoticeStack, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
+  Alert, ClearButton, ClearFilters, Empty, NoticeRow, NoticeStack, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
   PAGE_SIZE, RowAction, ShowMore, TablePager, WhoName, pageWindow,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -1460,29 +1460,6 @@ export default function HrView({
               {deptName && ` · ${deptName}`}
             </div>
           </div>
-          {/* ── แท็บสถานะ — 2026-10-09, แทนดรอปดาวน์ สถานะที่นับ ──────────────
-              `.queue-tabs` ตัวเดียวกับที่คิวรออนุมัติเคยใช้สลับสองกอง (ว่างอยู่ใน
-              app/styles.css) ไม่ใช่แท็บชุดใหม่ · เลขบนแท็บคือจำนวนคนทั้งเดือน
-              จาก `tabCounts` ของเราต์ — ดู `MONTH_TABS`
-
-              ป้าย `60 คน` ข้างปุ่มไฟล์สแกน และ `· 60 คน` บนชื่อการ์ดของมือถือ
-              ออกไปพร้อมกัน: แท็บ ทั้งหมด บอกเลขเดียวกันแล้ว และผู้ใช้อ่านป้ายนั้น
-              เป็นจำนวนคนที่นำเข้าไฟล์สแกน เพราะมันอยู่ติดปุ่มนั้น */}
-          <div className="queue-tabs month-tabs" role="tablist" aria-label="สถานะ">
-            {MONTH_TABS.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                role="tab"
-                aria-selected={t === tab}
-                className={t === tab ? 'active' : ''}
-                onClick={() => setStatusFilter(t.value)}
-              >
-                {t.label}
-                {data?.tabCounts && <span className="count">{data.tabCounts[t.count]}</span>}
-              </button>
-            ))}
-          </div>
           <div className="row" style={{ gap: 10, alignItems: 'center' }}>
             {/* ── ไฟล์สแกน — THE DRAWER'S HANDLE, ON THE HEAD SINCE 2026-09-11 ──
 
@@ -1647,6 +1624,35 @@ export default function HrView({
             month took away. `shown` is `[]` while `data` is null, so the boxes
             are safe here; only the count at the end reads `data`. */}
         <div className="queue-tools">
+          {/* ── แท็บสถานะ — 2026-10-09, แทนดรอปดาวน์ สถานะที่นับ ──────────────
+              `.queue-tabs` ตัวเดียวกับที่คิวรออนุมัติเคยใช้สลับสองกอง (ว่างอยู่ใน
+              app/styles.css) ไม่ใช่แท็บชุดใหม่ · เลขบนแท็บคือจำนวนคนทั้งเดือน
+              จาก `tabCounts` ของเราต์ — ดู `MONTH_TABS`
+
+              ป้าย `60 คน` ข้างปุ่มไฟล์สแกน และ `· 60 คน` บนชื่อการ์ดของมือถือ
+              ออกไปพร้อมกัน: แท็บ ทั้งหมด บอกเลขเดียวกันแล้ว และผู้ใช้อ่านป้ายนั้น
+              เป็นจำนวนคนที่นำเข้าไฟล์สแกน เพราะมันอยู่ติดปุ่มนั้น
+
+              ย้ายจากหัวการ์ดมาต้นแถบกรองเมื่อ 2026-10-09 (mockup compact-head
+              แบบ D) · บนหัวการ์ดมันต้องมีบรรทัดของตัวเอง เพราะชื่อ + แท็บ + ปุ่ม
+              กว้างราว 1,030px เกินที่การ์ดมีที่จอ 1024 · ในแถบกรอง จอกว้างได้
+              บรรทัดเดียวกับช่องค้นหา จอแคบตัดลงบรรทัดใหม่เอง ไม่ต้องมีจุดเปลี่ยน
+              ความกว้างใหม่ · หัวการ์ดเตี้ยลงหนึ่งบรรทัด */}
+          <div className="queue-tabs month-tabs" role="tablist" aria-label="สถานะ">
+            {MONTH_TABS.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                role="tab"
+                aria-selected={t === tab}
+                className={t === tab ? 'active' : ''}
+                onClick={() => setStatusFilter(t.value)}
+              >
+                {t.label}
+                {data?.tabCounts && <span className="count">{data.tabCounts[t.count]}</span>}
+              </button>
+            ))}
+          </div>
           {/* `.field` around it, and that is the whole of the styling:
               `.field input` is what every box in this app is, and a search
               field that is a different height or a different grey from the
@@ -1802,10 +1808,8 @@ export default function HrView({
               here. It is on the card head, not this bar, and it is still cleared
               here: the mockup the user approved on 2026-10-09 says so. */}
           {(find || dept || onlyFlagged || statusFilter !== DEFAULT_STATUS) && (
-            <button
-              type="button"
-              className="btn ghost sm"
-              onClick={() => {
+            <ClearFilters
+              onClear={() => {
                 setFind('');
                 setOpen(false);
                 setDept('');
@@ -1815,9 +1819,7 @@ export default function HrView({
                 // near the table to say a filter was still on.
                 setOnlyFlagged(false);
               }}
-            >
-              ล้างตัวกรอง
-            </button>
+            />
           )}
           {/* Only while it is narrowing something. "แสดง 24 จาก 24 คน" is a
               sentence about nothing. `searching` and not `find`: this counts the

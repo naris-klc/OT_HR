@@ -2127,7 +2127,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2844 tests
+and the engine know nothing about Next.js, so the whole suite — **2846 tests
 across 160 files**, measured 2026-10-09 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
 It read "2842 tests across 160 files" until **แท็บสถานะบนตรวจสอบประจำเดือน**
@@ -9201,8 +9201,9 @@ both. What the screen says, with dates, is which rows those are.
 > unmarked sheet now; the rule that produced the two answers still runs, for the
 > screen.
 
-**Since 2026-10-09 สถานะที่นับ is four tabs on the card head, and they pick
-PEOPLE**: ทั้งหมด · รอ HR (anyone with a `pending_hr` row, hours counted over
+**Since 2026-10-09 สถานะที่นับ is four tabs at the front of the filter bar, and
+they pick PEOPLE** (they were on the card head for the first few hours of that
+day; see §Status): ทั้งหมด · รอ HR (anyone with a `pending_hr` row, hours counted over
 `approved,pending_hr`) · รอหัวหน้า (anyone with a `pending_mgr` row, hours over
 `pending_mgr`) · อนุมัติแล้ว (only people with nothing pending at all). The
 status string each tab sends is one of the four below, unchanged, so the CSVs and
@@ -13118,6 +13119,27 @@ build แล้ว
 
 **Verified**
 
+- **หัวการ์ดเตี้ยลง: แท็บสถานะลงไปต้นแถบกรอง · ปุ่มล้างตัวกรองเป็นไอคอนทั้งแอป ·
+  ชื่อกับบรรทัดใต้ชื่ออยู่บรรทัดเดียวกันทั้งแอป** — 2026-10-09 · ผู้ใช้ถาม *มีแนวทาง
+  กระชับความสูงกว่านี้มั้ย* และขอเปลี่ยนปุ่มล้างตัวกรองทั้งแอปให้กระชับหรือเป็นไอคอน
+  → mockup `compact-head` สี่แบบหัวการ์ด สามแบบปุ่ม · เลือก **D** และ **ไอคอน 1**
+  แล้วสั่งเพิ่มว่า *ทั้งแอปปรับชื่อกับข้อความใต้ชื่อให้อยู่บรรทัดเดียวกัน* ·
+  **แท็บ** เป็นของชิ้นแรกใน `.queue-tools` บางลงเหลือปุ่ม 30px จอ 1440 อยู่บรรทัด
+  เดียวกับช่องค้นหา แผนก เดือน (ช่องในแถบนี้ตั้งต้นที่ 240/150 แทน 300/200 เฉพาะ
+  ≥861px ไม่งั้นต้องการ ~1,260px) · จอ 1024 แท็บตัดลงบรรทัดของมันเอง · วัดบนหน้า
+  จำลอง: หัวการ์ด + แถบกรองที่ 1440 จาก ~245 เหลือ 149px ·
+  **`ClearFilters`** ใน `components/common.jsx` คือ `RowAction` ไอคอน `reset` คำอยู่ใน
+  tooltip ใต้ 860px มีคำต่อท้าย · ในแถบกรองสูงเท่าช่อง (`--field-h`) · ใช้ทั้งหกแถบ
+  (ตรวจสอบประจำเดือน · คิวรออนุมัติ · ทะเบียนพนักงาน · ประวัติการแก้ทะเบียน ·
+  บันทึกประวัติระบบสองแท็บ) · ปุ่มในข้อความว่างยังเป็นคำ เพราะเป็นทางออกต่อจาก
+  ประโยค · **ชื่อ + บรรทัดใต้ชื่อ** เป็นกฎ CSS กฎเดียว: กล่องที่ลูกมีแค่ `.t`/`h2`/
+  `h3`/`.form-head` ตามด้วย `.hint` (และ `.kicker-sm`) กลายเป็นแถว flex-wrap — บรรทัด
+  สั้นนั่งข้างชื่อ คำอธิบายยาวตกบรรทัดเองเหมือนเดิม · บนหัวการ์ด ≥861px กล่องชื่อ
+  `flex: 1 1 240px` ให้บรรทัดใต้ชื่อตกก่อนปุ่ม · หัวป๊อปอัปไม่เข้ากฎ (บรรทัดใต้ชื่อ
+  เป็นข้อมูลหลายบรรทัด) · การ์ดที่มีแค่ h2 + คำอธิบายลอย ๆ ในการ์ดไม่เข้ากฎ ·
+  ✅ เทสต์ผ่านหมด · ⚠️ วัดด้วยหน้าจำลองที่ใช้ `app/styles.css` จริงทั้งเจ็ดความกว้าง
+  สองธีม ยังไม่ได้เปิดบนแอปที่ล็อกอินอยู่
+
 - **ตรวจสอบประจำเดือน: ดรอปดาวน์ `สถานะที่นับ` กลายเป็นแท็บบนหัวการ์ด —
   `ทั้งหมด` · `รอ HR` · `รอหัวหน้า` · `อนุมัติแล้ว` กรอง *คน* ไม่ใช่เลือกนับใบ** —
   2026-10-09 · ผู้ใช้ถามพร้อมภาพว่า *ทำไมกรองอนุมัติแล้ว แต่ยังมีรายการรอhr*
@@ -13131,7 +13153,8 @@ build แล้ว
   (`approved` ฯลฯ) ซึ่งนับใบของทุกคน ไม่ได้ตัดคนตามแท็บ · ตัวที่ตัดคนคือ `keep`
   ในเบราว์เซอร์ อ่านจาก `monthStatus` · ป้าย `60 คน` ข้างปุ่ม ไฟล์สแกน ออกไปด้วย
   เพราะผู้ใช้อ่านเป็นจำนวนที่นำเข้าไฟล์สแกน และแท็บ ทั้งหมด บอกเลขเดียวกันแล้ว ·
-  **แท็บอยู่บรรทัดของตัวเองใต้ชื่อการ์ดทุกความกว้าง** — mockup วางไว้ระหว่างชื่อกับ
+  **แท็บอยู่บรรทัดของตัวเองใต้ชื่อการ์ดทุกความกว้าง** (ย้ายลงต้นแถบกรองในวันเดียวกัน
+  — ดูข้อบน) — mockup วางไว้ระหว่างชื่อกับ
   ปุ่ม แต่ที่ 1024 (มีแถบเมนู) หัวการ์ดแตกเป็นสามบรรทัด · ใช้ `.queue-tabs` ที่ว่าง
   อยู่ ไม่ใช่แท็บชุดใหม่ · มือถือแบ่งสี่ช่องเท่ากัน ชื่อบนเลขล่าง วัดที่ 360 ไม่ตก
   บรรทัด · ✅ เทสต์ผ่านหมด · ✅ build `--webpack` ผ่านบน distDir แยก · ⚠️ วัดด้วย
@@ -14504,7 +14527,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2844 tests**, about 8 s, measured 2026-10-09 across 160
+- `npm test` — **2846 tests**, about 8 s, measured 2026-10-09 across 160
   files, all green (it read "2842 tests" until the status tabs on ตรวจสอบ
   ประจำเดือน rewrote `monthStatusFilter`). **`policyReading` is the newest file** — the one-sentence
   answer line and the worked examples on นโยบายการคำนวณ (แบบ B). It read

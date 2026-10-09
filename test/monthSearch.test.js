@@ -255,14 +255,14 @@ test('ประจำเดือน and ค้นหา are one row, above the 
   // tag: what it is here to hold down is that the words are on this screen and
   // on the heading row, not which element carries them.
   //
-  // ⚠ IT LEFT THE BAR ON 2026-10-09 for four tabs on the card head (`MONTH_TABS`,
-  // `.month-tabs`) — so what is held down now is that it is NOT on the bar, and
-  // that the tabs are on the head above it.
+  // ⚠ IT LEFT THE BAR ON 2026-10-09 for four tabs (`MONTH_TABS`, `.month-tabs`)
+  // — on the card head that morning, then back on this bar as its FIRST item the
+  // same day (mockup compact-head แบบ D), which took a line off the head. So
+  // what is held down now is that the dropdown is gone and the tabs open the bar.
   assert.ok(!/label="สถานะที่นับ"/.test(hrView), 'the status dropdown came back beside the tabs');
-  assert.ok(
-    hrView.indexOf('className="queue-tabs month-tabs"') < from,
-    'the status tabs are not on the card head above the bar',
-  );
+  const tabsAt = row.indexOf('className="queue-tabs month-tabs"');
+  assert.ok(tabsAt > -1 && tabsAt < row.indexOf('className="field search"'),
+    'the status tabs are not the first thing on the bar');
   // THE BAR IS IN THE CARD, AND THE ACTION IS ABOVE IT. `.export-row` is gone:
   // พิมพ์ / ส่งออก sits in `.card-head` beside the count, which is where every
   // other card in this app puts its one action, and the bar of filters is the
@@ -390,9 +390,9 @@ test('the notices band takes itself off the page when there is nothing to say', 
 });
 
 test('the scan drawer is opened from the card head, with the card’s other verbs', () => {
-  // From the tabs since 2026-10-09, when the `N คน` chip that opened this
-  // group went — the tabs carry the count.
-  const from = hrView.indexOf('className="queue-tabs month-tabs"');
+  // From the title since 2026-10-09, when the `N คน` chip that opened this
+  // group went (the tabs carry the count) and the tabs moved down to the bar.
+  const from = hrView.indexOf('<div className="card-head">', hrView.indexOf('<div className="month-head">'));
   const block = hrView.slice(from, hrView.indexOf('<NoticeStack id="month"', from));
   assert.ok(block.includes('className="btn ghost sm scan-toggle"'), 'ไฟล์สแกน is not on the card head');
   assert.ok(block.indexOf('scan-toggle') < block.indexOf('<ExportMenu'), 'ไฟล์สแกน is under พิมพ์ / ส่งออก');

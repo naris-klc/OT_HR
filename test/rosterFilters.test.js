@@ -253,7 +253,7 @@ test('ล้างตัวกรองล้างทั้งสี่ช่�
   // what its label says. Twice — on the bar, and inside the empty state.
   const presses = employees.match(/setFind\(''\); setFilters\(NO_FILTERS\);/g) || [];
   assert.equal(presses.length, 2, 'ล้างตัวกรองต้องมีทั้งบนแถบและในข้อความว่าง');
-  assert.match(employees, /\{\(find \|\| filtering\) && \(\s*\n\s*<button/);
+  assert.match(employees, /\{\(find \|\| filtering\) && \(\s*\n\s*<ClearFilters/);
   assert.match(admin, /const NO_FILTERS = Object\.freeze\(Object\.fromEntries\(FACET_KEYS/);
 });
 
