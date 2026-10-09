@@ -194,7 +194,7 @@ test('no screen still calls it ขอถอนใบ', () => {
 /** The detail pop-up's foot offers exactly what the row offers, by the same name. */
 test('the pop-up foot matches the row', () => {
   const foot = emp.slice(emp.indexOf('function EntryDetail'));
-  assert.match(foot, /<button className="btn ghost danger" onClick=\{onAskWithdraw\}>ถอนใบ OT<\/button>/);
+  assert.match(foot, /<button className="btn ghost danger" onClick=\{onAskWithdraw\}><Icon name="ban" \/>ถอนใบ OT<\/button>/);
 });
 
 // ── the pause that replaced somebody else's ตัดสิน ──────────────────────────

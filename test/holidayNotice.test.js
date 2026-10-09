@@ -155,7 +155,7 @@ test('on a phone the calendar button is a full-width, tappable row of its own', 
   const rule = ruleOf('.notice-body-act > :is(button, a)', phoneAt);
   assert.ok(phoneAt > 0 && rule, 'ไม่พบกฎปุ่มทำต่อในบล็อกมือถือ');
   assert.match(rule, /width: 100%/);
-  assert.match(rule, /min-height: 44px/);
+  assert.match(rule, /min-height: var\(--btn-h\)/);
   // AND NOT THE BRAND GREEN — `+ บันทึก OT ใหม่` is the one primary on this screen.
   assert.match(bannerCode, /className="btn ghost sm"/);
 });
@@ -269,7 +269,7 @@ test('ทุกวันของเดือนมีชื่ออยู่�
 
   // ปฏิทินวันหยุดประจำปี is the row's one action.
   assert.ok(bannerCode.includes('setShowCalendar(true)'), 'ไม่มีปุ่มเปิดปฏิทิน');
-  assert.match(bannerCode, /action=\{\(\s*<button[^\n]*className="btn ghost sm"[^\n]*setShowCalendar\(true\)\}>\s*ดูปฏิทิน/,
+  assert.match(bannerCode, /action=\{\(\s*<button[^\n]*className="btn ghost sm"[^\n]*setShowCalendar\(true\)\}>\s*<Icon name="calendar" \/>\s*ปฏิทิน/,
     'ปุ่มปฏิทินไม่ได้เป็น action ของแถว');
 });
 

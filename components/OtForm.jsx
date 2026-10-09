@@ -42,6 +42,10 @@ import { PickTime } from './PickTime.jsx';
  * and the module goes on being bundled into the form for nobody.
  */
 import { usePolicy } from './policyContext.jsx';
+/* Icon CAME BACK A THIRD TIME on 2026-10-09 — not for the date rule above but
+   for the action buttons in the foot (ส่ง · บันทึก · กลับ · ลองใหม่), under the
+   app-wide rule that a button's icon carries its meaning. */
+import Icon from './icons.jsx';
 
 const blank = () => ({
   /**
@@ -1119,11 +1123,13 @@ export default function OtForm({
                     and the word has only the one reading. */}
                 <button
                   type="button"
-                  className="btn ghost"
+                  className="btn quiet"
                   onClick={() => setTargets([])}
                   disabled={targets.length === 0}
+                  aria-label="ล้างที่เลือก"
+                  title="ล้างที่เลือก"
                 >
-                  ล้างที่เลือก
+                  <Icon name="close" />
                 </button>
               </div>
             )}
@@ -1549,7 +1555,7 @@ export default function OtForm({
              this control asks that the boxes above do not. */
           onClick={() => { setExtraOpen(true); setTimeout(() => extraNoteRef.current?.focus(), 0); }}
         >
-          อธิบายเพิ่มเติม (ไม่บังคับ)
+          เพิ่มคำอธิบาย
         </button>
       )}
 
@@ -1757,14 +1763,14 @@ export default function OtForm({
   );
 
   /**
-   * ย้อนกลับ, ยกเลิก and the one that saves — written once, hung where the shape
-   * puts them.
+   * กลับ (ย้อนกลับ until 2026-10-09), ยกเลิก and the one that saves — written
+   * once, hung where the shape puts them.
    *
    * On a card they are the last row of the form. In the pop-up they are its
    * foot, which is pinned and does not scroll with the fields.
    *
    * `cancel` is handed in rather than closed over, and that is the whole point
-   * of the argument: the pop-up passes its own `requestClose`, so ย้อนกลับ asks
+   * of the argument: the pop-up passes its own `requestClose`, so กลับ asks
    * about half-typed times exactly as ✕, Escape and the backdrop do, while the
    * card passes `onCancel`, which has nothing to ask.
    *
@@ -1789,7 +1795,7 @@ export default function OtForm({
    * reason the parent already owns the row and the reload: a child that writes
    * its own parent's list would leave the table behind it stale.
    *
-   * AND IT DOES NOT TOUCH THE SAVE BUTTON. `ย้อนกลับ` sits between them so the
+   * AND IT DOES NOT TOUCH THE SAVE BUTTON. `กลับ` sits between them so the
    * press that destroys is not a thumb's width from the press that is made
    * dozens of times a month. All three are flush right, as asked.
    */
@@ -1797,10 +1803,16 @@ export default function OtForm({
     <>
       {onCancelEntry && (
         <button type="button" className="btn ghost danger" onClick={onCancelEntry}>
+          <Icon name="ban" />
           ยกเลิก
         </button>
       )}
-      {onCancel && <button type="button" className="btn ghost" onClick={cancel}>ย้อนกลับ</button>}
+      {onCancel && (
+        <button type="button" className="btn ghost" onClick={cancel}>
+          <Icon name="chevronLeft" />
+          กลับ
+        </button>
+      )}
       <button
         className="btn"
         form={formId}
@@ -1816,17 +1828,21 @@ export default function OtForm({
           // วันทำงานปกติ ระบุเวลาในช่วง 08:00–16:59 ไม่ได้ — 400 on every write path.
           || Boolean(coreHoursRefusal)}
       >
-        {entry ? 'บันทึกการแก้ไข'
+        {/* ป้ายไม่เกินสามคำ (2026-10-09): บันทึกการแก้ไข → บันทึก ·
+            บันทึกแทนและส่งให้ HR/หัวหน้า → ส่งให้ HR/หัวหน้า · ส่งคำขอใหม่ →
+            ส่งใหม่ · จำนวนคนเป็น (n) แทน · n คน */}
+        <Icon name={entry ? 'save' : 'send'} />
+        {entry ? 'บันทึก'
           : proxy ? (busy
-            ? `กำลังบันทึก… (${targets.length} ใบ)`
+            ? 'กำลังบันทึก…'
             // The count is on the button because it is the last thing read
-            // before eight requests are filed, and "8 คน" is the fact most
+            // before eight requests are filed, and "(8)" is the fact most
             // worth being sure of at that moment.
             // `status`, not `skipped`: a filing reaches รอ HR by four routes and
             // only one of them is the skip. See `proxyNote` above.
-            : `${routing?.status === 'pending_hr' ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า'}`
-              + (targets.length > 1 ? ` · ${targets.length} คน` : ''))
-            : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
+            : `${routing?.status === 'pending_hr' ? 'ส่งให้ HR' : 'ส่งให้หัวหน้า'}`
+              + (targets.length > 1 ? ` (${targets.length})` : ''))
+            : template ? 'ส่งใหม่' : 'ส่งขออนุมัติ'}
       </button>
     </>
   );
@@ -1990,7 +2006,8 @@ function BatchResult({ results, nameOf, form, onDone, onRetryFailed }) {
             className="btn ghost"
             onClick={() => onRetryFailed(failed.map((r) => r.id))}
           >
-            แก้แล้วลองใหม่เฉพาะ {failed.length} คนที่ไม่สำเร็จ
+            <Icon name="refresh" />
+            ลองใหม่ ({failed.length})
           </button>
         )}
         <button type="button" className="btn" onClick={onDone}>เสร็จสิ้น</button>

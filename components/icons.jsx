@@ -349,13 +349,23 @@ const ICONS = {
    * user set is ONE MEANING, ONE ICON, APP-WIDE — so this is a dictionary, not
    * a palette. Before drawing a glyph for a new button, find its meaning here:
    *
-   *   pencil  แก้ไข · แก้ไขชั่วโมง            eye     รายละเอียด · ดูข้อมูล
-   *   history ดูประวัติ · ข้อมูลเดิม           tick    อนุมัติ · ยืนยัน
-   *   cross   ไม่อนุมัติ                        ban     ยกเลิก · ถอนใบ
-   *   trash   ลบ                                key     รีเซ็ตรหัสผ่าน
-   *   send    ส่งใหม่                           printer พิมพ์
-   *   reset   คืนค่าตั้งต้น · ล้างตัวกรอง       download บันทึก PDF · ได้ไฟล์
-   *   help    วิธีพิมพ์ · วิธีใช้                chevronLeft กลับ (ออกจากหน้าพิมพ์)
+   *   pencil  แก้ไข                            eye     รายละเอียด · ดูข้อมูล · ตรวจ
+   *   history ดูประวัติ                         compare ข้อมูลเดิม (ก่อนแก้)
+   *   tick    อนุมัติ                           check   ยืนยัน (ตรวจเดือน)
+   *   cross   ไม่อนุมัติ — มีคำกำกับเสมอ        close   ปิด · ล้างช่อง · ล้างที่เลือก (ไอคอนล้วน)
+   *   ban     ยกเลิก · ถอนใบ · ปิดใช้งาน         trash   ลบ
+   *   plus    เพิ่ม · บันทึกใหม่                 save    บันทึก
+   *   send    ส่ง · ส่งใหม่                      key     รหัสผ่าน
+   *   printer พิมพ์                             download ดาวน์โหลด · PDF · CSV
+   *   upload  นำเข้า                            copy    คัดลอก
+   *   reset   คืนค่าตั้งต้น · ล้างตัวกรอง        refresh ลองใหม่
+   *   chevronLeft กลับ                          chevronDown ดูเพิ่ม · ขยาย
+   *   external ไปหน้าอื่น                        help    วิธีพิมพ์ · วิธีใช้
+   *
+   * ⚑ 2026-10-09 — ทั้งแอปตามตารางนี้ (mockup detail-modal-2 ตาราง ก.) · `tick`
+   * เลิกใช้กับ ยืนยันเดือน (ไป `check`) · `history` เลิกใช้กับ ข้อมูลเดิม (ไป
+   * `compare`) · `cross` กับ `close` เป็น ✕ คนละตัว: ไม่อนุมัติ เป็นปุ่มแดงมีคำ
+   * เสมอ ส่วน ปิด/ล้าง เป็นเส้นบางสีเทาไอคอนล้วน
    *
    * `ban` AND `trash` ARE DIFFERENT ON PURPOSE. ยกเลิก and ถอนใบ leave the ใบ in
    * the record with a status that says so; ลบ takes a holiday or a department
@@ -409,6 +419,51 @@ const ICONS = {
 
   /** กลับ — out of a print view, back to the screen that opened it. */
   chevronLeft: <path d="M14.5 6 8.5 12l6 6" />,
+
+  /* ── 2026-10-09: ความหมายที่ยังไม่เคยมีไอคอน (ดูตารางข้างบน) ── */
+  /** ดูเพิ่ม · ขยาย */
+  chevronDown: <path d="M6 9.5l6 6 6-6" />,
+  /** เพิ่ม · บันทึกใหม่ */
+  plus: <path d="M12 5v14M5 12h14" />,
+  /** บันทึก */
+  save: (
+    <>
+      <path d="M5 4.75h11.25l2.5 2.5v12H5.25z" />
+      <path d="M8.25 4.75V9h6.5V4.75M8.25 19.25v-5.5h7.5v5.5" />
+    </>
+  ),
+  /** ข้อมูลเดิม — สองเส้นเทียบกัน */
+  compare: (
+    <>
+      <path d="M7.5 4.5v15M16.5 4.5v15" />
+      <path d="M4.5 8.5h6M13.5 15.5h6" />
+    </>
+  ),
+  /** นำเข้า — คู่กลับของ download */
+  upload: <path d="M12 15.25V4.75M7.5 9.25 12 4.75l4.5 4.5M5 19.25h14" />,
+  /** คัดลอก */
+  copy: (
+    <>
+      <rect x="8.75" y="8.75" width="10.5" height="10.5" rx="2" />
+      <path d="M15.25 5.5V4.75h-10.5v10.5h.75" />
+    </>
+  ),
+  /** ลองใหม่ — ลูกศรวนตามเข็ม (reset วนทวนเข็ม = คืนค่า) */
+  refresh: (
+    <>
+      <path d="M20.25 12a8.25 8.25 0 1 1-2.4-5.8" />
+      <path d="M20.5 3.75v3.5H17" />
+    </>
+  ),
+  /** ไปหน้าอื่น */
+  external: (
+    <>
+      <path d="M10.5 5.25h-5.5v13.5h13.5v-5.5" />
+      <path d="M14 4.75h5.25V10M19.25 4.75l-8.5 8.5" />
+    </>
+  ),
+  /** ปิด · ล้าง — เส้นบางกว่า cross ใช้เป็นไอคอนล้วนสีเทา */
+  close: <path d="M7.75 7.75l8.5 8.5M16.25 7.75l-8.5 8.5" />,
 
   /** วิธีพิมพ์ — the instructions folded behind a pill. */
   help: (

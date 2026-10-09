@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 /**
  * ข้อมูลส่วนตัว — the three things the card has to say without being read.
  *
- * ออกจากระบบ throws the session away, บันทึกรหัสผ่านใหม่ commits a change, and
+ * ออกจากระบบ throws the session away, บันทึก (รหัสผ่านใหม่) commits a change, and
  * the boxes between them are typed on a phone. All three were drawn as the same
  * grey box, which is a screen where nothing looks like what it does. What is
  * pinned here is the drawing, not the behaviour: the classes each button
@@ -37,7 +37,7 @@ test('ออกจากระบบ is the app\'s red-outline voice, not a grey
   const code = sourceOf(PROFILE);
   assert.match(
     code,
-    /className="btn ghost danger" onClick=\{onLogout\}>ออกจากระบบ/,
+    /className="btn ghost danger" onClick=\{onLogout\}><Icon name="logout" \/>ออกจากระบบ/,
     'the sign-out button went back to a plain ghost',
   );
 });
@@ -54,7 +54,7 @@ test('and .btn.ghost.danger still draws red, after .btn.ghost', () => {
   );
 });
 
-// ── บันทึกรหัสผ่านใหม่ ──────────────────────────────────────────────────────
+// ── บันทึก (รหัสผ่านใหม่) ───────────────────────────────────────────────────
 
 test('the submit button is the plain green .btn — no variant to dilute it', () => {
   const code = sourceOf(PROFILE);

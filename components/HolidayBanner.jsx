@@ -6,6 +6,7 @@ import { today } from '@/lib/today.js';
 import { holidayCalendarByMonth, holidaysInMonth, nextHoliday } from '@/lib/holidayNotice.js';
 import { Empty, Modal, NoticeRow } from './common.jsx';
 import { useBackHandler } from './nav.jsx';
+import Icon from './icons.jsx';
 
 /**
  * ประกาศวันหยุดบริษัท — the standing notice at the top of an employee's screen.
@@ -151,7 +152,8 @@ export default function HolidayBanner({ period = currentPeriod() }) {
         more={more}
         action={(
           <button type="button" className="btn ghost sm" onClick={() => setShowCalendar(true)}>
-            ดูปฏิทิน {year + 543}
+            <Icon name="calendar" />
+            ปฏิทิน {year + 543}
           </button>
         )}
       />

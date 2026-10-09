@@ -3,6 +3,7 @@
 import React from 'react';
 import { periodLabel, companyLabel } from '@/lib/api.js';
 import { NoticeRow } from './common.jsx';
+import Icon from './icons.jsx';
 import { SCAN_BADGE } from '@/lib/scanMatch.js';
 
 /**
@@ -158,7 +159,8 @@ export default function ScanCompareCard({
      ข้างบนบอกเดือนอยู่แล้ว ข้อความทุกคำที่ HR ตกลงไว้ 2026-09-07 ยังอยู่ครบ */
   const importBtn = onOpenImport && !importOpen && (
     <button type="button" className="btn ghost sm" onClick={onOpenImport}>
-      นำเข้าไฟล์สแกน
+      <Icon name="upload" />
+      นำเข้า
     </button>
   );
 
@@ -202,7 +204,7 @@ export default function ScanCompareCard({
             onClick={onToggleFlagged}
             aria-pressed={onlyFlagged}
           >
-            {onlyFlagged ? 'แสดงทุกคนในเดือนนี้' : `ดูเฉพาะคนที่ต้องตรวจ (${flagged} คน)`}
+            {onlyFlagged ? 'ทุกคน' : `ต้องตรวจ (${flagged})`}
           </button>
         )}
         more={(

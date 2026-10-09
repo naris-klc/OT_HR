@@ -437,7 +437,7 @@ test('ปุ่ม ตกลง และ ยกเลิก อยู่ใน�
   assert.match(code, />\s*ตกลง\s*<\/button>/);
   assert.ok(!/PopFoot/.test(code), 'กลับไปใช้เท้าแผงที่มีปุ่มเฉพาะบนมือถือ');
   const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
-  assert.match(phone, /\.pop\.sheet \.pop-foot \.btn \{ min-height: 44px; \}/);
+  assert.match(phone, /\.pop\.sheet \.pop-foot \.btn \{ min-height: var\(--btn-h\); \}/);
 });
 
 test('ปุ่มเวลาด่วนตั้งทั้งชั่วโมงและนาทีในร่าง และไม่ปิดแผง', () => {

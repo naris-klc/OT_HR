@@ -582,7 +582,8 @@ test('a long list in a notice shows five, then ten more a press, and can be put 
   assert.match(common, /export const SHOW_MORE_FIRST = 5;/);
   assert.match(common, /export const SHOW_MORE_STEP = 10;/);
   assert.match(fn, /list\.slice\(0, shown\)/);
-  assert.match(fn, /แสดงเพิ่มอีก \{Math\.min\(step, left\)\} \{unit\} \(เหลือ \{left\} \{unit\}\)/);
+  // ปุ่มไม่เกินสามคำ (2026-10-09): "แสดงเพิ่มอีก N (เหลือ M)" สั้นลงเป็น "ดูเพิ่ม (M)"
+  assert.match(fn, /ดูเพิ่ม \(\{left\}\)/);
   assert.match(fn, /แสดงทั้งหมด/);
   assert.match(fn, /ย่อกลับ/);
   // How far it is open is state, so it goes back to the first few when the

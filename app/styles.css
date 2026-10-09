@@ -492,6 +492,12 @@
      than a fixed height — a box of chips grows as they wrap, and a textarea
      sets its own. */
   --field-h: 46px;
+  /* ความสูงปุ่ม action ทั้งแอป — 2026-10-09 *"ลดความสูงเริ่มต้นของปุ่ม action ทั้งแอป"*
+     เลือก 36 จาก mockup detail-modal-2 · *"ให้ปุ่มบนมือถือเริ่มต้นที่ 36px ได้"* —
+     เลิกกฎ 44–46px บนมือถือสำหรับปุ่ม `.btn` (เป้ากดยังกว้างเต็มแถวในหลายที่)
+     ปุ่มเล็ก `.btn.sm` และปุ่มไอคอนในแถว 30 · ช่องกรอก `--field-h` ไม่เกี่ยว */
+  --btn-h: 36px;
+  --btn-h-sm: 30px;
   --field-pad-y: 12px;
   --field-pad-x: 14px;
   --field-size: 15px;
@@ -2260,7 +2266,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
      for the button to stop being a 32px target squeezed beside a wrapped
      sentence: below 640px it takes the second line whole. */
   .scan-line { align-items: stretch; }
-  .scan-line .btn { flex: 1 1 100%; min-height: 44px; }
+  .scan-line .btn { flex: 1 1 100%; min-height: var(--btn-h); }
   /* ตรวจก่อนนำเข้า puts ยืนยัน and ยกเลิก in a `.row` on that same line since
      2026-09-11; the rule above reaches the buttons and not the box holding
      them, so the box has to be told to take the width as well or the two
@@ -2271,7 +2277,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
      shrink-to-fit label parked at the right margin and takes the line whole,
      at the height every other target on a phone screen has. */
   .scan-drawer-head > .row { flex: 1 1 100%; margin-left: 0; }
-  .scan-drawer-head > .row .btn { flex: 1; min-height: 44px; }
+  .scan-drawer-head > .row .btn { flex: 1; min-height: var(--btn-h); }
   /* Two columns of a sentence that wraps three times each is worse than the
      four rows this replaced. */
   .scan-slots { grid-template-columns: 1fr; }
@@ -2786,9 +2792,14 @@ div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2
    The transparent rule is also what keeps a hover that adds a border from
    moving the button under the pointer. */
 .btn {
-  padding: 11px 17px; border: 1px solid transparent; border-radius: var(--radius-sm);
+  /* สูง `--btn-h` (36) ทุกความกว้าง ตั้งแต่ 2026-10-09 — เดิม padding 11px 17px
+     ได้ ~38.5 และบนมือถือถูกดันเป็น 44–46 · inline-flex ให้ไอคอนกับคำอยู่กลาง
+     ปุ่มเส้นเดียวกันโดยไม่ต้องพึ่ง padding */
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--btn-h); padding: 0 16px;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
   background: var(--green); color: var(--on-fill);
-  font: 600 14.5px/1 var(--sans); cursor: pointer;
+  font: 600 14px/1.2 var(--sans); cursor: pointer;
   box-shadow: 0 6px 18px var(--green-glow);
   transition: background .16s, transform .16s, box-shadow .16s;
 }
@@ -2877,7 +2888,16 @@ div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2
 .btn.danger { background: var(--danger); box-shadow: 0 6px 18px var(--danger-glow); }
 .btn.danger:hover:not(:disabled) { background: var(--danger-ink); }
 
-.btn.sm { padding: 9px 13px; font-size: 13px; border-radius: var(--radius-xs); box-shadow: none; }
+.btn.sm { min-height: var(--btn-h-sm); padding: 0 12px; font-size: 13px; border-radius: var(--radius-xs); box-shadow: none; }
+/* ไอคอนในปุ่มขนาดเดียวทั้งแอป — 16 ในปุ่มปกติ 14 ในปุ่มเล็ก */
+.btn > svg { width: 16px; height: 16px; flex: none; }
+.btn.sm > svg { width: 14px; height: 14px; }
+/* ปุ่มแบบลิงก์ที่มีไอคอน (เช่น ไปหน้าอื่น `external`) — ขนาดตามตัวอักษร */
+/* ปุ่มนอกตระกูล `.btn` ที่มีไอคอนตามพจนานุกรม (2026-10-09) */
+.fab > svg { width: 26px; height: 26px; }
+.signout { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.signout > svg { width: 14px; height: 14px; flex: none; }
+button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertical-align: -2px; margin-right: 4px; }
 
 /* ── A BUTTON THAT CANNOT BE PRESSED IS GREY, not a faded version of itself ──
    `opacity: .55` was the whole of it, and on a filled green button over a dark
@@ -3184,7 +3204,7 @@ div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2
   .act-tip { display: contents; }
 }
 @media (min-width: 861px) {
-  .btn.act-icon { width: 32px; height: 32px; padding: 0; flex: none; }
+  .btn.act-icon { width: var(--btn-h-sm); height: var(--btn-h-sm); min-height: 0; padding: 0; flex: none; }
   .btn.act-icon .btn-word {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap;
@@ -5315,7 +5335,7 @@ td > .approver-line { margin-top: 5px; }
     padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
     margin-top: 8px;
   }
-  .pop.sheet .pop-foot .btn { min-height: 44px; }
+  .pop.sheet .pop-foot .btn { min-height: var(--btn-h); }
   /* A STOP IS 56px ON A SHEET, AND 44 IS THE FLOOR IT CLEARS RATHER THAN THE
      NUMBER IT AIMS AT. It read "44px" until 2026-09-10, chosen as the touch
      minimum and defended as one — the whole of whether a thumb lands on 30 or
@@ -6883,7 +6903,7 @@ td > .approver-line { margin-top: 5px; }
   .notice-body { padding: 2px 6px 6px 28px; }
   .notice-body-detail { display: block; color: var(--muted); }
   .notice-body-act { display: block; }
-  .notice-body-act > :is(button, a) { width: 100%; min-height: 44px; justify-content: center; }
+  .notice-body-act > :is(button, a) { width: 100%; min-height: var(--btn-h); justify-content: center; }
 }
 
 
@@ -10546,39 +10566,73 @@ table.mini tbody tr:hover { background: none; }
   animation: otfade .16s ease both;
 }
 .modal.wide { width: min(880px, 100%); }
-/* ── ป๊อปอัปรายละเอียดใบ OT: สองคอลัมน์ (mockup detail-modal แบบ B, 2026-10-09) ──
-   ซ้าย = สิ่งที่ตัดสิน (เวลา ชั่วโมงแยกอัตรา งาน) · ขวา = บริบท (เพดานเดือน
-   ผู้อนุมัติ ประวัติ) บนพื้น `--neutral-wash` ให้อ่านเป็นของรอง · 860px ลงไป
-   เรียงซ้อน ซ้ายก่อน · `min-width: 0` ทั้งสองฝั่ง ไม่งั้นรายละเอียดงานยาว ๆ
-   ดันคอลัมน์ล้นกล่อง */
-.dm-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-.dm-main, .dm-side { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.dm-side { background: var(--neutral-wash); border-radius: var(--radius-xs); padding: 12px; }
-.dm-side .cap-card { padding: 0; background: none; border: 0; }
-.dm-side .cap-card.over { padding: 8px 10px; background: var(--danger-bg); border: 1px solid var(--danger-line); }
-.dm-side .fact-grid > div { flex-basis: 100%; }
-.dm-time { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
-.dm-span { font: 600 22px/1.25 var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
-.dm-facts { font: 400 13px/1.5 var(--sans); color: var(--muted); }
-.dm-over { color: var(--danger-ink); font-weight: 600; }
-.dm-main > .entry-mark { margin-top: -4px; }
+/* ── หน้ารายละเอียดใบ OT — ทั้งป๊อปอัปผู้อนุมัติและฝั่งพนักงาน (mockup
+   detail-modal-2 แบบ 1, 2026-10-09) ────────────────────────────────────────
+   เดิมเป็นสองคอลัมน์ไม่เท่ากัน (แบบ B ของ detail-modal) และประวัติอยู่คอลัมน์
+   ขวา คอลัมน์ขวาจึงยาวกว่าซ้ายหลายเท่า — *"layout มันดูไม่สมมาตรกัน"* ·
+   ตอนนี้: แถบนำ (เวลา + ป้ายข้อเท็จจริง) เต็มกว้าง · สองแผง **กว้างเท่ากันและ
+   สูงเท่ากัน** (`align-items: stretch`) · ประวัติพับไว้ท้ายสุดเต็มกว้าง ·
+   *"เพิ่มสีเน้นคำสำคัญให้โดดเด่นขึ้น"* — ป้ายข้อเท็จจริงมีสีตามความหมาย
+   (เกิน/ไม่พัก = แดง · ไม่เกิน = เขียว) ตัวเลขอัตราที่มีชั่วโมงเป็นเขียวหนา
+   ช่องที่เป็น 0 จาง · 860px ลงไปแผงเรียงซ้อน */
+.dm-lead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.dm-span { font: 600 24px/1.2 var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.dm-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.dm-tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 20px;
+  font: 500 12.5px/1.5 var(--sans); white-space: nowrap;
+  background: var(--neutral-wash); color: var(--ink-2); border: 1px solid var(--line-soft);
+}
+.dm-tag b { font: 600 12.5px/1.5 var(--mono); color: var(--ink); }
+.dm-tag.ok { background: var(--green-bg); color: var(--green-dark); border-color: var(--ok-line); }
+.dm-tag.over { background: var(--danger-bg); color: var(--danger-ink); border-color: var(--danger-line); font-weight: 600; white-space: normal; }
+.dm-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.dm-panel {
+  min-width: 0; display: flex; flex-direction: column; gap: 12px;
+  background: var(--neutral-wash); border: 1px solid var(--line-soft);
+  border-radius: var(--radius-xs); padding: 12px 14px;
+}
+/* การ์ดในแผงไม่ต้องมีกรอบของตัวเองซ้อน — แผงคือกรอบ */
+.dm-panel .cap-card, .dm-panel .reason-card { padding: 0; background: none; border: 0; }
+.dm-panel .cap-card.over { padding: 8px 10px; background: var(--danger-bg); border: 1px solid var(--danger-line); }
+.dm-panel .reason-card { border-top: 1px solid var(--line); padding-top: 10px; border-radius: 0; }
+.dm-panel .fact-grid { background: none; border: 0; border-radius: 0; gap: 0; }
+.dm-panel .fact-grid > div { flex-basis: 100%; background: none; padding: 6px 0; border-top: 1px solid var(--line); }
+.dm-panel .fact-grid dd { font-weight: 600; }
+.dm-panel .kicker-sm { margin-bottom: 0; }
 .dm-rates-wrap { overflow-x: auto; }
 .dm-rates { width: 100%; border-collapse: collapse; font-size: 13px; }
 .dm-rates th {
-  font: 500 11.5px/1.4 var(--sans); color: var(--muted); text-align: left;
-  padding: 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap;
+  font: 500 11.5px/1.3 var(--sans); color: var(--muted); text-align: left; background: none;
+  padding: 0 6px 5px; border-bottom: 1px solid var(--line); white-space: nowrap;
 }
-.dm-rates td { padding: 5px 6px; vertical-align: top; }
-.dm-rates th.num { text-align: right; line-height: 1.3; }
+.dm-rates th.num { text-align: right; }
+.dm-rates td { padding: 6px; vertical-align: top; }
 .dm-rates td .hint { font-size: 11.5px; line-height: 1.4; }
 .dm-rates .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dm-rates td.num:not(.zero) { color: var(--green-dark); font-weight: 700; }
 .dm-rates td.zero { color: var(--muted-2); }
 .dm-rates tr.sum td { font-weight: 700; border-top: 1px solid var(--line); }
 .dm-rates tr.sum td.zero { font-weight: 400; }
 .dm-rates th:first-child, .dm-rates td:first-child { padding-left: 0; }
 .dm-rates th:last-child, .dm-rates td:last-child { padding-right: 0; }
+.dm-history { border-top: 1px solid var(--line-soft); padding-top: 10px; }
+.dm-history > summary {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none;
+  font: 600 13px/1.4 var(--sans); color: var(--ink-2);
+}
+.dm-history > summary::-webkit-details-marker { display: none; }
+.dm-history > summary svg { width: 16px; height: 16px; transition: transform .16s; }
+.dm-history[open] > summary svg { transform: rotate(180deg); }
+.dm-history > summary + * { margin-top: 10px; }
+@media (prefers-reduced-motion: reduce) { .dm-history > summary svg { transition: none; } }
 @media (max-width: 860px) {
   .dm-grid { grid-template-columns: minmax(0, 1fr); }
+}
+/* จอแคบ: วันที่กับเวลาของช่วงขึ้นสองบรรทัดได้ ไม่งั้นคอลัมน์ ×3 หลุดขอบที่ 360 */
+@media (max-width: 480px) {
+  .dm-panel { padding: 10px 12px; }
+  .dm-rates td:first-child .nb { white-space: normal; }
 }
 .modal:focus { outline: none; }
 
@@ -11004,7 +11058,7 @@ table.mini tbody tr:hover { background: none; }
    chrome and keeps its letters, which is what `.btn.quiet` does elsewhere for
    the same reason; the fill beside it is then the only edge in the bar, and it
    is the one meant to be seen. */
-.ask-acts .btn { min-height: 40px; padding: 0 14px; border-radius: 7px; }
+.ask-acts .btn { min-height: var(--btn-h); padding: 0 14px; border-radius: 7px; }
 .ask-acts .btn.ghost { background: transparent; border-color: transparent; box-shadow: none; }
 .ask-acts .btn.ghost:hover:not(:disabled) {
   background: var(--neutral-wash); border-color: transparent; color: var(--ink-2);
@@ -11055,11 +11109,7 @@ table.mini tbody tr:hover { background: none; }
 /* แก้ไขชั่วโมง ก่อนคู่คำตอบ (ป๊อปอัปรายละเอียดใบ แบบ B, 2026-10-09) — สูงเท่าคู่นั้น
    แต่ไม่ร่วม `flex: 1 1 0` ของมัน เพราะไม่ใช่คำตอบ · บนมือถือเหลือไอคอนสี่เหลี่ยม
    (ข้างล่าง ในบล็อก 860px) ไม่งั้นสามปุ่มแบ่งความกว้าง 360px แล้ว อนุมัติใบ OT ไม่พอ */
-.modal-foot .btn.foot-edit {
-  display: inline-flex; align-items: center; gap: 6px;
-  min-height: 46px; border-radius: 8px; white-space: nowrap;
-}
-.modal-foot .btn.foot-edit svg { width: 16px; height: 16px; flex: none; }
+.modal-foot .btn.foot-edit { min-height: var(--btn-h); border-radius: 8px; white-space: nowrap; }
 
 /* ONE BOX, TWICE. The two answers to a question must not differ in any way that
    could be read as a hint, so everything about their shape is stated here
@@ -11091,13 +11141,13 @@ table.mini tbody tr:hover { background: none; }
 
      The phone block puts the sides back to 10. There the width belongs to the
      sheet and padding is only what could stop a label fitting inside it. */
-  padding: 12px 22px;
+  padding: 0 18px;
   /* 8px, WRITTEN OUT, and not the app's `--radius-sm` (11px) the rest of its
      buttons take. The pair has been identical throughout — ONE rule cuts both
      corners, so they cannot differ by construction — and the number has been
      asked for four times, at 10px, then 8px. Set here, once, where anybody can
      read it off the file and compare it to what is on the glass. */
-  min-height: 46px; border-radius: 8px;
+  min-height: var(--btn-h); border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   /* ── ONE LINE, AND THAI IS THE REASON IT HAD TO BE SAID ────────────────
      ไม่อนุมัติ was coming out on two lines: ไม่ over อนุมัติ.
@@ -11933,7 +11983,7 @@ table.mini tbody tr:hover { background: none; }
       max(16px, env(safe-area-inset-left));
     gap: 8px;
   }
-  .modal-foot .btn { flex: 1 1 0; min-height: 46px; padding-left: 10px; padding-right: 10px; }
+  .modal-foot .btn { flex: 1 1 0; min-height: var(--btn-h); padding-left: 10px; padding-right: 10px; }
   /* ── ลบแผนก DOES NOT TAKE A THIRD OF THE BAR ────────────────────────────
      `flex: 1 1 0` above is written for a foot of TWO, where equal halves are
      right: they are two ways of finishing the same job. A destructive third
@@ -11986,12 +12036,12 @@ table.mini tbody tr:hover { background: none; }
      divides the card rather than the band. Same shape as `.foot-split` above
      and for the same reason. */
   .modal-foot .ask-acts { flex: 1 1 100%; }
-  .modal-foot.asking .btn { flex: 1 1 0; min-height: 46px; }
+  .modal-foot.asking .btn { flex: 1 1 0; min-height: var(--btn-h); }
   /* The pair spans the sheet. The rule above sizes buttons that are direct
      children of the foot; these two are one step further in, so the wrapper is
      what has to be told to fill the width. */
   .modal-foot .foot-split { flex: 1; gap: 8px; }
-  .modal-foot .btn.foot-edit { flex: none; width: 46px; padding: 0; justify-content: center; }
+  .modal-foot .btn.foot-edit { flex: none; width: var(--btn-h); padding: 0; }
   .modal-foot .btn.foot-edit span { display: none; }
 
   /* ── the header, in one band ────────────────────────────────────────────
@@ -12184,7 +12234,7 @@ table.mini tbody tr:hover { background: none; }
      Found while measuring the label's fit, 2026-08-31 — the label itself is
      one line at every width from 320 to 1440 and was never the problem. */
   .card-head .btn.sm,
-  .row-actions .btn.sm, .quick-edit-foot .btn { min-height: 44px; }
+  .row-actions .btn.sm, .quick-edit-foot .btn { min-height: var(--btn-h); }
 
   /* ช่องค้นหา on a phone. 44px rows, and a list that stops well short of
      the fold: the software keyboard is up the whole time this control is open
@@ -12375,7 +12425,7 @@ table.mini tbody tr:hover { background: none; }
   .withdraw-table td.asked-col { grid-area: asked; }
   .withdraw-table td.act-col { grid-area: act; }
   .withdraw-table .withdraw-actions { margin-top: 4px; gap: 8px; }
-  .withdraw-table .withdraw-actions .btn { flex: 1 1 0; min-height: 44px; }
+  .withdraw-table .withdraw-actions .btn { flex: 1 1 0; min-height: var(--btn-h); }
 
   /* ── AND AT THE VERY BOTTOM THE DATE COMES OFF THE NAME'S LINE ────────────
      `14/09/2569` over `18:00–21:00 3 ชม.` is one unbreakable fact and about
@@ -12402,7 +12452,7 @@ table.mini tbody tr:hover { background: none; }
      width and read as a chip — and it is the one control on this card that
      acts on everything below it. 44px for the thumb, like every other decision
      on a phone in this sheet. */
-  .withdraw-batch { flex: 1 1 100%; min-height: 44px; }
+  .withdraw-batch { flex: 1 1 100%; min-height: var(--btn-h); }
 
   /* One control per line — a filter you have to pinch at is a filter nobody
      uses, and the batch buttons are the reason the bar is there at all.
@@ -12696,7 +12746,7 @@ table.mini tbody tr:hover { background: none; }
      without either being clipped. nowrap because a bar that is one line by
      definition cannot have a button breaking onto a second. */
   .picked-actions .btn {
-    flex: 1 1 0; min-height: 44px;
+    flex: 1 1 0; min-height: var(--btn-h);
     padding-left: 8px; padding-right: 8px;
     white-space: nowrap;
   }
@@ -12995,7 +13045,7 @@ table.mini tbody tr:hover { background: none; }
     border-top: 1px solid var(--line-softer);
   }
   .queue-table td.act-col .row-actions { gap: 8px; }
-  .queue-table td.act-col .row-actions .btn { flex: 1 1 40%; min-height: 44px; }
+  .queue-table td.act-col .row-actions .btn { flex: 1 1 40%; min-height: var(--btn-h); }
   /* ── AND THEY ARE LABELLED BUTTONS AGAIN, NOT ICONS ────────────────────────
      `.act-icon` pins a 32px square on the desktop, where the label is folded
      away and the column is 96px wide. Here the label is back (`.btn-word` is
@@ -13182,7 +13232,7 @@ table.mini tbody tr:hover { background: none; }
     border-top: 1px solid var(--line-softer);
   }
   .bday-table td.act-col .row-actions { gap: 8px; }
-  .bday-table td.act-col .row-actions .btn { flex: 1 1 40%; min-height: 44px; }
+  .bday-table td.act-col .row-actions .btn { flex: 1 1 40%; min-height: var(--btn-h); }
   .bday-table td.act-col .row-actions .btn:not(.ghost) {
     box-shadow: 0 3px 9px var(--green-glow-sm);
   }
@@ -13686,7 +13736,7 @@ table.mini tbody tr:hover { background: none; }
      row that centres it; this one stands on its own. */
   .btn.bday-more {
     display: flex; place-content: center; align-items: center;
-    width: 100%; min-height: 44px; margin-top: 10px;
+    width: 100%; min-height: var(--btn-h); margin-top: 10px;
   }
 
   /* ══ นโยบายการคำนวณ — the two columns become one ════════════════════════
@@ -14724,7 +14774,7 @@ table.mini tbody tr:hover { background: none; }
      room to. */
   .hr-table tbody td.act-col .row-actions { flex-wrap: nowrap; gap: 8px; }
   .hr-table tbody td.act-col .row-actions .btn {
-    flex: 1 1 0; min-width: 0; min-height: 44px;
+    flex: 1 1 0; min-width: 0; min-height: var(--btn-h);
     padding: 10px 8px; font-size: 13px; text-align: center;
   }
   /* ⚠ THE WORDS COME BACK HERE — this is the half of the 2026-09-10 icon change
@@ -15076,7 +15126,7 @@ table.mini tbody tr:hover { background: none; }
   /* Both decisions at a real touch size, filling the width the way the sheet
      footers elsewhere in the app do. */
   .form-actions { gap: 8px; }
-  .form-actions .btn { flex: 1 1 40%; min-height: 44px; }
+  .form-actions .btn { flex: 1 1 40%; min-height: var(--btn-h); }
 
   /* ── the batch bar is not drawn on a phone at all ───────────────────────── */
 
@@ -15237,7 +15287,7 @@ table.mini tbody tr:hover { background: none; }
     display: block; text-align: left;
   }
   .stack-table tbody td:not([data-label])::before { content: none; }
-  .stack-table tbody td .btn { min-height: 44px; }
+  .stack-table tbody td .btn { min-height: var(--btn-h); }
 
   /* A DESCRIPTION THAT WRAPS, AND THE LABEL DIRECTLY UNDER IT.
 
@@ -16003,7 +16053,7 @@ table.mini tbody tr:hover { background: none; }
 .log-head-actions { flex: none; display: flex; gap: 8px; align-items: center; margin-left: auto; }
 @media (max-width: 560px) {
   .log-head-actions { margin-left: 0; width: 100%; }
-  .log-head-actions .btn { flex: 1; min-height: 44px; }
+  .log-head-actions .btn { flex: 1; min-height: var(--btn-h); }
 }
 
 /* ── ONE BOX FOR A DATE RANGE (`DateRange`) ───────────────────────────────
@@ -16220,13 +16270,13 @@ table.mini tbody tr:hover { background: none; }
     font: 500 14px/1 var(--mono); font-variant-numeric: tabular-nums;
   }
   .table-pager .btn.pager-step,
-  .table-pager .btn.pager-num { width: 44px; min-width: 44px; height: 44px; }
+  .table-pager .btn.pager-num { width: var(--btn-h); min-width: var(--btn-h); height: var(--btn-h); }
   .table-pager .btn.pager-step { font-size: 22px; }
   .table-pager .btn.pager-num { font-size: 15px; }
   /* The box goes with them — a 30px control beside 44px squares is the one
      shape that reads as a mistake rather than as a choice. */
   .table-pager .pager-size-pick { width: 80px; }
-  .table-pager .pager-size-pick .pick-one { min-height: 44px; }
+  .table-pager .pager-size-pick .pick-one { min-height: var(--btn-h); }
 }
 
 /* ── the list itself ──────────────────────────────────────────────────────

@@ -313,7 +313,8 @@ test('the queue button and the dialog it opens say the same words', () => {
    * with the button that opens it, and only one of the two was reported.
    */
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  assert.match(queue, /\+ บันทึก OT แทนพนักงาน/);
+  // ปุ่มเหลือ บันทึกแทน + ไอคอน plus (2026-10-09) คำเต็มอยู่ใน title
+  assert.match(queue, /title="บันทึก OT แทนพนักงาน" onClick=\{\(\) => setFiling\(true\)\}>\s*<Icon name="plus" \/>\s*บันทึกแทน/);
   assert.ok(!queue.includes('บันทึก OT แทนลูกทีม'), 'the queue button kept the old wording');
   assert.match(code, /: proxy \? 'บันทึก OT แทนพนักงาน'/);
 });
@@ -332,7 +333,7 @@ test('a .btn.sm in a card head is a 44px touch target on a phone', () => {
   const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
   assert.match(
     phone,
-    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: 44px; \}/,
+    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: var\(--btn-h\); \}/,
   );
 });
 
@@ -405,7 +406,7 @@ test('the button takes a full-width line under the title on a phone', () => {
   // The 44px touch target is about thumbs, not about lines, and stays.
   assert.match(
     phone,
-    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: 44px; \}/,
+    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: var\(--btn-h\); \}/,
   );
 });
 

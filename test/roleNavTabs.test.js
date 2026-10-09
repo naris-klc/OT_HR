@@ -268,7 +268,8 @@ test('บันทึกและประวัติ OT and พิมพ์ใ
    * So this is not a spelling test. A future edit that puts ยื่น/ขอ on `form`
    * or reduces `mine` to ประวัติ is the same mistake arriving again.
    */
-  assert.match(block, /key: 'mine', label: 'บันทึกและประวัติ OT', icon: 'clock'/);
+  // icon was 'clock' until 2026-10-09 — ประวัติ = history ทั้งแอป
+  assert.match(block, /key: 'mine', label: 'บันทึกและประวัติ OT', icon: 'history'/);
   assert.match(block, /key: 'form', label: 'พิมพ์ใบขออนุมัติ OT', icon: 'document'/);
   const filing = block.slice(block.indexOf("key: 'form'"));
   for (const promise of ['ยื่น', 'ขออนุมัติ OT ใหม่']) {
@@ -528,7 +529,7 @@ test('the slots are declared once, in the order the phone bar draws them', () =>
   assert.deepEqual(
     rows.map((m) => [m[1], m[2], m[3]]),
     [
-      ['personal', 'ประวัติ OT', 'clock'],
+      ['personal', 'ประวัติ OT', 'history'],
       ['form', 'พิมพ์ใบ OT', 'document'],
       ['queue', 'รออนุมัติ', 'check'],
       ['reports', 'รายงาน', 'chart'],

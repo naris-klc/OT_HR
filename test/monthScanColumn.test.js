@@ -478,7 +478,8 @@ test('ดูเฉพาะคนที่ต้องตรวจ narrows the t
   // exists only while a comparison does, and a control that vanishes out of a
   // bar of four is a bar that changes shape by itself.
   assert.match(card, /onToggleFlagged && flagged > 0/);
-  assert.match(card, /ดูเฉพาะคนที่ต้องตรวจ \(\$\{flagged\} คน\)/);
+  // ดูเฉพาะคนที่ต้องตรวจ (N คน) until 2026-10-09 — ปุ่มไม่เกินสามคำ
+  assert.match(card, /ต้องตรวจ \(\$\{flagged\}\)/);
   assert.match(card, /aria-pressed=\{onlyFlagged\}/);
 
   // ⚠ AND THAT IS PAID FOR HERE. A filter that hides rows while the filter bar
@@ -521,7 +522,7 @@ test('ลิ้นชัก ไฟล์สแกนนิ้วมือ กร
   assert.match(css, /^\.scan-drawer-head \.disclosure-slide \{ order: 3; flex-basis: 100%; \}$/m);
   // บนมือถือ ปุ่มที่นิ้วต้องกดจริง ๆ คือปุ่มเดียวในลิ้นชักนี้ จึงกินบรรทัดทั้งบรรทัด
   const phone = css.slice(css.indexOf('@media (max-width: 640px)', css.indexOf('.scan-drawer-head {')));
-  assert.match(phone.slice(0, phone.indexOf('\n}')), /\.scan-drawer-head > \.row \.btn \{ flex: 1; min-height: 44px; \}/);
+  assert.match(phone.slice(0, phone.indexOf('\n}')), /\.scan-drawer-head > \.row \.btn \{ flex: 1; min-height: var\(--btn-h\); \}/);
 
   // 2. สี่ช่องเป็นสองคอลัมน์ — สิ่งที่มันอธิบายคือตาราง
   assert.match(scanImport, /<div className="scan-slots">/);

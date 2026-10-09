@@ -262,7 +262,9 @@ test('พิมพ์ F-HR-027 stayed, because it is the one act that is not "op
   // without leaving the month, and there is nowhere else on this screen to
   // print one from. Folding it into the row would mean opening a person and
   // coming back out to get the paper.
-  assert.match(cell, /พิมพ์ F-HR-027/);
+  // ป้ายเหลือ พิมพ์ (พิมพ์ F-HR-027 until 2026-10-09) — ชื่อใบอยู่ใน `name`
+  assert.match(cell, /label="พิมพ์"/);
+  assert.match(cell, /ใบขออนุมัติ OT — \$\{row\.employee\.name\}/);
   assert.match(cell, /icon="printer"/);
   assert.ok(!cell.includes('act-open'));
 
@@ -278,7 +280,7 @@ test('พิมพ์ F-HR-027 stayed, because it is the one act that is not "op
   // phone block: it is what gives that button its full card width and its 44px.
   assert.match(phone, /\.hr-table tbody td\.act-col \{[\s\S]*?grid-area: act;/);
   assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \{ flex-wrap: nowrap; gap: 8px; \}/);
-  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \{\s*flex: 1 1 0;[\s\S]*?min-height: 44px;/);
+  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \{\s*flex: 1 1 0;[\s\S]*?min-height: var\(--btn-h\);/);
 });
 
 test('the card spacing and the sub-line take the values the queue card already uses', () => {
@@ -737,7 +739,7 @@ test('.fold-pill is a class', () => {
   assert.match(phone, /\.fold-pill \{ min-height: 34px; padding: 4px 12px; \}/);
   // 44px is for the decisions, and the two on every employee card still keep it
   // on this same screen.
-  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \{[\s\S]*?min-height: 44px;/);
+  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \{[\s\S]*?min-height: var\(--btn-h\);/);
   /* ── AND `.export-row` IS GONE ENTIRELY — 2026-09-10 ──────────────────
    *
    * It held three buttons, then one, then none: พิมพ์ / ส่งออก is in the card
@@ -758,7 +760,7 @@ test('.fold-pill is a class', () => {
    * the grid was doing by hand. */
   assert.ok(!css.includes('.export-row {'), '.export-row came back — the button left the card head');
   assert.match(phone, /\.card-head:has\(> \.row \.btn\) \{ flex-direction: column; align-items: stretch; gap: 10px; \}/);
-  assert.match(phone, /\.card-head \.btn\.sm,[\s\S]{0,400}?min-height: 44px;/);
+  assert.match(phone, /\.card-head \.btn\.sm,[\s\S]{0,400}?min-height: var\(--btn-h\);/);
   // The two-label mechanism went with the fold it belonged to. Dead rules for a
   // markup nothing writes any more are rules a reader has to account for.
   assert.ok(!css.includes('fold-shut') && !css.includes('fold-open'), 'the two-label rules outlived their markup');
@@ -1164,10 +1166,11 @@ test('ไอคอนอนุมัติในแถว เปิดกล่�
      หนึ่งช่องแล้วกดแถบ ไม่ใช่เส้นทางเซ็นเส้นใหม่ */
   const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
 
-  // กลีฟเดียวกับปุ่ม อนุมัติ ของคิวรออนุมัติ ไม่ใช่กลีฟที่เลือกใหม่ให้จอนี้
-  // ผ่าน `RowAction` ทั้งสองจอตั้งแต่ 2026-10-08 — หนึ่งความหมาย หนึ่งไอคอน
-  assert.match(cell, /icon="tick"/);
-  assert.match(read('components/ApprovalQueue.jsx'), /icon="tick"/);
+  // ปุ่มนี้คือ ยืนยัน (HR ตรวจทั้งเดือน) ไม่ใช่ อนุมัติ — พจนานุกรมไอคอน 2026-10-09
+  // ให้ ยืนยัน = check และ อนุมัติ = tick · มันเคยใช้ tick ร่วมกับคิวรออนุมัติ
+  // ซึ่งเป็นหนึ่งไอคอนสองความหมาย
+  assert.match(cell, /icon="check"/);
+  assert.ok(!/icon="tick"/.test(cell), 'ยืนยันทั้งเดือนกลับไปใช้ไอคอนของ อนุมัติ');
 
   /* วาดพร้อมคอลัมน์ติ๊ก — และตั้งแต่ 2026-09-11 นั่นแปลว่า "ทุกเดือนที่ผู้อ่าน
      เซ็นได้" เพราะ `showPickCol` เป็น `mayCorrect` เฉย ๆ แล้ว · ⚠ บรรทัดนี้เคยมี

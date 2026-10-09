@@ -105,7 +105,8 @@ function BatchApproveModal({ entries, choosable, busy, onClose, onConfirm }) {
             disabled={busy || !ready}
             onClick={() => onConfirm(sel, capped.length ? why.trim() : null)}
           >
-            {sel.length > 1 ? `ยืนยันอนุมัติทั้งหมด (${sel.length} รายการ)` : 'ยืนยันการอนุมัติ'}
+            <Icon name="tick" />
+            {sel.length > 1 ? `ยืนยัน (${sel.length})` : 'ยืนยัน'}
           </button>
         </>
       )}
@@ -498,9 +499,10 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
    * components/WithdrawalRequests.jsx, which was deleted on 2026-09-18 with the
    * rest of the คำขอถอน flow; this is now the only box of that shape.
    *
-   * ไม่ยกเลิกแล้ว / ยืนยันการยกเลิก, and not ตกลง / ยกเลิก: in a box about
+   * ย้อนกลับ / ยืนยันยกเลิก (ไม่ยกเลิกแล้ว / ยืนยันการยกเลิก until 2026-10-09,
+   * shortened to three words), and not ตกลง / ยกเลิก: in a box about
    * cancelling, a button reading ยกเลิก is the question again rather than an
-   * answer to it. The pair EmployeeView uses on its own ยกเลิกคำขอนี้.
+   * answer to it.
    */
   const cancelDialog = cancelling && (
     <Modal
@@ -515,10 +517,11 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
             disabled={busy}
             onClick={() => { setCancelling(null); setCancelNote(''); }}
           >
-            ไม่ยกเลิกแล้ว
+            ย้อนกลับ
           </button>
           <button className="btn danger" disabled={busy || !cancelNote.trim()} onClick={cancelEntry}>
-            ยืนยันการยกเลิก
+            <Icon name="ban" />
+            ยืนยันยกเลิก
           </button>
         </>
       )}
@@ -628,10 +631,14 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
             disabled={busy}
             onClick={() => setBatch({ list: approvable, choosable: true })}
           >
-            อนุมัติที่รอ HR ({approvable.length})
+            <Icon name="tick" />
+            อนุมัติ ({approvable.length})
           </button>
         )}
-        <button className="btn ghost" onClick={onClose}>กลับไปสรุปรายเดือน</button>
+        <button className="btn ghost" onClick={onClose}>
+          <Icon name="chevronLeft" />
+          กลับ
+        </button>
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}
@@ -750,7 +757,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
               onClick={toggleAll}
             >
               <Icon name="history" className="btn-icon" />
-              ประวัติการแก้ไขทั้งหมด <b>{auditable.length}</b>
+              ประวัติ <b>{auditable.length}</b>
             </button>
           </span>
         </div>
@@ -766,10 +773,18 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
               disabled={busy}
               onClick={() => setBatch({ list: chosenRows, choosable: false })}
             >
-              อนุมัติที่เลือก ({chosenRows.length})
+              <Icon name="tick" />
+              อนุมัติ ({chosenRows.length})
             </button>
-            <button className="link" disabled={busy} onClick={() => setPicked(new Set())}>
-              ยกเลิกการเลือก
+            <button
+              type="button"
+              className="btn quiet sm"
+              disabled={busy}
+              onClick={() => setPicked(new Set())}
+              aria-label="ล้างที่เลือก"
+              title="ล้างที่เลือก"
+            >
+              <Icon name="close" />
             </button>
           </div>
         )}
@@ -1193,10 +1208,12 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           It was a sentence — `.cell-sub.th`, ไม่มีประวัติการแก้ไข
                           — from then until 2026-10-08, when the row's controls
                           became icon squares and the sentence became the widest
-                          thing in the cell. It is a disabled `history` icon now,
-                          with the sentence as its reason. */}
+                          thing in the cell. It is a disabled icon now,
+                          with the sentence as its reason. The icon was
+                          `history` until 2026-10-09 and is `compare` now —
+                          ค่าเดิม has its own icon, ประวัติ is the toggle above. */}
                       <RowAction
-                        icon="history"
+                        icon="compare"
                         label={open.has(e._id) ? 'ซ่อนข้อมูลเดิม' : 'ดูข้อมูลเดิม'}
                         why={hasAuditTrail(e) ? '' : 'ไม่มีประวัติการแก้ไข'}
                         on={open.has(e._id)}

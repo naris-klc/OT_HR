@@ -4,10 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
   ApprovalSteps, ApproverLine, BirthdayWelfareMark, CancelledMark, CapCard, StatusChip, Alert,
-  BucketSplit, ConfirmDialog, Empty, EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead,
-  ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, editsOf, stamp,
+  ConfirmDialog, Empty, EditedMark, EntryHistory, EntryHistoryFold, EntryLead, Fact, Modal, ProxyMark,
+  RateHead, ReasonCard, RefiledNote, RequestTrail, SegmentRates, SignatureFacts, editsOf, stamp,
   trailOf, RowAction, NoticeStack,
 } from './common.jsx';
+import Icon from './icons.jsx';
 import { approvalSteps } from '@/lib/approverLine.js';
 import {
   awaitingFirstSignature, cancelCutoffRefusal, filingOf, isBirthdayWelfare,
@@ -1050,6 +1051,7 @@ function EntryDetail({
    * question on this pop-up that is not about this request.
    */
   const month = usage?.period === e.period ? usage : null;
+  const hasActions = mayEdit || mayAsk || refileState(e) === 'open' || (past && wouldOffer);
 
   return (
     <Modal
@@ -1097,38 +1099,25 @@ function EntryDetail({
         </div>
       )}
       onClose={onClose}
-      footer={(
+      footer={hasActions && (
         <>
-          {/*
-            ปิดหน้าต่าง, AND IT KEEPS ITS PLACE HERE.
-
-            The reviewer's pop-up dropped its ปิด on the argument that a dialog
-            with two answers should not give a third of its foot to the button
-            that answers nothing — and that argument is about a dialog whose
-            foot is a QUESTION. This one is a reading, and on most rows the two
-            buttons beside it are not offered at all: an approved request that
-            is past the withdrawal window has no actions, and a foot that then
-            held nothing would leave the ✕ as the only visible way out of a
-            sheet filling a phone screen.
-
-            "ปิดหน้าต่าง" and not "ปิด", because it sits in a row with ยกเลิกคำขอ
-            — which also closes something, permanently. One word of object each
-            is what keeps the two apart at a glance.
-          */}
-          <button className="btn ghost" onClick={onClose}>ปิดหน้าต่าง</button>
+          {/* ปิดหน้าต่าง ออกไป 2026-10-09 (mockup detail-modal-2) — ✕ บนหัวคือทาง
+              ออกเดียวกัน และใบที่ไม่มีปุ่มอะไรเลยไม่วาดท้ายกล่อง (`hasActions`)
+              แทนที่จะวาดแถบที่มีปุ่มปิดปุ่มเดียว · ชื่อปุ่มไม่เกิน 3 คำ ไอคอน
+              ตามพจนานุกรมใน components/icons.jsx */}
           {/* The same rules the full table's action column uses, in the same
               order of consequence. A button the server would refuse is worse
               than no button, so each asks the rule rather than the status —
               see awaitingFirstSignature and withdrawEligibility. */}
-          {mayEdit && <button className="btn ghost danger" onClick={onCancel}>ยกเลิกคำขอ</button>}
+          {mayEdit && <button className="btn ghost danger" onClick={onCancel}><Icon name="ban" />ยกเลิกคำขอ</button>}
           {/* ⚠ IT READ ยื่นขอถอนใบ OT UNTIL 2026-09-18, and the extra word was
               carrying a real distinction: this button ASKED, the reviewer's
               took the hours off the books. It does the same thing as theirs
               now, so it says the same thing, and `btn ghost danger` beside
               ยกเลิกคำขอ because both end the request — see the row. */}
-          {mayAsk && <button className="btn ghost danger" onClick={onAskWithdraw}>ถอนใบ OT</button>}
-          {refileState(e) === 'open' && <button className="btn" onClick={onRefile}>ส่งใหม่</button>}
-          {mayEdit && <button className="btn" onClick={onEdit}>แก้ไข</button>}
+          {mayAsk && <button className="btn ghost danger" onClick={onAskWithdraw}><Icon name="ban" />ถอนใบ OT</button>}
+          {refileState(e) === 'open' && <button className="btn" onClick={onRefile}><Icon name="send" />ส่งใหม่</button>}
+          {mayEdit && <button className="btn" onClick={onEdit}><Icon name="pencil" />แก้ไข</button>}
           {/* The row's sentence, in the row's own words, gated by the row's own
               counterfactual — so a request whose buttons are missing because it
               was refused is not told the งวด closed. The same grey chip the
@@ -1204,73 +1193,36 @@ function EntryDetail({
         </Alert>
       )}
 
-      <Section title="คำขอ">
-        <dl className="fact-grid">
-          <Fact
-            k="เวลาที่ขอ"
-            v={`${e.startTime}–${e.endTime}`}
-          />
-          <Fact k="พักเที่ยง" v={e.noBreakTaken ? 'ไม่พัก' : 'หักตามนโยบาย'} />
-          <Fact k="ชั่วโมงตามนาฬิกา" v={`${hours(e.totals?.clockHours)} ชม.`} />
-        </dl>
-      </Section>
+      {/* ── แบบ 1 ของ mockup detail-modal-2 (2026-10-09) — โครงเดียวกับป๊อปอัป
+          ของผู้อนุมัติ (ApprovalQueue `DetailModal`) *"ให้ใช้ design system เดียวกัน
+          ทั้งแอปสำหรับหน้า หน้ารายละเอียดใบ OT"* · แทน: ช่องข้อมูลสามช่อง
+          `BucketSplit` และ `SegmentList` (ตาราง `SegmentRates` แทนทั้งสอง) ·
+          ป้ายวันเกิดไม่ซ้ำในแถบนำ เพราะกล่อง info ข้างบนมีป้ายกับคำอธิบายแล้ว
 
-      {/* รายละเอียดงาน was the fourth cell of that grid — `wide`, so the three
-          short facts beside it were not stretched to the height of a paragraph.
-          It is a card of its own now, the same card the reviewer reads, for the
-          reason written over `ReasonCard`: it is not a measurement, it is the
-          answer to "why". */}
-      <ReasonCard description={e.description} extraNote={e.extraNote} />
-
-      {/* WHERE THE MONTH STANDS — new here on 2026-09-02, and the reason the
-          pop-up was asked for. The hero at the top of the dashboard says this
-          for the month as a whole; an employee who has opened one request is
-          asking it about the request, and was being sent back up the page to a
-          figure they then had to hold in their head. Same card, same arithmetic
-          and same words as the reviewer's, from lib/caps.js. */}
-      <CapCard month={month} counted={!month || month.countedIds?.includes(String(e._id))} />
-
-      {/* Why the total is what it is. The three cards at the top of the screen
-          say this for the whole month; this says it for the one request, which
-          is where "ทำ 14 ชม. ทำไมไม่ได้ ×1.5 ทั้งใบ" gets answered. */}
-      <Section title="ชั่วโมงแยกตามอัตรา">
-        <BucketSplit buckets={e.buckets} total={e.totals?.otHours} />
-      </Section>
-
-      {/* Named as the reviewer names it. It read "ช่วงเวลาที่ระบบแบ่ง", which is
-          the same list under a heading that only this screen used — and the two
-          are now read side by side often enough that one name is worth more
-          than the shade of meaning the other carried. */}
-      {e.segments?.length > 0 && (
-        <Section title="การแบ่งช่วงเวลา">
-          <SegmentList segments={e.segments} />
-        </Section>
-      )}
-
-      {/*
-        WHO SIGNED IT, AND WHEN — one heading over both answers.
-
-        `SignatureFacts` is the pair the reviewer reads: who put the request in
-        and whether the หัวหน้า has signed, each with its minute, plus the note
-        the หัวหน้า left. `ApprovalSteps` is the list underneath — every
-        signature in order, with the desk each was made at, which is what this
-        screen has had since 2026-08-31 and what the reviewer's has never
-        carried.
-
-        Both, because they are not the same answer twice. The pair says where
-        the request is now and is drawn on a request nobody has touched; the
-        list says what happened to it and appears only once something has. And
-        the pair is what names the FILER, whom the list never mentions.
-      */}
-      <Section title="ผู้อนุมัติ">
-        <SignatureFacts entry={e} />
-        {decided && (
-          <>
-            <div className="kicker-sm" style={{ marginTop: 12 }}>ลายเซ็นทุกขั้น</div>
-            <ApprovalSteps entry={e} />
-          </>
-        )}
-      </Section>
+          เหตุผลของแต่ละชิ้นที่ยังอยู่: `ReasonCard` คือคำตอบของ "ทำไม" ไม่ใช่
+          ตัวเลข · `CapCard` (2026-09-02) ตอบว่าเดือนนี้ไปถึงไหนแล้วสำหรับใบที่
+          เปิดอยู่ · `SignatureFacts` บอกว่าใบอยู่ที่ไหนตอนนี้และใครยื่น ·
+          `ApprovalSteps` บอกว่าเกิดอะไรกับใบไปแล้ว — คนละคำตอบ จึงมีทั้งคู่ */}
+      <EntryLead entry={e} marks={!isBirthdayWelfare(e)} />
+      <div className="dm-grid">
+        <div className="dm-panel">
+          <SegmentRates entry={e} />
+          <ReasonCard description={e.description} extraNote={e.extraNote} />
+        </div>
+        <div className="dm-panel">
+          <CapCard month={month} counted={!month || month.countedIds?.includes(String(e._id))} />
+          <div>
+            <div className="kicker-sm">ผู้อนุมัติ</div>
+            <SignatureFacts entry={e} />
+          </div>
+          {decided && (
+            <div>
+              <div className="kicker-sm">ลายเซ็นทุกขั้น</div>
+              <ApprovalSteps entry={e} />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/*
         ประวัติรายการ — THE WHOLE TRAIL, NOT ONLY THE PART THAT WAS REWRITTEN.
@@ -1289,7 +1241,7 @@ function EntryDetail({
         two versions the printed form uses.
       */}
       {(e.history || []).length > 0 && (
-        <Section title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>
+        <EntryHistoryFold title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>
           {hasPast && (
             <div className="hint" style={{ margin: '0 0 6px' }}>
               ด้านล่าง = ข้อมูลเดิมก่อนแก้
@@ -1299,7 +1251,7 @@ function EntryDetail({
           {trail
             ? <RequestTrail requests={trail} liveStatus={e.status} />
             : <EntryHistory entry={e} />}
-        </Section>
+        </EntryHistoryFold>
       )}
     </Modal>
   );

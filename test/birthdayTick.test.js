@@ -328,7 +328,10 @@ test('หน้ารออนุมัติ — ป้าย OT สวัส�
   // ใต้เวลา (`span-col`) ตั้งแต่ 2026-10-09 — เดิมอยู่ในช่อง รายละเอียด
   const row = queue.slice(queue.indexOf('<td className="span-col">'), queue.indexOf('<td className="num rate-col">'));
   // ป๊อปอัปเป็นสองคอลัมน์ตั้งแต่ 2026-10-09 — เดิมเริ่มที่ <Section title="คำขอ">
-  const detail = queue.slice(queue.indexOf('<div className="dm-grid">'), queue.indexOf('<ReasonCard', queue.indexOf('<div className="dm-grid">')));
+  // ป้ายย้ายเข้าแถบนำ `EntryLead` (common.jsx) ตั้งแต่ 2026-10-09 — ป๊อปอัปวาดแถบนั้น
+  const common0 = read('components/common.jsx');
+  assert.match(queue, /<EntryLead entry=\{e\} \/>/);
+  const detail = common0.slice(common0.indexOf('export function EntryLead('), common0.indexOf('export function EntryHistoryFold('));
 
   for (const [where, code] of [['แถวในคิว', row], ['ป๊อปอัปรายละเอียด', detail]]) {
     assert.match(code, /<BirthdayWelfareMark entry=\{e\} \/>/, `ป้ายวันเกิดหายจาก${where}`);

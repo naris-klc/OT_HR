@@ -218,11 +218,9 @@ test('ไม่มีบรรทัดบอกช่วงวันที่�
     !/^[^\n{}]*\brule-note\b[^\n{}]*\{/m.test(css),
     '.rule-note ยังมีกฎอยู่ทั้งที่ไม่มีใครใส่คลาสนี้',
   );
-  assert.ok(!formCode.includes('<Icon'), 'ฟอร์มวาดไอคอนของตัวเองอีกแล้ว');
-  assert.ok(
-    !strip(form.slice(0, form.indexOf('const blank'))).includes("from './icons.jsx'"),
-    'Icon ยังถูก import อยู่ทั้งที่ไม่มีใครใช้',
-  );
+  // `Icon` came back on 2026-10-09 for the foot's action buttons (กฎไอคอนทั้งแอป)
+  // — what stays gone is the calendar glyph of the date rule.
+  assert.ok(!formCode.includes('<Icon name="calendar"'), 'ฟอร์มวาดไอคอนปฏิทินของกฎวันที่อีกแล้ว');
 });
 
 /**

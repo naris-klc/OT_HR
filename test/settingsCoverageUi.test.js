@@ -162,10 +162,10 @@ test('the repair that closes the warning is the row\'s button; the stand-in is n
   const more = body.slice(body.indexOf('more={'));
 
   assert.match(action, /onClick=\{\(\) => onGo\('employees'\)\}/);
-  assert.match(action, /ไปที่หน้าพนักงานเพื่อตั้งค่าสิทธิ์ ↗/);
+  assert.match(action, /<Icon name="external" \/>ตั้งสิทธิ์/);
   assert.match(more, /className="link" onClick=\{\(\) => onGo\('delegation'\)\}/);
   // Both still reachable — a hierarchy, not a removal.
-  assert.match(more, /ตั้งผู้รับช่วงอนุมัติ/);
+  assert.match(more, /ตั้งผู้รับช่วง/);
 
   // And it is an error row inside the page's stack — one that cannot be hidden.
   assert.match(body, /<NoticeRow\s+tone="error"/);
@@ -232,7 +232,7 @@ test('a gap is a badge per uncovered payroll, with the way out beside it', () =>
   assert.match(code, /⚠ ยังไม่มีหัวหน้า\s*\n/);
   // And the button that goes where the fix is.
   assert.match(code, /className="link head-fix"\s*\n\s*onClick=\{\(\) => onGo\('employees'\)\}/);
-  assert.match(code, /แก้ไขสิทธิ์พนักงาน ↗/);
+  assert.match(code, /<Icon name="external" \/>แก้สิทธิ์/);  // ไอคอนแทน ↗ ที่พิมพ์ (2026-10-09)
 });
 
 test('the gap badge is amber and ringed; the plain one is not', () => {
@@ -447,7 +447,7 @@ test('pressing ลบแผนก asks the server first, and the answer picks th
   // The refusal quotes the shared sentence rather than restating it.
   assert.match(code, /import \{ DEPARTMENT_DELETE_BLOCKED \} from '@\/lib\/departments\.js'/);
   // …and it offers the way out rather than describing it.
-  assert.match(body, /ปิดใช้งานแผนกนี้แทน/);
+  assert.match(body, /<Icon name="ban" \/>\{deleting\.dept\.active === false \? 'ปิดใช้งานอยู่แล้ว' : 'ปิดใช้งาน'\}/);
 });
 
 // ── 2 · the chip and the badge ───────────────────────────────────────────────

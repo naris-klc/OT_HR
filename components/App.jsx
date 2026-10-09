@@ -168,7 +168,12 @@ function PasswordReminder({ onOpenProfile }) {
       tone="warn"
       title="คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่"
       detail="รหัสนี้คือรหัสพนักงานของคุณ ซึ่งมีคนอื่นทราบด้วย · แนะนำให้เปลี่ยนเมื่อสะดวก"
-      action={<button className="btn ghost sm" onClick={onOpenProfile}>เปลี่ยนรหัสผ่าน</button>}
+      action={(
+        <button className="btn ghost sm" onClick={onOpenProfile}>
+          <Icon name="key" />
+          เปลี่ยนรหัส
+        </button>
+      )}
     />
   );
 }
@@ -819,7 +824,7 @@ const RAIL_QUERY = '(max-width: 1180px)';
  * becoming a second menu.
  */
 const BAR_SLOTS = Object.freeze([
-  { key: 'personal', label: 'ประวัติ OT', icon: 'clock' },
+  { key: 'personal', label: 'ประวัติ OT', icon: 'history' },
   { key: 'form', label: 'พิมพ์ใบ OT', icon: 'document' },
   { key: 'queue', label: 'รออนุมัติ', icon: 'check' },
   { key: 'reports', label: 'รายงาน', icon: 'chart' },
@@ -1452,13 +1457,14 @@ function Shell({ session, onRefresh, onLogout }) {
    * HR's says พิมพ์ใบขออนุมัติ OT — it read พิมพ์ใบขออนุมัติ OT ทุกคน until
    * 2026-09-14 — and an employee's is their own copy of it.
    *
-   * THE ICONS ARE THE ONES THEY ALREADY WORE. `clock` is the whole set's only
-   * time glyph and there is no `history`; `document` is a sheet of paper with
+   * THE ICONS ARE THE ONES THEY ALREADY WORE, with one change: `mine` wore
+   * `clock` until 2026-10-09, when the set gained `history` and the icon
+   * vocabulary gave ประวัติ that one glyph app-wide; `document` is a sheet of paper with
    * ruled lines, which is exactly what comes out of the second tab. Adding a
    * `+` to it would promise the filing this tab does not do.
    */
   if (user.maySubmitOt) {
-    tabs.push({ key: 'mine', label: 'บันทึกและประวัติ OT', icon: 'clock', group: 'personal', bar: 'personal' });
+    tabs.push({ key: 'mine', label: 'บันทึกและประวัติ OT', icon: 'history', group: 'personal', bar: 'personal' });
     // THE ONE ROW WHOSE SLOT DEPENDS ON WHO IS READING IT, and the only row
     // where the two cuts can disagree. `group` puts it in the sidebar's personal
     // fold beside `mine` for everybody. The phone gives it a slot of its own —
@@ -1732,7 +1738,7 @@ function Shell({ session, onRefresh, onLogout }) {
    * which keeps the order it found things in. See `BAR_SLOTS`.
    *
    * THE GLYPH FOLLOWS A SLOT HOLDING ONE TAB, because a glyph is not a
-   * sentence: a single-tab `personal` shows the clock `mine` wears rather than
+   * sentence: a single-tab `personal` shows the icon `mine` wears rather than
    * the slot's own, so the bar is still the icons a reader recognises from the
    * sidebar.
    *
@@ -2039,7 +2045,7 @@ function Shell({ session, onRefresh, onLogout }) {
             <span className="chev">›</span>
             <span className="nav-tip">{user.name}</span>
           </button>
-          <button className="signout" onClick={logout}>ออกจากระบบ</button>
+          <button className="signout" onClick={logout}><Icon name="logout" />ออกจากระบบ</button>
         </div>
       </aside>
 
@@ -2264,8 +2270,9 @@ function Shell({ session, onRefresh, onLogout }) {
             className="fab no-print"
             onClick={() => setFormSignal((n) => n + 1)}
             title="บันทึก OT ใหม่"
+            aria-label="บันทึก OT ใหม่"
           >
-            +
+            <Icon name="plus" />
           </button>
         )}
       </div>

@@ -163,7 +163,7 @@ test('under 560 the buttons are a thumb tall and take the line', () => {
   const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.log-head-actions {')));
   const block = narrow.slice(0, narrow.indexOf('\n}\n'));
   assert.match(block, /\.log-head-actions \{[^}]*margin-left: 0/);
-  assert.match(block, /\.log-head-actions \.btn \{[^}]*min-height: 44px/);
+  assert.match(block, /\.log-head-actions \.btn \{[^}]*min-height: var\(--btn-h\)/);
   const wide = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.match(wide, /\.queue-tools \.field, \.queue-tools \.field\.search \{ flex: 1 1 100%; \}/);
 });
