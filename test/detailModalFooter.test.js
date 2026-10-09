@@ -303,7 +303,10 @@ test('the header is name, then a code · แผนก tag, with the date under t
   has(code, '<span className="s-tag">');
   assert.ok(!code.includes('className="s-when"'), 'วันที่กลับมาอยู่ใต้ชื่ออีก');
   has(code, '<div className="head-side">');
-  has(code, '<span className="head-when">{thaiDate(e.workDate)} (วัน{dayName(e.workDate)})</span>');
+  // "พฤ. 08/10/2569" — วันย่อนำหน้า (2026-10-09) · เดิม "08/10/2569 (วันพฤหัสบดี)"
+  has(code, '<span className="head-when">{dayAbbr(e.workDate)} {thaiDate(e.workDate)}</span>');
+  // มือถือ: ก้อนขวาไปมุมขวาบนข้าง ✕ สองแถว เหมือนจอกว้าง
+  has(css, '.modal-head:has(.head-side) { flex-direction: row; align-items: flex-start; gap: 10px; }');
   has(css, '.head-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }');
   // On the sheet the figure and the status chip share the name's line instead
   // of stacking under the ✕ — a whole line of a 375px screen.
