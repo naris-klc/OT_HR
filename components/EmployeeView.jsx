@@ -5,7 +5,7 @@ import { api, hours, thaiDate, dayName, dayAbbr, currentPeriod, periodLabel, BUC
 import {
   ApprovalSteps, ApproverLine, BirthdayWelfareMark, CancelledMark, CapCard, StatusChip, Alert,
   ConfirmDialog, Empty, EditedMark, EntryHistory, EntryHistoryBlock, EntryLead, Fact, Modal, ProxyMark,
-  RateHead, ReasonCard, RefiledNote, RequestTrail, SegmentRates, SignatureFacts, editsOf,
+  RateHead, ReasonCard, RefiledNote, RequestTrail, SegmentRates, editsOf,
   trailOf, RowAction, NoticeStack,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -1182,7 +1182,11 @@ function EntryDetail({
         </Alert>
       )}
 
-      {/* ── แบบ 1 ของ mockup detail-modal-2 (2026-10-09) — โครงเดียวกับป๊อปอัป
+      {/* ── แบบ ก2 ของ mockup detail-no-approver (2026-10-09): แถบเพดานเต็มกว้าง
+          แล้วสองแผง ชั่วโมง | งาน + ลายเซ็นทุกขั้น · ผู้อนุมัติ (`SignatureFacts`)
+          ตัดออกเพราะซ้ำกับประวัติที่แสดงเต็ม · ลายเซ็นทุกขั้นยังอยู่ — มันคือ
+          ภาพลายเซ็น ไม่ใช่ข้อความที่ประวัติมีอยู่แล้ว
+          ── ก่อนหน้า: แบบ 1 ของ mockup detail-modal-2 — โครงเดียวกับป๊อปอัป
           ของผู้อนุมัติ (ApprovalQueue `DetailModal`) *"ให้ใช้ design system เดียวกัน
           ทั้งแอปสำหรับหน้า หน้ารายละเอียดใบ OT"* · แทน: ช่องข้อมูลสามช่อง
           `BucketSplit` และ `SegmentList` (ตาราง `SegmentRates` แทนทั้งสอง) ·
@@ -1193,17 +1197,15 @@ function EntryDetail({
           เปิดอยู่ · `SignatureFacts` บอกว่าใบอยู่ที่ไหนตอนนี้และใครยื่น ·
           `ApprovalSteps` บอกว่าเกิดอะไรกับใบไปแล้ว — คนละคำตอบ จึงมีทั้งคู่ */}
       <EntryLead entry={e} marks={!isBirthdayWelfare(e)} />
+      <div className="dm-cap-strip">
+        <CapCard month={month} counted={!month || month.countedIds?.includes(String(e._id))} />
+      </div>
       <div className="dm-grid">
         <div className="dm-panel">
           <SegmentRates entry={e} />
-          <ReasonCard description={e.description} extraNote={e.extraNote} />
         </div>
         <div className="dm-panel">
-          <CapCard month={month} counted={!month || month.countedIds?.includes(String(e._id))} />
-          <div>
-            <div className="kicker-sm">ผู้อนุมัติ</div>
-            <SignatureFacts entry={e} />
-          </div>
+          <ReasonCard description={e.description} extraNote={e.extraNote} />
           {decided && (
             <div>
               <div className="kicker-sm">ลายเซ็นทุกขั้น</div>

@@ -10631,6 +10631,20 @@ table.mini tbody tr:hover { background: none; }
 .dm-panel .cap-card, .dm-panel .reason-card { padding: 0; background: none; border: 0; }
 .dm-panel .cap-card.over { padding: 8px 10px; background: var(--danger-bg); border: 1px solid var(--danger-line); }
 .dm-panel .reason-card { border-top: 1px solid var(--line); padding-top: 10px; border-radius: 0; }
+/* แบบ ก2 (2026-10-09): งานอยู่หัวแผงขวาเอง ไม่มีเส้นคั่นข้างบน · ลายเซ็น
+   ทุกขั้น (ฝั่งพนักงาน) ตามมาใต้มันพร้อมเส้นคั่น */
+.dm-panel > .reason-card:first-child { border-top: 0; padding-top: 0; }
+.dm-panel > .reason-card + div { border-top: 1px solid var(--line); padding-top: 10px; }
+/* แถบเพดานเต็มกว้างเหนือสองแผง — หัว + ตัวเลขซ้าย ชิปชิดขวา บรรทัดเดียว ·
+   จอแคบชิปลงบรรทัดใหม่เอง · หมายเหตุ (ถ้ามี) เต็มบรรทัด · ไม่มีเดือนให้แสดง
+   `CapCard` คืน null และแถบหายไปทั้งแถบ */
+.dm-cap-strip:empty { display: none; }
+.dm-cap-strip .cap-card {
+  flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 6px 14px; padding: 10px 14px;
+}
+.dm-cap-strip .cap-card-head { justify-content: flex-start; gap: 12px; }
+.dm-cap-strip .cap-card-note { flex-basis: 100%; }
 .dm-panel .fact-grid { background: none; border: 0; border-radius: 0; gap: 0; }
 .dm-panel .fact-grid > div { flex-basis: 100%; background: none; padding: 6px 0; border-top: 1px solid var(--line); }
 .dm-panel .fact-grid dd { font-weight: 600; }

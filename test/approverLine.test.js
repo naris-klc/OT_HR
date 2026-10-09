@@ -392,7 +392,9 @@ test('the two pop-ups read one set of cards, not two copies of them', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
   const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
 
-  for (const name of ['ReasonCard', 'CapCard', 'SignatureFacts']) {
+  // `SignatureFacts` ออกจากทั้งสองป๊อปอัป 2026-10-09 (แบบ ก2) — ซ้ำกับประวัติ
+  // รายการที่แสดงเต็ม
+  for (const name of ['ReasonCard', 'CapCard']) {
     has(common, `export function ${name}(`, `${name} ไม่ได้อยู่ใน common.jsx`);
     assert.ok(queue.includes(`<${name}`), `คิวรออนุมัติ ไม่ได้เรียก ${name}`);
     assert.ok(mine.includes(`<${name}`), `รายการ OT ของฉัน ไม่ได้เรียก ${name}`);
@@ -430,19 +432,19 @@ test('the ceiling card is only drawn for the month its figures are about', () =>
 });
 
 /**
- * ผู้อนุมัติ IS A PAIR AND A LIST, AND THEY ARE NOT THE SAME ANSWER TWICE.
+ * ลายเซ็นทุกขั้น stays; the ผู้อนุมัติ pair does not.
  *
- * `SignatureFacts` says where the request is now — who put it in and whether
- * the หัวหน้า has signed — and is drawn on a request nobody has touched.
- * `ApprovalSteps` says what happened to it, and appears only once something
- * has. The pair is also the only one of the two that names the FILER.
+ * `SignatureFacts` (who filed it, whether the หัวหน้า signed) was drawn here
+ * until 2026-10-09 and was cut in แบบ ก2: ประวัติรายการ is shown in full at the
+ * foot of the pop-up and names the same people at the same times, filer
+ * included. `ApprovalSteps` is the signatures themselves and nothing else on
+ * the pop-up carries them, so it stays, still only once something was signed.
  */
-test('the owner sees both the pair and the list, under one heading', () => {
+test('the owner sees the signature list, and not the duplicated pair', () => {
   const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
-  // แผงขวาของหน้ารายละเอียดแบบ 1 (2026-10-09) แทน <Section title="ผู้อนุมัติ">
-  const section = mine.slice(mine.indexOf('<div className="kicker-sm">ผู้อนุมัติ</div>'));
+  const section = mine.slice(mine.indexOf('<div className="dm-cap-strip">'));
   const head = section.slice(0, section.indexOf('<EntryHistoryBlock'));
-  assert.match(head, /<SignatureFacts entry=\{e\} \/>/, 'คู่ผู้ยื่น–ผู้อนุมัติหายไป');
+  assert.ok(!head.includes('<SignatureFacts'), 'คู่ผู้ยื่น–ผู้อนุมัติกลับมาซ้ำกับประวัติ');
   assert.match(head, /\{decided && \(/, 'รายการลายเซ็นไม่ได้ถูกกั้นด้วย decided');
   assert.match(head, /<ApprovalSteps entry=\{e\} \/>/, 'รายการลายเซ็นหายไป');
   // One heading. Two sections a word apart — ผู้อนุมัติ and การอนุมัติ — is the
