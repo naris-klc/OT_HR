@@ -237,7 +237,9 @@ test('the options come from the roster, not from the rows', () => {
   // Narrowed to what this reader may actually be given — the same list the
   // server will honour and nothing wider.
   assert.match(hrView, /const mine = \(user\?\.coversDepartments \|\| \[\]\)\.map\(String\);/);
-  assert.match(hrView, /\.filter\(\(d\) => !mine\.length \|\| mine\.includes\(String\(d\._id\)\)\)/);
+  // …plus any แผนก with rows this month, which the server already narrowed:
+  // a ผู้อนุมัติรายคน reads people outside the แผนก they hold (2026-10-09).
+  assert.match(hrView, /\.filter\(\(d\) => !mine\.length \|\| mine\.includes\(String\(d\._id\)\) \|\| counts\[String\(d\._id\)\] != null\)/);
 });
 
 // ── the figures beside the names ────────────────────────────────────────────

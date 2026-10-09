@@ -1000,7 +1000,9 @@ export default function HrView({
     const counts = data?.departmentCounts || {};
     const mine = (user?.coversDepartments || []).map(String);
     return (roster || [])
-      .filter((d) => !mine.length || mine.includes(String(d._id)))
+      // …or one with rows this month: a ผู้อนุมัติรายคน reads people outside
+      // the แผนก they hold (`teamReportFilter`).
+      .filter((d) => !mine.length || mine.includes(String(d._id)) || counts[String(d._id)] != null)
       .map((d) => ({
         value: String(d._id),
         label: d.nameTh || d.name,
