@@ -8867,6 +8867,11 @@ tfoot tr.grand td {
    was for. */
 .queue-table td.when-col,
 .queue-table td.span-col { white-space: nowrap; }
+/* วันเกิด · เหมารายวัน ใต้เวลา (2026-10-09, ย้ายมาจาก รายละเอียด) — ป้ายละบรรทัด
+   เพราะสองป้ายเคียงกันกว้างกว่าคอลัมน์ 108px · ระยะบนและความสูงเท่า `.cell-flag`
+   ป้ายข้างใต้จึงไม่หนากว่า ไม่พักเที่ยง และแถวไม่สูงเกินจำเป็น */
+.queue-table td.span-col .entry-mark { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-top: 3px; }
+.queue-table td.span-col .entry-mark .chip { margin: 0; padding: 1px 8px; line-height: 1.45; white-space: nowrap; }
 
 /* ── ส. AND THE DATE ON ONE LINE, IN THAT ORDER — 2026-09-11 ────────────────
    Reported as *ความกว้างไม่สมดุล ตรงคอลัมน์ วันที่ ต้องการให้แสดง ส.12/09/2569
@@ -12888,6 +12893,9 @@ table.mini tbody tr:hover { background: none; }
   }
   .queue-table td.span-col .cell-note::before,
   .queue-table td.span-col .cell-sub::before { content: '· '; color: var(--muted-2); }
+  /* ป้าย วันเกิด · เหมารายวัน บนการ์ด: เรียงต่อกันใต้เวลา ตัดบรรทัดได้ · ช่องเวลา
+     บนการ์ดแคบ (~100px ที่จอ 390) ต่อท้ายบรรทัดเวลาแบบ inline แล้วป้ายล้นขอบการ์ด */
+  .queue-table td.span-col .entry-mark { flex-direction: row; flex-wrap: wrap; gap: 3px 4px; white-space: normal; }
 
   /* THE THREE RATE COLUMNS GO. Not lost — the รายละเอียด pop-up prints all
      four buckets under BUCKET_LABEL, which is where a reviewer who wants the
