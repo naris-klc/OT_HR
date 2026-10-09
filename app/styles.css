@@ -8208,46 +8208,53 @@ th.seq, td.seq {
 table.fixed { table-layout: fixed; min-width: 820px; }
 table.fixed td { overflow-wrap: anywhere; }
 
-/* ══ ปฏิทินวันหยุดประจำปี — the month bands in the dialog ═══════════════════
+/* ══ ปฏิทินวันหยุดประจำปี — แบบ C (mockup `holiday-modal`, 2026-10-09) ═══════
 
-   `.cal-table` is one `<tbody>` per month with the month's name as a `<th
-   scope="rowgroup">` across both columns — see the note in
-   components/HolidayBanner.jsx for why that and not a `<tr>` with a colSpan.
-   What is here is only what makes a row group LOOK like one.
+   One line per holiday: month (rowspanned, one `<tbody>` per month) · day +
+   abbreviated weekday · name. Until 2026-10-09 the month was a band row of its
+   own in `--green-wash` and the weekday wrapped under the day, which made every
+   holiday two lines tall.
 
-   THE BAND IS NOT A COLUMN HEADING AND MUST NOT BE DRESSED AS ONE. `th` in this
-   stylesheet is 11.5px `--mono`, uppercase, with .07em of letter-spacing — a
-   voice built for `วันที่` / `วันหยุด`, which is to say for a word that names a
-   column. `สิงหาคม 2569` names a group of rows and is Thai prose: `--mono`
-   renders Thai out of a fallback face, `text-transform: uppercase` does nothing
-   to it, and .07em pulls apart syllables that are drawn joined. So the band
-   takes all three back and speaks in `--sans` at the size the rows use.
+   THE MONTH CELL IS A `th` AND MUST NOT SPEAK LIKE ONE. `th` here is 11.5px
+   `--mono`, uppercase, .07em — a voice for column names. `ต.ค.` is Thai: mono
+   renders it from a fallback face and the spacing pulls joined syllables
+   apart, so the cell takes all three back.
 
-   `--green-wash` AND NOT `--neutral-wash`, which is the one thing here that is
-   a choice rather than a correction: the column heading directly above it is
-   already `--neutral-wash`, and two grey bands stacked at the top of the table
-   read as one heading that wrapped. The green is the banner's own — this dialog
-   is opened from it — and it is the palette's faintest, a step off white. */
-.cal-month th {
-  padding: 9px 12px;
-  font: 600 12.5px/1.4 var(--sans); letter-spacing: 0; text-transform: none;
-  color: var(--ink-2); background: var(--green-wash);
-  border-bottom: 1px solid var(--line);
+   Colour carries the one fact somebody opens this for: the next holiday is
+   green (`.cal-next` above the table and its row), days already gone are
+   `--muted`, หยุดยาว ahead is the amber `.chip.warn`. */
+.cal-next {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+  padding: 8px 12px; margin-bottom: 8px; border-radius: 10px;
+  background: var(--green-bg); color: var(--green-dark);
 }
-/* The count belongs to the month, so it rides in the band rather than in a
-   column of its own — a number that appears once per group is not a column. */
-.cal-month th .n { margin-left: 8px; font-weight: 400; color: var(--muted-2); }
-/* Every band except the first closes the group above it. `tbody + tbody` and
-   not `:not(:first-of-type)`: the `<thead>` is not a tbody, so the first month
-   is the first tbody, and the sibling combinator says exactly that. */
-tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
-
-/* The day, and only the day — the month is in the band above it. `--mono` and
-   tabular because it is read DOWN the column, the same rule every figure in
-   this app follows; the weekday under it in the app's quietest ink. */
-.cal-day { white-space: nowrap; }
-.cal-day .d { font: 600 15px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
-.cal-day .hint { display: block; margin: 0; }
+.cal-next .k { flex: none; font: 600 12px/1.4 var(--sans); }
+.cal-next .v {
+  flex: 1; min-width: 0; color: var(--ink); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-next .when { font-variant-numeric: tabular-nums; }
+.cal-next .in { flex: none; font: 600 13px/1.4 var(--sans); white-space: nowrap; }
+.cal-sum { display: flex; gap: 6px; margin-bottom: 8px; }
+.cal-table td { padding-top: 5px; padding-bottom: 5px; }
+.cal-table th.cal-m {
+  width: 1%; padding: 6px 10px; vertical-align: top; white-space: nowrap;
+  font: 600 13px/1.4 var(--sans); letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); background: none;
+  border-right: 1px solid var(--line-softer); border-bottom: 1px solid var(--line);
+}
+.cal-table tbody tr:last-child td { border-bottom-color: var(--line); }
+.cal-table .chip { margin-left: 8px; vertical-align: 1px; }
+.cal-day { width: 1%; white-space: nowrap; }
+.cal-day .d { font: 600 14px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
+.cal-day .w { margin-left: 6px; font-size: 12.5px; color: var(--muted); }
+.cal-table tr.is-next td { background: var(--green-bg); color: var(--green-dark); font-weight: 600; }
+.cal-table tr.is-next .cal-day .w { color: var(--green-dark); }
+.cal-table tr.is-past td, .cal-table tr.is-past .cal-day .w { color: var(--muted); }
+@media (max-width: 640px) {
+  .cal-next { gap: 8px; padding: 7px 10px; }
+  .cal-table th.cal-m { padding-left: 6px; padding-right: 8px; }
+}
 
 /* The second line inside a cell — an employee code, a flag on the row. Sized
    and coloured in one place so the same kind of note is the same note in every

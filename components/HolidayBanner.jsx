@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, currentPeriod, periodLabel, thaiDate, dayName, dayAbbr } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
 import { holidayCalendarByMonth, holidaysInMonth, nextHoliday } from '@/lib/holidayNotice.js';
+import { THAI_MONTHS_SHORT } from '@/lib/accountingCycle.js';
 import { Empty, Modal, NoticeRow } from './common.jsx';
 import { useBackHandler } from './nav.jsx';
 import Icon from './icons.jsx';
@@ -189,65 +190,93 @@ export default function HolidayBanner({ period = currentPeriod() }) {
 function HolidayCalendar({ year, holidays, onClose }) {
   const months = holidayCalendarByMonth(holidays);
   const total = months.reduce((n, m) => n + m.days.length, 0);
+  const now = today();
+  const upcoming = nextHoliday(holidays, now);
+  const left = months.reduce((n, m) => n + m.days.filter((h) => h.date >= now).length, 0);
   return (
     <Modal
-      title={`ปฏิทินวันหยุดบริษัท ปี ${year + 543}`}
-      subtitle="วันที่บริษัทประกาศหยุด · เสาร์–อาทิตย์เป็นวันหยุดตามปกติและไม่อยู่ในรายการนี้"
-      meta={`${total} วัน · ${months.length} เดือน`}
+      title={`ปฏิทินวันหยุดบริษัท ${year + 543}`}
+      subtitle="ไม่รวมเสาร์–อาทิตย์"
       onClose={onClose}
       footer={<button className="btn ghost" onClick={onClose}>ปิด</button>}
     >
       {total === 0 ? (
         <Empty>ยังไม่มีวันหยุดของปีนี้ในระบบ — สอบถามฝ่ายบุคคลได้</Empty>
       ) : (
-        /* TWO COLUMNS AND NOT THREE. The weekday belongs to the date and is
-           not a column anybody scans on its own, and at 390px a third column
-           pushes the holiday's name — the one thing being looked up — off the
-           right into `.table-wrap`'s scroller. It rides under the date, which
-           is the shape `thaiDate` + the day abbreviation take in the queue
-           tables for the same reason. */
-        <div className="table-wrap">
-          <table className="cal-table">
-            <thead>
-              <tr>
-                <th>วันที่</th>
-                <th>วันหยุด</th>
-              </tr>
-            </thead>
-            {/* ONE `<tbody>` PER MONTH, which is what a row group IS in a
-                table — not a `<tr>` with a `colSpan` faking a heading inside a
-                single body. It costs nothing to write and it is the difference
-                between a screen reader announcing "สิงหาคม 2569" as the group
-                a row belongs to and reading it out as an ordinary cell.
-
-                THE MONTH IS DRAWN ONCE AND THE ROWS UNDER IT DROP IT. The date
-                cell used to read `8 สิงหาคม 2569` on every line; under a
-                heading that already says สิงหาคม 2569 that is three of four
-                words repeated, so the cell is the day number and the weekday
-                now. The number is `--mono` and tabular for the same reason
-                every figure in this app is: it is read DOWN the column. */}
-            {months.map(({ period, days }) => (
-              <tbody key={period}>
-                <tr className="cal-month">
-                  <th colSpan={2} scope="rowgroup">
-                    {periodLabel(period)}
-                    <span className="n">{days.length} วัน</span>
-                  </th>
+        <>
+          {/* แบบ C (mockup `holiday-modal`, 2026-10-09): what somebody opens
+              this for is "when is the next one", so that is answered above the
+              table — and in ONE row at every width, as asked the same day. The
+              name is the part allowed to ellipsis; the date and the countdown
+              are not. */}
+          {upcoming && (
+            <div className="cal-next">
+              <span className="k">วันหยุดถัดไป</span>
+              <span className="v">
+                <span className="when">{dayAbbr(upcoming.date)} {thaiDate(upcoming.date)}</span> · {upcoming.name}
+              </span>
+              <span className="in">{daysUntil(now, upcoming.date)}</span>
+            </div>
+          )}
+          <div className="cal-sum">
+            <span className="chip muted">รวม {total} วัน</span>
+            <span className="chip muted">เหลือ {left} วัน</span>
+          </div>
+          {/* THREE COLUMNS, THE MONTH ROWSPANNED. Until 2026-10-09 the month
+              was a band row of its own and the weekday sat under the day on a
+              second line — two rows of height per holiday, six holidays in a
+              screen. Now the day, its abbreviated weekday and the name share
+              one line and the month is a cell beside its group: `scope="rowgroup"`
+              keeps what the band gave a screen reader. Still one `<tbody>` per
+              month, which is what a row group IS. */}
+          <div className="table-wrap">
+            <table className="cal-table">
+              <thead>
+                <tr>
+                  <th>เดือน</th>
+                  <th>วันที่</th>
+                  <th>วันหยุด</th>
                 </tr>
-                {days.map((h) => (
-                  <tr key={h.date}>
-                    <td className="cal-day">
-                      <span className="d">{Number(h.date.slice(8, 10))}</span>
-                      <span className="hint">วัน{dayName(h.date)}</span>
-                    </td>
-                    <td>{h.name}</td>
-                  </tr>
-                ))}
-              </tbody>
-            ))}
-          </table>
-        </div>
+              </thead>
+              {months.map(({ period, days }) => (
+                <tbody key={period}>
+                  {days.map((h, i) => (
+                    <tr key={h.date} className={h.date === upcoming?.date ? 'is-next' : h.date < now ? 'is-past' : undefined}>
+                      {i === 0 && (
+                        <th scope="rowgroup" rowSpan={days.length} className="cal-m">
+                          {THAI_MONTHS_SHORT[Number(period.slice(5, 7)) - 1]}
+                        </th>
+                      )}
+                      <td className="cal-day">
+                        <span className="d">{Number(h.date.slice(8, 10))}</span>
+                        <span className="w">{dayAbbr(h.date)}</span>
+                      </td>
+                      <td>
+                        {h.name}
+                        {/* หยุดยาว: a Monday or a Friday joins the weekend.
+                            Only ahead of today — a past one is not a plan. */}
+                        {h.date >= now && h.date !== upcoming?.date && longWeekend(h.date) && (
+                          <span className="chip warn">หยุดยาว</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              ))}
+            </table>
+          </div>
+        </>
       )}
     </Modal>
   );
+}
+
+const utc = (d) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
+function daysUntil(from, to) {
+  const n = Math.round((utc(to) - utc(from)) / 864e5);
+  return n === 0 ? 'วันนี้' : n === 1 ? 'พรุ่งนี้' : `อีก ${n} วัน`;
+}
+function longWeekend(d) {
+  const w = new Date(utc(d)).getUTCDay();
+  return w === 1 || w === 5;
 }

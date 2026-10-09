@@ -3765,7 +3765,7 @@ finds it as.
 `thaiDate`: the app writes one date form, DD/MM/YYYY, and this is the case that
 same rule already carves out — under a heading that says สิงหาคม 2569,
 `12/08/2569` is three quarters of a repetition, which is why the
-ปฏิทินวันหยุดประจำปี table prints a day number under its month band too. The
+ปฏิทินวันหยุดประจำปี table prints a day number beside its month cell too. The
 weekday is abbreviated **here and nowhere else in this component**: it is a
 *check* on the date, and three of `(วันพุธ)` in one row is the row this change
 exists to shorten. The empty-month clause keeps the long form — one date, in

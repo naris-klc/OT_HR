@@ -493,24 +493,41 @@ test('เดือนเป็นกลุ่มแถวจริง ๆ ไม
 
   // AND THE ROWS UNDER IT DROP THE MONTH. `8 สิงหาคม 2569` under a heading that
   // already says สิงหาคม 2569 is three of four words repeated on every line.
-  assert.ok(!dialog.includes('thaiDate('), 'แถวในปฏิทินยังพิมพ์เดือนซ้ำกับหัวกลุ่ม');
+  // Read from the table on: the วันหยุดถัดไป strip above it (2026-10-09) is
+  // one date standing alone, and it takes the app's one date form.
+  const table = dialog.slice(dialog.indexOf('<table'));
+  assert.ok(!table.includes('thaiDate('), 'แถวในปฏิทินยังพิมพ์เดือนซ้ำกับหัวกลุ่ม');
   assert.match(dialog, /h\.date\.slice\(8, 10\)/, 'ช่องวันที่ไม่ได้เหลือแค่วันที่');
 });
 
-test('แถบเดือนไม่ได้แต่งตัวเป็นหัวคอลัมน์', () => {
+test('ช่องเดือนไม่ได้แต่งตัวเป็นหัวคอลัมน์', () => {
   // `th` in this stylesheet is 11.5px `--mono`, uppercase, .07em of tracking —
-  // a voice for `วันที่`, which names a column. `สิงหาคม 2569` names a group of
-  // rows and is Thai prose: `--mono` draws Thai from a fallback face and .07em
-  // pulls apart syllables that belong joined.
-  const at = css.indexOf('.cal-month th {');
-  assert.ok(at > 0, 'ไม่พบกฎแถบเดือน');
+  // a voice for `วันที่`, which names a column. `ต.ค.` names a group of rows and
+  // is Thai: `--mono` draws Thai from a fallback face and .07em pulls apart
+  // syllables that belong joined.
+  //
+  // ⚠ It was `.cal-month th`, a full-width band in `--green-wash`, until
+  // 2026-10-09 (แบบ C, mockup `holiday-modal`): the month is a rowspanned cell
+  // beside its group now, and the green belongs to the next holiday.
+  assert.ok(!css.includes('.cal-month'), 'กฎแถบเดือนแบบเก่ายังค้างอยู่');
+  const at = css.indexOf('.cal-table th.cal-m {');
+  assert.ok(at > 0, 'ไม่พบกฎช่องเดือน');
   const rule = css.slice(at, css.indexOf('}', at));
-  assert.match(rule, /var\(--sans\)/, 'แถบเดือนยังใช้ฟอนต์ --mono ของหัวคอลัมน์');
+  assert.match(rule, /var\(--sans\)/, 'ช่องเดือนยังใช้ฟอนต์ --mono ของหัวคอลัมน์');
   assert.match(rule, /text-transform: none/);
   assert.match(rule, /letter-spacing: 0/);
-  // Two grey bands stacked at the top of the table read as one heading that
-  // wrapped, so the month band is the banner's own green instead.
-  assert.match(rule, /background: var\(--green-wash\)/);
+});
+
+test('วันหยุดถัดไปอยู่บนสุด แถวเดียว และชื่อเป็นส่วนที่ยอมตัด', () => {
+  // แบบ C, chosen 2026-10-09 with "กระชับส่วนนี้ให้เป็น 1 แถว".
+  const dialog = bannerCode.slice(bannerCode.indexOf('function HolidayCalendar'));
+  assert.ok(dialog.indexOf('cal-next') < dialog.indexOf('<table'), 'วันหยุดถัดไปไม่ได้อยู่เหนือตาราง');
+  assert.match(dialog, /nextHoliday\(holidays, now\)/, 'วันหยุดถัดไปไม่ได้มาจาก nextHoliday');
+  const at = css.indexOf('.cal-next {');
+  assert.ok(at > 0 && !/flex-wrap: wrap/.test(css.slice(at, css.indexOf('}', at))), 'แถบวันหยุดถัดไปขึ้นสองแถวได้');
+  const v = css.slice(css.indexOf('.cal-next .v {'), css.indexOf('}', css.indexOf('.cal-next .v {')));
+  assert.match(v, /text-overflow: ellipsis/);
+  assert.match(v, /min-width: 0/);
 });
 
 test('ทุกบทบาทเห็นประกาศ ไม่ใช่แค่พนักงาน — บนหน้าแรกของบทบาทนั้น', () => {
