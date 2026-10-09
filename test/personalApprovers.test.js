@@ -203,7 +203,11 @@ test('personalScope refuses what has no first step to hold', () => {
     { _id: 'gone', code: 'X1', name: 'ค', role: 'employee', active: false },
   ];
   assert.deepEqual(personalScope(['div', 'div'], { approver: CEO, found }), { ok: true, value: ['div'] });
-  assert.equal(personalScope(['hr1'], { approver: CEO, found }).ok, false);
+  // ฝ่ายบุคคล may be named since 2026-10-09 — the CEO signs นันทิตา's first.
+  assert.deepEqual(personalScope(['hr1'], { approver: CEO, found }), { ok: true, value: ['hr1'] });
+  assert.equal(personalScope(['adm'], {
+    approver: CEO, found: [{ _id: 'adm', code: 'ADMIN', name: 'ง', role: 'admin', active: true }],
+  }).ok, false);
   assert.equal(personalScope(['gone'], { approver: CEO, found }).ok, false);
   assert.equal(personalScope(['nobody'], { approver: CEO, found }).ok, false);
   assert.equal(personalScope(['ceo'], { approver: CEO, found: [{ ...CEO }] }).ok, false);
