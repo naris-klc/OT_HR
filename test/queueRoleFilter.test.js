@@ -122,7 +122,7 @@ test('ป้ายบทบาทมาจาก lib/roles.js ไม่ได้
  * it separately, with `ProxyMark`.
  */
 test('กรองด้วยบทบาทของเจ้าของใบ ไม่ใช่ของผู้บันทึก', () => {
-  assert.match(code, /&& \(!applicant \|\| e\.employee\?\.role === applicant\)/);
+  assert.match(code, /\|\| !applicant \|\| e\.employee\?\.role === applicant\)/);
   assert.ok(
     !/applicant \|\| e\.filedBy/.test(code),
     'กรองด้วยผู้บันทึกจะซ่อนใบที่หัวหน้าบันทึกแทนพนักงาน',
@@ -354,17 +354,14 @@ test('ตัวกรองแผนกวาดทุกจอที่อน�
   assert.match(code, /api\.get\('\/departments'\)/);
   assert.match(code, /const \[roster, setRoster\] = useState\(null\);/);
 
-  const memo = code.slice(code.indexOf('const departments = useMemo('), code.indexOf('const periods = useMemo('));
+  const memo = code.slice(code.indexOf('const departments = useMemo('), code.indexOf('const statuses = useMemo('));
   assert.match(memo, /const mine = \(user\.coversDepartments \|\| \[\]\)\.map\(String\);/);
   assert.match(memo, /\.filter\(\(d\) => !mine\.length \|\| mine\.includes\(String\(d\._id\)\)\)/);
   assert.ok(memo.includes('if (!scoped.length) {'), 'ไม่มีทางถอยเมื่อ /departments ล่ม');
   assert.ok(memo.includes('optionsBy(entries'), 'ทางถอยไม่ได้กลับไปอ่านจากแถว');
 
-  // เดือน always offers the month it is now, so that list is never empty either
-  const months = code.slice(code.indexOf('const periods = useMemo('), code.indexOf('const statuses = useMemo('));
-  assert.match(months, /const now = today\(\)\.slice\(0, 7\);/);
-  assert.match(months, /\[\.\.\.new Set\(\[now, \.\.\.counts\.keys\(\)\]\)\]/);
-  assert.match(queue, /import \{ today \} from '@\/lib\/today\.js';/);
+  // เดือน เคยต้องใส่เดือนปัจจุบันไว้เสมอเพื่อไม่ให้รายการว่าง · ตั้งแต่
+  // 2026-10-09 เป็นปฏิทิน `PickMonth` ที่ไม่มีรายการให้ว่าง — test/queueDropdown.test.js
 });
 
 /** And the head says the same thing in words — a name for one, a count for many. */

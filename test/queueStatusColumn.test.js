@@ -277,7 +277,7 @@ test('สถานะ ถูกล้างพร้อมตัวกรอง�
   assert.ok(at > 0, 'เอฟเฟกต์ตอนเปลี่ยนคิวหายไป');
   assert.ok(code.slice(at, at + 260).includes("setSt('');"), 'เปลี่ยนคิวแล้วตัวกรองสถานะยังค้าง');
   // …and `shown` actually reads it.
-  assert.match(code, /&& \(!st \|\| e\.status === st\)/);
+  assert.match(code, /\|\| !st \|\| e\.status === st\)/);
 });
 
 // ── 4. the column ───────────────────────────────────────────────────────────

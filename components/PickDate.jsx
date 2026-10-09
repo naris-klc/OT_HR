@@ -627,7 +627,7 @@ export function DateRange({
 
 export function PickMonth({
   value, onChange, min, max, disabled = false, clearable = false, label = 'ประจำเดือน',
-  className = '',
+  className = '', allLabel = '',
 }) {
   const p = usePicker({ onChange, disabled });
   const [shape, setShape] = React.useState(0);
@@ -635,11 +635,14 @@ export function PickMonth({
     <>
       <PickerBox
         icon="calendar"
-        display={periodLabel(value)}
+        /* `allLabel` — ว่างคือคำตอบหนึ่ง (ทุกเดือน) ไม่ใช่ช่องที่ยังไม่ได้กรอก จึงวาด
+           เป็นค่า ไม่ใช่ placeholder สีเทา เหมือน ทุกแผนก ของ `PickOne` ข้าง ๆ ·
+           ✕ ขึ้นเฉพาะตอนเลือกเดือนไว้ */
+        display={periodLabel(value) || allLabel}
         placeholder="เลือกเดือน"
         label={label}
         disabled={disabled}
-        clearable={clearable}
+        clearable={clearable && Boolean(value)}
         onClear={() => onChange('')}
         open={p.open}
         setOpen={p.setOpen}

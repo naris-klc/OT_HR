@@ -2127,9 +2127,11 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2847 tests
+and the engine know nothing about Next.js, so the whole suite — **2848 tests
 across 160 files**, measured 2026-10-09 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2847 tests across 160 files" until **ตัวเลขในตัวกรองคิวรออนุมัติ OT
+นับตามตัวกรองอื่น** (2026-10-09) — `queueDropdown` gained one.
 It read "2846 tests across 160 files" until **เลขบนแท็บสีตามสถานะ** (2026-10-09),
 which added one case to `monthStatusFilter`.
 It read "2842 tests across 160 files" until **แท็บสถานะบนตรวจสอบประจำเดือน**
@@ -14533,7 +14535,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2847 tests**, about 8 s, measured 2026-10-09 across 160
+- `npm test` — **2848 tests**, about 8 s, measured 2026-10-09 across 160
   files, all green (it read "2842 tests" until the status tabs on ตรวจสอบ
   ประจำเดือน rewrote `monthStatusFilter`). **`policyReading` is the newest file** — the one-sentence
   answer line and the worked examples on นโยบายการคำนวณ (แบบ B). It read
