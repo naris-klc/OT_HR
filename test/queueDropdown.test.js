@@ -598,21 +598,21 @@ test('ลิสต์ที่ไม่มีแถว "ทั้งหมด" �
   assert.match(source, /const hasAll = allLabel != null;/);
   assert.match(source, /rows\.length === \(hasAll \? 1 : 0\) && <li className="none"/);
 
-  // AND THE CALLER, so the option that exercises it cannot quietly go away.
-  // สถานะที่นับ hands its rows and no `allLabel`; the list itself — five rows
-  // since 2026-09-11, three before it — is pinned in
-  // test/monthStatusFilter.test.js, and the two values the ceiling tests
-  // compare against in test/queueCapUsage.test.js. Neither is this file's.
+  // AND A CALLER, so the option that exercises it cannot quietly go away.
+  // สถานะที่นับ on ตรวจสอบรายเดือน was this caller until 2026-10-09, when it
+  // became tabs on the card head (`MONTH_TABS`, pinned in
+  // test/monthStatusFilter.test.js). บริษัท on รายงาน OT ฝ่ายบัญชี is the same
+  // case — its widest row is a real value, `'all'`, not `''`.
   //
   // STRIPPED FIRST, for the reason the block over `strip` gives: the paragraph
   // in HrView.jsx explaining why there is no `<select>` on that screen quotes
   // the tag, and a ban read against the prose passes on the strength of the
   // sentence that says the code is gone.
+  const acct = strip(read('components/AccountingView.jsx'));
+  const at = acct.indexOf('<PickOne\n            label="บริษัท"');
+  assert.ok(at > 0, 'บริษัท ไม่ใช่ PickOne แล้ว');
+  const call = acct.slice(at, acct.indexOf('/>', at));
+  assert.ok(!call.includes('allLabel'), 'บริษัท มีแถว "ทั้งหมด" ที่ถือค่าว่าง');
   const hrCode = strip(read('components/HrView.jsx'));
-  const at = hrCode.indexOf('<PickOne');
-  assert.ok(at > 0, 'สถานะที่นับ ไม่ใช่ PickOne แล้ว');
-  const call = hrCode.slice(at, at + 300);
-  assert.ok(call.includes('options={STATUS_FILTERS}'), 'สถานะที่นับ ไม่ได้ส่ง STATUS_FILTERS แล้ว');
-  assert.ok(!call.includes('allLabel'), 'สถานะที่นับ มีแถว "ทั้งหมด" ที่หน้าจอถือค่าไม่ได้');
   assert.ok(!/<select\b/.test(hrCode), 'ตรวจสอบรายเดือน ยังมี <select> อยู่ — เมนูของ OS จะกลับมา');
 });

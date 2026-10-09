@@ -152,7 +152,7 @@ test('หัวคอลัมน์เป็นคำเดียว และ 
   const at = code.indexOf('className="num count-col"');
   assert.ok(at > 0, 'หัวคอลัมน์ รายการ เปลี่ยนรูปไปแล้ว');
   const th = code.slice(code.lastIndexOf('<th', at), code.indexOf('</th>', at));
-  assert.match(th, /title="ใบที่นับตามสถานะที่นับ \/ ใบทั้งเดือน[^"]*"/);
+  assert.match(th, /title="ใบที่นับตามแท็บที่เปิดอยู่ \/ ใบทั้งเดือน[^"]*"/);
   assert.doesNotMatch(th, /<span/);
   assert.match(th, /รายการ/);
 });

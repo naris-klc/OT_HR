@@ -42,34 +42,46 @@ import { mayCorrectEntries } from '@/lib/entries.js';
 const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
 
 /**
- * สถานะที่นับ — สี่ตัวเลือก เรียงตามทางที่ใบเดินผ่าน แล้วปิดด้วยทั้งหมด.
+ * แท็บ ทั้งหมด · รอ HR · รอหัวหน้า · อนุมัติแล้ว — แทนดรอปดาวน์ สถานะที่นับ.
  *
- * 2026-10-08 ผู้ใช้บอกว่าห้าแถวเดิม "ซ้ำซ้อน" (สามแถวเดี่ยว + สองแถวที่เป็นแค่
- * แถวเดี่ยวมารวมกัน) แล้วเลือกชุดนี้จาก mockup พร้อมนิยามของแต่ละคำ:
+ * 2026-10-09 จาก mockup ที่ผู้ใช้เลือก (แบบ B แท็บบนหัวการ์ด) · ผู้ใช้ถามว่า
+ * *"ทำไมกรองอนุมัติแล้ว แต่ยังมีรายการรอ hr"* แล้วนิยามใหม่ว่าแท็บกรอง **คน**
+ * ตามสิ่งที่ยังค้าง ไม่ใช่เลือกนับใบ:
  *
- *   · รอหัวหน้า — `pending_mgr` อย่างเดียว
- *   · รอ HR — `approved,pending_hr` · *"มันคือความหมายเดียวกันครับ เพราะก่อนจะ
- *     รอ HR ต้องหัวหน้าอนุมัติมาก่อนอยู่แล้ว"* — ชุดเดียวกับ `signed` ของ
- *     นโยบายการพิมพ์
- *   · อนุมัติแล้ว — `approved` · *"ต้องไม่มีสถานะรอใครแล้วเท่านั้น"*
- *   · ทั้งหมด — ทุกใบที่ยังไม่ถูกปฏิเสธ และเป็นค่าที่จอเปิดมา (`DEFAULT_STATUS`)
+ *   · ทั้งหมด — ทุกคน ทุกใบที่ยังไม่ถูกปฏิเสธ · ค่าที่จอเปิดมา
+ *   · รอ HR — คนที่มีใบรอ HR อย่างน้อย 1 ใบ · ชั่วโมงนับ อนุมัติแล้ว + รอ HR
+ *     (*"คนที่มีใบรอ HR แต่โชว์ทั้งเดือน"*)
+ *   · รอหัวหน้า — คนที่มีใบรอหัวหน้า · ชั่วโมงนับเฉพาะใบรอหัวหน้า
+ *   · อนุมัติแล้ว — *"เฉพาะคนที่เคลียร์หมดแล้ว"* ไม่มีใบค้างเลย
  *
- * ค่าที่ส่งไปเราต์เป็นสตริงเดิมทุกตัว ไม่ได้แตะ `reportStatuses` · เคยมีห้าแถว
- * ("รอ HR เท่านั้น" = `pending_hr` อย่างเดียว) ตั้งแต่ 2026-09-11 ถึง 2026-10-08
- * ประวัติอยู่ใน git ใต้ชื่อ `STATUS_FILTERS`
+ * `value` คือสถานะที่ส่งไปเราต์ — สตริงเดิมทุกตัว ไฟล์ CSV และปุ่มพิมพ์จึงยังได้
+ * ค่าเดิม (ผู้ใช้สั่ง *"การส่งออกทำตามกติกาเดิมไม่เปลี่ยน"*) · `keep` คือส่วนที่
+ * ใหม่: คัดคนจาก `monthStatus` (ทั้งเดือน ไม่สนตัวกรอง) ในเบราว์เซอร์ · `count`
+ * คือชื่อช่องใน `tabCounts` ที่เราต์นับเลขบนแท็บให้ทั้งเดือน · `empty` คือคำบนตาราง
+ * เมื่อแท็บไม่มีใคร (ทั้งหมด ไม่มี เพราะใช้คำของเดือนว่างเดิม)
  *
- * ไม่มีแถว "ทั้งหมด" ของ `PickOne` (`allLabel` ที่ถือ `''`) เพราะ ทั้งหมด ของจอนี้
- * เป็นค่าจริง — ดูโน้ตเหนือ `rows` ใน components/common.jsx
+ * รอ HR นิยามเดิม (2026-10-08) ก็คือ `approved,pending_hr` แต่ตอนนั้นแสดงทุกคนที่
+ * มีใบอนุมัติแล้วด้วย · ก่อนเป็นแท็บเป็นดรอปดาวน์สี่แถว (ห้าแถวก่อนนั้น) — ประวัติ
+ * อยู่ใน git ใต้ชื่อ `STATUS_FILTERS`
  */
-const STATUS_FILTERS = [
-  { value: 'pending_mgr', label: 'รอหัวหน้า' },
-  { value: 'approved,pending_hr', label: 'รอ HR' },
-  { value: 'approved', label: 'อนุมัติแล้ว' },
-  { value: ALL_LIVE_STATUSES, label: 'ทั้งหมด' },
+const MONTH_TABS = [
+  { value: ALL_LIVE_STATUSES, label: 'ทั้งหมด', count: 'all', keep: () => true },
+  {
+    value: 'approved,pending_hr', label: 'รอ HR', count: 'pendingHr',
+    keep: (m) => m.pendingHr > 0, empty: 'ไม่มีใครรอ HR ในเดือนนี้',
+  },
+  {
+    value: 'pending_mgr', label: 'รอหัวหน้า', count: 'pendingMgr',
+    keep: (m) => m.pendingMgr > 0, empty: 'ไม่มีใครรอหัวหน้าในเดือนนี้',
+  },
+  {
+    value: 'approved', label: 'อนุมัติแล้ว', count: 'approved',
+    keep: (m) => m.pendingHr + m.pendingMgr === 0, empty: 'ยังไม่มีใครอนุมัติครบทุกใบในเดือนนี้',
+  },
 ];
 
 /**
- * ค่าที่จอเปิดมา และค่าที่ ล้างตัวกรอง พากลับไป — ทั้งหมด ตั้งแต่ 2026-10-08
+ * แท็บที่จอเปิดมา และที่ ล้างตัวกรอง พากลับไป — ทั้งหมด ตั้งแต่ 2026-10-08
  * (ผู้ใช้สั่ง *"ให้เริ่มที่ทั้งหมด"*) ซึ่งตรงกับนโยบายการพิมพ์ที่ส่งมา (`draft`
  * ตั้งแต่ยื่นขอ) — จอกับกระดาษนับใบชุดเดียวกัน · ก่อนหน้านั้นเปิดมาที่
  * `approved,pending_hr` (2026-09-09) และ `approved` ก่อนนั้นอีก
@@ -251,9 +263,9 @@ export default function HrView({
    * negative the cap column was repaired for once already.
    *
    * `''` IS A VALUE THIS SCREEN CAN HOLD — ทุกแผนก, `PickOne`'s `allLabel` row —
-   * which is what makes it unlike สถานะที่นับ two lines up, where the widest
-   * setting is a real value and there is no `allLabel`. See the note over
-   * `STATUS_FILTERS`.
+   * which is what makes it unlike the tabs on the card head, whose widest
+   * setting (ทั้งหมด) is a real list of statuses. See the note over
+   * `MONTH_TABS`.
    */
   const [dept, setDept] = useState('');
   /** Beside `scopeParam` because the two go on the same three URLs together. */
@@ -275,6 +287,8 @@ export default function HrView({
    * has not decided the rest yet. See `CapUsage` in ApprovalQueue.
    */
   const [statusFilter, setStatusFilter] = useState(DEFAULT_STATUS);
+  /** The tab whose `value` is `statusFilter` — its `keep` decides who is drawn. */
+  const tab = MONTH_TABS.find((t) => t.value === statusFilter) || MONTH_TABS[0];
   /**
    * ⚠ `counted` STOOD HERE FOR ONE ROUND ON 2026-09-11 AND IS GONE.
    *
@@ -632,6 +646,17 @@ export default function HrView({
    */
   const showScanCol = readsScans && Boolean(scan?.slots);
   /**
+   * คนในแท็บที่เปิดอยู่ — ก่อน ค้นหา และ ดูเฉพาะคนที่ต้องตรวจ · ดู `MONTH_TABS`
+   *
+   * เราต์ส่งมาเฉพาะคนที่มีใบตาม `value` อยู่แล้ว · `keep` ตัดต่อจากนั้นด้วยสถานะ
+   * ทั้งเดือน เช่น แท็บ อนุมัติแล้ว ตัดคนที่ยังมีใบค้าง ซึ่งเราต์ส่งมาเพราะมีใบ
+   * อนุมัติแล้วอย่างน้อยหนึ่งใบ · แถวที่ไม่มี `monthStatus` ไม่ถูกตัด
+   */
+  const inTab = React.useMemo(
+    () => (data?.employees || []).filter((row) => !row.monthStatus || tab.keep(row.monthStatus)),
+    [data, tab],
+  );
+  /**
    * `onlyFlagged` NARROWS THE SAME LIST ค้นหา NARROWS, and after it.
    *
    * Both are screen filters over a month already fetched, so the order they are
@@ -642,10 +667,10 @@ export default function HrView({
    * them so rather than blaming the search.
    */
   const shown = React.useMemo(() => {
-    const matched = (data?.employees || []).filter((row) => personMatches(row.employee, query));
+    const matched = inTab.filter((row) => personMatches(row.employee, query));
     if (!onlyFlagged) return matched;
     return matched.filter((row) => flaggedBy.has(String(row.employee?._id)));
-  }, [data, query, onlyFlagged, flaggedBy]);
+  }, [inTab, query, onlyFlagged, flaggedBy]);
   const searching = query.trim() !== '';
 
   /**
@@ -1416,7 +1441,6 @@ export default function HrView({
                 rule this screen now shares with the queue. */}
             <div className="t">
               <span className="t-name">{scope === 'team' ? 'รายงาน OT ประจำทีม' : 'ตรวจสอบประจำเดือน'}</span>
-              {data && <span className="t-count">{' · '}{data.employees.length} คน</span>}
             </div>
             <div className="hint" style={{ margin: 0 }}>
               {periodLabel(period)}
@@ -1436,16 +1460,30 @@ export default function HrView({
               {deptName && ` · ${deptName}`}
             </div>
           </div>
-          {/* Count and action as one right-hand group — the shape every card head
-              in this app uses, and the reason the count left the button it used to
-              sit on. `พิมพ์ / ส่งออก (24 คน)` said the figure and the verb in one
-              control; the chip says the figure and the button says the verb, ten
-              pixels apart, which is what รออนุมัติ OT has always done with its own
-              count. Nothing is lost from the trade written down over `ExportMenu`:
-              the number a reader came for is still on screen without opening
-              anything. */}
+          {/* ── แท็บสถานะ — 2026-10-09, แทนดรอปดาวน์ สถานะที่นับ ──────────────
+              `.queue-tabs` ตัวเดียวกับที่คิวรออนุมัติเคยใช้สลับสองกอง (ว่างอยู่ใน
+              app/styles.css) ไม่ใช่แท็บชุดใหม่ · เลขบนแท็บคือจำนวนคนทั้งเดือน
+              จาก `tabCounts` ของเราต์ — ดู `MONTH_TABS`
+
+              ป้าย `60 คน` ข้างปุ่มไฟล์สแกน และ `· 60 คน` บนชื่อการ์ดของมือถือ
+              ออกไปพร้อมกัน: แท็บ ทั้งหมด บอกเลขเดียวกันแล้ว และผู้ใช้อ่านป้ายนั้น
+              เป็นจำนวนคนที่นำเข้าไฟล์สแกน เพราะมันอยู่ติดปุ่มนั้น */}
+          <div className="queue-tabs month-tabs" role="tablist" aria-label="สถานะ">
+            {MONTH_TABS.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                role="tab"
+                aria-selected={t === tab}
+                className={t === tab ? 'active' : ''}
+                onClick={() => setStatusFilter(t.value)}
+              >
+                {t.label}
+                {data?.tabCounts && <span className="count">{data.tabCounts[t.count]}</span>}
+              </button>
+            ))}
+          </div>
           <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-            {data && <span className="chip muted">{data.employees.length} คน</span>}
             {/* ── ไฟล์สแกน — THE DRAWER'S HANDLE, ON THE HEAD SINCE 2026-09-11 ──
 
                 It was `.strip-more` on `.month-strip`, an underlined verb on a
@@ -1723,16 +1761,11 @@ export default function HrView({
               )}
             </div>
           </div>
-          <PickOne
-            label="สถานะที่นับ"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={STATUS_FILTERS}
-          />
-          {/* แผนก — 2026-09-10, third on the bar, between สถานะ and เดือน.
-              That is รออนุมัติ OT's own position for it and the reason is that
-              screen's: the bar narrows by which pile, then whose pile, then
-              which month, with the box that reads across all three at the front.
+          {/* แผนก — 2026-09-10, between ค้นหา and เดือน. It sat between สถานะ
+              and เดือน until สถานะ left the bar for the card head's tabs on
+              2026-10-09 — รออนุมัติ OT's own order, for that screen's reason:
+              the bar narrows by which pile, then whose pile, then which month,
+              with the box that reads across all three at the front.
 
               IT SPENT AN AFTERNOON BETWEEN ประจำเดือน AND ค้นหา on an argument
               of this screen's own — the month and the แผนก both decide WHAT is
@@ -1764,8 +1797,10 @@ export default function HrView({
               is something to escape. ประจำเดือน IS NOT ONE OF THE THINGS IT
               CLEARS: a month is always chosen on this screen, so "clearing" it
               would mean picking a different one, which is not what the word says.
-              สถานะที่นับ goes back to `DEFAULT_STATUS` rather than to empty, for
-              the same reason — there is no such thing as no status here. */}
+              The tab goes back to ทั้งหมด (`DEFAULT_STATUS`) rather than to
+              empty, for the same reason — there is no such thing as no status
+              here. It is on the card head, not this bar, and it is still cleared
+              here: the mockup the user approved on 2026-10-09 says so. */}
           {(find || dept || onlyFlagged || statusFilter !== DEFAULT_STATUS) && (
             <button
               type="button"
@@ -1787,13 +1822,12 @@ export default function HrView({
           {/* Only while it is narrowing something. "แสดง 24 จาก 24 คน" is a
               sentence about nothing. `searching` and not `find`: this counts the
               rows below it, and those follow `query`.
-              `data.employees` IS SAFE WITHOUT A GUARD even though this row is now
-              drawn while the month is still loading: `shown` is built from
-              `data?.employees || []`, so a non-empty `shown` is itself the proof
-              that `data` arrived. */}
+              Out of `inTab`, not `data.employees`, since the tabs on 2026-10-09:
+              the tab is part of what the search is narrowing, and its number is
+              on the tab itself. */}
           {searching && shown.length > 0 && (
             <div className="found">
-              แสดง <strong>{shown.length}</strong> จาก <strong>{data.employees.length}</strong> คน
+              แสดง <strong>{shown.length}</strong> จาก <strong>{inTab.length}</strong> คน
             </div>
           )}
         </div>
@@ -1820,6 +1854,19 @@ export default function HrView({
       <div className="month-card">
         {!data ? (
           <Empty>กำลังโหลด…</Empty>
+        ) : inTab.length === 0 && tab.empty ? (
+          /* แท็บที่ไม่มีใคร — 2026-10-09 · มาก่อนคำของแผนกและของเดือน เพราะ
+             เดือนอาจเต็มอยู่ แค่ไม่มีใครค้างที่ขั้นนี้ · ทางออกคือแท็บ ทั้งหมด */
+          <div className="empty">
+            <div>{tab.empty}{dept && ` · ${deptName}`}</div>
+            <button
+              className="btn ghost sm"
+              style={{ marginTop: 10 }}
+              onClick={() => setStatusFilter(DEFAULT_STATUS)}
+            >
+              ดูทั้งหมด
+            </button>
+          </div>
         ) : data.employees.length === 0 ? (
           /* ไม่มีรายการในเดือนนี้ WAS THE WHOLE OF THIS UNTIL 2026-09-10, and
              with a แผนก chosen it is a sentence that is very nearly a lie: the
@@ -2002,7 +2049,7 @@ export default function HrView({
                              nothing about why. */
                           disabled={canPick.length === 0}
                           title={canPick.length === 0
-                            ? 'ไม่มีรายการที่รอยืนยันในเดือนนี้ ตามสถานะที่นับที่เลือกอยู่'
+                            ? 'ไม่มีรายการที่รอยืนยันในแท็บนี้'
                             : `เลือกทั้งหมด (${canPick.length} คน)`}
                           checked={canPick.length > 0 && chosen.length === canPick.length}
                           ref={(el) => {
@@ -2029,7 +2076,7 @@ export default function HrView({
                         it. See `monthCount`. */}
                     <th
                       className="num count-col"
-                      title="ใบที่นับตามสถานะที่นับ / ใบทั้งเดือน (ทุกใบที่ยังไม่ถูกปฏิเสธ) — นาฬิกาคือมีใบรออนุมัติ ชี้เพื่อดูว่ารอใครกี่ใบ"
+                      title="ใบที่นับตามแท็บที่เปิดอยู่ / ใบทั้งเดือน (ทุกใบที่ยังไม่ถูกปฏิเสธ) — นาฬิกาคือมีใบรออนุมัติ ชี้เพื่อดูว่ารอใครกี่ใบ"
                     >
                       รายการ
                     </th>

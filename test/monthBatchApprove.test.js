@@ -178,7 +178,7 @@ test('คอลัมน์ติ๊กกับปุ่มยืนยัน �
   const head = hrView.slice(hrView.indexOf('<th className="check">'));
   const box = head.slice(0, head.indexOf('</th>'));
   assert.match(box, /disabled=\{canPick\.length === 0\}/);
-  assert.match(box, /ไม่มีรายการที่รอยืนยันในเดือนนี้ ตามสถานะที่นับที่เลือกอยู่/);
+  assert.match(box, /ไม่มีรายการที่รอยืนยันในแท็บนี้/);
 
   // And the row button says ยืนยัน, not "ยืนยัน 0 ใบ" — a quantity of none
   // reads as a template that failed to fill itself in.

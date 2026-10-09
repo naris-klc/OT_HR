@@ -1538,12 +1538,12 @@
   }
 
   /* Screen furniture. The amber bar is `.box.warn` — the ค้างอนุมัติ notice —
-     and the rest is filters, chips, buttons and hints: context for HR while
+     and the rest is filters, tabs, chips, buttons and hints: context for HR while
      they close the month, none of it part of the document accounting files.
      Listed by class rather than left to `.no-print` so a block added later
      without that class still cannot reach the paper. */
   .box, .alert, .chip, .hint, .kicker-sm, .seg, .btn, .check,
-  .empty, .table-wrap > .empty, .card-head .row {
+  .empty, .table-wrap > .empty, .card-head .row, .queue-tabs {
     display: none;
   }
 
