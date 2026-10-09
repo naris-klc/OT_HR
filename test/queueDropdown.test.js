@@ -74,7 +74,7 @@ test('ไม่มี <select> เหลืออยู่บนหน้า ร
   assert.ok(!/<select\b/.test(queueCode), 'ApprovalQueue ยังมี <select> อยู่ — เมนูของ OS จะกลับมา');
 });
 
-test('ทั้ง สถานะ แผนก และ เดือน ใช้ PickOne ตัวเดียวกัน', () => {
+test('สถานะ บทบาท แผนก ใช้ PickOne · เดือน ใช้ PickMonth เหมือนทุกจอ', () => {
   // Including the month box, which is the half of the request that is easy to
   // leave behind: it is the one HR opens most and it is a second control, not a
   // second kind of control.
@@ -88,11 +88,26 @@ test('ทั้ง สถานะ แผนก และ เดือน ใช
   assert.match(queue, /<PickOne\s+label="สถานะ"[\s\S]*?allLabel="ทุกสถานะ"/);
   assert.match(queue, /<PickOne\s+label="บทบาท"[\s\S]*?allLabel="ทุกบทบาท"/);
   assert.match(queue, /<PickOne\s+label="แผนก"[\s\S]*?allLabel="ทุกแผนก"/);
-  assert.match(queue, /<PickOne\s+label="เดือน"[\s\S]*?allLabel="ทุกเดือน"/);
+  // เดือน เลิกเป็น `PickOne` 2026-10-09 — ปฏิทินเดือนตัวเดียวกับทุกจอ ว่างได้
+  // (ว่าง = ทุกเดือน) จึงมี ✕
+  assert.match(queue, /<PickMonth label="เดือน" value=\{per\} onChange=\{setPer\} clearable allLabel="ทุกเดือน" \/>/);
+  assert.ok(!/<PickOne\s+label="เดือน"/.test(queue), 'เดือน กลับไปเป็นรายการ');
   // FOUR SINCE 2026-09-04. บทบาท is the signers' half of the first slot — see
   // test/queueRoleFilter.js — and it takes the same control for the same
   // reason: a filter bar has one kind of dropdown on it.
-  assert.equal((queue.match(/<PickOne\b/g) || []).length, 4);
+  assert.equal((queue.match(/<PickOne\b/g) || []).length, 3);
+});
+
+test('ตัวเลขข้างตัวเลือกนับตามตัวกรองอื่นที่เลือกอยู่', () => {
+  // 2026-10-09 · *"จำนวนสถานะไม่เปลี่ยนตามตัวกรอง"* — เลือกเดือนแล้ว รอ HR ยัง
+  // บอกจำนวนทั้งคิว · แต่ละรายการข้ามตัวกรองของตัวเอง และตารางใช้เงื่อนไขชุดเดียวกัน
+  assert.match(queue, /const shown = useMemo\(\(\) => \(entries \|\| \[\]\)\.filter\(\(e\) => passes\(e\)\)/);
+  assert.match(queue, /if \(passes\(e, 'st'\)\) seen\.set\(e\.status/);
+  assert.match(queue, /if \(!passes\(e, 'dept'\)\) continue;/);
+  assert.match(queue, /if \(!passes\(e, 'applicant'\)\) continue;/);
+  for (const k of ['dept', 'per', 'st', 'applicant']) {
+    assert.ok(queue.includes(`skip === '${k}' ||`), `ตัวกรอง ${k} ไม่ถูกข้ามตอนนับรายการของตัวเอง`);
+  }
 });
 
 /**

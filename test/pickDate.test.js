@@ -51,8 +51,11 @@ test('ไม่มี <input type="date"> หรือ type="month" เหลื
   assert.deepEqual(left, [], `ยังมีตัวเลือกวันที่ของเบราว์เซอร์เหลืออยู่: ${left.join(', ')}`);
 });
 
-test('ทั้งสิบสี่กล่องใช้คอมโพเนนต์เดียวกัน', () => {
+test('ทั้งสิบห้ากล่องใช้คอมโพเนนต์เดียวกัน', () => {
   /**
+   * 15 ตั้งแต่ 2026-10-09: เดือน บนคิวรออนุมัติ OT เลิกเป็นรายการ `PickOne`
+   * มาเป็น `PickMonth` ให้เหมือนทุกจอ — นับเพิ่มเพราะจอนั้นเพิ่งเข้ามาใช้
+   *
    * ELEVEN DAYS AND EIGHT MONTHS, and the count is here so that a twentieth
    * box added with an `<input>` is a failing test rather than the one control
    * in the app whose popup nobody can style.
@@ -76,7 +79,7 @@ test('ทั้งสิบสี่กล่องใช้คอมโพเ�
   const uses = components.reduce((n, [, body]) => (
     n + (body.match(/<Pick(Date|Month)\b/g) || []).length
   ), 0);
-  assert.equal(uses, 14, `มี ${uses} กล่อง — คาดว่า 14`);
+  assert.equal(uses, 15, `มี ${uses} กล่อง — คาดว่า 15`);
   // Every file that draws one imports it from the one place.
   for (const [f, body] of components) {
     if (!/<Pick(Date|Month)\b/.test(body) || f === 'PickDate.jsx') continue;

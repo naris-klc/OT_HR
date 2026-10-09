@@ -2,9 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isSigner, roleLabel, visibleRolesFor } from '@/lib/roles.js';
-import { today } from '@/lib/today.js';
 import {
-  api, hours, thaiDate, dayName, dayAbbr, periodLabel, BUCKETS, BUCKET_LABEL,
+  api, hours, thaiDate, dayName, dayAbbr, BUCKETS, BUCKET_LABEL,
   STATUS,
 } from '@/lib/api.js';
 import {
@@ -32,6 +31,7 @@ import {
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
+import { PickMonth } from './PickDate.jsx';
 import { PickTime } from './PickTime.jsx';
 import { usePolicy } from './policyContext.jsx';
 import OtForm from './OtForm.jsx';
@@ -549,7 +549,7 @@ export default function ApprovalQueue({
    *
    * `truncated` is what the server sends back when it cut the list short; every
    * filter on this screen is built from the rows in hand (`departments`,
-   * `periods`, `shown`), so a queue over the ceiling is one whose แผนก dropdown
+   * `statuses`, `shown`), so a queue over the ceiling is one whose แผนก dropdown
    * is missing departments and whose search finds nothing in the rows that were
    * never sent. None of that is visible from the screen, and the rows dropped
    * are the oldest — the ones that have waited longest for a signature.
@@ -662,15 +662,35 @@ export default function ApprovalQueue({
    *              or every active one for ฝ่ายบุคคล, who sign for none and read
    *              the company. Names come from `GET /api/departments`.
    *   · บทบาท  — the rungs the ladder lets them read (`visibleRolesFor`).
-   *   · เดือน  — the months with rows in them, plus the month it is now, which
-   *              is the one a request filed today would land in.
+   *   · เดือน  — was a list of the months with rows in them; it is the
+   *              app's month calendar (`PickMonth`) since 2026-10-09, which
+   *              offers every month and needs no list at all.
    *
    * A count is shown only where there is something to count, so a department
    * with nothing waiting reads as a name rather than as a name and a 0.
    */
+  /**
+   * ตัวเลขข้างตัวเลือกนับตามตัวกรองอื่นที่เลือกอยู่ — 2026-10-09 · *"จำนวนสถานะ
+   * ไม่เปลี่ยนตามตัวกรอง"*. เดิมทุกรายการนับจาก `entries` ทั้งก้อน เลือกเดือน
+   * กันยายนแล้ว รอ HR ยังบอก 164 ทั้งที่ตารางเหลือ 38
+   *
+   * `passes(e, skip)` คือเงื่อนไขของตารางชุดเดียว · แต่ละรายการข้ามตัวกรองของ
+   * ตัวเอง ไม่งั้นพอเลือกสถานะหนึ่ง อีกสถานะจะกลายเป็นศูนย์ และไม่รู้ว่าสลับไป
+   * แล้วจะได้กี่แถว
+   */
+  const passes = useCallback((e, skip) => {
+    const needle = q.trim().toLowerCase();
+    return (skip === 'dept' || !dept || String(e.department?._id) === dept)
+      && (skip === 'per' || !per || e.period === per)
+      && (skip === 'st' || !st || e.status === st)
+      && (skip === 'applicant' || !applicant || e.employee?.role === applicant)
+      && (!needle || haystack(e).includes(needle));
+  }, [q, dept, per, st, applicant]);
+
   const departments = useMemo(() => {
     const counts = new Map();
     for (const e of entries || []) {
+      if (!passes(e, 'dept')) continue;
       const id = e.department?._id && String(e.department._id);
       if (id) counts.set(id, (counts.get(id) || 0) + 1);
     }
@@ -691,18 +711,7 @@ export default function ApprovalQueue({
         count: counts.get(String(d._id)),
       }))
       .sort((a, b) => a.label.localeCompare(b.label, 'th'));
-  }, [entries, roster, user.coversDepartments]);
-
-  const periods = useMemo(() => {
-    const counts = new Map();
-    for (const e of entries || []) if (e.period) counts.set(e.period, (counts.get(e.period) || 0) + 1);
-    // THE MONTH IT IS NOW IS ALWAYS ON THE LIST. `today()` is the company's
-    // wall clock, not the browser's — the same function the form and the
-    // holiday banner date themselves by.
-    const now = today().slice(0, 7);
-    const all = [...new Set([now, ...counts.keys()])].sort().reverse();
-    return all.map((p) => ({ value: p, label: periodLabel(p), count: counts.get(p) }));
-  }, [entries]);
+  }, [entries, roster, user.coversDepartments, passes]);
 
   /**
    * NOT `optionsBy`, and the difference is the ORDER.
@@ -719,7 +728,7 @@ export default function ApprovalQueue({
    */
   const statuses = useMemo(() => {
     const seen = new Map();
-    for (const e of entries || []) seen.set(e.status, (seen.get(e.status) || 0) + 1);
+    for (const e of entries || []) if (passes(e, 'st')) seen.set(e.status, (seen.get(e.status) || 0) + 1);
     /**
      * EVERY STATUS THIS QUEUE ASKED FOR, not only the ones that came back — the
      * same repair the other three lists got on 2026-09-04. It read
@@ -732,7 +741,7 @@ export default function ApprovalQueue({
      * step with nothing at it reads as a name with no figure beside it.
      */
     return listed.map((s) => ({ value: s, label: STATUS[s]?.label || s, count: seen.get(s) }));
-  }, [entries, isHr, stage]);
+  }, [entries, isHr, stage, passes]);
 
   /**
    * THE บทบาท OPTIONS, IN THE LADDER'S ORDER — `ROLES`, which is lowest first
@@ -752,6 +761,7 @@ export default function ApprovalQueue({
   const applicants = useMemo(() => {
     const seen = new Map();
     for (const e of entries || []) {
+      if (!passes(e, 'applicant')) continue;
       const role = e.employee?.role;
       if (role) seen.set(role, (seen.get(role) || 0) + 1);
     }
@@ -767,18 +777,9 @@ export default function ApprovalQueue({
      */
     return visibleRolesFor(user.role)
       .map((r) => ({ value: r, label: roleLabel(r), count: seen.get(r) }));
-  }, [entries, user.role]);
+  }, [entries, user.role, passes]);
 
-  const shown = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return (entries || []).filter((e) => (
-      (!dept || String(e.department?._id) === dept)
-      && (!per || e.period === per)
-      && (!st || e.status === st)
-      && (!applicant || e.employee?.role === applicant)
-      && (!needle || haystack(e).includes(needle))
-    ));
-  }, [entries, q, dept, per, st, applicant]);
+  const shown = useMemo(() => (entries || []).filter((e) => passes(e)), [entries, passes]);
 
   /**
    * NO EFFECT CLEARS THIS FILTER ANY MORE, AND THE REASON IS WORTH KEEPING.
@@ -1512,13 +1513,14 @@ export default function ApprovalQueue({
             options={departments}
             allLabel="ทุกแผนก"
           />
-          <PickOne
-            label="เดือน"
-            value={per}
-            onChange={setPer}
-            options={periods}
-            allLabel="ทุกเดือน"
-          />
+          {/* ปฏิทินเดือนตัวเดียวกับทุกจอ (`PickMonth`) แทนรายการ `PickOne` ตั้งแต่
+              2026-10-09 · *"สไตล์ตัวเลือกรายการไม่เหมือนหน้าอื่นของแอป"* · ที่นี่ว่าง
+              ได้ — ว่างคือ ทุกเดือน — จึงมี ✕ ให้ล้างกลับ ตัวเลขต่อเดือนที่รายการเคย
+              แสดงหายไปกับมัน ตารางกับหัวการ์ดบอกจำนวนแทน */}
+          <div className="field">
+            <div className="field-head"><label>เดือน</label></div>
+            <PickMonth label="เดือน" value={per} onChange={setPer} clearable allLabel="ทุกเดือน" />
+          </div>
           {(q || dept || per || st || applicant) && (
             <ClearFilters onClear={() => { setQ(''); setDept(''); setPer(''); setSt(''); setApplicant(''); }} />
           )}
