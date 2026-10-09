@@ -91,6 +91,25 @@ test('เลขบนแท็บมาจาก tabCounts ของเราต
   assert.ok(!view.includes('<span className="chip muted">{data.employees.length} คน</span>'));
 });
 
+test('เลขบนแท็บสีตามสถานะ เท่ากับป้ายสถานะ · ทั้งหมด และ 0 เป็นเทา', () => {
+  const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+  assert.match(view, /label: 'รอ HR', count: 'pendingHr', tone: 'pending_hr'/);
+  assert.match(view, /label: 'รอหัวหน้า', count: 'pendingMgr', tone: 'pending_mgr'/);
+  assert.match(view, /label: 'อนุมัติแล้ว', count: 'approved', tone: 'approved'/);
+  // ไม่มี tone หรือเลขเป็น 0 → ไม่มีคลาสสี
+  assert.match(view, /t\.tone && data\.tabCounts\[t\.count\] \? ` st-\$\{t\.tone\}` : ''/);
+  for (const [st, pair] of [
+    ['pending_hr', 'background: var(--info-bg); color: var(--info);'],
+    ['pending_mgr', 'background: var(--amber-bg); color: var(--amber);'],
+    ['approved', 'background: var(--green-bg); color: var(--green-dark);'],
+  ]) {
+    assert.ok(css.includes(`.chip.st-${st} { ${pair} }`), `ป้าย ${st}`);
+    // `button` ทำให้ชนะ `.month-tabs button.active .count` ที่อยู่ก่อน
+    const rule = `.month-tabs button .count.st-${st} { ${pair} }`;
+    assert.ok(css.indexOf(rule) > css.indexOf('.month-tabs button.active .count {'), `แท็บ ${st}`);
+  }
+});
+
 test('จอเปิดมาที่ ทั้งหมด — แท็บแรก', () => {
   assert.match(view, /const DEFAULT_STATUS = ALL_LIVE_STATUSES;/);
   assert.match(view, /useState\(DEFAULT_STATUS\)/);

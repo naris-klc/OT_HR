@@ -6091,6 +6091,14 @@ td > .approver-line { margin-top: 5px; }
 }
 .month-tabs .count,
 .month-tabs button.active .count { background: var(--neutral-wash); color: var(--ink-2); }
+/* เลขสีตามสถานะ (mockup tab-counts แบบ A, 2026-10-09) — ผู้ใช้ขอให้ตัวเลขเด่นขึ้น ·
+   สีคู่เดียวกับ `.chip.st-*` เพราะ HR อ่านฟ้า = รอ HR · เหลือง = รอหัวหน้า ·
+   เขียว = อนุมัติแล้ว จากป้ายในตารางอยู่แล้ว · ทั้งหมด และเลข 0 ไม่ได้คลาส จึงคง
+   เทาไว้ ไม่ให้แท็บที่ไม่มีใครดูเด่น · เลือกหรือไม่เลือกก็สีเดียวกัน — `button` ใน
+   ตัวเลือกให้น้ำหนักเท่ากฎ `.active` ข้างบน และมาทีหลังจึงชนะ */
+.month-tabs button .count.st-pending_hr { background: var(--info-bg); color: var(--info); }
+.month-tabs button .count.st-pending_mgr { background: var(--amber-bg); color: var(--amber); }
+.month-tabs button .count.st-approved { background: var(--green-bg); color: var(--green-dark); }
 
 /* ตั้งค่าระบบ's eight section buttons — the same job as .queue-tabs above, but
    eight choices instead of two, so they have to be allowed to wrap and cannot

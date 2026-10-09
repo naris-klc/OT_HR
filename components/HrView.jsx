@@ -58,7 +58,8 @@ const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
  * ค่าเดิม (ผู้ใช้สั่ง *"การส่งออกทำตามกติกาเดิมไม่เปลี่ยน"*) · `keep` คือส่วนที่
  * ใหม่: คัดคนจาก `monthStatus` (ทั้งเดือน ไม่สนตัวกรอง) ในเบราว์เซอร์ · `count`
  * คือชื่อช่องใน `tabCounts` ที่เราต์นับเลขบนแท็บให้ทั้งเดือน · `empty` คือคำบนตาราง
- * เมื่อแท็บไม่มีใคร (ทั้งหมด ไม่มี เพราะใช้คำของเดือนว่างเดิม)
+ * เมื่อแท็บไม่มีใคร (ทั้งหมด ไม่มี เพราะใช้คำของเดือนว่างเดิม) · `tone` คือสถานะที่ให้สีกับ
+ * เลขบนแท็บ — สีเดียวกับ `StatusChip` (2026-10-09) · ทั้งหมด ไม่มี จึงเป็นเทา
  *
  * รอ HR นิยามเดิม (2026-10-08) ก็คือ `approved,pending_hr` แต่ตอนนั้นแสดงทุกคนที่
  * มีใบอนุมัติแล้วด้วย · ก่อนเป็นแท็บเป็นดรอปดาวน์สี่แถว (ห้าแถวก่อนนั้น) — ประวัติ
@@ -67,15 +68,15 @@ const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
 const MONTH_TABS = [
   { value: ALL_LIVE_STATUSES, label: 'ทั้งหมด', count: 'all', keep: () => true },
   {
-    value: 'approved,pending_hr', label: 'รอ HR', count: 'pendingHr',
+    value: 'approved,pending_hr', label: 'รอ HR', count: 'pendingHr', tone: 'pending_hr',
     keep: (m) => m.pendingHr > 0, empty: 'ไม่มีใครรอ HR ในเดือนนี้',
   },
   {
-    value: 'pending_mgr', label: 'รอหัวหน้า', count: 'pendingMgr',
+    value: 'pending_mgr', label: 'รอหัวหน้า', count: 'pendingMgr', tone: 'pending_mgr',
     keep: (m) => m.pendingMgr > 0, empty: 'ไม่มีใครรอหัวหน้าในเดือนนี้',
   },
   {
-    value: 'approved', label: 'อนุมัติแล้ว', count: 'approved',
+    value: 'approved', label: 'อนุมัติแล้ว', count: 'approved', tone: 'approved',
     keep: (m) => m.pendingHr + m.pendingMgr === 0, empty: 'ยังไม่มีใครอนุมัติครบทุกใบในเดือนนี้',
   },
 ];
@@ -1649,7 +1650,11 @@ export default function HrView({
                 onClick={() => setStatusFilter(t.value)}
               >
                 {t.label}
-                {data?.tabCounts && <span className="count">{data.tabCounts[t.count]}</span>}
+                {data?.tabCounts && (
+                  <span className={`count${t.tone && data.tabCounts[t.count] ? ` st-${t.tone}` : ''}`}>
+                    {data.tabCounts[t.count]}
+                  </span>
+                )}
               </button>
             ))}
           </div>
