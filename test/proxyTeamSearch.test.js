@@ -313,7 +313,8 @@ test('the queue button and the dialog it opens say the same words', () => {
    * with the button that opens it, and only one of the two was reported.
    */
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  assert.match(queue, /\+ บันทึก OT แทนพนักงาน/);
+  // ปุ่มเหลือ บันทึกแทน + ไอคอน plus (2026-10-09) คำเต็มอยู่ใน title
+  assert.match(queue, /title="บันทึก OT แทนพนักงาน" onClick=\{\(\) => setFiling\(true\)\}>\s*<Icon name="plus" \/>\s*บันทึกแทน/);
   assert.ok(!queue.includes('บันทึก OT แทนลูกทีม'), 'the queue button kept the old wording');
   assert.match(code, /: proxy \? 'บันทึก OT แทนพนักงาน'/);
 });

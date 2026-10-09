@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
 import { NoticeRow } from './common.jsx';
+import Icon from './icons.jsx';
 
 /**
  * How a rule set appears on a screen HR is closing a month on.
@@ -173,7 +174,7 @@ export function PolicyDriftBanner({ user, onOpenPolicy }) {
       detail="ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน"
       action={onOpenPolicy && (
         <button type="button" className="btn ghost sm" onClick={onOpenPolicy}>
-          ดูที่หน้านโยบาย
+          <Icon name="external" />หน้านโยบาย
         </button>
       )}
     />

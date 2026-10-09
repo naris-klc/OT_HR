@@ -149,7 +149,8 @@ test('the bar is one row, and only the decisions keep the 44px floor', () => {
 });
 
 test('the ✕ is reachable without a pointer', () => {
-  has(jsx, 'aria-label="ล้างการเลือก"');
+  has(jsx, 'aria-label="ล้างที่เลือก"');  // ไอคอน close แทน ✕ ตั้งแต่ 2026-10-09
+  has(jsx, '<Icon name="close" />');
   // Not a `.btn`, so the app's focus rule does not reach it — the gap
   // `.password-field .reveal` had to close too.
   has(phone, '.picked-clear:focus-visible');

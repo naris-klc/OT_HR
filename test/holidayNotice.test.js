@@ -269,7 +269,7 @@ test('ทุกวันของเดือนมีชื่ออยู่�
 
   // ปฏิทินวันหยุดประจำปี is the row's one action.
   assert.ok(bannerCode.includes('setShowCalendar(true)'), 'ไม่มีปุ่มเปิดปฏิทิน');
-  assert.match(bannerCode, /action=\{\(\s*<button[^\n]*className="btn ghost sm"[^\n]*setShowCalendar\(true\)\}>\s*ดูปฏิทิน/,
+  assert.match(bannerCode, /action=\{\(\s*<button[^\n]*className="btn ghost sm"[^\n]*setShowCalendar\(true\)\}>\s*<Icon name="calendar" \/>\s*ปฏิทิน/,
     'ปุ่มปฏิทินไม่ได้เป็น action ของแถว');
 });
 

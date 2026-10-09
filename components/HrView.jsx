@@ -457,7 +457,7 @@ export default function HrView({
    * count, the quoted text in the empty state, the highlight and the suggestion
    * list — so the screen never shows one query's rows under another's count.
    *
-   * CLEARING IS NOT A KEYSTROKE AND DOES NOT WAIT. ✕ and ล้างการค้นหา are a
+   * CLEARING IS NOT A KEYSTROKE AND DOES NOT WAIT. ✕ and ล้างค้นหา are a
    * decision — the whole month back, now — and 300ms of an empty box over a
    * still-filtered list reads as a control that did not work. The early return
    * in the effect is the whole of that difference.
@@ -1930,7 +1930,8 @@ export default function HrView({
                   style={{ marginTop: 10 }}
                   onClick={() => setFind('')}
                 >
-                  ล้างการค้นหา
+                  <Icon name="reset" />
+                  ล้างค้นหา
                 </button>
               </div>
             ) : (
@@ -1988,7 +1989,7 @@ export default function HrView({
                 >
                   {chosen.length === canPick.length
                     ? 'ล้างที่เลือก'
-                    : `เลือกทั้งหมด (${canPick.length} คน)`}
+                    : `เลือกทั้งหมด (${canPick.length})`}
                 </button>
                 {/* NO FAST PATH, not even for one person — §5.1. The dialog is
                     where the number of ใบ is said out loud, and "one person" on
@@ -1999,7 +2000,10 @@ export default function HrView({
                   disabled={signing || chosen.length === 0}
                   onClick={() => setConfirming(true)}
                 >
-                  ยืนยันรายการที่เลือก
+                  {/* ยืนยันรายการที่เลือก until 2026-10-09 · the count is ใบ
+                      (§5.1, as in the dialog) and is dropped at zero */}
+                  <Icon name="check" />
+                  {chosen.length ? `ยืนยัน (${tally.entries})` : 'ยืนยัน'}
                 </button>
               </div>
             )}
@@ -2574,7 +2578,7 @@ export default function HrView({
                                that failed to fill itself in, and the reason is
                                already in the tooltip. */
                             <RowAction
-                              icon="tick"
+                              icon="check"
                               tone="go"
                               label={row.approvable?.count
                                 ? `ยืนยัน ${row.approvable.count} ใบ`
@@ -2589,7 +2593,7 @@ export default function HrView({
                           )}
                           <RowAction
                             icon="printer"
-                            label="พิมพ์ F-HR-027"
+                            label="พิมพ์"
                             name={`ใบขออนุมัติ OT — ${row.employee.name}`}
                             onClick={() => setPrinting({ employeeId: row.employee._id })}
                           />

@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api, periodLabel, companyLabel } from '@/lib/api.js';
 import { Alert, Disclosure, ShowMore, stamp } from './common.jsx';
+import Icon from './icons.jsx';
 import {
   SCAN_FORMATS, SCAN_MAX_BYTES, MIXED_COMPANY, decodeScanText, parseScanFile,
   scanSummary, scanDateRange, periodMismatchNote, formatLabel, machineLabel,
@@ -316,6 +317,7 @@ export default function ScanImport({
         </Disclosure>
         <div className="row" style={{ gap: 8 }}>
           <label className="btn ghost" style={{ cursor: 'pointer' }}>
+            <Icon name="upload" />
             นำเข้าไฟล์สแกน (.txt)
             <input
               ref={fileRef}
@@ -373,6 +375,7 @@ export default function ScanImport({
                   at 44px, which is the stylesheet's rule and not this panel's. */}
               <span className="row" style={{ gap: 8 }}>
                 <button className="btn" disabled={!readable || sending} onClick={confirm}>
+                  <Icon name="upload" />
                   {sending ? 'กำลังนำเข้า…' : 'ยืนยันนำเข้า'}
                 </button>
                 <button className="btn ghost" disabled={sending} onClick={() => setPending(null)}>

@@ -6,6 +6,7 @@ import { DELEGATED_APPROVAL_RECORDED } from '@/lib/delegation.js';
 import { Alert, Empty, Field, Modal, PickOne, RowAction } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
+import Icon from './icons.jsx';
 import { DateRange } from './PickDate.jsx';
 
 /**
@@ -86,7 +87,7 @@ export default function Delegation({ user, scope = 'mine' }) {
             was open, which is a second way of closing something that already
             has a × and an Escape — and it was the one that threw away what had
             been typed without asking. */}
-        <button className="btn" onClick={() => setAdding(true)}>มอบหมายผู้รับช่วง</button>
+        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />มอบหมาย</button>
       </div>
 
       {/*
@@ -361,7 +362,7 @@ function DelegationForm({ user, all, onClose, onSaved }) {
         <>
           <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
           <button className="btn" onClick={save} disabled={!ready || busy}>
-            {busy ? 'กำลังบันทึก…' : 'บันทึกการมอบหมาย'}
+            <Icon name="save" />{busy ? 'กำลังบันทึก…' : 'บันทึก'}
           </button>
         </>
       )}

@@ -661,8 +661,9 @@ function Compliance() {
               onClear={() => { setRange({ from: '', to: '' }); setOnly(''); }}
             />
           )}
-          <button className="btn outline sm" onClick={download} disabled={!data?.total}>
-            ดาวน์โหลด CSV ตามตัวกรอง
+          <button className="btn outline sm" onClick={download} disabled={!data?.total} title="ดาวน์โหลด CSV ตามตัวกรอง">
+            <Icon name="download" />
+            CSV
           </button>
         </div>
       </div>
@@ -960,7 +961,10 @@ function LogList({
           {/* The reason this screen has an export at all: the request comes from
               somebody who will never be given a login. See the route.
               `.outline` — see the note at `.btn.outline`. */}
-          <button className="btn outline sm" onClick={download}>ดาวน์โหลด CSV ตามตัวกรอง</button>
+          <button className="btn outline sm" onClick={download} title="ดาวน์โหลด CSV ตามตัวกรอง">
+            <Icon name="download" />
+            CSV
+          </button>
         </div>
       </div>
 

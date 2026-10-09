@@ -161,7 +161,7 @@ test('the box is the same box as every other field on the screen', () => {
 test('no result is an answer, with a way out of it', () => {
   assert.match(hrView, /ไม่พบข้อมูลพนักงานที่ค้นหา/);
   const empty = hrView.slice(hrView.indexOf('ไม่พบข้อมูลพนักงานที่ค้นหา'));
-  assert.match(empty.slice(0, 400), /ล้างการค้นหา/);
+  assert.match(empty.slice(0, 400), /ล้างค้นหา/); // ล้างการค้นหา until 2026-10-09
   // And it replaces the table rather than sitting under an empty one. Matched
   // without the closing bracket: the wrap carries the pager's `ref` now.
   assert.ok(

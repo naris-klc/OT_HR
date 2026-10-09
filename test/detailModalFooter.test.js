@@ -66,7 +66,9 @@ test('the approval names the slip for ฝ่ายบุคคล and stays อ�
      a second อนุมัติ — the greyed one a blocked ใบ gets. Two copies of
      `isHr ? … : …` agree until one of them is edited, and the greyed pair is
      supposed to be a picture of the live one. */
-  has(code, "const approveLabel = isHr ? 'อนุมัติใบ OT' : 'อนุมัติ';");
+  // อนุมัติ คำเดียวทั้งสองบทบาทตั้งแต่ 2026-10-09 (ชื่อปุ่ม ≤ 3 คำ) — เดิม
+  // `isHr ? 'อนุมัติใบ OT' : 'อนุมัติ'`
+  has(code, "const approveLabel = 'อนุมัติ';");
   assert.equal((code.match(/\{approveLabel\}/g) || []).length, 2,
     'ปุ่มอนุมัติที่กดได้กับที่ปิดไว้ ต้องอ่านคำเดียวกันจากที่เดียวกัน');
   // And the word it replaced is gone from the button rather than moved: ยืนยัน
@@ -128,7 +130,7 @@ test('nothing in the foot merely closes the pop-up', () => {
  * on a row whose own cell had just refused to. See `blocked` and `blockedNote`.
  */
 test('the foot is two answers, live or greyed', () => {
-  has(code, '<button className="btn quiet" onClick={() => setMode(\'view\')}>ย้อนกลับ</button>');
+  has(code, '<button className="btn quiet" onClick={() => setMode(\'view\')}><Icon name="chevronLeft" />กลับ</button>');
   has(code, ') : blocked ? (');
   assert.ok(!code.includes('? null : ('), 'ท้ายกล่องยังหายไปทั้งแถบบนใบที่ตัดสินไม่ได้');
   // Three feet now, all three laid out the same way.
@@ -386,7 +388,8 @@ test('a bucket with no hours is drawn faint, and the total row reads the stored 
 });
 
 test('แก้ไขชั่วโมง อยู่ท้ายกล่อง ก่อน ไม่อนุมัติ และไม่ร่วมคู่คำตอบ', () => {
-  has(code, '<button className="btn ghost foot-edit" title="แก้ไขชั่วโมง" disabled={busy || editing} onClick={() => setEditing(true)}>');
+  has(code, '<button className="btn ghost foot-edit" title="แก้ไขชั่วโมง" aria-label="แก้ไขชั่วโมง" disabled={busy || editing} onClick={() => setEditing(true)}>');
+  has(code, '<span>แก้ไข</span>');
   // ก่อน foot-split ทั้งสองแบบที่ตัดสินได้/ถูกล็อก — ไม่อยู่ในแถบปฏิเสธ
   assert.equal((code.match(/\{editButton\}\n    <div className="foot-split"/g) || []).length, 2);
   const rejecting = code.slice(code.indexOf("const footer = mode === 'rejecting' ? ("), code.indexOf(') : blocked ? ('));

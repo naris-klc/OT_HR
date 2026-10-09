@@ -756,7 +756,8 @@ test('the history toggle is a chip on the scan row, and the bar it replaced is g
   // became the end of the scan paragraph's own row — about 50px given back.
   assert.ok(!code.includes('audit-bar') && !css.includes('.audit-bar {'), 'the bar came back');
   assert.match(code, /<div className="scan-row">/);
-  assert.match(code, /ประวัติการแก้ไขทั้งหมด <b>\{auditable\.length\}<\/b>/);
+  // ป้ายเหลือ ประวัติ n (ประวัติการแก้ไขทั้งหมด n until 2026-10-09); คำเต็มอยู่ใน tooltip
+  assert.match(code, /ประวัติ <b>\{auditable\.length\}<\/b>/);
   // Disabled, not hidden, with the reason on the tooltip.
   assert.match(code, /disabled=\{!auditable\.length\}/);
   assert.match(jsx, /'เดือนนี้ยังไม่มีรายการใดถูกแก้ไขหรือคำนวณใหม่'/);

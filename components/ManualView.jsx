@@ -583,7 +583,7 @@ const SECTIONS = [
             ตราบใดที่ยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้ จะมี<b>แถบเตือนสีเหลือง</b>ขึ้นบน
             {' '}<b>หน้าแรกของบทบาทคุณ</b> — หน้าแรกหน้าเดียว ไม่ได้ตามไปทุกหน้า
             เพราะรหัสนั้นคือรหัสพนักงานซึ่งพิมพ์อยู่บนใบ OT ทุกใบและคนอื่นทราบด้วย
-            กดปุ่ม <b>เปลี่ยนรหัสผ่าน</b> ในแถบนั้น ระบบจะพาไปที่หน้า <b>ข้อมูลส่วนตัว</b>
+            กดปุ่ม <b>เปลี่ยนรหัส</b> ในแถบนั้น ระบบจะพาไปที่หน้า <b>ข้อมูลส่วนตัว</b>
             {' '}แล้ว<b>เลื่อนลงไปหยุดที่การ์ด เปลี่ยนรหัสผ่าน ให้เอง</b> — การ์ดนั้นเป็นใบที่สี่ของหน้า
             {' '}ไม่ต้องเลื่อนหาเอง · ตั้งรหัสใหม่เสร็จแล้วแถบจะหายไปเอง
           </p>
@@ -595,16 +595,16 @@ const SECTIONS = [
                 <span className="mk-alert col">
                   <span className="mk-alert-t">คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่</span>
                   <MkNote>— รหัสนี้คือรหัสพนักงานของคุณ ซึ่งมีคนอื่นทราบด้วย</MkNote>
-                  <MkBtn ghost>เปลี่ยนรหัสผ่าน</MkBtn>
+                  <MkBtn ghost>เปลี่ยนรหัส</MkBtn>
                 </span>
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <span className="mk-alert col">
                   <span className="mk-alert-t">คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่</span>
                   <MkNote>— รหัสนี้คือรหัสพนักงานของคุณ ซึ่งมีคนอื่นทราบด้วย</MkNote>
-                  <MkBtn ghost>เปลี่ยนรหัสผ่าน</MkBtn>
+                  <MkBtn ghost>เปลี่ยนรหัส</MkBtn>
                 </span>
               </Phone>
             )}
@@ -655,7 +655,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="ข้อมูลส่วนตัว" bar={<MkSlot icon="clock" label="ประวัติ OT" />}>
+              <Phone title="ข้อมูลส่วนตัว" bar={<MkSlot icon="history" label="ประวัติ OT" />}>
                 <MkNote>ปุ่มตัวอักษรย่อมุมบนขวา → กลุ่ม บัญชี → ข้อมูลส่วนตัว</MkNote>
                 <MkCols>ข้อมูลส่วนตัว · รหัสพนักงาน · ชื่อ-สกุล · ตำแหน่ง · วันเกิด · แผนก · บทบาท · บริษัท</MkCols>
                 <MkRow>ธีมสีหน้าจอ</MkRow>
@@ -776,7 +776,7 @@ const SECTIONS = [
                 title="รายการรออนุมัติ"
                 bar={(
                   <>
-                    <MkSlot icon="clock" label="ประวัติ OT" />
+                    <MkSlot icon="history" label="ประวัติ OT" />
                     <MkSlot icon="inbox" label="รออนุมัติ" on badge="3" />
                     <MkSlot icon="chart" label="รายงาน" />
                     <MkSlot icon="sliders" label="เพิ่มเติม" />
@@ -873,7 +873,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" fab bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" fab bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <MkRow>ชั่วโมง OT · กันยายน 2569</MkRow>
                 <span className="mk-cell"><span className="mk-cell-k">OT วันปกติ ×1.5</span><span className="mk-cell-v">6.0</span></span>
                 <MkNote>ปุ่มกลม + มุมขวาล่างคือปุ่มเดียวกับ + บันทึก OT ใหม่</MkNote>
@@ -906,7 +906,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <MkField label="วันที่เริ่ม" on>10/09/2569</MkField>
                 <MkField label="เวลาเริ่ม (จาก)" on>21:00</MkField>
                 <MkField label="เวลาสิ้นสุด (ถึง)" on>23:59</MkField>
@@ -937,7 +937,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <span className="mk-lab">ระบบคำนวณได้</span>
                 <span className="mk-cell"><span className="mk-cell-k">OT วันปกติ ×1.5</span><span className="mk-cell-v">2.0</span></span>
                 <span className="mk-cell"><span className="mk-cell-k">OT วันหยุด ×3</span><span className="mk-cell-v">2.5</span></span>
@@ -989,7 +989,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <span className="mk-alert info">
                   <span className="mk-alert-t">วันที่เลือกเป็นวันเกิดของคุณ</span>
                 </span>
@@ -1005,7 +1005,7 @@ const SECTIONS = [
           />
           <p className="hint">
             ปุ่ม <b>ส่งขออนุมัติ</b> ท้ายฟอร์มจะจางและกดไม่ได้ตราบใดที่ยังมีข้อที่ระบบไม่รับ ·
-            ใบที่เปิดมาแก้ ปุ่มจะเป็น <b>บันทึกการแก้ไข</b> และใบที่กด ส่งใหม่ จะเป็น <b>ส่งคำขอใหม่</b>
+            ใบที่เปิดมาแก้ ปุ่มจะเป็น <b>บันทึก</b> และใบที่ส่งใหม่จากใบเดิม ปุ่มจะเป็น <b>ส่งใหม่</b>
           </p>
         </li>
 
@@ -1037,7 +1037,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <MkTick on>เหมารายวัน (นับ 8 ชม. ต่อวัน)</MkTick>
                 <MkTick>ไม่พักเที่ยง</MkTick>
                 <MkField label="เวลาสิ้นสุด (ถึง)" pin="ล็อก">ระบบบวกให้เอง</MkField>
@@ -1115,7 +1115,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <MkRow badge="›">10/09/2569 · 21:00–02:00</MkRow>
                 <span className="mk-acts"><MkChip tone="wait">รอหัวหน้า</MkChip></span>
                 <MkRow badge="›">05/09/2569 · 18:00–20:00</MkRow>
@@ -1241,7 +1241,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />} fab>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />} fab>
                 <MkRow badge="›">10/09/2569 · รอหัวหน้า</MkRow>
                 <MkRow badge="›">05/09/2569 · อนุมัติ</MkRow>
                 <MkRow badge="›">02/09/2569 · ไม่อนุมัติ</MkRow>
@@ -1272,7 +1272,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <MkRow badge="›">10/09/2569 · 21:00–02:00</MkRow>
                 <MkNote>กดที่แถว → เปิดแผ่นรายละเอียด ปุ่มอยู่ท้ายแผ่น</MkNote>
                 <span className="mk-sheet">
@@ -1319,7 +1319,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <span className="mk-dlg">
                   <span className="mk-dlg-h">ยกเลิกคำขอนี้</span>
                   <MkField label="เหตุผลที่ยกเลิก">ไม่บังคับ</MkField>
@@ -1368,7 +1368,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <MkRow badge="›">10/09/2569 · 21:00–02:00</MkRow>
                 <span className="mk-dlg">
                   <span className="mk-dlg-h">ประวัติรายการ</span>
@@ -1799,7 +1799,7 @@ const SECTIONS = [
                   <MkBtn ghost>ล้างที่เลือก</MkBtn>
                 </span>
                 <MkNote>เพดานของแต่ละคนต่างกัน จึงยังไม่แสดงตรงนี้ — ระบบจะตรวจให้ทีละคนตอนบันทึก</MkNote>
-                <MkBtn>บันทึกแทนและส่งให้หัวหน้า · 2 คน</MkBtn>
+                <MkBtn>ส่งให้หัวหน้า (2)</MkBtn>
               </Desk>
             )}
             phone={(
@@ -1807,7 +1807,7 @@ const SECTIONS = [
                 <span className="mk-lab">บันทึกแทนพนักงาน * (เลือกแล้ว 2 คน)</span>
                 <MkTick on>สมชาย ใจดี · PM-0620</MkTick>
                 <MkTick on>ปรีชา ตั้งใจ · PM-0733</MkTick>
-                <MkBtn>บันทึกแทนและส่งให้หัวหน้า · 2 คน</MkBtn>
+                <MkBtn>ส่งให้หัวหน้า (2)</MkBtn>
               </Phone>
             )}
           />
@@ -2208,7 +2208,7 @@ const SECTIONS = [
               phone={(
                 <Phone title="ตรวจสอบประจำเดือน" bar={<MkSlot icon="chart" label="รายงาน" on />}>
                   <MkRow badge="›">สมชาย ใจดี · PM-0620</MkRow>
-                  <MkBtn ghost>พิมพ์ F-HR-027</MkBtn>
+                  <MkBtn ghost>พิมพ์</MkBtn>
                 </Phone>
               )}
             />
@@ -2232,7 +2232,7 @@ const SECTIONS = [
                     <MkChip tone="ok">ตรง</MkChip>
                     <span className="mk-cell"><span className="mk-cell-k">รวม ชม.</span><span className="mk-cell-v">28</span></span>
                     <MkIconBtn icon="printer" tone="off" />
-                    <MkIconBtn icon="tick" tone="ok" />
+                    <MkIconBtn icon="check" tone="ok" />
                   </span>
                 </span>
                 <span className="mk-headrow">
@@ -2241,7 +2241,7 @@ const SECTIONS = [
                     <MkChip tone="no">เวลาไม่ตรง 2</MkChip>
                     <span className="mk-cell"><span className="mk-cell-k">รวม ชม.</span><span className="mk-cell-v">9.5</span></span>
                     <MkIconBtn icon="printer" tone="off" />
-                    <MkIconBtn icon="tick" tone="off" />
+                    <MkIconBtn icon="check" tone="off" />
                   </span>
                 </span>
                 <MkNote>รวมทั้งหมด — ยอดของทั้งเดือน ไม่ใช่ยอดของผลการค้นหา</MkNote>
@@ -2262,7 +2262,7 @@ const SECTIONS = [
             <p>
               <b>ลายเซ็นขั้นที่สองเซ็นจากหน้านี้ได้เลย ไม่ต้องสลับไปที่คิว</b> —
               ติ๊กช่องหน้าแถว โดย<b>หนึ่งช่องคือรายการทั้งเดือนของคนนั้น</b>
-              {' '}แล้วกด <b>ยืนยันรายการที่เลือก</b> ที่แถบเหนือตาราง
+              {' '}แล้วกด <b>ยืนยัน</b> ที่แถบเหนือตาราง
             </p>
             <ul>
               <li>
@@ -2270,30 +2270,30 @@ const SECTIONS = [
                 ติ๊กแล้วเปลี่ยนเป็น <b>คน · รายการ · ชั่วโมง</b> ครบสามตัว — ติ๊กเดียวคือทั้งเดือน
                 ตัวเลขจำนวนคนอย่างเดียวจึงไม่เคยขึ้นลำพัง
               </li>
-              <li>ทีละคนก็ได้ — <b>ไอคอนถูกท้ายแถว</b> เปิดกล่องเดียวกันสำหรับคนนั้นคนเดียว</li>
+              <li>ทีละคนก็ได้ — <b>ไอคอนยืนยัน (ถูกในวงกลม) ท้ายแถว</b> เปิดกล่องเดียวกันสำหรับคนนั้นคนเดียว</li>
               <li>แถวที่ยืนยันไม่ได้ <b>ช่องติ๊กและไอคอนยังอยู่ แต่เป็นสีเทากดไม่ได้</b> ชี้ค้างแล้วบอกว่าติดอะไร</li>
               <li>ถ้าในกองที่ติ๊กมีรายการ<b>เกินเพดาน</b> แถบจะเตือนไว้ และกล่องยืนยันจะ<b>ขอเหตุผล</b>ก่อนจึงเซ็นให้</li>
             </ul>
             <Shot
-              alt="การเซ็นขั้นที่สองจากหน้าตรวจสอบประจำเดือน แถบเหนือตารางบอกจำนวนคนและจำนวนรายการที่ยืนยันได้ ติ๊กหน้าแถวแล้วกดปุ่มยืนยันรายการที่เลือก แถวที่ยืนยันไม่ได้ช่องติ๊กเป็นสีเทา"
+              alt="การเซ็นขั้นที่สองจากหน้าตรวจสอบประจำเดือน แถบเหนือตารางบอกจำนวนคนและจำนวนรายการที่ยืนยันได้ ติ๊กหน้าแถวแล้วกดปุ่มยืนยัน แถวที่ยืนยันไม่ได้ช่องติ๊กเป็นสีเทา"
               caption="ตัวเลขในภาพเป็นตัวอย่าง — ติ๊กหนึ่งช่องคือรายการทั้งเดือนของคนนั้น แถบจึงบอกจำนวนใบไว้ด้วยเสมอ ไม่ได้บอกแค่จำนวนคน"
               desk={(
                 <Desk title="ตรวจสอบประจำเดือน" nav={<MkRow on>ตรวจสอบประจำเดือน</MkRow>}>
                   <span className="mk-headrow">
                     <MkRow>เลือกไว้ 3 คน · 17 รายการ · 45.5 ชม.</MkRow>
                     <span className="mk-acts">
-                      <MkBtn ghost>เลือกทั้งหมด (24 คน)</MkBtn>
-                      <MkBtn>ยืนยันรายการที่เลือก</MkBtn>
+                      <MkBtn ghost>เลือกทั้งหมด (24)</MkBtn>
+                      <MkBtn>ยืนยัน (17)</MkBtn>
                     </span>
                   </span>
                   <MkNote>⚠️ 2 รายการเกินเพดาน — ต้องระบุเหตุผล</MkNote>
                   <span className="mk-headrow">
                     <MkTick on>สมชาย ใจดี · ฝ่ายผลิต</MkTick>
-                    <span className="mk-acts"><MkIconBtn icon="tick" tone="ok" /></span>
+                    <span className="mk-acts"><MkIconBtn icon="check" tone="ok" /></span>
                   </span>
                   <span className="mk-headrow">
                     <MkTick>วิภา สุขใจ · ฝ่ายบัญชี</MkTick>
-                    <span className="mk-acts"><MkIconBtn icon="tick" tone="off" /></span>
+                    <span className="mk-acts"><MkIconBtn icon="check" tone="off" /></span>
                   </span>
                 </Desk>
               )}
@@ -2301,7 +2301,7 @@ const SECTIONS = [
                 <Phone title="ตรวจสอบประจำเดือน" bar={<MkSlot icon="chart" label="รายงาน" on />}>
                   <MkRow>ยืนยันได้ 24 คน · 61 รายการ</MkRow>
                   <MkTick on>สมชาย ใจดี · ฝ่ายผลิต</MkTick>
-                  <MkBtn>ยืนยันรายการที่เลือก</MkBtn>
+                  <MkBtn>ยืนยัน</MkBtn>
                 </Phone>
               )}
             />
@@ -2659,7 +2659,7 @@ const SECTIONS = [
                   <span className="mk-dlg-h">แก้ไขรายละเอียด (ฝ่ายบุคคล)</span>
                   <MkField label="เหตุผลการแก้ไข *" on>เช่น ปรับตามเวลาสแกนออกจริง</MkField>
                   <MkNote>บันทึกในประวัติรายการคู่กับค่าเดิมก่อนแก้</MkNote>
-                  <MkBtn>บันทึกการแก้ไข</MkBtn>
+                  <MkBtn>บันทึก</MkBtn>
                 </span>
               </Desk>
             )}
@@ -2670,7 +2670,7 @@ const SECTIONS = [
                 <span className="mk-dlg">
                   <span className="mk-dlg-h">แก้ไขรายละเอียด (ฝ่ายบุคคล)</span>
                   <MkField label="เหตุผลการแก้ไข *" on>บังคับกรอก</MkField>
-                  <MkBtn>บันทึกการแก้ไข</MkBtn>
+                  <MkBtn>บันทึก</MkBtn>
                 </span>
               </Phone>
             )}
@@ -2715,14 +2715,14 @@ const SECTIONS = [
             แก้แล้วอย่าลืมว่า<b>แผ่นที่พิมพ์ไปแล้วยังเป็นของเก่า</b> ถ้าเข้าแฟ้มไปแล้วต้องพิมพ์ไปแทน
           </p>
           <Shot
-            alt="ทางพิมพ์ใบใหม่หลังแก้ไข ปุ่มพิมพ์ F-HR-027 ท้ายแถวของคนนั้น หรือเลือกพิมพ์ใบขออนุมัติ OT ในเมนูพิมพ์ส่งออกเมื่อจะพิมพ์ทั้งเดือนอีกครั้ง"
+            alt="ทางพิมพ์ใบใหม่หลังแก้ไข ปุ่มพิมพ์ท้ายแถวของคนนั้น หรือเลือกพิมพ์ใบขออนุมัติ OT ในเมนูพิมพ์ส่งออกเมื่อจะพิมพ์ทั้งเดือนอีกครั้ง"
             caption="ระบบไม่รู้ว่าแผ่นไหนเข้าแฟ้มไปแล้ว — การพิมพ์ทับของเก่าจึงเป็นขั้นตอนของคน ไม่ใช่ของระบบ"
             desk={(
               <Desk title="ตรวจสอบประจำเดือน" nav={<MkRow on>ตรวจสอบประจำเดือน</MkRow>}>
                 <span className="mk-headrow">
                   <MkRow pin="›">สมชาย ใจดี · PM-0620</MkRow>
                   <span className="mk-acts">
-                    <MkBtn ghost>พิมพ์ F-HR-027</MkBtn>
+                    <MkBtn ghost>พิมพ์</MkBtn>
                   </span>
                 </span>
                 <MkNote>ทั้งเดือนอีกครั้ง — พิมพ์ / ส่งออก ▾ → พิมพ์ใบขออนุมัติ OT</MkNote>
@@ -2731,7 +2731,7 @@ const SECTIONS = [
             phone={(
               <Phone title="ตรวจสอบประจำเดือน" bar={<MkSlot icon="chart" label="รายงาน" on />}>
                 <MkRow badge="›">สมชาย ใจดี · PM-0620</MkRow>
-                <MkBtn ghost>พิมพ์ F-HR-027</MkBtn>
+                <MkBtn ghost>พิมพ์</MkBtn>
               </Phone>
             )}
           />
@@ -3043,7 +3043,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <MkField label="วันที่เริ่ม" on>12/09/2569</MkField>
                 <span className="mk-alert info">
                   <span className="mk-alert-t">ช่วงเวลาที่ยื่นนี้ตรงกับวันเกิดของคุณ — ระบบคิดให้อัตโนมัติ</span>
@@ -3135,7 +3135,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <MkRow badge="›">10/09/2569 · 21:00–02:00</MkRow>
                 <span className="mk-acts"><MkChip tone="wait">รอหัวหน้า</MkChip></span>
                 <span className="mk-dlg">
@@ -3178,7 +3178,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="history" label="ประวัติ OT" on />}>
                 <MkRow badge="›">10/09/2569 · รอหัวหน้า → แก้ไข</MkRow>
                 <MkRow badge="›">05/09/2569 · อนุมัติ → ถอนใบ</MkRow>
                 <MkNote>ปุ่มอยู่ท้ายแผ่นรายละเอียดที่เปิดจากแถว</MkNote>
@@ -3209,7 +3209,7 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone title="ข้อมูลส่วนตัว" bar={<MkSlot icon="clock" label="ประวัติ OT" />}>
+              <Phone title="ข้อมูลส่วนตัว" bar={<MkSlot icon="history" label="ประวัติ OT" />}>
                 <MkNote>ปุ่มตัวอักษรย่อมุมบนขวา → กลุ่ม บัญชี → ข้อมูลส่วนตัว</MkNote>
                 <MkField label="บทบาท" on>{p.label}</MkField>
               </Phone>
@@ -3345,11 +3345,13 @@ function ManualPrint({ visible, ctx, picked, onPick, onClose }) {
             </button>
             <button
               type="button"
-              className="btn ghost"
+              className="btn quiet"
               onClick={() => onPick([])}
               disabled={sheets.length === 0}
+              aria-label="ล้างที่เลือก"
+              title="ล้างที่เลือก"
             >
-              ล้างที่เลือก
+              <Icon name="close" />
             </button>
           </div>
         </div>

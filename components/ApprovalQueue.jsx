@@ -25,7 +25,7 @@ import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
   Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
-  RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, ShowMore,
+  RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, EntryLead, EntryHistoryFold, ShowMore,
   NoticeRow, NoticeStack, SignatureFacts,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
@@ -1356,8 +1356,9 @@ export default function ApprovalQueue({
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           {countLabel && <span className="chip muted">{countLabel}</span>}
           {!isHr && isSigner(user.role) && (
-            <button className="btn ghost sm" onClick={() => setFiling(true)}>
-              + บันทึก OT แทนพนักงาน
+            <button className="btn ghost sm" title="บันทึก OT แทนพนักงาน" onClick={() => setFiling(true)}>
+              <Icon name="plus" />
+              บันทึกแทน
             </button>
           )}
         </div>
@@ -1633,10 +1634,10 @@ export default function ApprovalQueue({
                     className="picked-clear"
                     disabled={busy}
                     onClick={() => setSelected(new Set())}
-                    aria-label="ล้างการเลือก"
-                    title="ล้างการเลือก"
+                    aria-label="ล้างที่เลือก"
+                    title="ล้างที่เลือก"
                   >
-                    ✕
+                    <Icon name="close" />
                   </button>
                 </div>
               </>
@@ -1662,18 +1663,18 @@ export default function ApprovalQueue({
               Both buttons take the same shape. One counting and one not, side
               by side, reads as the uncounted one doing something else. */}
           <button className="btn sm" disabled={busy} onClick={() => setConfirming(picked)}>
-            ✓ {many ? `${verb}ทั้งหมดที่เลือก (${picked.length} รายการ)` : `${verb} 1 รายการ`}
+            <Icon name="tick" />
+            {verb} ({picked.length})
           </button>
           <button
             className="btn ghost danger sm"
             disabled={busy}
             onClick={() => setRejecting(picked)}
           >
-            ✕ {many ? `ไม่อนุมัติทั้งหมดที่เลือก (${picked.length} รายการ)` : 'ไม่อนุมัติ 1 รายการ'}
+            <Icon name="cross" />
+            ไม่อนุมัติ ({picked.length})
           </button>
-          <button className="link" disabled={busy} onClick={() => setSelected(new Set())}>
-            ยกเลิกการเลือก
-          </button>
+          <RowAction icon="close" label="ล้างที่เลือก" disabled={busy} onClick={() => setSelected(new Set())} />
         </div>
       )}
 
@@ -2464,7 +2465,7 @@ export default function ApprovalQueue({
  * hours move, and it is the one with a sheet's width to spell it out in.
  */
 function pileLabel(count) {
-  return count > 1 ? `ยืนยันอนุมัติทั้งหมด (${count} รายการ)` : 'ยืนยันการอนุมัติ';
+  return count > 1 ? `ยืนยัน (${count})` : 'ยืนยัน';
 }
 
 // ── batch modals ────────────────────────────────────────────────────────────
@@ -2879,14 +2880,16 @@ function DetailModal({
    * them is edited. See the note over the live button for why ฝ่ายบุคคล's
    * names its object and a หัวหน้า's does not.
    */
-  const approveLabel = isHr ? 'อนุมัติใบ OT' : 'อนุมัติ';
+  /* อนุมัติ คำเดียวทั้งสองบทบาทตั้งแต่ 2026-10-09 — ชื่อปุ่มไม่เกิน 3 คำ ไอคอน
+     `tick` บอกความหมาย · ฝ่ายบุคคลเคยอ่านว่า อนุมัติใบ OT */
+  const approveLabel = 'อนุมัติ';
   /* แก้ไขชั่วโมง ท้ายกล่อง ก่อน ไม่อนุมัติ (2026-10-09, ขอมาพร้อมแบบ B) — เดิมอยู่
      บนหัว การแบ่งช่วงเวลา · อยู่นอก `.foot-split` เพราะคู่นั้นคือสองคำตอบที่ต้อง
      กว้างเท่ากัน ปุ่มนี้ไม่ใช่คำตอบ · ระหว่างแก้ปิดไว้ แผงแก้ไขมีปุ่มบันทึกของมันเอง */
   const editButton = (
-    <button className="btn ghost foot-edit" title="แก้ไขชั่วโมง" disabled={busy || editing} onClick={() => setEditing(true)}>
+    <button className="btn ghost foot-edit" title="แก้ไขชั่วโมง" aria-label="แก้ไขชั่วโมง" disabled={busy || editing} onClick={() => setEditing(true)}>
       <Icon name="pencil" />
-      <span>แก้ไขชั่วโมง</span>
+      <span>แก้ไข</span>
     </button>
   );
   const footer = mode === 'rejecting' ? (
@@ -2895,12 +2898,13 @@ function DetailModal({
           the refusal is typed over the top of this pop-up rather than in a
           dialog of its own. Quiet, because the decision beside it is the one
           being asked for. */}
-      <button className="btn quiet" onClick={() => setMode('view')}>ย้อนกลับ</button>
+      <button className="btn quiet" onClick={() => setMode('view')}><Icon name="chevronLeft" />กลับ</button>
       <button
         className="btn danger"
         disabled={busy || !rejectState.reason.trim()}
         onClick={() => onReject(rejectState.reason.trim(), rejectState.notify)}
       >
+        <Icon name="cross" />
         ยืนยันไม่อนุมัติ
       </button>
     </div>
@@ -2922,8 +2926,8 @@ function DetailModal({
     <>
     {editButton}
     <div className="foot-split" title={blocked.short} aria-label={blocked.short} role="note">
-      <button className="btn ghost danger" disabled aria-hidden="true">ไม่อนุมัติ</button>
-      <button className="btn" disabled aria-hidden="true">{approveLabel}</button>
+      <button className="btn ghost danger" disabled aria-hidden="true"><Icon name="cross" />ไม่อนุมัติ</button>
+      <button className="btn" disabled aria-hidden="true"><Icon name="tick" />{approveLabel}</button>
     </div>
     </>
   ) : (
@@ -2933,6 +2937,7 @@ function DetailModal({
       {/* Both decisions are shut while the hours are open for editing: a
           correction half-typed is not a basis for either one. */}
       <button className="btn ghost danger" disabled={busy || editing} onClick={() => setMode('rejecting')}>
+        <Icon name="cross" />
         ไม่อนุมัติ
       </button>
       {/*
@@ -2957,6 +2962,7 @@ function DetailModal({
         name and the date is the app repeating what the reader is looking at.
       */}
       <button className="btn" disabled={busy || editing} onClick={onApprove}>
+        <Icon name="tick" />
         {approveLabel}
       </button>
     </div>
@@ -3105,37 +3111,15 @@ function DetailModal({
             </Alert>
           )}
 
-          {/* ── สองคอลัมน์ (mockup detail-modal แบบ B, 2026-10-09) ─────────────
-              *"redesign modal นี้ให้แสดงผลกระชับ แต่ยังได้รายละเอียดครบถ้วน"* ·
-              ซ้าย = สิ่งที่ถูกขอให้ตัดสิน: เวลา ข้อเท็จจริงของวัน ชั่วโมงแยกอัตรา
-              ต่อช่วง และงานที่ทำ · ขวา = บริบท: เพดานเดือน ผู้อนุมัติ ประวัติ ·
-              จอแคบเรียงซ้อนกัน (`.dm-grid` ใน app/styles.css)
-
-              แทนของเดิม: `fact-grid` สี่ช่อง กล่องอัตราสี่กล่อง (`ot-split`) และ
-              `SegmentList` — สามที่ที่บอกชั่วโมงชุดเดียวกัน รวมเป็นตารางเดียว
-              (`SegmentRates`) · ปุ่ม แก้ไขชั่วโมง ย้ายไปท้ายกล่อง ก่อน ไม่อนุมัติ */}
+          {/* ── แบบ 1 ของ mockup detail-modal-2 (2026-10-09) ────────────────────
+              แถบนำเต็มกว้าง (`EntryLead`) · สองแผงกว้างเท่ากันสูงเท่ากัน — ซ้าย
+              ชั่วโมงแยกอัตรา + งาน · ขวา เพดานเดือน + ผู้อนุมัติ · ประวัติพับไว้
+              ท้ายสุด (`EntryHistoryFold`) เพราะมันคือสิ่งที่ทำให้แบบ B ไม่สมมาตร ·
+              ฝั่งพนักงาน (EmployeeView `EntryDetail`) ใช้โครงเดียวกัน
+              แบบ B ที่ถูกแทน: สองคอลัมน์ 1.35 : 1 และประวัติอยู่คอลัมน์ขวา */}
+          <EntryLead entry={e} />
           <div className="dm-grid">
-            <div className="dm-main">
-              <div className="dm-time">
-                <span className="dm-span">{e.startTime}–{e.endTime}</span>
-                <span className="dm-facts">
-                  {e.noBreakTaken ? 'ไม่พักเที่ยง' : 'หักพักเที่ยงตามนโยบาย'}
-                  {' · '}นาฬิกา {hours(e.totals?.clockHours)} ชม.
-                  {' · '}
-                  {e.capExceeded
-                    ? <span className="dm-over">เกินเพดานแผนก — {describeBreaches(e).map((b) => b.text).join(' · ')}</span>
-                    : 'ไม่เกินเพดานแผนก'}
-                </span>
-              </div>
-              {/* วันเกิด · เหมารายวัน เหนือตัวเลขที่มันอธิบาย — "ทำไมกะสิบสองชั่วโมง
-                  ได้ 8" และ "ทำไมวันอังคารลงช่องวันหยุด" ต้องตอบได้ในกล่องที่ใช้
-                  ตัดสิน ไม่ใช่แค่บนแถวข้างหลัง */}
-              {(e.flatDaily || isBirthdayWelfare(e)) && (
-                <div className="entry-mark">
-                  <BirthdayWelfareMark entry={e} />
-                  <FlatDailyMark entry={e} />
-                </div>
-              )}
+            <div className="dm-panel">
               {editing ? (
                 <QuickEdit
                   entry={e}
@@ -3156,50 +3140,48 @@ function DetailModal({
               )}
               <ReasonCard description={e.description} extraNote={e.extraNote} />
             </div>
-            <aside className="dm-side">
+            <div className="dm-panel">
               <CapCard month={e.usage?.month} counted={e.usage?.counted} />
               <div>
                 <div className="kicker-sm">ผู้อนุมัติ</div>
                 <SignatureFacts entry={e} />
               </div>
-              {/* One request's history, or the whole chain when this one replaced
-                  a refused request. The trail arrives a moment after the pop-up
-                  does, so until it lands this row's own history stands in rather
-                  than the section flickering empty.
+            </div>
+          </div>
+            {/* One request's history, or the whole chain when this one replaced
+                a refused request. The trail arrives a moment after the pop-up
+                does, so until it lands this row's own history stands in rather
+                than the section flickering empty.
 
-                  `hideSystem` — WHAT A REVIEWER IS BEING ASKED ABOUT. This list is
-                  read while somebody decides whether to sign, and the question it
-                  answers is who filed this, who has signed it already, and whether
-                  anybody changed it after it was filed. ระบบคำนวณใหม่ตามนโยบาย
-                  answers none of those: it is a run that walked the month, and
-                  after a policy change or a holiday-calendar edit EVERY request in
-                  the queue carries one, pushing the three rows that matter below
-                  the fold on a phone. The rows are not deleted and nothing stops
-                  anybody reading them — ประวัติ OT ของฉัน, ตรวจสอบประจำเดือน and
-                  the trail endpoint all still draw them in full. See
-                  `SYSTEM_LOG_ACTIONS` in lib/entries.js.
+                `hideSystem` — WHAT A REVIEWER IS BEING ASKED ABOUT. This list is
+                read while somebody decides whether to sign, and the question it
+                answers is who filed this, who has signed it already, and whether
+                anybody changed it after it was filed. ระบบคำนวณใหม่ตามนโยบาย
+                answers none of those: it is a run that walked the month, and
+                after a policy change or a holiday-calendar edit EVERY request in
+                the queue carries one, pushing the three rows that matter below
+                the fold on a phone. The rows are not deleted and nothing stops
+                anybody reading them — ประวัติ OT ของฉัน, ตรวจสอบประจำเดือน and
+                the trail endpoint all still draw them in full. See
+                `SYSTEM_LOG_ACTIONS` in lib/entries.js.
 
-                  And the emptiness test moves with it: `humanHistory` rather than
-                  `e.history`, or an entry whose whole history is replays would get
-                  a heading standing over nothing. */}
-              {trail?.requests?.length > 1 ? (
-                <div>
-                  <div className="kicker-sm">ประวัติรายการ (รวมคำขอเดิม)</div>
-                  <RequestTrail requests={trail.requests} liveStatus={e.status} hideSystem />
-                  {trail.truncated && (
-                    <div className="hint">
-                      แสดงย้อนหลังได้สูงสุด 20 คำขอ · อาจมีคำขอเก่ากว่านี้ที่ไม่ได้แสดง
-                    </div>
-                  )}
-                </div>
-              ) : humanHistory(e).length > 0 && (
-                <div>
-                  <div className="kicker-sm">ประวัติรายการ</div>
-                  <EntryHistory entry={e} hideSystem />
+                And the emptiness test moves with it: `humanHistory` rather than
+                `e.history`, or an entry whose whole history is replays would get
+                a heading standing over nothing. */}
+          {trail?.requests?.length > 1 ? (
+            <EntryHistoryFold title="ประวัติรายการ (รวมคำขอเดิม)">
+              <RequestTrail requests={trail.requests} liveStatus={e.status} hideSystem />
+              {trail.truncated && (
+                <div className="hint">
+                  แสดงย้อนหลังได้สูงสุด 20 คำขอ · อาจมีคำขอเก่ากว่านี้ที่ไม่ได้แสดง
                 </div>
               )}
-            </aside>
-          </div>
+            </EntryHistoryFold>
+          ) : humanHistory(e).length > 0 && (
+            <EntryHistoryFold title="ประวัติรายการ">
+              <EntryHistory entry={e} hideSystem />
+            </EntryHistoryFold>
+          )}
         </>
       )}
     </Modal>
@@ -3771,7 +3753,8 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
             behind it. Both are in the banner above too, so the button going
             quiet is never the only thing that happened. */}
         <button className="btn" onClick={save} disabled={saving || !moved || !note.trim() || refused}>
-          {saving ? 'กำลังบันทึก…' : 'บันทึกชั่วโมงใหม่'}
+          <Icon name="save" />
+          {saving ? 'กำลังบันทึก…' : 'บันทึก'}
         </button>
       </div>
       <div className="hint">
@@ -4036,7 +4019,7 @@ function EntryPeek({ entries, collapsed }) {
     <div>
       {collapsed && (
         <button type="button" className="link" onClick={() => setOpen(!open)}>
-          {open ? 'ซ่อนรายการ' : `ดูรายการทั้ง ${entries.length} รายการ`}
+          {open ? 'ซ่อนรายการ' : `ดูทั้งหมด (${entries.length})`}
         </button>
       )}
       {open && (

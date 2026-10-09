@@ -925,7 +925,7 @@ QC→`PROD2` · WH→`WH-FG` · ADM→`HRD`) พร้อมใบ OT 22 ใบ�
   แจ้งผล และหายไปเองเมื่อธงถูกล้าง (หน้าจออ่าน session ใหม่ทันทีที่บันทึกรหัส
   จึงไม่ต้อง refresh)
 - **ราคาที่จ่ายจริง: ช่วงที่รหัสพนักงานใช้ล็อกอินได้ ไม่ได้จบที่การล็อกอินครั้งแรก
-  อีกต่อไป** มันจบเมื่อคนนั้นกด บันทึกรหัสผ่านใหม่ เท่านั้น ใครที่ไม่เคยเปลี่ยนก็ยังมี
+  อีกต่อไป** มันจบเมื่อคนนั้นกด บันทึก (เดิม บันทึกรหัสผ่านใหม่) เท่านั้น ใครที่ไม่เคยเปลี่ยนก็ยังมี
   รหัสผ่านที่พิมพ์อยู่บนใบ OT ทุกใบ **นี่คือสิ่งที่ถูกเลือกแลกมาโดยรู้ตัว** ทางกลับคือ
   ทำหน้าคั่นขึ้นมาใหม่ ซึ่งเป็นสิ่งที่ถูกสั่งให้เอาออก — ถ้าจะต้องรัดกุมกว่านี้โดยไม่มี
   หน้าคั่น ทางที่เหลือคือกำหนดวันหมดอายุให้รหัสที่ยังไม่ถูกเปลี่ยน ซึ่งยังไม่ได้ถาม
@@ -1942,7 +1942,7 @@ api.get(`/logs?${params}`).then(setData);
 
 ### ตอนต้องส่งสำเนาให้คนอื่น
 
-**ดาวน์โหลด CSV ตามตัวกรอง** บนแท็บที่เป็นรายการแท็บไหนก็ได้ หรือ
+**⤓ CSV** (เดิม ดาวน์โหลด CSV ตามตัวกรอง) บนแท็บที่เป็นรายการแท็บไหนก็ได้ หรือ
 `GET /api/exports/logs.csv?from=…&to=…` คำขอที่ฟีเจอร์นี้มีไว้รองรับ ไม่ได้มาจาก
 คนที่จะได้ล็อกอิน สิ่งที่เขาขอคือสำเนาที่ครอบคลุมช่วงเวลาที่ระบุ และอ่านได้โดยไม่ต้อง
 มีแอปนี้ ไฟล์นี้จึงมี**ทุก**คอลัมน์ รวมทั้งคอลัมน์ที่หน้าจอย่อไว้ — user-agent เต็ม ๆ
@@ -2127,9 +2127,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2849 tests
+and the engine know nothing about Next.js, so the whole suite — **2850 tests
 across 160 files**, measured 2026-10-09 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2849 tests across 160 files" until **ปุ่ม 36px · ชื่อปุ่ม ≤ 3 คำ · หน้ารายละเอียดใบ OT แบบ 1**.
 It read "2848 tests across 160 files" until **ป๊อปอัปรายละเอียดใบ OT เป็นสองคอลัมน์**
 (1 เคสใหม่: แก้ไขชั่วโมง ท้ายกล่อง).
 It read "2847 tests across 160 files" until **ตัวเลขในตัวกรองคิวรออนุมัติ OT
@@ -6120,12 +6121,12 @@ press — and the pile has three ways out of it instead of a list of names:
 ผลเทียบกับไฟล์สแกนนิ้วมือ — สิงหาคม 2569
 ⚠ ต้องตรวจ 3 แถว  (2 คน จาก 7 ใบ)
 1 ไม่ครบ · 1 เวลาเริ่มไม่ตรง · 1 ไม่ตรง (ไม่มีสแกนนิ้ว) · 1 เกินเวลา · 1 เหมารายวัน · 4 ตรง
-[ ดูเฉพาะคนที่ต้องตรวจ (2 คน) ]
+[ ต้องตรวจ (2) ]
 ```
 
   · **the คอลัมน์สแกน on every row of the table**, so the finding is beside the
     person rather than in a paragraph above them;
-  · **ดูเฉพาะคนที่ต้องตรวจ**, which narrows the table to exactly that pile —
+  · **ต้องตรวจ (n)** (ดูเฉพาะคนที่ต้องตรวจ until 2026-10-09), which narrows the table to exactly that pile —
     a filter has no cap, which is what the list of twelve could not manage;
   · and the row marks themselves, one press away, unchanged.
 
@@ -9332,7 +9333,7 @@ spaces — every ellipsis lands mid-word, so the paper stops saying what the
 employee wrote. Splitting the question is the only shape in which no text is
 squeezed into a cell smaller than itself.
 
-On the form it is folded away behind **อธิบายเพิ่มเติม (ไม่บังคับ)** and opens
+On the form it is folded away behind **เพิ่มคำอธิบาย** (it read อธิบายเพิ่มเติม (ไม่บังคับ) until 2026-10-09) and opens
 by itself on an entry that already has one; on screen it is the second
 paragraph of `ReasonCard`, so it appears in the รายละเอียด pop-up on
 รออนุมัติ OT and on ประวัติการขอ OT — and **in no table row**,
@@ -9895,7 +9896,7 @@ which one can.
 content is *"the answer is somewhere else"* — `arithmeticMixed` is null because
 รายการ OT holds version numbers and not the snapshots behind them, and
 ตรวจสอบรายเดือน holds both. Naming the screen and leaving the reader to find it
-was the sentence doing half its job: กลับไปสรุปรายเดือน is at the top of the same
+was the sentence doing half its job: the back button (‹ กลับ since 2026-10-09) is at the top of the same
 card, and nothing joined the two up. **ตรวจสอบรายเดือน** is a `.link` now, and
 `HrEntries` passes its own `onClose` as the callback — leaving *is* arriving.
 It is **optional**, and that is not defensive coding: `MonthAlerts` draws this
@@ -12879,7 +12880,7 @@ the moment of the pick there is no row in the document to scroll to and no
 element to light — and 1800ms of flash fired then would burn down while HR was
 still reading the entries. `goToRow()` therefore records a request (`jump`) and
 an effect spends it later, when `data` is back and none of `opened`, `auditing`
-or `printing` is set. That is the moment HR presses **กลับไปสรุปรายเดือน**: the
+or `printing` is set. That is the moment HR presses **‹ กลับ** (กลับไปสรุปรายเดือน until 2026-10-09): the
 list is drawn again, the page moves to their row and it lights. `flash` is a
 second piece of state and not the same one, because the request and the lighting
 are two different moments.
@@ -14537,7 +14538,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2849 tests**, about 8 s, measured 2026-10-09 across 160
+- `npm test` — **2850 tests**, about 8 s, measured 2026-10-09 across 160
   files, all green (it read "2842 tests" until the status tabs on ตรวจสอบ
   ประจำเดือน rewrote `monthStatusFilter`). **`policyReading` is the newest file** — the one-sentence
   answer line and the worked examples on นโยบายการคำนวณ (แบบ B). It read

@@ -60,7 +60,7 @@ export default function ProfileView({ user, jumpTo = null, onPasswordChanged, on
               filled red is reserved for what cannot be taken back, and signing
               out is undone by signing in. It sits in the password card's button
               row, away from the green save so the two are not mistaken. */}
-          <button type="button" className="btn ghost danger" onClick={onLogout}>ออกจากระบบ</button>
+          <button type="button" className="btn ghost danger" onClick={onLogout}><Icon name="logout" />ออกจากระบบ</button>
         </ChangePassword>
       </div>
       {/* Where a หัวหน้า arranges their own cover — on the page they are
@@ -498,7 +498,7 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
         <div className="profile-submit">
           <div className="profile-actions">
             <button className="btn" disabled={busy || !ready}>
-              {busy ? 'กำลังบันทึก…' : 'บันทึกรหัสผ่านใหม่'}
+              <Icon name="save" />{busy ? 'กำลังบันทึก…' : 'บันทึก'}
             </button>
             {children}
           </div>

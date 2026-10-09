@@ -437,8 +437,9 @@ test('the ceiling card is only drawn for the month its figures are about', () =>
  */
 test('the owner sees both the pair and the list, under one heading', () => {
   const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
-  const section = mine.slice(mine.indexOf('<Section title="ผู้อนุมัติ">'));
-  const head = section.slice(0, section.indexOf('</Section>'));
+  // แผงขวาของหน้ารายละเอียดแบบ 1 (2026-10-09) แทน <Section title="ผู้อนุมัติ">
+  const section = mine.slice(mine.indexOf('<div className="kicker-sm">ผู้อนุมัติ</div>'));
+  const head = section.slice(0, section.indexOf('<EntryHistoryFold'));
   assert.match(head, /<SignatureFacts entry=\{e\} \/>/, 'คู่ผู้ยื่น–ผู้อนุมัติหายไป');
   assert.match(head, /\{decided && \(/, 'รายการลายเซ็นไม่ได้ถูกกั้นด้วย decided');
   assert.match(head, /<ApprovalSteps entry=\{e\} \/>/, 'รายการลายเซ็นหายไป');
@@ -458,7 +459,8 @@ test('the owner sees both the pair and the list, under one heading', () => {
 test('the owner’s history section draws on any request that has one', () => {
   const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
   has(mine, "{(e.history || []).length > 0 && (");
-  has(mine, "<Section title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>");
+  // พับไว้ท้ายหน้า (`EntryHistoryFold`) ตั้งแต่ 2026-10-09 — เดิมเป็น <Section>
+  has(mine, "<EntryHistoryFold title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>");
   // The ข้อมูลเดิม explanation is still there, and is still only said on the
   // rows it is about: on those the trail carries เดิม → ใหม่ blocks, and a
   // reader has to be told which version F-HR-027 prints.
@@ -486,13 +488,15 @@ test('none of the reviewer’s three decisions is on the owner’s pop-up', () =
      they most need to find. What may not appear is a BUTTON. */
   has(mine, 'เหตุผลที่ไม่อนุมัติ');
   // What is there instead: the way out, and the three things an owner may do.
-  has(mine, '<button className="btn ghost" onClick={onClose}>ปิดหน้าต่าง</button>');
+  // ปิดหน้าต่าง ออกไป 2026-10-09 — ✕ บนหัวคือทางออก และใบที่ไม่มีปุ่มไม่วาดท้ายกล่อง
+  assert.ok(!mine.includes('>ปิดหน้าต่าง</button>'), 'ปุ่มปิดหน้าต่างกลับมา');
+  has(mine, 'footer={hasActions && (');
   // `ถอนใบ OT` read `ยื่นขอถอนใบ OT` until 2026-09-18 — the extra word carried a
   // real distinction while this button only ASKED and the reviewer's took the
   // hours off the books. They do the same thing now, so they say the same thing.
-  has(mine, 'onClick={onAskWithdraw}>ถอนใบ OT</button>');
-  has(mine, 'onClick={onCancel}>ยกเลิกคำขอ</button>');
-  has(mine, 'onClick={onEdit}>แก้ไข</button>');
+  has(mine, 'onClick={onAskWithdraw}><Icon name="ban" />ถอนใบ OT</button>');
+  has(mine, 'onClick={onCancel}><Icon name="ban" />ยกเลิกคำขอ</button>');
+  has(mine, 'onClick={onEdit}><Icon name="pencil" />แก้ไข</button>');
 });
 
 /**

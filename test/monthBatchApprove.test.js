@@ -231,7 +231,8 @@ test('§5.1 — both units are said everywhere a count appears', () => {
   // because that is the unit that reaches payroll.
   assert.match(confirm, /<div className="k">พนักงาน<\/div>/);
   assert.match(confirm, /<div className="k">จำนวนรายการ<\/div>/);
-  assert.match(confirm, /\{`ยืนยัน \$\{tally\.entries\} รายการ`\}/);
+  // `ยืนยัน N รายการ` until 2026-10-09 — still the ใบ count, in brackets
+  assert.match(confirm, /\{`ยืนยัน \(\$\{tally\.entries\}\)`\}/);
   // …and the resting bar, before anything is ticked at all, which is what tells
   // a reader of a report that this screen can now be signed from.
   assert.match(hrView, /ยืนยันได้ <strong>\{canPick\.length\}<\/strong> คน/);
@@ -348,7 +349,7 @@ test('the preview is people, which is the whole reason this dialog is its own', 
   // reader who ticked four names can see which of them is carrying most of it.
   assert.match(confirm, /function PeoplePeek\(\{ people, collapsed \}\)/);
   assert.match(confirm, /\{row\.approvable\.count\} ใบ/);
-  assert.match(confirm, /ดูรายชื่อทั้ง \$\{people\.length\} คน/);
+  assert.match(confirm, /ดูทั้งหมด \(\$\{people\.length\}\)/); // ดูรายชื่อทั้ง N คน until 2026-10-09
   // It reuses `.peek-list`, so the two previews are the same object drawn with
   // different nouns rather than two lists that drifted apart.
   assert.match(confirm, /<ul className="peek-list">/);

@@ -57,12 +57,12 @@ const has = (src_, text, why) => assert.ok(src_.includes(text), why || `หา�
 // ── the bar at the foot of the queue ────────────────────────────────────────
 
 test('the batch bar counts what is ticked, on both of its buttons', () => {
-  has(bar, '${verb}ทั้งหมดที่เลือก (${picked.length} รายการ)');
-  has(bar, '`${verb} 1 รายการ`');
+  // ชื่อปุ่มไม่เกิน 3 คำ (2026-10-09): จำนวนในวงเล็บแทนประโยค ไอคอนบอกความหมาย
+  // — เดิม `${verb}ทั้งหมดที่เลือก (n รายการ)` / `${verb} 1 รายการ`
+  has(bar, '<Icon name="tick" />\n            {verb} ({picked.length})');
   // One counting and one not, side by side, reads as the uncounted one doing
   // something else.
-  has(bar, 'ไม่อนุมัติทั้งหมดที่เลือก (${picked.length} รายการ)');
-  has(bar, "'ไม่อนุมัติ 1 รายการ'");
+  has(bar, '<Icon name="cross" />\n            ไม่อนุมัติ ({picked.length})');
 });
 
 test('the bar and the rows read one flag, so they cannot disagree', () => {
@@ -112,8 +112,9 @@ test('the dialog says ทั้งหมด only when there is more than one', (
   // dialog — a button whose label changes on the way to the dialog repeating it
   // is a second thing to read.
   has(code, 'const confirmLabel = pileLabel(entries.length);');
-  has(strip(src), 'ยืนยันอนุมัติทั้งหมด (${count} รายการ)');
-  has(strip(src), "'ยืนยันการอนุมัติ'");
+  // `ยืนยัน (n)` ตั้งแต่ 2026-10-09 — เดิม ยืนยันอนุมัติทั้งหมด (n รายการ)
+  has(strip(src), 'ยืนยัน (${count})');
+  has(strip(src), ": 'ยืนยัน';");
 });
 
 test('the title matches RejectModal — count when many, รายการนี้ when one', () => {

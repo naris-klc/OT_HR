@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { hours, thaiDate } from '@/lib/api.js';
 import { overCeilingApproveHead } from '@/lib/caps.js';
 import { Modal, Alert, ShowMore } from './common.jsx';
+import Icon from './icons.jsx';
 
 /**
  * ยืนยันรายการของคนที่เลือกไว้ — the stop between a tick and payroll.
@@ -88,11 +89,14 @@ export default function MonthConfirm({
             disabled={busy || !ready}
             onClick={() => onConfirm(mustExplain ? why.trim() : null)}
           >
-            {/* ⚠ THE BUTTON SAYS ใบ, NOT คน. It is the last thing read before
+            {/* ⚠ THE BUTTON COUNTS ใบ, NOT คน. It is the last thing read before
                 the request leaves, and the unit that matters at that moment is
                 the one that reaches payroll. "ยืนยัน 3 คน" over seventeen
-                signatures is the sentence §5.1 was worried about. */}
-            {`ยืนยัน ${tally.entries} รายการ`}
+                signatures is the sentence §5.1 was worried about. It read
+                `ยืนยัน N รายการ` until 2026-10-09; the unit is the จำนวนรายการ
+                box right above it now, the button carries only the figure. */}
+            <Icon name="check" />
+            {`ยืนยัน (${tally.entries})`}
           </button>
         </>
       )}
@@ -204,7 +208,7 @@ function PeoplePeek({ people, collapsed }) {
     <div>
       {collapsed && (
         <button type="button" className="link" onClick={() => setOpen(!open)}>
-          {open ? 'ซ่อนรายชื่อ' : `ดูรายชื่อทั้ง ${people.length} คน`}
+          {open ? 'ซ่อนรายชื่อ' : `ดูทั้งหมด (${people.length})`}
         </button>
       )}
       {open && (

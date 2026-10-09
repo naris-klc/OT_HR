@@ -378,8 +378,9 @@ test('the dialog refuses to submit an empty reason and says the press is final',
   assert.match(hrEntries, /maxLength=\{200\}/);
   assert.match(hrEntries, /ต้องระบุเหตุผลก่อนจึงจะยกเลิกได้/);
   // A question and an answer, not a question and a shrug.
-  assert.match(hrEntries, /ไม่ยกเลิกแล้ว/);
-  assert.match(hrEntries, /ยืนยันการยกเลิก/);
+  // ไม่ยกเลิกแล้ว / ยืนยันการยกเลิก until 2026-10-09 — ปุ่มไม่เกินสามคำ
+  assert.match(hrEntries, />\s*ย้อนกลับ\s*</);
+  assert.match(hrEntries, /<Icon name="ban" \/>\s*ยืนยันยกเลิก/);
   assert.ok(!/ConfirmDialog/.test(strip(hrEntries)), 'the box that cannot disable its own confirm');
 });
 
@@ -434,8 +435,9 @@ test('cancelling from inside the editor shuts the editor', () => {
  * destroys a row on a third, which is the same failure at one remove. Asked and
  * answered in those terms on 2026-09-15.
  */
-test('the button that leaves the form says ย้อนกลับ', () => {
-  assert.match(form, /<button type="button" className="btn ghost" onClick=\{cancel\}>ย้อนกลับ<\/button>/);
+test('the button that leaves the form says กลับ', () => {
+  // ย้อนกลับ until 2026-10-09 — กลับ กับไอคอน chevronLeft ตามพจนานุกรมไอคอน
+  assert.match(form, /<button type="button" className="btn ghost" onClick=\{cancel\}>\s*<Icon name="chevronLeft" \/>\s*กลับ\s*<\/button>/);
   assert.ok(!/onClick=\{cancel\}>ยกเลิก</.test(form), 'the exit still claims the word');
 });
 
@@ -462,7 +464,7 @@ test('the form offers ยกเลิก only when the parent gives it somewhere
 test('the destroying button is not next to the saving one', () => {
   const acts = form.slice(form.indexOf('const actions = (cancel) => ('));
   const body = strip(acts.slice(0, acts.indexOf('\n  );')));
-  const order = ['onCancelEntry', 'ย้อนกลับ', 'บันทึกการแก้ไข'].map((s) => body.indexOf(s));
+  const order = ['onCancelEntry', 'chevronLeft', "'บันทึก'"].map((s) => body.indexOf(s));
   assert.ok(order.every((i) => i >= 0), 'one of the three buttons is missing');
   assert.deepEqual(order, [...order].sort((a, b) => a - b), 'the red button moved next to save');
   // No left-hand group: the row is `justifyContent: 'flex-end'` and stays so.

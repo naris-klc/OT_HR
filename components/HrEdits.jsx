@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, thaiDate, thaiStamp, dayName, periodLabel } from '@/lib/api.js';
 import { Alert, Empty, Changes, StatusChip, editsOf } from './common.jsx';
 import { PolicyVersionChange } from './PolicyVersion.jsx';
+import Icon from './icons.jsx';
 
 const ACTION_LABEL = {
   edit: 'พนักงานแก้ไข',
@@ -70,7 +71,10 @@ export default function HrEdits({ employee, period, status, onClose }) {
             {employee.code} · {periodLabel(period)}
           </div>
         </div>
-        <button className="btn ghost" onClick={onClose}>กลับไปสรุปรายเดือน</button>
+        <button className="btn ghost" onClick={onClose}>
+          <Icon name="chevronLeft" />
+          กลับ
+        </button>
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}

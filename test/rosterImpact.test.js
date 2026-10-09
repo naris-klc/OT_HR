@@ -132,5 +132,5 @@ test('the dialog cannot save a retroactive move it has not counted', () => {
   // A failed count stays blocked rather than silently reverting to "save" —
   // and offers the retry, so blocked is not stuck.
   assert.match(screen, /countState === 'failed'/);
-  assert.match(screen, /ลองนับใหม่/);
+  assert.match(screen, /<Icon name="refresh" \/>ลองใหม่/);
 });

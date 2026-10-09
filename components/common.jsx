@@ -6,7 +6,7 @@ import {
   STATUS, BUCKETS, BUCKET_LABEL, hours, periodLabel, thaiDate, thaiDateTime, thaiStamp,
 } from '@/lib/api.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
-import { capChips, capFigure } from '@/lib/caps.js';
+import { capChips, capFigure, describeBreaches } from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
 import {
   ENTERED_FIELDS, filingLead, filingOf, idOf, isBirthdayWelfare, isHrVerifiedBirthday,
@@ -121,7 +121,8 @@ export function Alert({
  * opened twenty-one people with twenty dates each into several screens of amber.
  * Every notice that names things one per person, per entry or per line of a
  * file draws its first `first` of them and a control that adds `step` more:
- * แสดงเพิ่มอีก N · แสดงทั้งหมด · ย่อกลับ.
+ * ดูเพิ่ม (เหลือ N) · แสดงทั้งหมด · ย่อกลับ — คำเดิม "แสดงเพิ่มอีก N" สั้นลง
+ * 2026-10-09 ตามกฎปุ่มไม่เกินสามคำ.
  *
  * NOT A FOLD, and that is why it may sit inside an `Alert` where `Disclosure`
  * may not. The headline — the count, the sentence saying what is wrong — is
@@ -153,7 +154,7 @@ export function useShowMore(items, {
     <div className="show-more">
       {left > 0 && (
         <button type="button" onClick={() => setShown((n) => n + step)}>
-          แสดงเพิ่มอีก {Math.min(step, left)} {unit} (เหลือ {left} {unit})
+          ดูเพิ่ม ({left})
         </button>
       )}
       {left > step && (
@@ -706,7 +707,7 @@ export function SegmentRates({ entry: e }) {
           {(e.segments || []).map((s, i) => (
             <tr key={i}>
               <td>
-                <span className="nb">{s.date} {s.start}–{s.end}</span>
+                <span className="nb">{thaiDate(s.date)} {s.start}–{s.end}</span>
                 <div className="hint">
                   {s.dayType === 'holiday' ? 'วันหยุด' : 'วันทำงาน'}
                   {DAY_REASON_LABEL[s.dayReason] ? ` (${DAY_REASON_LABEL[s.dayReason]})` : ''}
@@ -726,6 +727,49 @@ export function SegmentRates({ entry: e }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * แถบนำของหน้ารายละเอียดใบ OT — เวลาตัวใหญ่ + ป้ายข้อเท็จจริงสีตามความหมาย
+ * (mockup detail-modal-2 แบบ 1, 2026-10-09) · ใช้ทั้งป๊อปอัปผู้อนุมัติและฝั่ง
+ * พนักงาน · *"เพิ่มสีเน้นคำสำคัญให้โดดเด่นขึ้น"*: ไม่พักเที่ยง และ เกินเพดาน
+ * เป็นแดง (สองอย่างที่ทำให้ตัวเลขต่างจากใบปกติ) ไม่เกินเพดาน เป็นเขียว ·
+ * `capExceeded` คือสิ่งที่เพดานบอกในวันที่ยื่น — เป็นคุณสมบัติของใบ ส่วน
+ * `CapCard` คือสิ่งที่เดือนบอกตอนนี้ · `marks` ปิดป้ายวันเกิด/เหมารายวันได้
+ * เมื่อหน้านั้นมีกล่องอธิบายป้ายอยู่แล้ว
+ */
+export function EntryLead({ entry: e, marks = true }) {
+  return (
+    <div className="dm-lead">
+      <span className="dm-span">{e.startTime}–{e.endTime}</span>
+      <span className="dm-tags">
+        {e.noBreakTaken
+          ? <span className="dm-tag over">ไม่พักเที่ยง</span>
+          : <span className="dm-tag">หักพักเที่ยง</span>}
+        <span className="dm-tag">นาฬิกา <b>{hours(e.totals?.clockHours)}</b> ชม.</span>
+        {e.capExceeded
+          ? <span className="dm-tag over">เกินเพดานแผนก — {describeBreaches(e).map((b) => b.text).join(' · ')}</span>
+          : <span className="dm-tag ok">ไม่เกินเพดานแผนก</span>}
+        {marks && <BirthdayWelfareMark entry={e} />}
+        {marks && <FlatDailyMark entry={e} />}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * ประวัติรายการ พับไว้ท้ายหน้ารายละเอียดใบ OT (2026-10-09, แบบ 1) — มันคือส่วน
+ * ที่ยาวที่สุดและอ่านน้อยที่สุดตอนตัดสินใจ วางในแผงข้างทำให้สองแผงไม่สมมาตร ·
+ * `<details>` ของเบราว์เซอร์ เปิดด้วยคีย์บอร์ดได้เอง · ลูกศร `chevronDown`
+ * ตามพจนานุกรมไอคอน หมุนเมื่อเปิด
+ */
+export function EntryHistoryFold({ title, children }) {
+  return (
+    <details className="dm-history">
+      <summary><Icon name="chevronDown" />{title}</summary>
+      <div>{children}</div>
+    </details>
   );
 }
 
@@ -1713,7 +1757,7 @@ export function RefiledNote({ parent, onOpenTrail }) {
         </div>
       </div>
       {onOpenTrail && (
-        <button type="button" className="link" onClick={onOpenTrail}>ดูไทม์ไลน์ทั้งหมด</button>
+        <button type="button" className="link" onClick={onOpenTrail}>ดูไทม์ไลน์</button>
       )}
     </div>
   );
@@ -1844,12 +1888,13 @@ export function Modal({
    * The default pair is about unsaved typing, which is what `dirty` originally
    * meant and what all but one caller still uses. ตั้งรหัสผ่านใหม่ borrows the
    * same guard for something else entirely — a password on screen that no
-   * screen can ever show again — and there "ปิดโดยไม่บันทึก" would be a lie in
+   * screen can ever show again — and there "ไม่บันทึก" (ปิดโดยไม่บันทึก until
+   * 2026-10-09) would be a lie in
    * the dangerous direction: the reset IS saved, it is the reader who is about
    * to lose it. A question worth interrupting for is worth answering in its own
    * words.
    */
-  dirtyStayLabel = 'กลับไปแก้ต่อ', dirtyLeaveLabel = 'ปิดโดยไม่บันทึก',
+  dirtyStayLabel = 'แก้ต่อ', dirtyLeaveLabel = 'ไม่บันทึก',
   /**
    * Whether `dirty` STOPS a close, or is merely reported.
    *
@@ -5327,6 +5372,7 @@ export function ExportMenu({ items, disabled = false, label = 'พิมพ์ /
         onKeyDown={onKeyDown}
         onBlur={() => setOpen(false)}
       >
+        <Icon name="printer" />
         <span className="val">{label}</span>
         {/* The count that used to make the print label two lines long. It is
             the month's head count — what the bundle would print — and it is

@@ -523,7 +523,7 @@ function Heads({ department, people, depts, gap, onGo }) {
               className="link head-fix"
               onClick={() => onGo('employees')}
             >
-              แก้ไขสิทธิ์พนักงาน ↗
+              <Icon name="external" />แก้สิทธิ์
             </button>
           )}
         </>
@@ -612,14 +612,14 @@ function SigningCoverage({ departments, people, onGo }) {
       detail="ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดอนุมัติได้"
       action={onGo && (
         <button type="button" className="btn ghost sm" onClick={() => onGo('employees')}>
-          ไปที่หน้าพนักงานเพื่อตั้งค่าสิทธิ์ ↗
+          <Icon name="external" />ตั้งสิทธิ์
         </button>
       )}
       more={onGo && (
         <div>
           หรือ{' '}
           <button type="button" className="link" onClick={() => onGo('delegation')}>
-            ตั้งผู้รับช่วงอนุมัติ
+            ตั้งผู้รับช่วง
           </button>
           {' '}— แก้คิวชั่วคราว แผนกยังไม่มีหัวหน้าเหมือนเดิม
         </div>
@@ -888,7 +888,7 @@ function Departments({ user, onGo, roster }) {
           squeezing it. */}
       <div className="card-head dept-head-bar">
         <h2>แผนก</h2>
-        <button className="btn" onClick={() => setAdding(true)}>เพิ่มแผนก</button>
+        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />เพิ่มแผนก</button>
       </div>
       {ok && <Alert kind="ok">{ok}</Alert>}
 
@@ -1142,7 +1142,7 @@ function Departments({ user, onGo, roster }) {
                   setEditing(null);
                 }}
               >
-                {deleting.dept.active === false ? 'ปิดใช้งานอยู่แล้ว' : 'ปิดใช้งานแผนกนี้แทน'}
+                <Icon name="ban" />{deleting.dept.active === false ? 'ปิดใช้งานอยู่แล้ว' : 'ปิดใช้งาน'}
               </button>
             </>
           )}
@@ -1363,7 +1363,7 @@ function DepartmentForm({
           )}
           <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
           <button className="btn" onClick={save} disabled={!ready || busy}>
-            {busy ? 'กำลังบันทึก…' : 'บันทึก'}
+            <Icon name="save" />{busy ? 'กำลังบันทึก…' : 'บันทึก'}
           </button>
         </>
       )}
@@ -1588,7 +1588,7 @@ const DEPT_TIP_MANAGER = 'เลือกได้หลายแผนก — �
   + '· แผนกที่เพิ่มได้สิทธิ์เท่ากับสังกัดหลักทุกอย่าง คืออนุมัติ ไม่อนุมัติ เห็นในคิว '
   + 'และบันทึก OT แทนลูกน้องได้ '
   + '· “สังกัดหลัก” คือแผนกที่ชั่วโมงและเพดานของหัวหน้าคนนี้ผูกอยู่ มีได้แผนกเดียว '
-  + 'ปลดออกไม่ได้ และย้ายได้ด้วย “ตั้งเป็นสังกัดหลัก” ในรายการ '
+  + 'ปลดออกไม่ได้ และย้ายได้ด้วย “ตั้งเป็นหลัก” ในรายการ '
   + '· ยังถูกจำกัดด้วย “เซ็นให้บริษัท” อีกชั้นหนึ่ง ดูสรุปที่บรรทัดใต้หัวข้อขอบเขตการอนุมัติ '
   + '· ใช้เมื่อแผนกหนึ่งไม่มีหัวหน้าเป็นการถาวร — ถ้าเป็นการลาชั่วคราวให้ใช้ “ผู้รับช่วงอนุมัติ” '
   + 'แทน เพราะอันนั้นหมดอายุเอง';
@@ -2043,7 +2043,7 @@ function DeptCombo({ home, extras, onChange, depts, disabled }) {
                   {on ? '✓' : ''}
                 </span>
                 <span className="nm">{d.nameTh || d.name}</span>
-                {/* ตั้งเป็นสังกัดหลัก — offered on a row that is chosen and is
+                {/* ตั้งเป็นหลัก (เดิม ตั้งเป็นสังกัดหลัก) — offered on a row that is chosen and is
                     not already the home one, which is the only place it can do
                     anything. Revealed on hover or focus so it does not turn a
                     list of five ticks into a wall of controls: ticking is what
@@ -2055,7 +2055,7 @@ function DeptCombo({ home, extras, onChange, depts, disabled }) {
                     className="link set-home-row"
                     onClick={(e) => { e.stopPropagation(); makeHome(id); }}
                   >
-                    ตั้งเป็นสังกัดหลัก
+                    ตั้งเป็นหลัก
                   </button>
                 )}
                 {isHome && <span className="tag">สังกัดหลัก</span>}
@@ -2956,16 +2956,16 @@ function Employees({ user }) {
             className="btn ghost"
             onClick={() => api.download('/employees/import/template', 'employee-import-template.csv')}
           >
-            ดาวน์โหลดแม่แบบ CSV
+            <Icon name="download" />แม่แบบ CSV
           </button>
           <label className="btn ghost" style={{ cursor: 'pointer' }}>
-            นำเข้ารายชื่อจาก CSV
+            <Icon name="upload" />นำเข้า CSV
             <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} onChange={choose} style={{ display: 'none' }} />
           </label>
           {/* Beside the import, because they are the same decision asked twice —
               one person or a file of them — and the dialog behind it is the same
               form the row's แก้ไข opens. */}
-          <button className="btn" onClick={() => setAdding(true)}>เพิ่มพนักงาน</button>
+          <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />เพิ่มพนักงาน</button>
         </div>
       </div>
 
@@ -3013,7 +3013,7 @@ function Employees({ user }) {
             {' '}แล้วเลือกไฟล์ใหม่อีกครั้ง
           </div>
           <div className="row" style={{ marginTop: 8 }}>
-            <button className="btn" onClick={pickFile}>เลือกไฟล์ใหม่</button>
+            <button className="btn" onClick={pickFile}><Icon name="upload" />เลือกไฟล์ใหม่</button>
             <button className="btn ghost" onClick={() => setImportError(null)}>ปิด</button>
           </div>
         </Alert>
@@ -3085,7 +3085,7 @@ function Employees({ user }) {
                 {' '}— เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านกลับมา และระบบเก็บไว้แบบเข้ารหัสทางเดียว
               </div>
               <div className="say">
-                บัญชีนี้ยังเข้าระบบไม่ได้จนกว่าจะรีเซ็ต — กดปุ่ม “รีเซ็ตรหัสผ่าน” ที่แถวของคนนี้
+                บัญชีนี้ยังเข้าระบบไม่ได้จนกว่าจะรีเซ็ต — กดปุ่ม “รีเซ็ตรหัส” ที่แถวของคนนี้
                 {' '}และแจ้งผู้ดูแลระบบว่าเกิดเหตุนี้ขึ้น
               </div>
             </>
@@ -3096,7 +3096,7 @@ function Employees({ user }) {
               </div>
               <div className="say">
                 ระบบไม่แสดงรหัสนั้นซ้ำที่ใดอีก เพราะเก็บไว้แบบเข้ารหัสทางเดียว — หากจำไม่ได้
-                {' '}ให้ใช้ปุ่ม “รีเซ็ตรหัสผ่าน” ซึ่งจะตั้งกลับเป็นรหัสพนักงาน
+                {' '}ให้ใช้ปุ่ม “รีเซ็ตรหัส” ซึ่งจะตั้งกลับเป็นรหัสพนักงาน
                 {' '}· พนักงานเข้าใช้งานได้ทันที และจะมีแถบเตือนให้ตั้งรหัสผ่านของตัวเองจนกว่าจะเปลี่ยน
               </div>
             </>
@@ -3235,7 +3235,7 @@ function Employees({ user }) {
               the preview would leave .xlsx with nothing to press. */}
           <div className="row" style={{ marginTop: 10 }}>
             <button className="btn" onClick={confirmImport} disabled={sending}>
-              {sending ? 'กำลังนำเข้า…' : 'ยืนยันนำเข้า'}
+              <Icon name="upload" />{sending ? 'กำลังนำเข้า…' : 'ยืนยันนำเข้า'}
             </button>
             <button className="btn ghost" onClick={() => setPending(null)} disabled={sending}>ยกเลิก</button>
             {/* Only when rows are about to be dropped, which is the only
@@ -3244,7 +3244,7 @@ function Employees({ user }) {
                 third thing to read before pressing the green one. */}
             {!pending.workbook && pending.dates.rowErrors.length > 0 && (
               <button className="btn ghost" onClick={pickFile} disabled={sending}>
-                เลือกไฟล์ใหม่
+                <Icon name="upload" />เลือกไฟล์ใหม่
               </button>
             )}
           </div>
@@ -3546,7 +3546,7 @@ function Employees({ user }) {
               className="btn ghost sm"
               onClick={() => { setFind(''); setFilters(NO_FILTERS); }}
             >
-              ล้างตัวกรอง
+              <Icon name="reset" />ล้างตัวกรอง
             </button>
           </div>
         </Empty>
@@ -3642,7 +3642,7 @@ function Employees({ user }) {
                         third of a 375px card. */}
                     <RowAction
                       icon="key"
-                      label="รีเซ็ตรหัสผ่าน"
+                      label="รีเซ็ตรหัส"
                       name={p.name}
                       className="act-security"
                       hint="ตั้งรหัสผ่านกลับเป็นรหัสพนักงาน"
@@ -3857,7 +3857,7 @@ const LOCK_SHORT = {
  * and it is now three lines up instead.
  */
 const PASSWORD_NOTE = {
-  short: 'ไม่มีช่องรหัสผ่านให้แก้ในหน้านี้ — ใช้ปุ่ม “รีเซ็ตรหัสผ่าน” ในหัวข้อ สิทธิ์และสถานะ ด้านบน',
+  short: 'ไม่มีช่องรหัสผ่านให้แก้ในหน้านี้ — ใช้ปุ่ม “รีเซ็ตรหัส” ในหัวข้อ สิทธิ์และสถานะ ด้านบน',
   full: 'ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสที่พนักงานตั้งเองได้ '
     + '· การรีเซ็ตจะตั้งรหัสผ่านกลับเป็นรหัสพนักงานเสมอ ไม่ใช่ค่าที่พิมพ์เอง '
     + '· ประวัติการแก้ทะเบียนไม่เคยบันทึกตัวรหัสผ่าน บันทึกเพียงว่ามีการรีเซ็ต',
@@ -3884,7 +3884,7 @@ const NEW_PASSWORD_NOTE = {
   full: 'ใช้รหัสพนักงาน: รหัสผ่านสำหรับเข้าใช้งานครั้งแรกคือรหัสพนักงาน พิมพ์ให้ตรงตัวรวมทั้งขีดกลาง '
     + 'ไม่มีอะไรต้องจด และดูซ้ำได้ตลอดจากทะเบียนพนักงาน '
     + '· ตั้งเอง: ใช้เมื่อต้องบอกรหัสอื่นกับพนักงานตรงนั้นเลย ระบบจะไม่แสดงค่านั้นซ้ำที่ใดอีก '
-    + '· ทั้งสองแบบ ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว หากลืมให้ใช้ปุ่ม “รีเซ็ตรหัสผ่าน” '
+    + '· ทั้งสองแบบ ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว หากลืมให้ใช้ปุ่ม “รีเซ็ตรหัส” '
     + 'ซึ่งจะรีเซ็ตกลับเป็นรหัสพนักงาน แล้วพนักงานจะเห็นแถบเตือนให้ตั้งรหัสของตัวเองจนกว่าจะเปลี่ยน',
 };
 
@@ -3972,7 +3972,7 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
         <>
           <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
           <button className="btn" onClick={save} disabled={!ready || busy}>
-            {busy ? 'กำลังบันทึก…' : 'บันทึก'}
+            <Icon name="save" />{busy ? 'กำลังบันทึก…' : 'บันทึก'}
           </button>
         </>
       )}
@@ -4501,13 +4501,14 @@ function EditEmployee({
             onClick={() => (needsReview ? review() : save())}
             disabled={!ready || busy}
           >
-            {busy ? 'กำลังบันทึก…' : (needsReview ? 'ตรวจผลกระทบก่อนบันทึก' : 'บันทึก')}
+            <Icon name={needsReview ? 'eye' : 'save'} />
+            {busy ? 'กำลังบันทึก…' : (needsReview ? 'ตรวจผลกระทบ' : 'บันทึก')}
           </button>
         </>
       ) : (
         <>
           <button className="btn ghost" onClick={() => setStep('edit')} disabled={busy}>
-            กลับไปแก้
+            <Icon name="chevronLeft" />กลับไปแก้
           </button>
           {/* Held until the count is in. A บริษัท move confirmed while its own
               warning still reads "กำลังนับ…" is a move confirmed against no
@@ -4517,9 +4518,10 @@ function EditEmployee({
             onClick={save}
             disabled={!ready || busy || counting}
           >
+            <Icon name="save" />
             {busy ? 'กำลังบันทึก…'
-              : countState === 'failed' ? 'ยังนับผลกระทบไม่ได้'
-                : counting ? 'กำลังนับผลกระทบ…' : 'ยืนยันและบันทึก'}
+              : countState === 'failed' ? 'ยังนับไม่ได้'
+                : counting ? 'กำลังนับ…' : 'ยืนยันบันทึก'}
           </button>
         </>
       ))}
@@ -4533,7 +4535,7 @@ function EditEmployee({
               บันทึกไม่ได้จนกว่าจะนับได้ — การเปลี่ยนบริษัทกระทบเดือนที่ส่งบัญชีไปแล้ว
               {' '}จึงต้องรู้ก่อนว่ากระทบเท่าไร
               <button className="btn ghost" style={{ marginTop: 8 }} onClick={review}>
-                ลองนับใหม่
+                <Icon name="refresh" />ลองใหม่
               </button>
             </div>
           )}
@@ -4762,7 +4764,7 @@ function EditEmployee({
                 disabled={busy || !mayReset || changes.length > 0}
                 title={resetBlocked || 'ตั้งรหัสผ่านกลับเป็นรหัสพนักงาน'}
               >
-                รีเซ็ตรหัสผ่าน
+                <Icon name="key" />รีเซ็ตรหัส
               </button>
               <div className="field-note" style={{ margin: 0, flex: '1 1 220px' }}>
                 {resetBlocked || (
@@ -4994,9 +4996,9 @@ function IssuedPasswords({ rows }) {
             person without also leaving a copy of everybody else's somewhere.
             The other two are still here — พิมพ์ is no use to somebody handing
             out three accounts, and a printer is not always the thing in reach. */}
-        <button className="btn" onClick={() => setPrinting(true)}>พิมพ์สลิปแจก</button>
-        <button className="btn ghost" onClick={copy}>คัดลอกทั้งตาราง</button>
-        <button className="btn ghost" onClick={download}>ดาวน์โหลดเป็น CSV</button>
+        <button className="btn" onClick={() => setPrinting(true)}><Icon name="printer" />พิมพ์สลิป</button>
+        <button className="btn ghost" onClick={copy}><Icon name="copy" />คัดลอก</button>
+        <button className="btn ghost" onClick={download}><Icon name="download" />CSV</button>
       </div>
 
       {done === 'copied' && (
@@ -5512,11 +5514,11 @@ function DocumentCode() {
 
       <div className="row" style={{ marginTop: 12 }}>
         <button className="btn" disabled={!ready || busy} onClick={save}>
-          {busy ? 'กำลังบันทึก…' : 'บันทึก'}
+          <Icon name="save" />{busy ? 'กำลังบันทึก…' : 'บันทึก'}
         </button>
         {dirty && !busy && (
           <button className="btn ghost" onClick={() => { setFormCode(before); setError(''); }}>
-            ยกเลิกการแก้ไข
+            <Icon name="reset" />คืนค่าเดิม
           </button>
         )}
       </div>
@@ -5857,7 +5859,7 @@ function ResetPassword({ employee, onClose, onDone }) {
       if (!res.password) {
         setError(
           'เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านกลับมา — รหัสผ่านของบัญชีนี้อาจถูกเปลี่ยนไปแล้ว '
-          + 'โดยไม่มีใครทราบค่าใหม่ กรุณาแจ้งผู้ดูแลระบบและกด “รีเซ็ตรหัสผ่าน” อีกครั้ง',
+          + 'โดยไม่มีใครทราบค่าใหม่ กรุณาแจ้งผู้ดูแลระบบและกด “รีเซ็ตรหัส” อีกครั้ง',
         );
         setBusy(false);
         return;
@@ -5941,12 +5943,12 @@ function ResetPassword({ employee, onClose, onDone }) {
         <div className="row" style={{ marginTop: 10 }}>
           {/* FIRST, because it is the way that hands a password to a person
               without anybody reading it aloud or writing it down — the same
-              reason พิมพ์สลิปแจก leads the row on IssuedPasswords. It no longer
+              reason พิมพ์สลิป (เดิม พิมพ์สลิปแจก) leads the row on IssuedPasswords. It no longer
               doubles as a "I have it" tick, because there is no longer a tick. */}
           <button className="btn" onClick={() => setPrinting(true)}>
-            พิมพ์สลิป
+            <Icon name="printer" />พิมพ์สลิป
           </button>
-          <button className="btn ghost" onClick={copy}>คัดลอกรหัสผ่าน</button>
+          <button className="btn ghost" onClick={copy}><Icon name="copy" />คัดลอก</button>
         </div>
         {copied === 'copied' && (
           <div className="field-note" style={{ marginTop: 6 }}>คัดลอกแล้ว</div>
@@ -5976,7 +5978,7 @@ function ResetPassword({ employee, onClose, onDone }) {
       footer={<>
         <button className="btn ghost" onClick={onClose} disabled={busy}>ยกเลิก</button>
         <button className="btn" onClick={submit} disabled={busy}>
-          {busy ? 'กำลังรีเซ็ต…' : 'รีเซ็ตรหัสผ่าน'}
+          <Icon name="key" />{busy ? 'กำลังรีเซ็ต…' : 'รีเซ็ตรหัส'}
         </button>
       </>}
     >
@@ -6120,15 +6122,15 @@ function Holidays() {
           className="btn ghost"
           onClick={() => api.download('/holidays/import/template', 'holiday-import-template.csv')}
         >
-          ดาวน์โหลดแม่แบบ CSV
+          <Icon name="download" />แม่แบบ CSV
         </button>
         <label className="btn ghost" style={{ cursor: 'pointer' }}>
-          นำเข้าปฏิทินจาก CSV
+          <Icon name="upload" />นำเข้า CSV
           <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} onChange={upload} style={{ display: 'none' }} />
         </label>
         {/* Beside the import, because they are the same decision asked twice —
             one day or a calendar of them. */}
-        <button className="btn" onClick={() => setAdding(true)}>เพิ่มวันหยุด</button>
+        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />เพิ่มวันหยุด</button>
       </div>
 
       {rows.length === 0 ? <Empty>ยังไม่มีวันหยุดในปีนี้</Empty> : (
@@ -6255,7 +6257,7 @@ function AddHoliday({ onClose, onSave }) {
         <>
           <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
           <button className="btn" onClick={save} disabled={!ready || busy}>
-            {busy ? 'กำลังบันทึก…' : 'บันทึก'}
+            <Icon name="save" />{busy ? 'กำลังบันทึก…' : 'บันทึก'}
           </button>
         </>
       )}
@@ -7941,7 +7943,7 @@ function ConfirmPolicyChange({
             ยกเลิก ไม่เปลี่ยน
           </button>
           <button className="btn" onClick={onConfirm} disabled={busy}>
-            {busy ? 'กำลังบันทึก…' : 'ยืนยันและบันทึก'}
+            <Icon name="save" />{busy ? 'กำลังบันทึก…' : 'ยืนยันบันทึก'}
           </button>
         </>
       )}
@@ -8074,7 +8076,7 @@ function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
       detail="ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน และจะไม่มีอะไรฟ้องจนกว่าจะปิดเดือน"
       action={canEdit && (
         <button type="button" className="btn ghost sm" onClick={onRecord} disabled={busy}>
-          บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่
+          <Icon name="save" />บันทึกเวอร์ชัน
         </button>
       )}
       more={(
