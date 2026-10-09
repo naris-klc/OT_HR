@@ -7715,7 +7715,7 @@ therefore **every figure on the screen is that department's**:
 | **รวมทั้งหมด** | ✓ | ✗ — it is the month's, and says so while the box is narrowing |
 | the **เพดาน** column and its colour | ✓ | ✗ |
 | วันเกิด ที่ยังไม่มีในระบบ, the policy banner, ยืนยันโดย HR n ใบ | ✓ | ✗ |
-| **รายการ OT (CSV/Excel)** and **สรุปรายเดือน (CSV/Excel)** | ✓ | ✗ |
+| **รายการ OT (CSV)** and **สรุปรายเดือน (CSV)** (read `(CSV/Excel)` until 2026-10-09) | ✓ | ✗ |
 | **พิมพ์ใบขออนุมัติ OT** | ✓ | ✓ — it prints the rows on screen |
 
 A screen filter could not have done any of that. The เพดาน column in particular
@@ -12275,8 +12275,8 @@ and the `company` handling in `app/api/employees/**` and the บริษัท 
 เสมอ `.sort()` จะสลับที่กันเองระหว่างการส่งออกสองครั้งของเดือนที่ไม่มีอะไรเปลี่ยน
 จึงตัดสินด้วยสตริงที่ normalize แล้วเป็นด่านสุดท้าย
 
-**ที่เดียว หกเอกสาร** — ตาราง `ตรวจสอบประจำเดือน` · `รายการ OT (CSV/Excel)` ·
-`สรุปรายเดือน (CSV/Excel)` · `รายงาน OT การเงิน` (จอ ใบพิมพ์ และ CSV
+**ที่เดียว หกเอกสาร** — ตาราง `ตรวจสอบประจำเดือน` · `รายการ OT (CSV)` ·
+`สรุปรายเดือน (CSV)` · `รายงาน OT การเงิน` (จอ ใบพิมพ์ และ CSV
 อ่านจาก `lib/accounting.js` ตัวเดียวกัน) · `รายงาน OT แยกแผนก` ซึ่งถาม
 `compareCodes` มาตั้งแต่เขียน · และตั้งแต่ **2026-09-07** คือ**รายการใบทุกใบที่
 `GET /api/entries` ตอบ** ดูหัวข้อถัดไป · คนที่กระทบยอดใบที่เซ็นแล้วกับไฟล์ไล่นิ้ว

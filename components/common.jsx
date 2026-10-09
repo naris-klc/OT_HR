@@ -5418,11 +5418,14 @@ export function ExportMenu({ items, disabled = false, label = 'พิมพ์ /
                 className={[item.primary ? 'lead' : '', item.disabled ? 'off' : ''].filter(Boolean).join(' ') || undefined}
                 onClick={() => run(i)}
                 onMouseMove={() => { if (!item.disabled) setActive(i); }}
+                /* แบบ B (2026-10-09): one line per row. The note went into the
+                   shared tooltip, and the tag at the end says how much the
+                   document holds — "57 คน", "212 ใบ" — the one difference
+                   between rows a phone, which has no tooltip, still needs. */
+                data-tip={item.note || undefined}
               >
-                <span className="nm">
-                  {item.label}
-                  {item.note && <span className="mi-note">{item.note}</span>}
-                </span>
+                <span className="nm">{item.label}</span>
+                {item.tag && <span className="mi-tag">{item.tag}</span>}
               </li>
             ))}
           </ul>

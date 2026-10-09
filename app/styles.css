@@ -3145,18 +3145,23 @@ button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertica
 }
 .export-btn .caret { font-size: 10px; opacity: .85; }
 /* The menu is `PickOne`'s list wearing a menu's roles — same panel, same rows,
-   same phone sheet. What differs is that a menu row has a second line under it
-   and no count against the right edge. */
-.pick-menu.one-menu.export-menu li { align-items: flex-start; }
-.pick-menu.one-menu.export-menu li .nm { display: flex; flex-direction: column; gap: 2px; }
-.pick-menu.one-menu.export-menu li .mi-note {
-  font: 400 11.5px/1.4 var(--sans); color: var(--muted-2);
+   same phone sheet. แบบ B since 2026-10-09: ONE line per row like every other
+   menu. It read "a menu row has a second line under it" until then; the second
+   line is the shared tooltip now (`data-tip`), and `.mi-tag` at the end says
+   how much the document holds — "57 คน", "212 ใบ", "18 แผนก". */
+/* One line means one line: the panel is as wide as its longest row rather
+   than the button's width, so พิมพ์ใบสรุปส่งการเงิน does not fold under its tag. */
+.export-menu li .nm { white-space: nowrap; }
+.export-menu li .mi-tag {
+  flex: none; padding: 1px 7px; border-radius: 6px;
+  background: var(--neutral-wash); color: var(--muted);
+  font: 500 11.5px/1.4 var(--sans); font-variant-numeric: tabular-nums;
 }
+.export-menu li[data-active='1'] .mi-tag { background: var(--card); color: var(--green-dark); }
+.export-menu li.off .mi-tag { opacity: .75; }
 /* The one row that is what the month is FOR — it was the single filled button
    among three ghosts, and this is that distinction surviving the collapse. */
 .pick-menu.one-menu.export-menu li.lead .nm { font-weight: 700; }
-.pick-menu.one-menu.export-menu li.lead .mi-note { color: var(--muted); }
-.pick-menu.one-menu.export-menu li.off .mi-note { opacity: .75; }
 
 /* ── A BUTTON THAT IS A GLYPH ABOVE 860px AND A WORD BELOW IT ───────────────
 
@@ -4560,8 +4565,10 @@ td > .approver-line { margin-top: 5px; }
    which is a read — but the rows are 4px apart in a list of two hundred, and a
    thumb that lands one row off looks at the wrong person's record without
    anything on screen saying so. The phone block below takes it to 44. */
+/* 34px since 2026-10-09 (แบบ B, every menu in the app): it read 40 until
+   then. The phone block still takes it to 44 and the phone sheet to 52. */
 .pick-menu li {
-  padding: 10px 12px; min-height: 40px;
+  padding: 6px 10px; min-height: 34px;
   display: flex; align-items: center;
   border-radius: var(--radius-xs);
   font: 500 14px/1.4 var(--mono); color: var(--ink);

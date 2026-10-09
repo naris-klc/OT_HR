@@ -78,7 +78,8 @@ test('สองจอที่ถูกแจ้งใช้แถวเดี�
     // The menu holds both verbs — the file and the form — so neither has been
     // quietly promoted back out onto a button of its own.
     const menu = jsx.slice(at, jsx.indexOf('/>', at));
-    assert.ok(/\(CSV\/Excel\)/.test(menu), `${file} เอาแถวส่งออกไฟล์ออกจากเมนู`);
+    // `(CSV)` — it read `(CSV/Excel)` until แบบ B shortened every row on 2026-10-09.
+    assert.ok(/\(CSV\)/.test(menu), `${file} เอาแถวส่งออกไฟล์ออกจากเมนู`);
     // ⚠ ชื่อของแถวไม่ได้ตรึงไว้ตรงนี้แล้ว — บรรทัดนี้เคยอ่านว่า
     // `พิมพ์แบบฟอร์ม / บันทึกเป็น PDF` จนถึง 2026-09-14 ที่ทั้งสามจอถูกจัดให้
     // เรียกเอกสารของตัวเองด้วยชื่อของมันเอง ที่นี่ถามแค่ว่าแถวพิมพ์ยังอยู่ในเมนู

@@ -172,13 +172,15 @@ export default function DepartmentView() {
                   key: 'print',
                   label: 'พิมพ์ใบสรุปแยกแผนก',
                   note: 'ครบทุกแผนก ไม่ตามตัวกรอง · แผนกละชุด',
+                  tag: `${departments.length} แผนก`,
                   primary: true,
                   onSelect: () => setPrinting(true),
                 },
                 {
                   key: 'csv',
-                  label: 'ไฟล์แยกแผนก (CSV/Excel)',
-                  note: 'ครบทุกแผนก ไม่ตามตัวกรอง · เป็นชั่วโมง ไม่ใช่เงิน',
+                  label: 'ไฟล์แยกแผนก (CSV)',
+                  note: 'ครบทุกแผนก ไม่ตามตัวกรอง · เป็นชั่วโมง ไม่ใช่เงิน · เปิดใน Excel ได้',
+                  tag: `${departments.length} แผนก`,
                   onSelect: exportCsv,
                 },
               ]}

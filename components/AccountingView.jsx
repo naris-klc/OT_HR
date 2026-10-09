@@ -91,6 +91,8 @@ export default function AccountingView() {
      `totals` the dropdown's own rows carry, so the box and the chip cannot
      quote a company two different ways. */
   const shownTotal = shown.reduce((n, c) => n + c.totals.otHours, 0);
+  /** คนบนใบสรุปและในไฟล์การเงิน — one row each, for the export menu's tags. */
+  const people = shown.reduce((n, c) => n + (c.rows || []).length, 0);
 
   // Scoped to the tab, and read from the queue rather than from the rows —
   // somebody with nothing approved yet has no row to carry their backlog.
@@ -256,13 +258,15 @@ export default function AccountingView() {
                   key: 'print',
                   label: 'พิมพ์ใบสรุปส่งการเงิน',
                   note: 'ตามบริษัทที่เลือก',
+                  tag: `${people} คน`,
                   primary: true,
                   onSelect: () => setPrinting(true),
                 },
                 {
                   key: 'csv',
-                  label: 'ไฟล์การเงิน (CSV/Excel)',
-                  note: 'บรรทัดละคน · เป็นชั่วโมง ไม่ใช่เงิน',
+                  label: 'ไฟล์การเงิน (CSV)',
+                  note: 'บรรทัดละคน · เป็นชั่วโมง ไม่ใช่เงิน · เปิดใน Excel ได้',
+                  tag: `${people} คน`,
                   onSelect: exportCsv,
                 },
               ]}
