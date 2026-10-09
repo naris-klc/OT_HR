@@ -657,6 +657,8 @@ export default function HrView({
     () => (data?.employees || []).filter((row) => !row.monthStatus || tab.keep(row.monthStatus)),
     [data, tab],
   );
+  /** ใบทั้งหมดในไฟล์ รายการ OT (CSV) — the tag on that menu row. */
+  const entryTotal = (data?.employees || []).reduce((n, row) => n + (row.entryCount || 0), 0);
   /**
    * `onlyFlagged` NARROWS THE SAME LIST ค้นหา NARROWS, and after it.
    *
@@ -1515,6 +1517,7 @@ export default function HrView({
                    the code lived in a `title` nobody on a touch screen could
                    reach; a menu row has space to simply say it. */
                 note: 'ทุกคนในตาราง · หน้าละคน · F-HR-027',
+                tag: `${shown.length} คน`,
                 primary: true,
                 /* `shown`, not `data.employees`: the bundle's own note says it is
                    "exactly the rows of ตรวจสอบรายเดือน as they stand", and a
@@ -1538,8 +1541,11 @@ export default function HrView({
                    endpoints and the downloaded filenames did not move:
                    `OT-2026-08.csv` and `OT-monthly-2026-08.csv` are what HR has
                    been filing all along. */
-                label: 'รายการ OT (CSV/Excel)',
-                note: 'บรรทัดละใบ',
+                label: 'รายการ OT (CSV)',
+                note: 'บรรทัดละใบ · เปิดใน Excel ได้',
+                // The file's rows: every ใบ of the month under สถานะ and แผนก —
+                // the route's filters, not ค้นหา, which the file does not take.
+                tag: `${entryTotal} ใบ`,
                 /* `scopeParam` and `deptParam` on both files, so what is exported
                    is what is on screen. Without them a การเงิน on รายงาน OT
                    ประจำทีม would download the whole company from a table showing
@@ -1552,8 +1558,9 @@ export default function HrView({
               },
               {
                 key: 'monthly',
-                label: 'สรุปรายเดือน (CSV/Excel)',
-                note: 'บรรทัดละคน',
+                label: 'สรุปรายเดือน (CSV)',
+                note: 'บรรทัดละคน · เปิดใน Excel ได้',
+                tag: `${(data?.employees || []).length} คน`,
                 onSelect: () => api.download(
                   `/exports/monthly.csv?period=${period}&status=${statusFilter}${scopeParam}${deptParam}`,
                   `OT-monthly-${period}.csv`,
