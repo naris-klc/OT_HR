@@ -4181,6 +4181,8 @@ td > .approver-line { margin-top: 5px; }
 .edit-form.compact .form-group + .form-group { margin-top: 12px; padding-top: 12px; }
 .edit-form.compact .form-group > .gh { margin-bottom: 9px; }
 .edit-form.compact .personal-approvals { margin-top: 10px; }
+/* A field that takes the whole row of a `.form-grid` — แผนก on this form. */
+.form-grid > .span-all { grid-column: 1 / -1; min-width: 0; display: flex; }
 /* ตามแผนก — the chip a row reached through the แผนก field wears instead of เอาออก. */
 .personal-table .person-via { white-space: nowrap; }
 .pick-menu li .person-now {
