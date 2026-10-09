@@ -168,7 +168,7 @@ test('the pair splits the foot evenly', () => {
   const start = css.indexOf('.foot-split .btn {');
   const rule = css.slice(start, css.indexOf('}', start));
   has(rule, 'flex: 1 1 0;');
-  has(rule, 'min-height: 46px; border-radius: 8px;');
+  has(rule, 'min-height: var(--btn-h); border-radius: 8px;');
   // A <button> centres its own label inside the box its PADDING makes; with a
   // min-height doing the sizing, that is not the box on screen.
   has(rule, 'display: flex; align-items: center; justify-content: center;');
@@ -176,7 +176,7 @@ test('the pair splits the foot evenly', () => {
   // of an otherwise empty bar, so the padding is the whole of how substantial
   // the two decisions look. From ONE rule, or the shorter label gets the
   // narrower button back — which is the difference `flex: 1 1 0` just removed.
-  has(rule, 'padding: 12px 22px;');
+  has(rule, 'padding: 0 18px;');
   // `.btn` eases background, transform and shadow and stops there, because no
   // `.btn` variant had a moving border. The refusal's hover moves one — faint
   // line to ink — and left off this list the fill eases while the edge snaps.

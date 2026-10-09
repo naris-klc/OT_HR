@@ -408,7 +408,8 @@ middle are opposite sides of the main breakpoint and are the pair that is missed
 most, because code written for one side looks right at whatever width its author
 had open · Ctrl+P · the safe area at the bottom edge · and no horizontal
 scrollbar on the page itself. Below 860px the app is meant to read as a phone app
-(bottom bar, FAB, tables that become cards, 44px targets), not as a shrunken
+(bottom bar, FAB, tables that become cards, 36px buttons and 44px list rows —
+see docs/design.md), not as a shrunken
 desktop.
 
 **`docs/design.md` is where the rules themselves live, and it is the first thing

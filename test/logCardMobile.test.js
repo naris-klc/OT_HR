@@ -148,7 +148,7 @@ test('the two buttons are on the filter bar, and take a thumb-sized line', () =>
   const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.log-head-actions {')));
   const block560 = narrow.slice(0, narrow.indexOf('\n}\n'));
   assert.match(block560, /\.log-head-actions \{[^}]*width: 100%/);
-  assert.match(block560, /\.log-head-actions \.btn \{[^}]*min-height: 44px/);
+  assert.match(block560, /\.log-head-actions \.btn \{[^}]*min-height: var\(--btn-h\)/);
   const bar = jsx.slice(jsx.indexOf('<div className="card-head log-head">'));
   const upToTable = bar.slice(0, bar.indexOf('{error &&'));
   assert.ok(upToTable.includes('ดาวน์โหลด CSV ตามตัวกรอง'), 'ปุ่มดาวน์โหลดไม่ได้อยู่ในแถบตัวกรอง');

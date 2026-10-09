@@ -521,7 +521,7 @@ test('ลิ้นชัก ไฟล์สแกนนิ้วมือ กร
   assert.match(css, /^\.scan-drawer-head \.disclosure-slide \{ order: 3; flex-basis: 100%; \}$/m);
   // บนมือถือ ปุ่มที่นิ้วต้องกดจริง ๆ คือปุ่มเดียวในลิ้นชักนี้ จึงกินบรรทัดทั้งบรรทัด
   const phone = css.slice(css.indexOf('@media (max-width: 640px)', css.indexOf('.scan-drawer-head {')));
-  assert.match(phone.slice(0, phone.indexOf('\n}')), /\.scan-drawer-head > \.row \.btn \{ flex: 1; min-height: 44px; \}/);
+  assert.match(phone.slice(0, phone.indexOf('\n}')), /\.scan-drawer-head > \.row \.btn \{ flex: 1; min-height: var\(--btn-h\); \}/);
 
   // 2. สี่ช่องเป็นสองคอลัมน์ — สิ่งที่มันอธิบายคือตาราง
   assert.match(scanImport, /<div className="scan-slots">/);

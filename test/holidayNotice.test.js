@@ -155,7 +155,7 @@ test('on a phone the calendar button is a full-width, tappable row of its own', 
   const rule = ruleOf('.notice-body-act > :is(button, a)', phoneAt);
   assert.ok(phoneAt > 0 && rule, 'ไม่พบกฎปุ่มทำต่อในบล็อกมือถือ');
   assert.match(rule, /width: 100%/);
-  assert.match(rule, /min-height: 44px/);
+  assert.match(rule, /min-height: var\(--btn-h\)/);
   // AND NOT THE BRAND GREEN — `+ บันทึก OT ใหม่` is the one primary on this screen.
   assert.match(bannerCode, /className="btn ghost sm"/);
 });

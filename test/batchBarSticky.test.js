@@ -65,7 +65,7 @@ test('the two decisions are short, counted and the same width', () => {
   assert.ok(!code.includes('pileLabel') && !code.includes('รายการ'),
     'ปุ่มบนแถบยาวเท่ากับปุ่มในกล่องยืนยันอีกแล้ว');
   // Equal halves: same basis, and neither may grow past the other.
-  has(phone, '.picked-actions .btn {\n    flex: 1 1 0; min-height: 44px;');
+  has(phone, '.picked-actions .btn {\n    flex: 1 1 0; min-height: var(--btn-h);');
 });
 
 /**
@@ -141,7 +141,7 @@ test('the bar is one row, and only the decisions keep the 44px floor', () => {
   has(rules, '.picked-sum {\n    flex: 0 1 auto; min-width: 0;');
   has(rules, 'text-overflow: ellipsis;');
   has(rules, '.picked-actions {\n    flex: 0 0 auto; margin-left: auto;');
-  has(rules, '.picked-actions .btn {\n    flex: 1 1 0; min-height: 44px;');
+  has(rules, '.picked-actions .btn {\n    flex: 1 1 0; min-height: var(--btn-h);');
   // The undo is smaller ON PURPOSE — it is the one control here that can be
   // taken back, and at the size of the two beside it, in the same group, it
   // would read as a third decision.

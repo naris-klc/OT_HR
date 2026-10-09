@@ -332,7 +332,7 @@ test('a .btn.sm in a card head is a 44px touch target on a phone', () => {
   const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
   assert.match(
     phone,
-    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: 44px; \}/,
+    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: var\(--btn-h\); \}/,
   );
 });
 
@@ -405,7 +405,7 @@ test('the button takes a full-width line under the title on a phone', () => {
   // The 44px touch target is about thumbs, not about lines, and stays.
   assert.match(
     phone,
-    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: 44px; \}/,
+    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: var\(--btn-h\); \}/,
   );
 });
 

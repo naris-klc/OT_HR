@@ -445,10 +445,10 @@ test('below 860px the numbers give way to ‹ [3] / 5 › on 44px targets', () =
   assert.match(block, /\.table-pager \.pager-say \{[^}]*flex-basis: 100%/);
   assert.match(block, /\.table-pager \.btn\.pager-num:not\(\[aria-current='page'\]\),\s*\.table-pager \.pager-gap \{ display: none; \}/);
   assert.match(block, /\.table-pager \.pager-of \{\s*display: inline;/);
-  assert.match(block, /\.table-pager \.btn\.pager-num \{ width: 44px; min-width: 44px; height: 44px; \}/);
+  assert.match(block, /\.table-pager \.btn\.pager-num \{ width: var\(--btn-h\); min-width: var\(--btn-h\); height: var\(--btn-h\); \}/);
   // And the box goes with them — a 30px control beside 44px squares is the one
   // shape that reads as a mistake rather than as a choice.
-  assert.match(block, /\.table-pager \.pager-size-pick \.pick-one \{[^}]*min-height: 44px/);
+  assert.match(block, /\.table-pager \.pager-size-pick \.pick-one \{[^}]*min-height: var\(--btn-h\)/);
   // No breakpoint of its own: 560 went with the old band.
   assert.ok(!/@media \(max-width: 560px\) \{\s*\.table-pager/.test(css));
 });
