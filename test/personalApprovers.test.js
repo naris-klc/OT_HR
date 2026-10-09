@@ -226,3 +226,15 @@ test('the list is audited as a field of the signer’s row', () => {
   const imp = src('app/api/employees/import/route.js');
   assert.match(imp, /if \(!isSigner\(existing\.role\)\) \{/);
 });
+
+test('the team reports apply it too — the CEO’s รายงาน OT ประจำทีม holds the seven', () => {
+  const q = src('lib/delegationQuery.js');
+  assert.match(q, /export async function teamReportFilter\(user, filter, asked = ''\)/);
+  for (const file of [
+    'app/api/reports/monthly/[period]/route.js',
+    'app/api/exports/entries.csv/route.js',
+    'app/api/exports/monthly.csv/route.js',
+  ]) {
+    assert.match(src(file), /if \(teamOnly\) filter = await teamReportFilter\(user, filter,/, file);
+  }
+});

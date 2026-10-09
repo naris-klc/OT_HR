@@ -17,6 +17,7 @@ import { needsOverCeilingReason, describeBreaches } from '@/lib/caps.js';
 import { companyOf } from '@/src/config/companies.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
+import { teamReportFilter } from '@/lib/delegationQuery.js';
 
 /** HR's monthly review: every employee's totals for a period, in one table. */
 export const GET = route(async (req, { params }) => {
@@ -29,7 +30,7 @@ export const GET = route(async (req, { params }) => {
 
   const q = query(req);
   const policy = await Setting.effectivePolicy();
-  const filter = { period };
+  let filter = { period };
   /**
    * WHICH แผนก THIS MONTH COVERS — two questions answered together, and neither
    * of them here: `departmentScope` in lib/reports.js is where both live, and
@@ -55,6 +56,8 @@ export const GET = route(async (req, { params }) => {
    */
   const { teamOnly, department } = departmentScope(user, q);
   if (department) filter.department = department;
+  // ผู้อนุมัติรายคน — see `teamReportFilter`.
+  if (teamOnly) filter = await teamReportFilter(user, filter, q.department ? String(q.department) : '');
   // Withdrawn and refused requests are not on any report, whatever the URL asks
   // for — see `reportStatuses`.
   filter.status = { $in: reportStatuses(q.status) };
@@ -143,11 +146,13 @@ export const GET = route(async (req, { params }) => {
    */
   const wholeReading = departmentScope(user, { ...q, department: '' }).department;
   const forCounting = q.department
-    ? await OtEntry.find({
-      period,
-      status: filter.status,
-      ...(wholeReading ? { department: wholeReading } : {}),
-    })
+    ? await OtEntry.find(teamOnly
+      ? await teamReportFilter(user, { period, status: filter.status, department: wholeReading })
+      : {
+        period,
+        status: filter.status,
+        ...(wholeReading ? { department: wholeReading } : {}),
+      })
       .select('department employee')
       .populate('employee', 'code company')
       .lean()

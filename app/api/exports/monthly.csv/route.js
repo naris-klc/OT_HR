@@ -13,6 +13,7 @@ import { capEntriesByEmployee } from '@/src/services/otService.js';
 import { companyOf } from '@/src/config/companies.js';
 import { signsForCompany } from '@/lib/entries.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
+import { teamReportFilter } from '@/lib/delegationQuery.js';
 
 /** One row per employee per month — the shape HR actually reviews. */
 export const GET = route(async (req) => {
@@ -28,7 +29,7 @@ export const GET = route(async (req) => {
   }
 
   const policy = await Setting.effectivePolicy();
-  const filter = { period, status: { $in: reportStatuses(q.status, 'approved') } };
+  let filter = { period, status: { $in: reportStatuses(q.status, 'approved') } };
   // WHICH แผนก — `departmentScope` in lib/reports.js, the same call the report
   // route and ส่งออกรายการ OT make, since 2026-09-10. It answers `?scope=` (the
   // บทบาท's reading) and `?department=` (the แผนก dropdown) together, and can
@@ -40,6 +41,8 @@ export const GET = route(async (req) => {
   // reconciling it.
   const { teamOnly, department } = departmentScope(user, q);
   if (department) filter.department = department;
+  // ผู้อนุมัติรายคน — see `teamReportFilter`.
+  if (teamOnly) filter = await teamReportFilter(user, filter, q.department ? String(q.department) : '');
 
   const found = await OtEntry.find(filter)
     .populate('employee', 'code name position company')

@@ -1195,8 +1195,9 @@ actor?.name` ใน `OtEntry.log`) เพื่อให้คนที่ลา
 
 ระบุไม่ได้: ฝ่ายบุคคล ผู้ดูแลระบบ กรรมการผู้จัดการ และคนที่ปิดใช้งาน
 (`personalScope`) · ประวัติการแก้ทะเบียนบันทึกเป็นรหัสพนักงานในฟิลด์
-**อนุมัติรายคน** ของแถวผู้อนุมัติ · **ยังไม่ทำ:** รายงานประจำเดือนแบบทีมยังกรองตาม
-แผนกที่ถือ ใบของคนที่ระบุรายคนจากแผนกอื่นจึงยังไม่ขึ้นในรายงานทีมของผู้อนุมัติ
+**อนุมัติรายคน** ของแถวผู้อนุมัติ · **รายงาน OT ประจำทีมกับไฟล์ CSV สองไฟล์ของมันก็ใช้กฎเดียวกัน** ตั้งแต่ 2026-10-09
+(`teamReportFilter`) — ย่อหน้านี้เคยอ่านว่า *"ยังไม่ทำ: รายงานประจำเดือนแบบทีมยังกรอง
+ตามแผนกที่ถือ"* จนถึงรอบถัดมาของวันเดียวกัน
 
 **ทำไมช่องแรกถึงมีมากกว่าหนึ่งตำแหน่ง** กฎที่ฝ่ายบุคคลให้มาเป็นแบบขึ้นทีละขั้น
 — พนักงาน → หัวหน้างาน, หัวหน้างาน → ผู้จัดการแผนก · แต่วางบนทะเบียนจริงแล้ว
@@ -2162,9 +2163,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2864 tests
+and the engine know nothing about Next.js, so the whole suite — **2866 tests
 across 161 files**, measured 2026-10-09 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2864 tests" until ผู้อนุมัติรายคน reached the team report (2026-10-09).
 It read "2850 tests across 160 files" until **ผู้อนุมัติรายคน** (2026-10-09) —
 `personalApprovers` is the new file.
 It read "2849 tests across 160 files" until **ปุ่ม 36px · ชื่อปุ่ม ≤ 3 คำ · หน้ารายละเอียดใบ OT แบบ 1**.
@@ -14575,7 +14577,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2864 tests**, about 9 s, measured 2026-10-09 across 161
+- `npm test` — **2866 tests**, about 9 s, measured 2026-10-09 across 161
   files, all green (it read "2850 tests … across 160 files" until ผู้อนุมัติ
   รายคน added `personalApprovers`; "2842 tests" until the status tabs on ตรวจสอบ
   ประจำเดือน rewrote `monthStatusFilter`). **`policyReading` is the newest file** — the one-sentence

@@ -10,6 +10,7 @@ import {
 import { companyOf } from '@/src/config/companies.js';
 import { signsForCompany } from '@/lib/entries.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
+import { teamReportFilter } from '@/lib/delegationQuery.js';
 
 /**
  * §10 data export — for HR to hand to whoever runs payroll.
@@ -24,7 +25,7 @@ export const GET = route(async (req) => {
   const user = requireRole(await requireAuth(req), 'hr', 'admin', ...SIGNER_ROLES);
   const q = query(req);
 
-  const filter = {};
+  let filter = {};
   /* งวดถูกตรวจรูปตั้งแต่ 2026-09-21 — เดิมเดินเข้า filter ดิบ ๆ และ
      `?period=2026-13` ได้ไฟล์ CSV ที่มีแต่หัวตาราง ซึ่งอ่านเหมือนเดือนที่ไม่มี
      ใครทำ OT · ต่างจากอีกสี่เราต์ของเดือนที่ตอบ 400 มาตลอด */
@@ -53,6 +54,8 @@ export const GET = route(async (req) => {
   // spreadsheet by whoever is reconciling it.
   const { teamOnly, department } = departmentScope(user, q);
   if (department) filter.department = department;
+  // ผู้อนุมัติรายคน — see `teamReportFilter`.
+  if (teamOnly) filter = await teamReportFilter(user, filter, q.department ? String(q.department) : '');
 
   /**
    * `.sort({ 'employee.code': 1, workDate: 1 })` STOOD HERE and sorted by
