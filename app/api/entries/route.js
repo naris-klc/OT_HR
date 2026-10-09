@@ -9,7 +9,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
-  coreHoursRefusal,
+  coreHoursRefusal, hasPersonalApprovers,
   capFor, takeCapped, submissionWindowRefusal,
   zeroOtHoursAllowed, byEmployeeThenLatest, mayCorrectEntries,
 } from '@/lib/entries.js';
@@ -642,7 +642,7 @@ export const POST = route(async (req) => {
    * their answer does not depend on the roster and a query nobody reads is a
    * query not worth making.
    */
-  const signers = filesStraightToHr(employee.role) ? null : await Employee
+  const signers = filesStraightToHr(employee.role) && !hasPersonalApprovers(employee) ? null : await Employee
     .find({ role: { $in: SIGNER_ROLES }, active: true })
     .select('code name role department company approvesCompany approvesDepartments active')
     .lean();

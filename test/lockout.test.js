@@ -208,7 +208,7 @@ test('why the floor is one ADMIN and not one HR', () => {
   // 2026-09-03: หัวหน้างาน gained three colleagues who also sign inside a แผนก,
   // and none of them gained a rank ฝ่ายบุคคล could not already hand out.
   assert.deepEqual(HR_ASSIGNABLE_ROLES,
-    ['employee', 'supervisor', 'finance', 'dept_manager', 'division_manager']);
+    ['employee', 'supervisor', 'finance', 'dept_manager', 'division_manager', 'managing_director']);
   assert.equal(HR_ASSIGNABLE_ROLES.includes('hr'), false);
   assert.equal(HR_ASSIGNABLE_ROLES.includes('admin'), false);
 });

@@ -3,7 +3,9 @@ import { SIGNER_ROLES, filesStraightToHr } from '@/lib/roles.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, checkCap, loadContext } from '@/src/services/otService.js';
-import { coreHoursRefusal, pickSession, isDepartmentManager } from '@/lib/entries.js';
+import {
+  coreHoursRefusal, pickSession, isDepartmentManager, hasPersonalApprovers,
+} from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
@@ -48,7 +50,7 @@ export const POST = route(async (req) => {
    */
   if (employee && !['hr', 'admin'].includes(user.role)
     && String(employee._id) !== String(user._id)
-    && !isDepartmentManager(user, employee.department, companyOf(employee))) {
+    && !isDepartmentManager(user, employee.department, companyOf(employee), employee)) {
     return fail('ดูข้อมูลได้เฉพาะของตนเองหรือพนักงานในแผนกของตน', 403);
   }
 
@@ -82,7 +84,7 @@ export const POST = route(async (req) => {
    * a แผนก whose request will actually go to ฝ่ายบุคคล would be wrong in the one
    * sentence the person filing reads twice.
    */
-  const signers = employee && !filesStraightToHr(employee.role)
+  const signers = employee && (!filesStraightToHr(employee.role) || hasPersonalApprovers(employee))
     ? await Employee.find({ role: { $in: SIGNER_ROLES }, active: true })
       .select('code name role department company approvesCompany approvesDepartments active')
       .lean()
@@ -214,7 +216,7 @@ export const POST = route(async (req) => {
     const other = await Employee.findById(id).populate('department').catch(() => null);
     if (!other) continue;
     if (!['hr', 'admin'].includes(user.role) && String(other._id) !== String(user._id)
-      && !isDepartmentManager(user, other.department, companyOf(other))) continue;
+      && !isDepartmentManager(user, other.department, companyOf(other), other)) continue;
     const otherCtx = await loadContext([session.workDate], { employee: other });
     if (otherCtx.dayTypes?.[session.workDate]?.reason === 'birthday') { noBreakOff = true; break; }
   }

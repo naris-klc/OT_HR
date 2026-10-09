@@ -134,6 +134,30 @@ const employeeSchema = new mongoose.Schema(
       default: () => [],
     },
 
+    /**
+     * ผู้อนุมัติรายคน — the signers named for THIS person, kept on THIS
+     * person's row although HR edits the list from the signer's form.
+     *
+     * Non-empty REPLACES the แผนก rule for this person's first step: only these
+     * may sign it, whatever their บทบาท, แผนก or company scope, and the แผนก's
+     * own signers no longer see the request. Empty is the ordinary rule. Asked
+     * for on 2026-10-09 so the CEO could sign for seven ผู้จัดการ over two
+     * companies, two of whom (ผู้จัดการฝ่าย, การเงิน) had no first step at all.
+     *
+     * ON THE APPLICANT, NOT THE SIGNER, because "is anybody named for this
+     * person" is what takes a request away from the แผนก, and every check that
+     * asks it already holds the applicant populated on the entry. Kept on the
+     * signer, each of those checks would need a query of its own.
+     *
+     * Every id here is an active signer: PATCH /api/employees/[id] pulls a
+     * person out of every list the moment they stop being one, so the request
+     * falls back to the แผนก instead of waiting on somebody who has left.
+     */
+    personalApprovers: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }],
+      default: () => [],
+    },
+
     passwordHash: { type: String, required: true, select: false },
 
     /**

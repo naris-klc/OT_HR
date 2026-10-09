@@ -87,7 +87,10 @@ test('ตัวเลือกบทบาทเรียงตามลำด�
    * the server narrows the query by, and it returns `ROLES` order — lowest rung
    * first, which is the order this list is read in.
    */
-  assert.match(memo, /return visibleRolesFor\(user\.role\)/);
+  assert.match(memo, /const ladder = visibleRolesFor\(user\.role\);/);
+  // Plus a บทบาท off the ladder that a ผู้อนุมัติรายคน was handed — still in
+  // `ROLES` order, so the list reads up the ladder either way.
+  assert.match(memo, /return ROLES\.filter\(\(r\) => ladder\.includes\(r\) \|\| seen\.has\(r\)\)/);
   // The rows are still counted — they just no longer decide what is offered.
   assert.match(memo, /for \(const e of entries \|\| \[\]\)/);
   assert.match(memo, /const role = e\.employee\?\.role;/);
@@ -226,7 +229,7 @@ test('บทบาท อยู่ระหว่างช่องค้นห�
  */
 test('มีบทบาทเริ่มต้นเฉพาะของผู้จัดการฝ่าย', () => {
   assert.match(code, /const OPENS_ON = Object\.freeze\(\{ division_manager: 'dept_manager' \}\);/);
-  assert.match(roles, /dept_manager: Object\.freeze\(\['division_manager'\]\)/);
+  assert.match(roles, /dept_manager: Object\.freeze\(\['division_manager', 'managing_director'\]\)/);
   const at = code.indexOf('const OPENS_ON =');
   assert.ok(
     !/supervisor:|dept_manager: '|hr:|admin:/.test(code.slice(at, code.indexOf('\n', at))),
@@ -356,7 +359,8 @@ test('ตัวกรองแผนกวาดทุกจอที่อน�
 
   const memo = code.slice(code.indexOf('const departments = useMemo('), code.indexOf('const statuses = useMemo('));
   assert.match(memo, /const mine = \(user\.coversDepartments \|\| \[\]\)\.map\(String\);/);
-  assert.match(memo, /\.filter\(\(d\) => !mine\.length \|\| mine\.includes\(String\(d\._id\)\)\)/);
+  // …or that has rows here: a ผู้อนุมัติรายคน signs outside the แผนก they hold.
+  assert.match(memo, /\.filter\(\(d\) => !mine\.length \|\| mine\.includes\(String\(d\._id\)\)\s*\|\| counts\.has\(String\(d\._id\)\)\)/);
   assert.ok(memo.includes('if (!scoped.length) {'), 'ไม่มีทางถอยเมื่อ /departments ล่ม');
   assert.ok(memo.includes('optionsBy(entries'), 'ทางถอยไม่ได้กลับไปอ่านจากแถว');
 

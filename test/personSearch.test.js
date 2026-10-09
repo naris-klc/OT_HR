@@ -290,7 +290,9 @@ test('the roster picker is used where the list is long and nowhere else', () => 
     .replace(/^\s*\/\/.*$/gm, '');
   // Prove the stripper works, or the counts below mean nothing.
   assert.doesNotMatch(admin, /the `<select>`s this comment used to defend/, 'ตัวตัดคอมเมนต์ไม่ทำงาน');
-  assert.equal((admin.match(/<PickPerson/g) || []).length, 1);
+  // Two since 2026-10-09: กรองตามพนักงาน, and อนุมัติรายคน's เพิ่มพนักงาน —
+  // both search the whole roster, the long list this picker is for.
+  assert.equal((admin.match(/<PickPerson/g) || []).length, 2);
   const filters = admin.slice(admin.indexOf('กรองตามพนักงาน'), admin.indexOf('ล้างตัวกรองทั้งหมด'));
   assert.equal((filters.match(/<select/g) || []).length, 0, 'ตัวกรองยังมี <select> — เมนูของ OS จะกลับมา');
   assert.equal((filters.match(/<PickOne/g) || []).length, 3, 'ตัวกรองที่รายการสั้นต้องเป็น PickOne');

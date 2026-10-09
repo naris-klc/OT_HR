@@ -209,7 +209,7 @@ test('HR reaching the roster screen did not widen who may be made an Admin', () 
   assert.equal(rosterPermission(HR, { role: 'admin' }).ok, false);
   assert.equal(rosterPermission(HR, { target: { role: 'employee' }, role: 'admin' }).ok, false);
   assert.deepEqual(HR_ASSIGNABLE_ROLES,
-    ['employee', 'supervisor', 'finance', 'dept_manager', 'division_manager']);
+    ['employee', 'supervisor', 'finance', 'dept_manager', 'division_manager', 'managing_director']);
 });
 
 test('nor did it let a หัวหน้า or a พนักงาน near the roster at all', () => {

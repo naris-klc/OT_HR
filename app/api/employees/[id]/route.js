@@ -5,7 +5,7 @@ import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
   codeChangePermission, defaultPassword, dropsAnAdmin, lastAdminPermission, rosterPermission,
-  selfEditPermission, signingScope, signingCoveragePermission, approvalScope,
+  selfEditPermission, signingScope, signingCoveragePermission, approvalScope, personalScope,
 } from '@/lib/employees.js';
 import Department from '@/src/models/Department.js';
 import { BIRTHDATE_REPLAY_NOTE, rosterChanges } from '@/lib/rosterAudit.js';
@@ -23,7 +23,7 @@ export const PATCH = route(async (req, { params }) => {
 
   const {
     code, name, email, position, birthDate, department, role, company, approvesCompany, active,
-    approvesDepartments, resetPassword, password, reason,
+    approvesDepartments, approvesEmployees, resetPassword, password, reason,
   } = await body(req);
 
   if (role != null && !ROLES.includes(role)) return fail('บทบาทไม่ถูกต้อง', 400);
@@ -120,6 +120,10 @@ export const PATCH = route(async (req, { params }) => {
     // array on the document about to be mutated, so a reference would be the
     // live value and the "before" would equal the "after" every time.
     approvesDepartments: (employee.approvesDepartments || []).map(String),
+    // อนุมัติรายคน lives on the OTHER rows (`personalApprovers`); read back
+    // here so it is edited, audited and diffed as a field of this one.
+    approvesEmployees: (await Employee.find({ personalApprovers: employee._id })
+      .select('_id').lean()).map((p) => String(p._id)),
     active: employee.active,
   };
 
@@ -204,6 +208,26 @@ export const PATCH = route(async (req, { params }) => {
   if (active != null) employee.active = Boolean(active);
 
   /**
+   * อนุมัติรายคน AS IT WILL STAND. Somebody who stops being an active signer is
+   * taken off every list they were on, so the people named for them fall back
+   * to their แผนก instead of waiting on a signature nobody can give — the
+   * invariant `personalApprovers` promises.
+   */
+  const stillSigns = isSigner(employee.role) && employee.active !== false;
+  let named = before.approvesEmployees;
+  if (approvesEmployees !== undefined) {
+    const ids = Array.isArray(approvesEmployees) ? approvesEmployees.map(String) : [];
+    const found = ids.length
+      ? await Employee.find({ _id: { $in: ids.filter((id) => /^[a-f0-9]{24}$/i.test(id)) } })
+        .select('code name role active').lean()
+      : [];
+    const scope = personalScope(approvesEmployees, { approver: employee, found });
+    if (!scope.ok) return fail(scope.error, 400);
+    named = scope.value;
+  }
+  if (!stillSigns) named = [];
+
+  /**
    * A reset is HR issuing a password, exactly as creating the account was — so
    * it carries the same obligation to replace it. Editing anything else leaves
    * the flag alone: a corrected job title is not a reason to ask somebody for a
@@ -239,7 +263,17 @@ export const PATCH = route(async (req, { params }) => {
    * `rosterChanges` reads only its allowlist, which is what keeps the password
    * out of here structurally rather than by anybody remembering.
    */
-  const changes = rosterChanges(before, {
+  /**
+   * อนุมัติรายคน is recorded as รหัสพนักงาน, not ids: the trail prints the
+   * value as stored, and seven ObjectIds is a record nobody can read back.
+   */
+  const listed = [...before.approvesEmployees, ...named];
+  const codeOf = new Map((listed.length
+    ? await Employee.find({ _id: { $in: listed } }).select('code').lean()
+    : []).map((p) => [String(p._id), p.code]));
+  const codes = (ids) => ids.map((id) => codeOf.get(String(id)) || String(id));
+
+  const changes = rosterChanges({ ...before, approvesEmployees: codes(before.approvesEmployees) }, {
     code: employee.code,
     name: employee.name,
     email: employee.email,
@@ -250,6 +284,7 @@ export const PATCH = route(async (req, { params }) => {
     company: employee.company,
     approvesCompany: employee.approvesCompany,
     approvesDepartments: employee.approvesDepartments,
+    approvesEmployees: codes(named),
     active: employee.active,
   });
   const birthDateMoved = changes.some((c) => c.field === 'birthDate');
@@ -322,10 +357,20 @@ export const PATCH = route(async (req, { params }) => {
     after: [...otherManagers, ...nowSigner],
   };
 
+  const me = String(employee._id);
+  const keep = new Set(named);
+  // The roster as it will read after this save: this row added to or taken off
+  // each person's `personalApprovers`, so a named พนักงาน left with nobody is
+  // seen as stranded exactly as one left without a แผนก signer is.
+  const renamed = (p) => {
+    const rest = (p.personalApprovers || []).filter((a) => String(a) !== me);
+    return { ...p, personalApprovers: keep.has(String(p._id)) ? [...rest, employee._id] : rest };
+  };
+
   for (const dept of touched) {
     const others = await Employee
       .find({ department: dept, active: true, _id: { $ne: employee._id } })
-      .select('code name role department company approvesCompany approvesDepartments')
+      .select('code name role department company approvesCompany approvesDepartments personalApprovers')
       .lean();
 
     const was = before.active !== false && sameDept(dept, before.department)
@@ -334,12 +379,21 @@ export const PATCH = route(async (req, { params }) => {
       ? [asPerson(employee, employee.department)] : [];
 
     const cover = signingCoveragePermission(
-      [...others, ...was], [...others, ...now], dept, signers,
+      [...others, ...was], [...others.map(renamed), ...now], dept, signers,
     );
     if (!cover.ok) return fail(cover.error, 409);
   }
 
   await employee.save();
+
+  const gone = before.approvesEmployees.filter((id) => !keep.has(id));
+  const added = named.filter((id) => !before.approvesEmployees.includes(id));
+  if (gone.length) {
+    await Employee.updateMany({ _id: { $in: gone } }, { $pull: { personalApprovers: employee._id } });
+  }
+  if (added.length) {
+    await Employee.updateMany({ _id: { $in: added } }, { $addToSet: { personalApprovers: employee._id } });
+  }
 
   /**
    * A moved วันเกิด moves which days were that person's holiday, so the hours

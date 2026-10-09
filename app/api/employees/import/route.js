@@ -312,6 +312,13 @@ export const POST = route(async (req) => {
         // the same code, which is why this row was found at all.
         const changes = rosterChanges(before, snapshot(existing));
         await existing.save();
+        // No longer a signer → off every อนุมัติรายคน list, as the PATCH route
+        // does; see `personalApprovers`.
+        if (!isSigner(existing.role)) {
+          await Employee.updateMany(
+            { personalApprovers: existing._id }, { $pull: { personalApprovers: existing._id } },
+          );
+        }
         /**
          * Only rows the file actually moved get a record. A roster CSV
          * re-imported unchanged touches every row and changes none of them, and

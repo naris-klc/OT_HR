@@ -311,7 +311,7 @@ test('ผู้ดูแลระบบ may be named as a ผู้รับช�
   // claim, and `approvalPermission` asks the routing matrix of the giver's
   // บทบาท, never the holder's.
   assert.deepEqual(DELEGATE_ROLES,
-    ['supervisor', 'finance', 'dept_manager', 'division_manager', 'hr', 'admin']);
+    ['supervisor', 'finance', 'dept_manager', 'division_manager', 'managing_director', 'hr', 'admin']);
   const may = delegationPermission({
     actor: HR,
     from: MGR,

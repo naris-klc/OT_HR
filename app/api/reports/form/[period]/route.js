@@ -53,7 +53,7 @@ export const GET = route(async (req, { params }) => {
    * every row but their own แผนก's.
    */
   if (readsOwnTeamOnly(user.role)
-    && !isDepartmentManager(user, employee.department, companyOf(employee))) {
+    && !isDepartmentManager(user, employee.department, companyOf(employee), employee)) {
     return fail('ดูได้เฉพาะพนักงานในแผนกของตน', 403);
   }
 
