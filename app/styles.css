@@ -4154,6 +4154,9 @@ td > .approver-line { margin-top: 5px; }
   .personal-table th:nth-child(1) { width: 92px; }
   .personal-table th:nth-child(3) { width: 38%; }
   .personal-table th:nth-child(4) { width: 44px; }
+  /* Wide enough for the ตามแผนก chip only when a row carries one. */
+  .personal-table table:has(.person-via) th:nth-child(4) { width: 84px; }
+  .personal-table table:has(.person-via) th:nth-child(3) { width: 34%; }
   .personal-table td {
     padding-top: 2px; padding-bottom: 2px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -4178,6 +4181,8 @@ td > .approver-line { margin-top: 5px; }
 .edit-form.compact .form-group + .form-group { margin-top: 12px; padding-top: 12px; }
 .edit-form.compact .form-group > .gh { margin-bottom: 9px; }
 .edit-form.compact .personal-approvals { margin-top: 10px; }
+/* ตามแผนก — the chip a row reached through the แผนก field wears instead of เอาออก. */
+.personal-table .person-via { white-space: nowrap; }
 .pick-menu li .person-now {
   margin-left: auto; padding-left: 8px; flex: none;
   font: 500 11.5px/1.4 var(--sans); white-space: nowrap;
@@ -6071,11 +6076,10 @@ td > .approver-line { margin-top: 5px; }
    card top 68, bar bottom 62, stable from 600ms onward — which is why the aim
    is left where it is instead of being padded to hit 14 exactly. */
 .profile-password { scroll-margin-top: calc(62px + 14px); }
-/* The card's explanation folds (components/ProfileView.jsx), so `.card .hint`'s
-   14px has to move to the fold's wrapper: on the paragraph it would sit between
-   the text and ย่อข้อความ, and the button would read as the form's first line. */
-.profile-password > .disclosure { margin-bottom: 14px; }
-.profile-password > .disclosure > .hint { margin-bottom: 0; }
+/* A password rule that passes — the green half of the input validation under
+   รหัสผ่านใหม่ (components/ProfileView.jsx). The card's folded explanation
+   and its two rules stood here until 2026-10-09. */
+.field-note.ok { color: var(--green-dark); }
 
 /* Stacked, not the app's usual side-by-side .row: the three password boxes are
    a sequence to work down, and side by side they invite typing into the wrong

@@ -227,6 +227,14 @@ test('the label lists that used to be duplicated now read from lib/roles.js', ()
 
   const compliance = readFileSync(join(ROOT, 'lib/complianceExport.js'), 'utf8');
   assert.match(compliance, /ROLE_LABEL = ROLE_LABEL_TH;/);
+
+  // ข้อมูลส่วนตัว and บันทึกระบบ each kept a table of four until 2026-10-09, and
+  // the CEO's own profile drew บทบาท as — because กรรมการผู้จัดการ was not in it.
+  const profile = readFileSync(join(ROOT, 'components/ProfileView.jsx'), 'utf8');
+  assert.doesNotMatch(profile, /const ROLE_LABEL = \{/);
+  assert.match(profile, /roleLabel\(user\.role\)/);
+  const log = readFileSync(join(ROOT, 'components/LogSystem.jsx'), 'utf8');
+  assert.match(log, /const ROLE_LABEL = ROLE_LABEL_TH;/);
 });
 
 

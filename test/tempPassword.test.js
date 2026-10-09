@@ -376,8 +376,9 @@ test('the helper text under the box says the rule the server applies', () => {
   const code = readFileSync(join(ROOT, 'components/ProfileView.jsx'), 'utf8');
   // The sentence asked for on 2026-09-02, built from the constant rather than
   // typed as a 4 that can drift away from PASSWORD_MIN_LENGTH.
-  assert.match(code, /รหัสผ่านต้องมีความยาวอย่างน้อย \$\{MIN_LENGTH\} ตัวอักษร/);
-  assert.match(code, /สามารถใช้ตัวอักษรไทย ตัวอักษรอังกฤษ ตัวเลข หรืออักขระพิเศษได้/);
+  // Shortened on 2026-10-09 and moved under รหัสผ่านใหม่ as its validation line.
+  assert.match(code, /อย่างน้อย \$\{MIN_LENGTH\} ตัวอักษร · ใช้ไทย อังกฤษ ตัวเลข หรืออักขระพิเศษได้/);
+  assert.match(code, /\{PASSWORD_HELP\}<\/div>/);
   // It was said twice until 2026-09-04 — here and on the first-login screen,
   // which is where most people met this form once. That screen is gone, so
   // this form is the only place the rule is written, and the second assertion
@@ -385,7 +386,7 @@ test('the helper text under the box says the rule the server applies', () => {
   // that drifts away from PASSWORD_HELP without anything failing.
   assert.doesNotMatch(
     readFileSync(join(ROOT, 'components/App.jsx'), 'utf8'),
-    /ตัวอักษรไทย ตัวอักษรอังกฤษ ตัวเลข/,
+    /ใช้ไทย อังกฤษ ตัวเลข/,
   );
 });
 
@@ -579,7 +580,8 @@ test('signing in reaches the app, and the flag is said in ink instead', () => {
   // password outright for whoever was told nothing and guessed.
   const profile = strip(readFileSync(join(ROOT, 'components/ProfileView.jsx'), 'utf8'));
   assert.match(profile, /<ChangePassword\s+pending=\{user\.mustChangePassword\}/);
-  assert.match(profile, /\{pending && <>[^]*ซึ่งคือรหัสพนักงานของคุณ/);
+  // Under รหัสผ่านเดิม since 2026-10-09, where it is typed.
+  assert.match(profile, /: pending && <div className="field-note">รหัสพนักงานของคุณ/);
   assert.match(profile, /\{pending && !ok && \(/);
   // ⚠ IT READ "the amber Alert folds (▲/▼, 2026-09-10), but never the fact"
   // until 2026-09-14. The fold is gone and the whole sentence is on screen, so
