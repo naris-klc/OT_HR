@@ -244,7 +244,7 @@ test('the team reports apply it too — the CEO’s รายงาน OT ปร
   }
 });
 
-// ── ผู้ใต้บังคับบัญชาที่อนุมัติ — ข้อมูลส่วนตัว (2026-10-09) ─────────────────
+// ── พนักงานที่คุณมีสิทธิ์อนุมัติ — ข้อมูลส่วนตัว (2026-10-09) ───────────────
 
 test('deptReach lists who the แผนก sends to a signer, by the queue’s own rule', () => {
   const ceo = {
