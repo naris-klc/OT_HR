@@ -378,8 +378,9 @@ test('หัวข้อบอกขอบเขตให้ตรง — ชื
 
 /** 2026-10-10 ชื่อแผนกจริงขึ้นต้นด้วย "แผนก" อยู่แล้ว — หัวคิวขึ้น "เฉพาะแผนกแผนกบัญชี…" */
 test('ชื่อแผนกไม่ถูกเติมคำว่า "แผนก" ซ้ำ', () => {
-  const at = code.indexOf('function deptPhrase(');
-  const body = code.slice(at, code.indexOf('\n}\n', at) + 2);
+  const src = code.replace(/\r\n/g, '\n');  // a CRLF checkout (autocrlf) has no bare '\n}\n'
+  const at = src.indexOf('function deptPhrase(');
+  const body = src.slice(at, src.indexOf('\n}\n', at) + 2);
   const deptPhrase = new Function(`${body}; return deptPhrase;`)();
   assert.equal(deptPhrase('แผนกบัญชีและการเงิน'), 'แผนกบัญชีและการเงิน');
   assert.equal(deptPhrase('วิศวกรรม'), 'แผนกวิศวกรรม');
