@@ -117,8 +117,8 @@ function BatchApproveModal({ entries, choosable, busy, onClose, onConfirm }) {
       </div>
 
       {unscanned.length > 0 && (
-        <Alert kind="warn" mark={false}>
-          <strong>⚠️ {unscanned.length} รายการไม่ได้สแกนนิ้วในวันนั้น</strong>
+        <Alert kind="warn">
+          <strong>{unscanned.length} รายการไม่ได้สแกนนิ้วในวันนั้น</strong>
           {' '}— ยังอนุมัติได้ แต่ไม่มีหลักฐานการสแกนรองรับ
           <ShowMore
             as="ul"
@@ -132,8 +132,8 @@ function BatchApproveModal({ entries, choosable, busy, onClose, onConfirm }) {
       )}
 
       {capped.length > 0 && (
-        <Alert kind="warn" mark={false}>
-          <strong>⚠️ {overCeilingApproveHead(capped.length)}</strong>
+        <Alert kind="warn">
+          <strong>{overCeilingApproveHead(capped.length)}</strong>
           <ShowMore
             as="ul"
             className="alert-list"

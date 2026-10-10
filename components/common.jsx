@@ -306,6 +306,17 @@ export function NoticeStack({ id, children, className = '' }) {
 }
 
 /**
+ * วงกลม ! · i · ✓ ตัวเดียวกับในกล่องแจ้งเตือน วางในบรรทัดข้อความ — 2026-10-10
+ *
+ * แทน ⚠️ ✅ ที่พิมพ์เป็นตัวอักษร (รายงาน UX ข.4): emoji ขึ้นสีและขนาดต่างกันไป
+ * ตามเครื่อง และไม่ตามธีมมืด · ใน `Alert` ไม่ต้องใช้ — กล่องวาดเครื่องหมายของมัน
+ * เองอยู่แล้ว
+ */
+export function InlineMark({ tone = 'warn' }) {
+  return <span className={`notice-ic inline ${tone}`} aria-hidden="true">{NOTICE_MARK[tone]}</span>;
+}
+
+/**
  * หนึ่งเรื่องในกล่อง: ไอคอน · หัวเรื่อง (มีตัวเลข) · รายละเอียดสั้น · ปุ่มทำต่อ · ▾
  *
  * จอคอม: แถวเดียว รายละเอียดที่ยาวถูกตัดด้วย … กดแถวหรือ ▾ เพื่ออ่านเต็ม
@@ -2688,7 +2699,10 @@ export function ApproverLine({ entry, signers = null, className = '', when = fal
   if (!line) return null;
   return (
     <div className={`approver-line ${line.tone} ${className}`.trim()}>
-      <span className="mark" aria-hidden="true">{line.icon}</span>
+      {/* ไอคอนจากชุดของแอป ไม่ใช่ ✅ ❌ ⏳ ⚠️ — จนถึง 2026-10-10 เป็นตัวอักษร */}
+      <span className="mark" aria-hidden="true">
+        {line.icon === 'warn' ? <InlineMark tone="warn" /> : <Icon name={line.icon} />}
+      </span>
       <span className="who">{line.text}</span>
       {/* Its own element and not more of `.who`, so it can drop to a second line
           on a phone while the name and the desk stay together on the first. */}
@@ -2735,7 +2749,7 @@ export function ApprovalSteps({ entry }) {
       <ol className="approval-steps">
         {steps.map((s, i) => (
           <li key={i} className={s.approved ? 'ok' : 'no'}>
-            <span className="mark" aria-hidden="true">{s.approved ? '✅' : '❌'}</span>
+            <span className="mark" aria-hidden="true"><Icon name={s.approved ? 'tick' : 'cross'} /></span>
             <div className="body">
               <div className="act">{ACTION_META[s.action]?.label || s.action}</div>
               <div className="who">

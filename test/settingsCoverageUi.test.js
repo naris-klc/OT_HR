@@ -226,10 +226,12 @@ test('every หัวหน้า is a badge, and the scope is always inside it'
 test('a gap is a badge per uncovered payroll, with the way out beside it', () => {
   const code = sourceOf(SETTINGS);
   // One badge naming the payroll…
-  assert.match(code, /className="head-badge gap" title=\{HEAD_GAP_TIP\}>\s*\n?\s*⚠ ยังไม่มีหัวหน้า\{companyShort\(key\)\}/);
+  assert.match(code, /className="head-badge gap" title=\{HEAD_GAP_TIP\}>\s*\n?\s*<InlineMark tone="warn" \/>ยังไม่มีหัวหน้า\{companyShort\(key\)\}/);
   // …unless nobody heads the department at all, which is one hole and not two.
   assert.match(code, /const nobody = heads\.length === 0/);
-  assert.match(code, /⚠ ยังไม่มีหัวหน้า\s*\n/);
+  assert.match(code, /<InlineMark tone="warn" \/>ยังไม่มีหัวหน้า\s*\n/);
+  // วงกลม ! ของกล่องแจ้งเตือน ไม่ใช่ ⚠ ที่พิมพ์ — 2026-10-10 (รายงาน UX ข.4)
+  assert.ok(!/>\s*⚠/.test(code), 'ชิปกลับไปพิมพ์ ⚠');
   // And the button that goes where the fix is.
   assert.match(code, /className="link head-fix"\s*\n\s*onClick=\{\(\) => onGo\('employees'\)\}/);
   assert.match(code, /<Icon name="external" \/>แก้สิทธิ์/);  // ไอคอนแทน ↗ ที่พิมพ์ (2026-10-09)

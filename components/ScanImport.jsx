@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { api, periodLabel, companyLabel } from '@/lib/api.js';
-import { Alert, Disclosure, ShowMore, stamp } from './common.jsx';
+import { Alert, Disclosure, InlineMark, ShowMore, stamp } from './common.jsx';
 import Icon from './icons.jsx';
 import {
   SCAN_FORMATS, SCAN_MAX_BYTES, MIXED_COMPANY, decodeScanText, parseScanFile,
@@ -16,10 +16,15 @@ import {
  * two ways that happens (people from both payrolls in one file, or nobody in it
  * on the roster at all) are the two states somebody has to look at.
  */
+/** ไฟล์ที่จัดเข้าช่องไม่ได้ — ปนสองบริษัท หรือไม่รู้บริษัท · ⚠ อยู่ในชื่อจนถึง 2026-10-10 */
+function slotUnplaced(batch) {
+  return batch?.company === MIXED_COMPANY || !batch?.company;
+}
+
 function slotName(batch) {
   const machine = machineLabel(batch?.format);
-  if (batch?.company === MIXED_COMPANY) return `${machine} · ⚠ ปนสองบริษัท`;
-  if (!batch?.company) return `${machine} · ⚠ ไม่รู้บริษัท`;
+  if (batch?.company === MIXED_COMPANY) return `${machine} · ปนสองบริษัท`;
+  if (!batch?.company) return `${machine} · ไม่รู้บริษัท`;
   return `${machine} · ${companyLabel(batch.company)}`;
 }
 
@@ -442,6 +447,7 @@ export default function ScanImport({
                 file exported from the wrong menu is caught here rather than by
                 a slot that never fills. */}
             <div style={{ marginTop: 6 }}>
+              {slotUnplaced(result.batch) && <InlineMark tone="warn" />}
               <strong>{slotName(result.batch)}</strong>
               {result.companyCounts?.length > 1 && (
                 <span className="hint">
@@ -623,7 +629,7 @@ export default function ScanImport({
               <div className="hint"><strong>ไฟล์ที่ยังจัดเข้าช่องไหนไม่ได้</strong></div>
               {grid.unplaced.map((b) => (
                 <div key={b._id} className="hint" style={{ margin: '4px 0 0' }}>
-                  ⚠ <strong>{b.filename}</strong> — {slotName(b)} · {scanDateRange(b)} ·
+                  <InlineMark tone="warn" /><strong>{b.filename}</strong> — {slotName(b)} · {scanDateRange(b)} ·
                   {' '}{b.punchCount} รายการ · {b.peopleCount} คน
                   <br />
                   {'\u00a0\u00a0'}นำเข้าโดย {b.importedByName || '—'} เมื่อ {stamp(b.createdAt)}

@@ -7,7 +7,7 @@ import {
 } from '@/lib/api.js';
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
-  Alert, ClearButton, ClearFilters, Empty, NoticeRow, NoticeStack, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
+  Alert, ClearButton, ClearFilters, Empty, InlineMark, NoticeRow, NoticeStack, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
   PAGE_SIZE, RowAction, ShowMore, TablePager, WhoName, pageWindow,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -1985,7 +1985,7 @@ export default function HrView({
                       {' · '}<strong>{tally.entries}</strong> รายการ
                       {' · '}<strong>{hours(tally.hours)}</strong> ชม.
                       {tally.capOver > 0 && (
-                        <span className="sub">⚠️ {tally.capOver} รายการเกินเพดาน — ต้องระบุเหตุผล</span>
+                        <span className="sub"><InlineMark tone="warn" />{tally.capOver} รายการเกินเพดาน — ต้องระบุเหตุผล</span>
                       )}
                     </>
                   )}

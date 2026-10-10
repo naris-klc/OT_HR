@@ -26,7 +26,7 @@ import {
   Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, EntryLead, EntryHistoryBlock, ShowMore,
-  NoticeRow, NoticeStack,
+  InlineMark, NoticeRow, NoticeStack,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -2078,7 +2078,7 @@ export default function ApprovalQueue({
                         over the week and the month at once, and the reviewer
                         needs both to know what moving the shift would fix. */}
                     {describeBreaches(e).map((b) => (
-                      <div className="cell-note" key={b.scope + b.text}>⚠ {b.text}</div>
+                      <div className="cell-note" key={b.scope + b.text}><InlineMark tone="warn" />{b.text}</div>
                     ))}
                     {/* code + column: a bucket-scoped minimum can leave two
                         warnings on one entry sharing a code. */}
@@ -2597,11 +2597,11 @@ function ConfirmModal({
           and every dialog the same day, and "close this window and go find
           another one" is not an instruction any more.
 
-          `mark={false}` because the headline carries its own ⚠️ — the amber
-          badge `.alert` draws would be a second mark for one warning. */}
+          The headline typed its own ⚠️ under `mark={false}` until 2026-10-10;
+          the amber badge `.alert` draws is that mark now (รายงาน UX ข.4). */}
       {capped.length > 0 && (
-        <Alert kind="warn" mark={false}>
-          <strong>⚠️ {overCeilingApproveHead(capped.length)}</strong>
+        <Alert kind="warn">
+          <strong>{overCeilingApproveHead(capped.length)}</strong>
           {/* Every ceiling each of them passed, by name. `describeBreaches` is
               the same wording the row underneath and the pop-up already use —
               a reason is being demanded for exactly this, so the sheet has to

@@ -787,3 +787,25 @@ test('ปุ่ม ข้อมูลเดิม ทุกหน้าใช้
     for (const [, icon] of hits) assert.equal(icon, 'compare', `${f}: ข้อมูลเดิม ใช้ไอคอน ${icon}`);
   }
 });
+
+/**
+ * ข.4 ในรายงาน UX 2026-10-10 — ✅ ❌ ⏳ ⚠️ ℹ️ ที่พิมพ์เป็นตัวอักษรขึ้นเป็น emoji
+ * สีและขนาดต่างกันไปตามเครื่อง และไม่ตามธีมมืด · ไอคอนมาจาก `Icon`, วงกลม ! i
+ * มาจาก `InlineMark` หรือเครื่องหมายที่ `Alert` วาดเอง · ✓ ✕ ตัวเดียวสีตามตัวอักษร
+ * (ช่องติ๊ก รหัสผ่านตรงกัน) ไม่ใช่ emoji จึงยังใช้ได้
+ */
+test('ไม่มี emoji เป็นไอคอนบนจอ — ใช้ชุดไอคอนของแอป', async () => {
+  const { readdirSync } = await import('node:fs');
+  const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  const files = [
+    ...readdirSync(join(ROOT, 'components')).filter((f) => f.endsWith('.jsx')).map((f) => `components/${f}`),
+    'lib/approverLine.js',
+  ];
+  const hits = files.flatMap((f) => strip(read(f)).split('\n')
+    .filter((l) => /[✅❌⏳⚠ℹ]/u.test(l)).map((l) => `${f}: ${l.trim().slice(0, 60)}`));
+  assert.deepEqual(hits, []);
+  // ค่า icon ของบรรทัดผู้อนุมัติต้องเป็นชื่อในชุดไอคอน (หรือ warn ที่วาดเป็นวงกลม !)
+  for (const [, name] of read('lib/approverLine.js').matchAll(/icon: '(\w+)'/g)) {
+    assert.ok(name === 'warn' || new RegExp(`\n  ${name}: [(<]`).test(icons), `ไม่มีไอคอน ${name}`);
+  }
+});

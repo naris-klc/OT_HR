@@ -81,7 +81,7 @@ const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 // the printed sheets use it.
 import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, PickMany,
-  NoticeRow, NoticeStack, RowAction, ClearFilters,
+  InlineMark, NoticeRow, NoticeStack, RowAction, ClearFilters,
   ClearButton, PAGE_SIZE, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
   pageQuery, useShowMore, pageWindow, serverRows, useKeptFetch, usePageClamp,
 } from './common.jsx';
@@ -506,17 +506,17 @@ function Heads({ department, people, depts, gap, onGo }) {
           wear the badge above and the ⚠ below it at the same time. */}
       {!hrHeads && (nobody || stranded.length > 0) && (
         <>
-          {/* The same ⚠ the cap-breach note wears in the approval queue — one
+          {/* The same mark the cap-breach note wears in the approval queue — one
               mark for "this row needs somebody to do something", not a second
               vocabulary for the same idea. `title` carries the consequence,
               which is the sentence a pill has no room for. */}
           {nobody ? (
             <span className="head-badge gap" title={HEAD_GAP_TIP}>
-              ⚠ ยังไม่มีหัวหน้า
+              <InlineMark tone="warn" />ยังไม่มีหัวหน้า
             </span>
           ) : stranded.map((key) => (
             <span key={key} className="head-badge gap" title={HEAD_GAP_TIP}>
-              ⚠ ยังไม่มีหัวหน้า{companyShort(key)}
+              <InlineMark tone="warn" />ยังไม่มีหัวหน้า{companyShort(key)}
             </span>
           ))}
           {onGo && (
@@ -3377,7 +3377,7 @@ function Employees({ user }) {
               */}
               {pending.dates.converted.length > 0 && (
                 <div className="era-badge">
-                  ℹ️ ระบบได้แปลงปี พ.ศ. เป็น ค.ศ. ให้อัตโนมัติแล้ว {pending.dates.converted.length} รายการ
+                  <InlineMark tone="info" />ระบบได้แปลงปี พ.ศ. เป็น ค.ศ. ให้อัตโนมัติแล้ว {pending.dates.converted.length} รายการ
                 </div>
               )}
               {/*
@@ -6692,7 +6692,7 @@ const POLICY_FIELDS = [
      */
     warn: (value, policy) => (
       (Number(value) === 5 || Number(value) === 10) && policy.roundingMode !== 'exact'
-        ? '⚠️ การปัดเศษ 5 หรือ 10 นาที อาจทำให้เมื่อแปลงเป็นทศนิยม 2 ตำแหน่งแล้ว '
+        ? 'การปัดเศษ 5 หรือ 10 นาที อาจทำให้เมื่อแปลงเป็นทศนิยม 2 ตำแหน่งแล้ว '
           + 'ผลรวมในรายงานคลาดเคลื่อนได้ 0.01 ชม. (แนะนำ 15 หรือ 30 นาที)'
         : ''
     ),
@@ -6714,7 +6714,7 @@ const POLICY_FIELDS = [
      */
     hint: 'ข้อนี้เพิ่มอย่างเดียวไม่เคยลด '
       + '· ผ่อนปรนครึ่งบล็อกพอดีให้ผลเท่ากับ “ปัดเข้าหาค่าใกล้ที่สุด” '
-      + '· ⚠ ขยับเส้นที่ระบบปฏิเสธงานสั้น ๆ ด้วย ควรทบทวน “เวลาขั้นต่ำในการเริ่มนับ OT” พร้อมกัน',
+      + '· ขยับเส้นที่ระบบปฏิเสธงานสั้น ๆ ด้วย ควรทบทวน “เวลาขั้นต่ำในการเริ่มนับ OT” พร้อมกัน',
     /**
      * Two traps, and neither is the inert note's job.
      *
@@ -6731,12 +6731,12 @@ const POLICY_FIELDS = [
       const inc = Number(policy.roundingIncrementMinutes);
       if (!grace || policy.roundingMode !== 'floor') return '';
       if (grace >= inc) {
-        return `⚠️ ผ่อนปรน ${grace} นาที ไม่น้อยกว่าบล็อกที่ปัด (${inc} นาที) `
+        return `ผ่อนปรน ${grace} นาที ไม่น้อยกว่าบล็อกที่ปัด (${inc} นาที) `
           + 'ซึ่งจะเท่ากับยกทั้งบล็อกให้งานที่ยังไม่ได้ทำ ระบบจะข้ามค่านี้และปัดลงตามปกติ '
           + '— ตั้งบล็อกที่ปัดให้มากกว่านี้ก่อน';
       }
       if (grace * 2 === inc) {
-        return `⚠️ ผ่อนปรน ${grace} นาที บนบล็อก ${inc} นาที ให้ผลเท่ากับ `
+        return `ผ่อนปรน ${grace} นาที บนบล็อก ${inc} นาที ให้ผลเท่ากับ `
           + '“ปัดเข้าหาค่าใกล้ที่สุด” ทุกนาที ไม่ได้ผ่อนปรนมากกว่านั้น';
       }
       return '';
@@ -6956,10 +6956,13 @@ const POLICY_FIELDS = [
       if (['signed', 'approved'].includes(value)) return '';
       if (value === 'draft') {
         // Shortened 2026-10-08 — asked for in as many words, กระชับข้อความ.
-        return 'ℹ️ ใบที่พิมพ์มีรายการที่ยังไม่อนุมัติ ช่องลงชื่อหัวหน้าเว้นว่างไว้ '
-          + '· ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ';
+        return {
+          tone: 'info',
+          text: 'ใบที่พิมพ์มีรายการที่ยังไม่อนุมัติ ช่องลงชื่อหัวหน้าเว้นว่างไว้ '
+            + '· ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ',
+        };
       }
-      return '⚠️ ใบที่พิมพ์อาจมีรายการที่ยังไม่อนุมัติ · ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ';
+      return 'ใบที่พิมพ์อาจมีรายการที่ยังไม่อนุมัติ · ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ';
     },
   },  {
     section: 5,
@@ -7036,7 +7039,7 @@ const POLICY_FIELDS = [
      * then, and counts against a ceiling for a month nobody has worked yet.
      */
     warn: (value) => (value === null
-      ? '⚠️ ไม่จำกัด หมายถึงยื่นใบลงวันที่ปีหน้าก็ได้ — ใบนั้นจะค้างอยู่ในคิวจนถึงวันนั้น '
+      ? 'ไม่จำกัด หมายถึงยื่นใบลงวันที่ปีหน้าก็ได้ — ใบนั้นจะค้างอยู่ในคิวจนถึงวันนั้น '
         + 'และถูกนับรวมในเพดานของเดือนที่ยังไม่มีใครทำงาน'
       : ''),
   },
@@ -7076,7 +7079,7 @@ const POLICY_FIELDS = [
      */
     warn: (value) => (value === null
       ? ''
-      : `⚠️ พนักงานที่กลับมาจากลาป่วยหรือไปทำงานต่างจังหวัดเกิน ${value} วัน `
+      : `พนักงานที่กลับมาจากลาป่วยหรือไปทำงานต่างจังหวัดเกิน ${value} วัน `
         + 'จะบันทึก OT ที่ทำไปแล้วไม่ได้เลย — ต้องให้ฝ่ายบุคคลเป็นผู้บันทึกให้ '
         + '· ระบบไม่มีช่องผ่อนผันรายใบสำหรับข้อนี้'),
   },
@@ -7128,7 +7131,7 @@ const POLICY_FIELDS = [
      * knowing.
      */
     warn: (value) => (value === null ? '' :
-      `⚠️ พ้นวันที่ ${value} แล้ว พนักงานแก้ไข ยกเลิก หรือขอถอนใบของงวดนั้นเองไม่ได้ `
+      `พ้นวันที่ ${value} แล้ว พนักงานแก้ไข ยกเลิก หรือขอถอนใบของงวดนั้นเองไม่ได้ `
       + 'และหัวหน้าตัดสินคำขอที่ค้างอยู่ไม่ได้ด้วย — เหลือทางเดียวคือฝ่ายบุคคล '
       + `· ใบที่ยื่นย้อนหลังข้ามเดือนจะเลยวันที่ ${value} ตั้งแต่วินาทีที่ยื่น`),
   },
@@ -7154,7 +7157,7 @@ const POLICY_FIELDS = [
      * eight hours whatever the person actually worked.
      */
     warn: (value) => (value === 'all'
-      ? '⚠️ ทุกตำแหน่งจะเห็นช่องเหมารายวัน — ใบที่ติ๊กช่องนี้นับ 8 ชม. เสมอ '
+      ? 'ทุกตำแหน่งจะเห็นช่องเหมารายวัน — ใบที่ติ๊กช่องนี้นับ 8 ชม. เสมอ '
         + 'ไม่ว่าจะอยู่ถึงกี่โมง และเวลาเริ่ม–สิ้นสุดจะถูกล็อกไว้ที่ 08:00–17:00'
       : ''),
   },
@@ -7180,7 +7183,7 @@ const POLICY_FIELDS = [
       all: 'ไม่จำกัดวัน — วันทำงานปกติก็ติ๊กเหมารายวันได้',
     },
     warn: (value) => (value === 'all'
-      ? '⚠️ วันทำงานปกติจะติ๊กเหมารายวันได้ด้วย — เย็นวันพุธที่อยู่ต่อ 3 ชม. จะกลายเป็น 8 ชม. ได้'
+      ? 'วันทำงานปกติจะติ๊กเหมารายวันได้ด้วย — เย็นวันพุธที่อยู่ต่อ 3 ชม. จะกลายเป็น 8 ชม. ได้'
       : ''),
   },
   {
@@ -7970,7 +7973,7 @@ function Policy({ user }) {
                       about the option that is selected, and it appears as the
                       selection is made. ConfirmPolicyChange carries the same
                       sentence, because the dialog comes up over this row. */}
-                  {warning && <div className="policy-warn">{warning}</div>}
+                  {warning && <PolicyWarn warning={warning} />}
                   {/* Under the value and not under the question, for the same
                       reason `.policy-override` below is: it is about this
                       answer's standing, not about what is being asked. Below
@@ -8061,6 +8064,16 @@ function optionLabel(field, value, policy) {
   }
   const found = options.find(([v]) => String(v) === String(value));
   return found ? found[1] : String(value);
+}
+
+/**
+ * คำเตือนใต้ตัวเลือกในนโยบายการคำนวณ — `warn` ของแต่ละข้อคืนข้อความ (เตือน) หรือ
+ * `{ tone: 'info', text }` (บอกให้รู้) · จนถึง 2026-10-10 ข้อความขึ้นต้นด้วย ⚠️/ℹ️
+ * ที่พิมพ์ไว้ในตัว ตอนนี้เป็นวงกลม ! / i แบบกล่องแจ้งเตือน (รายงาน UX ข.4)
+ */
+function PolicyWarn({ warning }) {
+  const { tone = 'warn', text } = typeof warning === 'string' ? { text: warning } : warning;
+  return <div className="policy-warn"><InlineMark tone={tone} />{text}</div>;
 }
 
 /**
@@ -8203,7 +8216,7 @@ function ConfirmPolicyChange({
         {/* The reason is a field on the page behind, and this is the last moment
             it can still be typed into: the version row is append-only, so a
             version saved without one carries a date and a diff for good. */}
-        {warning && <div className="policy-warn">{warning}</div>}
+        {warning && <PolicyWarn warning={warning} />}
 
         {inert && <div className="policy-inert">{inert.text}</div>}
 

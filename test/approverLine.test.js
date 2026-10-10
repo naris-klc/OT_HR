@@ -22,7 +22,7 @@ const signers = (people, departmentId = 'd1') => ({ departmentId, people });
 
 test('รออนุมัติ names the หัวหน้า, with the position when there is one', () => {
   const line = approverLine(pending(), signers([{ name: 'สมหญิง ใจงาม', position: 'หัวหน้าแผนก' }]));
-  assert.equal(line.icon, '⏳');
+  assert.equal(line.icon, 'clock');  // ⏳ จนถึง 2026-10-10
   assert.equal(line.text, 'รอการอนุมัติจาก: สมหญิง ใจงาม · หัวหน้าแผนก');
 });
 
@@ -81,7 +81,7 @@ test('อนุมัติแล้ว names the last person to sign', () => {
       { action: 'approve_hr', byName: 'ฝ่ายบุคคล' },
     ],
   });
-  assert.equal(line.icon, '✅');
+  assert.equal(line.icon, 'tick');  // ✅ จนถึง 2026-10-10
   assert.equal(line.text, 'อนุมัติโดย: ฝ่ายบุคคล');
 });
 
@@ -174,7 +174,7 @@ test('ไม่อนุมัติ names who refused and carries the reason', 
     rejectionReason: 'เวลาไม่ตรงกับที่แจ้งไว้',
     history: [{ action: 'reject_mgr', byName: 'สมหญิง' }],
   });
-  assert.equal(line.icon, '❌');
+  assert.equal(line.icon, 'cross');  // ❌ จนถึง 2026-10-10
   // It read 'ปฏิเสธโดย: สมหญิง' until 2026-08-31.
   assert.equal(line.text, 'ปฏิเสธโดย: สมหญิง (หัวหน้างาน)');
   assert.equal(line.note, 'เวลาไม่ตรงกับที่แจ้งไว้');

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, periodLabel } from '@/lib/api.js';
 import { previousMonthOutstanding } from '@/lib/periodStatus.js';
 import { previousPeriod } from '@/lib/reports.js';
-import { Alert, NoticeRow } from './common.jsx';
+import { Alert, InlineMark, NoticeRow } from './common.jsx';
 
 /**
  * สรุปสถานะงวด — what is still unanswered in this month, and nothing else.
@@ -229,7 +229,7 @@ export default function PeriodStatus({
   return (
     <div className={`card period-status ${state.clear ? 'clear' : 'outstanding'}`}>
       <div>
-        <strong>{state.clear ? '✓ ' : '⚠ '}{state.headline}</strong>
+        <strong><InlineMark tone={state.clear ? 'ok' : 'warn'} />{state.headline}</strong>
         {detail}
       </div>
 
