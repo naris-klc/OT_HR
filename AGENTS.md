@@ -422,6 +422,17 @@ is genuinely missing — how many words a screen may carry.
 **Neither is an invitation to build a design system. The one they describe is
 already built**, and rebuilding it is the specific mistake they exist to prevent.
 
+## ก่อนบอกว่า "พร้อม deploy" — ผ่าน docs/qa-release.md ก่อน
+
+**สั่งไว้ 2026-10-10:** งานที่จะส่งให้ผู้ใช้ deploy ต้องผ่าน
+[docs/qa-release.md](docs/qa-release.md) ทุกชั้นที่งานนั้นแตะถึง และรายงานผลเป็น
+PASS / FAIL / BLOCKED / NOT TESTED · ชั้นที่ไม่ได้ทำต้องเขียนไว้ว่าไม่ได้ทำ เพราะ
+ถ้าละไว้เฉย ๆ คนอ่านจะเข้าใจว่าผ่าน
+
+เหตุผล: agent ที่รายงานว่า "เทสต์ผ่านหมด" ยังส่งระบบที่คนใช้จริงเข้าไม่ได้มาแล้ว
+เพราะมันทดสอบเฉพาะสิ่งที่มันคิดถึง และใช้บัญชีที่มีอยู่ใน automation ของมันเอง ·
+ชั้นสุดท้ายของไฟล์นั้นจึงกำหนดให้มีขั้นตอนที่ผู้ใช้ลองเองได้ด้วยบัญชีของผู้ใช้
+
 ## A commit that changes behaviour must find the paragraphs that describe it
 
 **Before committing, search the documents for what you just changed, and fix
