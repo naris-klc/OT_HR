@@ -4885,6 +4885,11 @@ td > .approver-line { margin-top: 5px; }
 /* Nothing chosen yet — the log's date range opens empty on purpose. The same
    grey every other prompt-rather-than-value in this app uses. */
 .pick-box.empty .val { color: var(--muted-2); font-weight: 400; }
+/* ชิดซ้ายตอนว่างด้วย — 2026-10-11 (รายงาน UX ค.14) · `PickerBox` ใส่คลาส `empty`
+   ตอนยังไม่เลือก ซึ่งชนกับ `.empty` (สถานะว่างของการ์ด, `text-align: center`)
+   ที่อยู่ท้ายไฟล์และหนักเท่ากัน คำว่า เลือกวันที่ / เลือกเดือน จึงไปอยู่กลางช่อง
+   ขณะที่ช่องอื่นชิดซ้าย · สองคลาสหนักกว่า `.empty` ตัวเดียว */
+.pick-box.empty { text-align: left; }
 .pick-box .pick-mark { flex: none; display: grid; color: var(--muted-2); }
 .pick-box .pick-mark svg { width: 16px; height: 16px; }
 .pick-box.open { border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring); }
@@ -6266,6 +6271,10 @@ td > .approver-line { margin-top: 5px; }
   /* เดือนที่ล้างได้ (คิวรออนุมัติ OT, 2026-10-09) มีปุ่ม ✕ อีกปุ่ม — 150 ตัด
      `กันยายน 2569` เป็น `กันยาย…` */
   .queue-tools:has(> .month-tabs) .field:has(.pick-box-wrap.has-clear) { flex-basis: 190px; }
+  /* ประจำเดือน ของ ตรวจสอบประจำเดือน / รายงาน OT ประจำทีม — 150 ตัด `กันยายน 2569`
+     เป็น `กันยายน 25…` ที่ 1440 (รายงาน UX ค.15, 2026-10-11) · 180 พอให้
+     `พฤศจิกายน 2569` ซึ่งยาวที่สุด */
+  .queue-tools:has(> .month-tabs) .field.month-field { flex-basis: 180px; }
 }
 .month-tabs .count,
 .month-tabs button.active .count { background: var(--neutral-wash); color: var(--ink-2); }

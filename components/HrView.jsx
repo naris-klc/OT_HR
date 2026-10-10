@@ -1857,7 +1857,8 @@ export default function HrView({
             options={departments}
             allLabel="ทุกแผนก"
           />
-          <div className="field">
+          {/* `month-field` — the width hook, see `.month-field` in app/styles.css */}
+          <div className="field month-field">
             <div className="field-head"><label>ประจำเดือน</label></div>
             <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>

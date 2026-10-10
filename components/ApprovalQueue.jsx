@@ -1522,7 +1522,7 @@ export default function ApprovalQueue({
               ได้ — ว่างคือ ทุกเดือน — จึงมี ✕ ให้ล้างกลับ ตัวเลขต่อเดือนที่รายการเคย
               แสดงหายไปกับมัน ตารางกับหัวการ์ดบอกจำนวนแทน */}
           <div className="field">
-            <div className="field-head"><label>เดือน</label></div>
+            <div className="field-head"><label>ประจำเดือน</label></div>
             <PickMonth label="ประจำเดือน" value={per} onChange={setPer} clearable allLabel="ทุกเดือน" />
           </div>
           {(q || dept || per || st || applicant) && (
