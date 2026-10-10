@@ -257,7 +257,7 @@ function Overview({ onOpenTab, onFilter }) {
             as a widget belonging to this page. */}
         <div className="grid" style={{ marginTop: 10 }}>
           <Tile
-            label="REQUESTS"
+            label="คำขอทั้งหมด"
             value={data.requests}
             unit="ครั้ง"
             /* The footer used to say how far back this goes. It is one clause
@@ -269,21 +269,21 @@ function Overview({ onOpenTab, onFilter }) {
             onClick={() => drill('all', {})}
           />
           <Tile
-            label="CHANGES"
+            label="การแก้ไขข้อมูล"
             value={data.writes}
             unit="ครั้ง"
             note="คำสั่งที่ตั้งใจแก้ไขข้อมูล"
             onClick={() => drill('edits', {})}
           />
           <Tile
-            label="SIGN-INS"
+            label="การเข้าสู่ระบบ"
             value={data.logins}
             unit="ครั้ง"
             note="เข้าสู่ระบบสำเร็จ"
             onClick={() => drill('auth', { event: 'login' })}
           />
           <Tile
-            label="FAILED SIGN-INS"
+            label="เข้าสู่ระบบไม่สำเร็จ"
             value={data.failedLogins}
             unit="ครั้ง"
             tone={noisyLogins ? 'warn' : undefined}
