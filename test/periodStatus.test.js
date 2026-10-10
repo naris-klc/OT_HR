@@ -380,3 +380,43 @@ test('รายละเอียดของเดือนก่อนยั�
   }
   assert.ok(!body.includes('เพื่อตรวจก่อนพิมพ์'), 'ยังพูดซ้ำว่าแจ้งเตือนนี้มีไว้ทำไม');
 });
+
+/**
+ * รายงาน OT ประจำทีม นับเฉพาะทีมของผู้ดู — 2026-10-11 · การเงินเห็น "ค้าง 88 ใบ"
+ * (ทั้งบริษัท) เหนือตารางที่แผนกตัวเองมี 6 ใบ · ผู้ใช้สั่ง *"ให้นับเฉพาะแผนกและ
+ * พนักงานที่ผู้ดูอนุมัติ"* · ขอบเขตต้องเป็นสามขั้นเดียวกับรายงานรายเดือน ไม่ใช่สูตรที่สอง
+ */
+test('กล่องงวดบนแท็บทีมนับด้วยขอบเขตเดียวกับตารางรายเดือน', () => {
+  const q = read('lib/periodStatusQuery.js');
+  const fn = q.slice(q.indexOf('export async function teamPeriodScope('), q.indexOf('async function teamChecks('));
+  const steps = ['departmentScope(user, q)', 'teamReportFilter(user,', 'signsForCompany(user, companyOf(employee))'];
+  let at = -1;
+  for (const s of steps) {
+    const i = fn.indexOf(s);
+    assert.ok(i > at, `ขั้น ${s} หายไปหรือผิดลำดับ`);
+    at = i;
+  }
+  // คนที่ไม่ได้อ่านแบบทีม ได้ทั้งบริษัทเหมือนเดิม — แคบลงได้อย่างเดียว
+  assert.match(fn, /if \(!teamOnly\) return null;/);
+  // รายงานรายเดือนยังใช้สองขั้นแรกตัวเดียวกัน
+  const monthly = read('app/api/reports/monthly/[period]/route.js');
+  assert.ok(monthly.includes('departmentScope(user, q)') && monthly.includes('teamReportFilter(user, filter'), 'รายงานรายเดือนเปลี่ยนสูตรขอบเขตแล้ว กล่องงวดต้องตาม');
+  // นับครบสี่ตัวเหมือนทางทั้งบริษัท
+  for (const k of ['entries:', 'pending:', 'capExceeded:', 'belowMinimum:']) assert.ok(q.includes(k));
+
+  const route = read('app/api/periods/[period]/route.js');
+  assert.match(route, /periodState\(params\.period, await teamPeriodScope\(user, query\(req\)\)\)/);
+
+  // หน้าส่งขอบเขตเฉพาะแท็บทีม ทั้งเดือนนี้และเดือนก่อน
+  const hr = read('components/HrView.jsx');
+  assert.ok(hr.includes("query={scope === 'team' ? `?scope=team${dept ? `&department=${dept}` : ''}` : ''}"));
+  const card = read('components/PeriodStatus.jsx');
+  assert.ok(card.includes('`/periods/${period}${query}`') && card.includes('`/periods/${previousPeriod(period)}${query}`'));
+  assert.match(card, /\}, \[period, query\]\);/);
+});
+
+/** กฎคนละชุดเป็นงานของ HR — ขึ้นเฉพาะตรวจสอบประจำเดือน ไม่ขึ้นบนรายงาน OT ประจำทีม (2026-10-11) */
+test('แบนเนอร์ กฎคนละชุด ไม่ขึ้นบนแท็บทีม', () => {
+  const hr = read('components/HrView.jsx');
+  assert.match(hr, /policy=\{scope === 'team' \? null : data\.policy\}/);
+});

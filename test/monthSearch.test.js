@@ -318,7 +318,8 @@ test('ประจำเดือน and ค้นหา are one row, above the 
      headline — and that button is on `.card-head` now with the card's other
      actions. A prop with no caller is a thing the next reader has to work out
      the fate of, so it was deleted rather than left. */
-  assert.match(hrView, /<PeriodStatus period=\{period\} compact \/>/);
+  // `query` joined it on 2026-10-11 — รายงาน OT ประจำทีม counts its own team.
+  assert.match(hrView, /<PeriodStatus\s+period=\{period\}\s+compact\s+query=\{scope === 'team' [^\r\n]+\}\s+\/>/);
   assert.ok(!/actions=/.test(read('components/PeriodStatus.jsx')), 'PeriodStatus grew `actions` back');
   // And nothing stands between the controls and the rows they decide any more:
   // the two are sections of one card.

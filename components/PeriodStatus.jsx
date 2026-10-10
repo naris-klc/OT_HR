@@ -26,10 +26,18 @@ import { Alert, InlineMark, NoticeRow } from './common.jsx';
  * IT IS A NOTICE, NOT A CONTROL, so it never disables or hides itself by role.
  * The old card decided what to draw from `closeRefusal` and `reopenRefusal`,
  * which meant a หัวหน้า saw a different card from ฝ่ายบุคคล. There is nothing to
- * be permitted here: everybody who can reach this screen reads the same counts.
+ * be permitted here. What differs since 2026-10-11 is WHOSE month is counted:
+ * รายงาน OT ประจำทีม passes `query` and gets its own team's — see
+ * `teamPeriodScope` in lib/periodStatusQuery.js.
  */
 export default function PeriodStatus({
   period,
+  /**
+   * `?scope=team…` from รายงาน OT ประจำทีม, or `''` for the whole company.
+   * Both months — this one and the reminder about the last — are counted over
+   * it, so the two lines never disagree about whose month they mean.
+   */
+  query = '',
   /**
    * ONE LINE INSTEAD OF A CARD — 2026-09-10.
    *
@@ -84,7 +92,7 @@ export default function PeriodStatus({
 
   async function load() {
     try {
-      setState(await api.get(`/periods/${period}`));
+      setState(await api.get(`/periods/${period}${query}`));
       setErr('');
     } catch (e) { setErr(e.message); }
     /**
@@ -96,11 +104,11 @@ export default function PeriodStatus({
      * about the month they are actually looking at.
      */
     try {
-      setPrevious(await api.get(`/periods/${previousPeriod(period)}`));
+      setPrevious(await api.get(`/periods/${previousPeriod(period)}${query}`));
     } catch { setPrevious(null); }
   }
 
-  useEffect(() => { setState(null); setPrevious(null); load(); }, [period]);
+  useEffect(() => { setState(null); setPrevious(null); load(); }, [period, query]);
 
   // Nothing at all until the counts are known: a card that says "ไม่มีเอกสาร
   // ตกค้าง" for half a second on a month with four pending requests is worse

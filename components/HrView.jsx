@@ -1371,7 +1371,16 @@ export default function HrView({
             toggle rode on this component's own row while the row was the only
             thing on the page that could hold it; it is on `.card-head` now,
             and `actions` went with it — see components/PeriodStatus.jsx. */}
-        <PeriodStatus period={period} compact />
+        {/* รายงาน OT ประจำทีม COUNTS ITS OWN TEAM — the แผนก and the people
+            this reader signs for, and the one picked in แผนก — since
+            2026-10-11. It counted the company: การเงิน read 88 ใบ ค้าง above a
+            table whose แผนก held 6. ตรวจสอบประจำเดือน keeps the whole company,
+            which is the question HR asks before printing. */}
+        <PeriodStatus
+          period={period}
+          compact
+          query={scope === 'team' ? `?scope=team${dept ? `&department=${dept}` : ''}` : ''}
+        />
 
         {/* NOT KEYED ON THE MONTH like `MonthAlerts` is, because it holds no
             state of its own to go stale — every word it draws comes from
@@ -1410,7 +1419,11 @@ export default function HrView({
         {data && (
           <MonthAlerts
             key={`${period}|${statusFilter}|${dept}`}
-            policy={data.policy}
+            /* กฎคนละชุด IS HR'S, ON ตรวจสอบประจำเดือน ONLY — 2026-10-11, ผู้ใช้
+               สั่ง. What it asks for (recompute, read ประวัติเวอร์ชันนโยบาย) is
+               HR's work; on รายงาน OT ประจำทีม it was a warning its reader could
+               do nothing about. */
+            policy={scope === 'team' ? null : data.policy}
             hrVerifiedCount={data.hrVerifiedCount}
             rowAction={openRowLabel(mayCorrect)}
           />
