@@ -151,18 +151,6 @@ const OPENS_ON = Object.freeze({ division_manager: 'dept_manager' });
  * first-step queue does not list any more (`wholeFlow`), so it went with them
  * rather than sitting here as a branch nothing can reach.
  */
-/**
- * "แผนก" + ชื่อแผนก โดยไม่เติมซ้ำ — 2026-10-10 · ชื่อแผนกบนระบบจริงเกือบทุกแผนก
- * ขึ้นต้นด้วย "แผนก" อยู่แล้ว (แผนกบัญชีและการเงิน) หัวคิวจึงขึ้น
- * "เฉพาะแผนกแผนกบัญชี…" ให้ผู้อนุมัติที่ถือแผนกเดียวเห็นทุกวัน · seed ตั้งชื่อ
- * แบบไม่มีคำนำหน้า (วิศวกรรม) เลยไม่เคยเจอ · ชื่ออังกฤษ (IT) เว้นวรรคหนึ่งช่อง
- */
-function deptPhrase(name) {
-  if (!name) return '';
-  if (name.startsWith('แผนก')) return name;
-  return /^[\u0E00-\u0E7F]/.test(name) ? `แผนก${name}` : `แผนก ${name}`;
-}
-
 function watchingNote(entry, stage, user) {
   if (entry?.status === stage) {
     return isOwnRequest(entry, user)
@@ -2338,12 +2326,6 @@ export default function ApprovalQueue({
             <QueueCleared
               cleared={everHadRows.current}
               isHr={isHr}
-              /* WHICH SCOPE THE SENTENCE NAMES — the four readings this one
-                 component runs in, worked out here where the props that decide
-                 them live rather than re-derived from `stage` down there. */
-              mode={isHr ? 'hr' : 'signer'}
-              covers={user.coversDepartments?.length || 0}
-              scope={user.department?.name}
             />
           ) : (
             /**
@@ -4064,53 +4046,21 @@ function EntryPeek({ entries, collapsed }) {
  * nothing about what was searched, so the honest answer (nobody in your
  * departments has filed anything) is indistinguishable from a page that failed.
  *
- * So the sentence names the SCOPE and says what will happen next, and it is
- * drawn under a table that keeps its column headings — the ask was for a screen
- * that still looks like the screen. `covers` is `coversDepartments`; `scope` is
- * the one department's name, used only when that is the whole of it.
+ * So the sentence named the SCOPE and said what would happen next, under a
+ * table that keeps its column headings — the ask was for a screen that still
+ * looks like the screen.
+ *
+ * THE SCOPE LINE WENT ON 2026-10-11. ผู้ใช้ถามว่าคิวว่าง "ไม่ต้องแสดงอะไรได้มั้ย"
+ * แล้วเลือกเก็บหัวข้อตัวหนาไว้บรรทัดเดียว — หัวข้อ หัวตาราง และ `0 รายการ` บนหัว
+ * การ์ดพอให้แยกออกจากหน้าที่โหลดพลาด · ที่เสียไปคือไม่มีที่ไหนบอกแล้วว่าค้นจาก
+ * กี่แผนก ผู้ใช้รับได้ · ห้ามเอาหัวข้อออกด้วย: ตารางเปล่าใต้หัวคอลัมน์คือหน้าที่
+ * แยกไม่ออกจากการโหลดพลาด ซึ่งเป็นเหตุที่ย่อหน้าข้างบนเกิดขึ้น
  */
-function QueueCleared({ cleared, isHr, mode = 'signer', covers = 0, scope = '' }) {
+function QueueCleared({ cleared, isHr }) {
   if (!cleared) {
-    /**
-     * ONE HEADING FOR EVERY บทบาท, AND THE SCOPE UNDERNEATH IS WHAT DIFFERS.
-     *
-     * Asked for on 2026-09-04 as one design across every approval screen. The
-     * heading is the same sentence for a หัวหน้างาน and for ฝ่ายบุคคล because
-     * the fact is the same one — there is nothing here to approve; what is NOT
-     * the same is where the system looked, and saying so is the whole job of
-     * the line under it. A ผู้จัดการฝ่าย holding eight แผนก and ฝ่ายบุคคล
-     * reading the whole company are one word apart on screen and a company
-     * apart in what the emptiness means.
-     */
-/**
-     * TWO MODES SINCE 2026-09-18, AND THEY WERE FOUR.
-     *
-     * `delegated` — ค้นจากทีมที่คุณรับช่วงอนุมัติอยู่ — and `unsigned` —
-     * ค้นจากใบที่ไม่มีหัวหน้าคนไหนบนทะเบียนเซ็นได้ — were the two extra
-     * approval tabs, and each needed its own pair of sentences precisely
-     * because its list was narrower than the screen it looked like. Both are
-     * folded into ฝ่ายบุคคล's queue now, whose scope is the whole company and
-     * always was, so `hr` says what an empty screen means for both.
-     *
-     * The covered team's rows are inside that answer rather than beside it: HR
-     * reads every แผนก, delegation or not, and a ใบ nobody can sign has been
-     * moved onto this very step by the time the screen is drawn.
-     */
-    const where = {
-      hr: 'ค้นจากทุกแผนกทั้งบริษัท',
-      signer: covers > 1 ? `ค้นจาก ${covers} แผนกที่คุณดูแล` : `ค้นจาก${deptPhrase(scope) || 'แผนกของคุณ'}`,
-    }[mode];
-    const next = {
-      hr: 'ใบจะขึ้นที่นี่ตั้งแต่ตอนที่พนักงานยื่น ทั้งใบที่ยังรอหัวหน้าเซ็นและใบที่ถึงคิวคุณแล้ว',
-      // 2026-09-09: it read `และจะอยู่ต่อจนฝ่ายบุคคลยืนยัน` while a signed row
-      // stayed on this queue. It does not any more — see `wholeFlow` — so the
-      // sentence says where it goes instead of claiming it stays.
-      signer: 'ใบจะขึ้นที่นี่ทันทีที่มีคนในแผนกยื่น และจะหายไปเมื่อคุณอนุมัติแล้ว — ใบที่เซ็นไปแล้วดูได้ที่รายงาน OT ประจำทีม',
-    }[mode];
     return (
       <div className="empty">
         <strong>ยังไม่มีใบ OT ที่รออนุมัติ</strong>
-        <div className="hint" style={{ marginTop: 4 }}>{where}{' — '}{next}</div>
       </div>
     );
   }
