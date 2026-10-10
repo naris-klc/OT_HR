@@ -5048,6 +5048,11 @@ td > .approver-line { margin-top: 5px; }
   font: 600 11px/1.4 var(--mono); letter-spacing: .07em; text-transform: uppercase;
   color: var(--muted-2);
 }
+/* หัวแผ่นบนมือถือ: ชื่อช่องซ้าย ✕ ขวา — ✕ ตัวเดียวกับ `Modal` (`.modal-x`) ·
+   2026-10-10 แทนปุ่ม ปิด ท้ายแผ่น */
+.pop-sheet-head { display: flex; align-items: center; gap: 8px; flex: none; margin: -6px -4px 6px 0; }
+.pop-sheet-head .nav-sheet-head { flex: 1; min-width: 0; padding-bottom: 0; }
+.pop-sheet-head .modal-x { width: 40px; height: 40px; }
 .nav-sheet { display: flex; flex-direction: column; gap: 2px; }
 .nav-sheet button {
   display: flex; align-items: center; gap: 12px; width: 100%;

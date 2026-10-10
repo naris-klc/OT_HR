@@ -276,12 +276,15 @@ test('ชีตที่สูงกว่าจอ — แผงถูกจำ
     'the sheet cap is in vh — on a phone that is the tallest the viewport ever gets');
 });
 
-test('ปุ่มปิดมีเฉพาะบนชีต', () => {
+test('ปุ่มปิดมีเฉพาะบนชีต — เป็น ✕ ที่หัวแผ่น', () => {
   // A floating panel is dismissed by pressing the page it is over, which is
   // right there. A sheet has a scrim over that page, and "press the dark part"
   // is a convention rather than a control.
-  assert.match(code, /\{sheet && <button type="button" className="btn ghost sm" onClick=\{onClose\}>ปิด<\/button>\}/);
-  assert.match(code, /if \(!children && !sheet\) return null;/);
+  // It was a ปิด button in the foot until 2026-10-10; the user asked for ✕
+  // everywhere — the same `.modal-x` a `Modal` wears in the same corner.
+  assert.match(code, /<button type="button" className="modal-x" onClick=\{onClose\} aria-label="ปิด">×<\/button>/);
+  assert.ok(!/>ปิด<\/button>/.test(code), 'ปุ่ม ปิด กลับมาท้ายแผ่น');
+  assert.match(code, /if \(!children\) return null;/);
 });
 
 // ── the box ─────────────────────────────────────────────────────────────────
@@ -324,4 +327,19 @@ test('หน้าจออ่านออก — dialog, และป้าย�
   assert.match(code, /aria-haspopup="dialog"/);
   assert.match(code, /aria-expanded=\{open\}/);
   assert.match(code, /aria-label=\{label\}/);
+});
+
+/**
+ * ✕ ทั้งแอป — 2026-10-10 ผู้ใช้สั่ง *"ปุ่มปิดบนมือถือใช้ design system ไม่สม่ำเสมอ
+ * กัน บางส่วนใช้ x บางส่วนใช้ปุ่ม 'ปิด' ผมอยากให้ใช้ x ทั้งแอป"* · ป๊อปอัปมี ✕ ที่หัว
+ * (`Modal`) แผ่นมี ✕ ที่หัว (`Popover`) จึงไม่มีปุ่มคำว่า ปิด ที่ไหนอีก
+ */
+test('ไม่มีปุ่มคำว่า ปิด ในแอป — ใช้ ✕', async () => {
+  const { readdirSync } = await import('node:fs');
+  const dir = join(ROOT, 'components');
+  const hits = readdirSync(dir).filter((f) => f.endsWith('.jsx')).flatMap((f) => {
+    const src = readFileSync(join(dir, f), 'utf8');
+    return [...src.matchAll(/>\s*ปิด(?:หน้าต่าง)?\s*<\/(?:button|MkBtn)>/g)].map((m) => `${f}: ${m[0].trim()}`);
+  });
+  assert.deepEqual(hits, []);
 });

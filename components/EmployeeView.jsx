@@ -893,7 +893,6 @@ export default function EmployeeView({ user, onChanged, openSignal = 0, notices 
           dirty={askReason.trim().length > 0}
           footer={(
             <>
-              <button className="btn ghost" onClick={() => setAsking(null)}>ปิด</button>
               {/* Disabled rather than allowed-and-refused: the reason is
                   required by the rule, and a button that submits into a 400 is
                   a worse way to say so than a button that waits.

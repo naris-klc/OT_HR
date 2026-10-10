@@ -1276,7 +1276,6 @@ const SECTIONS = [
                 <MkRow badge="›">10/09/2569 · 21:00–02:00</MkRow>
                 <MkNote>กดที่แถว → เปิดแผ่นรายละเอียด ปุ่มอยู่ท้ายแผ่น</MkNote>
                 <span className="mk-sheet">
-                  <MkBtn ghost>ปิดหน้าต่าง</MkBtn>
                   <MkBtn ghost>ยกเลิกคำขอ</MkBtn>
                   <MkBtn>แก้ไข</MkBtn>
                 </span>
@@ -1311,7 +1310,6 @@ const SECTIONS = [
                     <MkField label="เหตุผลที่ถอน" on>เช่น งานถูกยกเลิกกะทันหัน</MkField>
                     <MkNote>ต้องระบุเหตุผลก่อนจึงจะถอนใบได้</MkNote>
                     <span className="mk-acts">
-                      <MkBtn ghost>ปิด</MkBtn>
                       <MkBtn>ถอนใบ</MkBtn>
                     </span>
                   </span>

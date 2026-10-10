@@ -198,7 +198,6 @@ function HolidayCalendar({ year, holidays, onClose }) {
       title={`ปฏิทินวันหยุดบริษัท ${year + 543}`}
       subtitle="ไม่รวมเสาร์–อาทิตย์"
       onClose={onClose}
-      footer={<button className="btn ghost" onClick={onClose}>ปิด</button>}
     >
       {total === 0 ? (
         <Empty>ยังไม่มีวันหยุดของปีนี้ในระบบ — สอบถามฝ่ายบุคคลได้</Empty>

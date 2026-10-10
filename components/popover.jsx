@@ -203,6 +203,17 @@ export function Popover({
         pointerEvents: pos ? undefined : 'none',
       }}
     >
+      {/* ✕ ที่หัวแผ่นทุกแผ่น ตั้งแต่ 2026-10-10 — ผู้ใช้สั่ง *"ปุ่มปิดบนมือถือ…บาง
+          ส่วนใช้ x บางส่วนใช้ปุ่ม 'ปิด' ผมอยากให้ใช้ x ทั้งแอป"* · เดิมเป็นปุ่ม ปิด
+          ท้ายแผ่น (`PopFoot`) ขณะที่ป๊อปอัป (`Modal`) ใช้ ✕ มุมขวาบน · หัวแผ่นมีชื่อ
+          ของช่องที่เปิดมันด้วย เพราะช่องนั้นอยู่หลังฉากมืดแล้ว (เคยให้ผู้เรียกวาด
+          `.nav-sheet-head` เอง) · แผงลอยบนจอกว้างไม่มี ✕ — กดที่หน้าข้างหลังก็ปิด */}
+      {sheet && (
+        <div className="pop-sheet-head">
+          <div className="nav-sheet-head">{label}</div>
+          <button type="button" className="modal-x" onClick={onClose} aria-label="ปิด">×</button>
+        </div>
+      )}
       {children}
     </div>
   );
@@ -220,22 +231,18 @@ export function Popover({
 }
 
 /**
- * The foot of a panel — ปิด on a sheet, and whatever the picker puts beside it.
+ * The foot of a panel — whatever the picker puts there (วันนี้ · ล้าง).
  *
- * A SHEET NEEDS A BUTTON AND A FLOATING PANEL DOES NOT. A panel is dismissed by
- * pressing the page it is over, which is right there; a sheet has a scrim over
- * that page, and "press the dark part" is a convention rather than a control.
- * The one press that must always be available is the one that gives up without
- * choosing, and on a phone it has to be a real 44px target.
+ * IT CARRIED ปิด ON A SHEET UNTIL 2026-10-10. A sheet still needs a way out
+ * that is a control and not "press the dark part" — that is now the ✕ in the
+ * sheet's head (`Popover`), the same mark `Modal` puts in the same corner, so a
+ * phone has one way to close everything. `sheet` and `onClose` are still taken
+ * so the callers did not have to change; a foot with nothing in it draws nothing.
  */
+// eslint-disable-next-line no-unused-vars
 export function PopFoot({ sheet, onClose, children = null }) {
-  if (!children && !sheet) return null;
-  return (
-    <div className="pop-foot">
-      {children || <span />}
-      {sheet && <button type="button" className="btn ghost sm" onClick={onClose}>ปิด</button>}
-    </div>
-  );
+  if (!children) return null;
+  return <div className="pop-foot">{children}</div>;
 }
 
 /**
