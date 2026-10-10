@@ -312,10 +312,11 @@ test('a signature with no stored time says nothing rather than guessing one', ()
 // ── wiring ──────────────────────────────────────────────────────────────────
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const read = (f) => readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 const has = (src, text, why) => assert.ok(src.includes(text), why || `หาไม่เจอ: ${text}`);
 
 test('the endpoint asks the same "who may sign" the approve path asks', () => {
-  const src = readFileSync(join(ROOT, 'app/api/entries/approvers/route.js'), 'utf8');
+  const src = read('app/api/entries/approvers/route.js');
   // A second reading of this rule is how a screen names somebody the server
   // then refuses — see unsignedStaff, which consults the same function.
   has(src, "isDepartmentManager, hasPersonalApprovers, personalApproverIds, maySignRoleOf,\n} from '@/lib/entries.js'");
@@ -329,7 +330,7 @@ test('the endpoint asks the same "who may sign" the approve path asks', () => {
 });
 
 test('OT ของฉัน draws it in all three places a request is shown', () => {
-  const view = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  const view = read('components/EmployeeView.jsx');
   assert.equal(
     (view.match(/<ApproverLine/g) || []).length, 3,
     'รายการล่าสุด ตารางเต็ม และหน้ารายละเอียด ต้องมีครบสามที่',
@@ -344,7 +345,7 @@ test('OT ของฉัน draws it in all three places a request is shown', ()
  * the screen. The pop-up gives it a band of its own, and is the one that asks.
  */
 test('only the pop-up asks for the signing time', () => {
-  const view = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  const view = read('components/EmployeeView.jsx');
   assert.equal((view.match(/<ApproverLine[^/]*\bwhen\b/g) || []).length, 1);
   has(view, '<ApproverLine entry={e} signers={signers} className="lead" when />');
 });
@@ -355,13 +356,13 @@ test('only the pop-up asks for the signing time', () => {
  * over an empty box on a request nobody has signed reads as a failure to load.
  */
 test('the signature list is asked for and is gated on there being one', () => {
-  const view = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  const view = read('components/EmployeeView.jsx');
   has(view, "import { approvalSteps } from '@/lib/approverLine.js'");
   has(view, 'const decided = approvalSteps(e).length > 0;');
   has(view, '{decided && (');
   has(view, '<ApprovalSteps entry={e} />');
 
-  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
+  const common = read('components/common.jsx');
   // The labels are ACTION_META's — the same ones the full trail prints. A
   // second set of words for the same rows is a second record.
   has(common, 'ACTION_META[s.action]?.label');
@@ -388,9 +389,9 @@ test('the signature list is asked for and is gated on there being one', () => {
  */
 
 test('the two pop-ups read one set of cards, not two copies of them', () => {
-  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
-  const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  const common = read('components/common.jsx');
+  const queue = read('components/ApprovalQueue.jsx');
+  const mine = read('components/EmployeeView.jsx');
 
   // `SignatureFacts` ออกจากทั้งสองป๊อปอัป 2026-10-09 (แบบ ก2) — ซ้ำกับประวัติ
   // รายการที่แสดงเต็ม
@@ -420,13 +421,13 @@ test('the two pop-ups read one set of cards, not two copies of them', () => {
  * where a later change to which rows the list holds cannot walk past it.
  */
 test('the ceiling card is only drawn for the month its figures are about', () => {
-  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  const mine = read('components/EmployeeView.jsx');
   has(mine, 'const month = usage?.period === e.period ? usage : null;');
   has(mine, '<CapCard month={month} counted={!month || month.countedIds?.includes(String(e._id))} />');
 
   // And the server is what says which requests those figures were made of, so
   // "ไม่รวมใบนี้" cannot be guessed at by the screen.
-  const usage = readFileSync(join(ROOT, 'app/api/entries/usage/[period]/route.js'), 'utf8');
+  const usage = read('app/api/entries/usage/[period]/route.js');
   has(usage, 'countedIds: [...counted],');
   has(usage, 'exceeded: overCap(usedHours, employee.department?.monthlyCapHours ?? null),');
 });
@@ -441,7 +442,7 @@ test('the ceiling card is only drawn for the month its figures are about', () =>
  * the pop-up carries them, so it stays, still only once something was signed.
  */
 test('the owner sees the signature list, and not the duplicated pair', () => {
-  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  const mine = read('components/EmployeeView.jsx');
   const section = mine.slice(mine.indexOf('<div className="dm-cap-strip">'));
   const head = section.slice(0, section.indexOf('<EntryHistoryBlock'));
   assert.ok(!head.includes('<SignatureFacts'), 'คู่ผู้ยื่น–ผู้อนุมัติกลับมาซ้ำกับประวัติ');
@@ -461,7 +462,7 @@ test('the owner sees the signature list, and not the duplicated pair', () => {
  * หัวหน้า signed 16:31, waiting on ฝ่ายบุคคล — was on no screen they could open.
  */
 test('the owner’s history section draws on any request that has one', () => {
-  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  const mine = read('components/EmployeeView.jsx');
   has(mine, "{(e.history || []).length > 0 && (");
   // พับไว้ท้ายหน้า (`EntryHistoryBlock`) ตั้งแต่ 2026-10-09 — เดิมเป็น <Section>
   has(mine, "<EntryHistoryBlock title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>");
@@ -480,7 +481,7 @@ test('the owner’s history section draws on any request that has one', () => {
  * which is exactly the rule `editPermission` refuses.
  */
 test('none of the reviewer’s three decisions is on the owner’s pop-up', () => {
-  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8')
+  const mine = read('components/EmployeeView.jsx')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   // `อนุมัติใบ OT` read `ยืนยันใบ OT` until 2026-09-11 — the label moved, and a
   // ban naming the old one would guard a button that no longer exists.
@@ -513,8 +514,8 @@ test('none of the reviewer’s three decisions is on the owner’s pop-up', () =
  * back the nesting that was removed when แก้ไข left the row.
  */
 test('the row carries the word รายละเอียด without nesting a button in a button', () => {
-  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
-  const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+  const mine = read('components/EmployeeView.jsx');
+  const css = read('app/styles.css');
 
   has(mine, '<span className="t">รายละเอียด</span>');
   // The row is still the one pressable thing, and the glyph is still the only

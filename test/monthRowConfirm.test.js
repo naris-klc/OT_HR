@@ -39,7 +39,7 @@ import { approvalPermission } from '../lib/delegation.js';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (f) => readFileSync(join(ROOT, f), 'utf8');
+const read = (f) => readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 
 const route = read('app/api/entries/route.js');
 const list = read('components/HrEntries.jsx');

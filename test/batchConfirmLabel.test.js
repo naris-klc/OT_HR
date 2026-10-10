@@ -34,7 +34,8 @@ import { dirname, join } from 'node:path';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const src = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+const read = (f) => readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
+const src = read('components/ApprovalQueue.jsx');
 
 /** The ConfirmModal body only — RejectModal below it has its own buttons. */
 const modal = src.slice(src.indexOf('function ConfirmModal'), src.indexOf('function RejectModal'));
