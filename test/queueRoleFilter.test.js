@@ -389,20 +389,6 @@ test('หัวข้อบอกแผนกตามตัวกรอง — 
   assert.ok(code.includes('{deptName && <span className="q-scope">'), 'ช่วงชื่อแผนกขึ้นทั้งที่ไม่ได้เลือก');
 });
 
-/** 2026-10-10 ชื่อแผนกจริงขึ้นต้นด้วย "แผนก" อยู่แล้ว — หัวคิวขึ้น "เฉพาะแผนกแผนกบัญชี…" */
-test('ชื่อแผนกไม่ถูกเติมคำว่า "แผนก" ซ้ำ', () => {
-  const src = code.replace(/\r\n/g, '\n');  // a CRLF checkout (autocrlf) has no bare '\n}\n'
-  const at = src.indexOf('function deptPhrase(');
-  const body = src.slice(at, src.indexOf('\n}\n', at) + 2);
-  const deptPhrase = new Function(`${body}; return deptPhrase;`)();
-  assert.equal(deptPhrase('แผนกบัญชีและการเงิน'), 'แผนกบัญชีและการเงิน');
-  assert.equal(deptPhrase('วิศวกรรม'), 'แผนกวิศวกรรม');
-  assert.equal(deptPhrase('IT'), 'แผนก IT');
-  assert.equal(deptPhrase(''), '');
-  assert.equal(deptPhrase(undefined), '');
-  assert.ok(code.includes("`ค้นจาก${deptPhrase(scope) || 'แผนกของคุณ'}`"), 'ประโยคคิวว่างยังเติม "แผนก" เอง');
-});
-
 // ── 5. the three reasons a row carries no buttons ───────────────────────────
 
 /**
@@ -522,38 +508,24 @@ test('ตารางกับหัวคอลัมน์ยังอยู�
 });
 
 /**
- * ONE HEADING FOR EVERY บทบาท, AND FOUR SCOPES UNDER IT.
+ * ONE HEADING FOR EVERY บทบาท, AND NOTHING UNDER IT — since 2026-10-11.
  *
  * The fact is the same wherever it is read — there is nothing here to approve —
- * so the heading is one sentence and the line under it says where the system
- * looked. A ผู้จัดการฝ่าย holding eight แผนก and ฝ่ายบุคคล reading the whole
- * company are one word apart on screen and a company apart in meaning, and the
- * two special tabs (รออนุมัติแทน, ใบที่ไม่มีหัวหน้าเซ็น) are narrower still.
+ * so the heading is one sentence. A line under it said where the system looked
+ * (ค้นจาก 8 แผนกที่คุณดูแล / ทุกแผนกทั้งบริษัท) from 2026-09-04; ผู้ใช้ตัดออก
+ * แต่เก็บหัวข้อไว้ เพราะตารางเปล่าไม่มีคำอธิบายแยกไม่ออกจากหน้าที่โหลดพลาด
  */
-test('จอว่างมีหัวข้อเดียวกันทุกบทบาท และบอกขอบเขตที่ค้นจริง', () => {
+test('จอว่างมีหัวข้อเดียวกันทุกบทบาท ไม่มีบรรทัดขอบเขตใต้หัวข้อ', () => {
   const at = code.indexOf('function QueueCleared(');
   assert.ok(at > 0, 'QueueCleared หายไป');
   const fn = code.slice(at, code.indexOf('\n}', at));
-  assert.ok(fn.includes('<strong>ยังไม่มีใบ OT ที่รออนุมัติ</strong>'), 'หัวข้อจอว่างไม่ตรงกันทุกบทบาท');
-  /**
-      * TWO MODES, AND THEY WERE FOUR until 2026-09-18 — `delegated:` and
-      * `unsigned:` were the two extra approval tabs, whose lists were narrower
-      * than ฝ่ายบุคคล's and so needed sentences of their own. Both are merged
-      * into this queue, whose scope is the whole company, so `hr:` answers for
-      * them. See QueueCleared.
-      */
-  for (const mode of ['hr:', 'signer:']) {
-    assert.ok(fn.includes(mode), `ขาดขอบเขตของโหมด ${mode}`);
-  }
-  assert.ok(!fn.includes('delegated:') && !fn.includes('unsigned:'), 'โหมดที่ไม่มีจอแล้วยังอยู่');
-  assert.ok(fn.includes('ค้นจาก ${covers} แผนกที่คุณดูแล'), 'ไม่ได้บอกจำนวนแผนกที่ค้นจริง');
-  assert.ok(fn.includes('ค้นจากทุกแผนกทั้งบริษัท'), 'ขอบเขตของ ฝ่ายบุคคล ไม่ถูกบอก');
+  assert.ok(fn.includes('<strong>ยังไม่มีใบ OT ที่รออนุมัติ</strong>'), 'หัวข้อจอว่างหายไป — ตารางเปล่าแยกไม่ออกจากหน้าที่โหลดพลาด');
+  const notCleared = fn.slice(fn.indexOf('if (!cleared)'), fn.indexOf('className="empty cleared"'));
+  assert.ok(!notCleared.includes('className="hint"'), 'บรรทัดรองใต้หัวข้อจอว่างกลับมา');
+  assert.ok(!fn.includes('ค้นจาก'), 'ประโยคขอบเขต ค้นจาก… กลับมา');
   // The ✓ panel is still its own state — "you just finished" is not the same
   // fact as "nothing arrived", and it keeps the tick.
   assert.ok(fn.includes('เคลียร์คิวครบทุกรายการแล้ว'), 'แผง ✓ หายไปพร้อมกับการรื้อ');
-  // The mode is worked out at the call site, where the props that decide it
-  // live, rather than re-derived from `stage` inside the panel.
-  assert.match(code, /mode=\{isHr \? 'hr' : 'signer'\}/);
 });
 
 /** And the head still carries a figure — `0 รายการ` rather than nothing. */
