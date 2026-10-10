@@ -240,6 +240,34 @@ export const foldClick = (folded, toggle, head = '.alert-fold-row') => (e) => {
  * - ข้อความใต้ช่องกรอกและในหน้าต่างยืนยันยังเป็น `Alert` · ผลสำเร็จหลังกดปุ่มเป็น toast
  */
 const NoticeCtx = React.createContext(null);
+
+/**
+ * หนึ่งหน้า หนึ่งกล่อง แม้สองคอมโพเนนต์จะวาดกล่องของตัวเอง — 2026-10-10
+ *
+ * หน้าแรกของหัวหน้า/HR/admin มีกล่องของหน้าแรก (สำรองข้อมูล · วันหยุด) จาก App
+ * แล้วคิว แผนกและเพดาน หรือนโยบาย ก็วาดกล่องของตัวเองต่อท้าย — สองกล่องซ้อนกัน
+ * ผิด design.md §5.1 (รายงาน UX ข.1 ผู้ใช้อนุมัติ mockup) · แทนที่จะให้ทุกหน้า
+ * รับแถวของหน้าแรกเป็นพร็อพแบบ `EmployeeView` (`notices`) ทีละหน้า App ห่อเนื้อหา
+ * ด้วย `NoticePage` (ตัวมันคือ `<div className="page">`) และกล่องที่อยู่ล่างกว่าส่งแถวของมันไปรวมในกล่องแรกของหน้า
+ * (portal + context ของกล่องแรก) จึงนับ เรียง และซ่อนด้วยปุ่มเดียว
+ *
+ * กล่องแรก = กล่องที่อยู่บนสุดใน DOM · `Modal` ตัดบริบทนี้ทิ้ง กล่องในป๊อปอัปจึง
+ * ไม่หนีไปรวมกับหน้าข้างหลัง
+ */
+const NoticePageCtx = React.createContext(null);
+
+export function NoticePage({ className = 'page', children }) {
+  const [stacks, setStacks] = React.useState([]);
+  const api = React.useMemo(() => ({
+    add: (s) => setStacks((list) => [...list.filter((x) => x.sid !== s.sid), s].sort((a, b) => (
+      // eslint-disable-next-line no-bitwise
+      a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))),
+    remove: (sid) => setStacks((list) => list.filter((x) => x.sid !== sid)),
+  }), []);
+  const value = React.useMemo(() => ({ ...api, primary: stacks[0] || null }), [api, stacks]);
+  return <NoticePageCtx.Provider value={value}><div className={className}>{children}</div></NoticePageCtx.Provider>;
+}
+
 const NOTICE_MARK = { error: '!', warn: '!', info: 'i', ok: '✓' };
 const NOTICE_RANK = { error: 0, warn: 1, info: 2, ok: 3 };
 
@@ -247,6 +275,9 @@ export function NoticeStack({ id, children, className = '' }) {
   const [rows, setRows] = React.useState({});
   const [stored, setStored] = React.useState(null);
   const key = `ot-notice-hide:${id}`;
+  const page = React.useContext(NoticePageCtx);
+  const sid = React.useId();
+  const elRef = React.useRef(null);
 
   // อ่านหลัง mount — ฝั่ง server ไม่มี localStorage และ HTML แรกต้องตรงกัน
   React.useEffect(() => {
@@ -262,6 +293,16 @@ export function NoticeStack({ id, children, className = '' }) {
     }),
   }), []);
 
+  // ลงทะเบียนกับหน้า — กล่องที่ไม่ใช่กล่องแรกจะส่งแถวไปรวมในกล่องแรก (`NoticePage`)
+  const add = page?.add;
+  const remove = page?.remove;
+  React.useLayoutEffect(() => {
+    if (!add) return undefined;
+    add({ sid, el: elRef.current, ctx });
+    return () => remove(sid);
+  }, [add, remove, sid, ctx]);
+  const host = page?.primary && page.primary.sid !== sid ? page.primary : null;
+
   const all = Object.values(rows).sort((a, b) => NOTICE_RANK[a.tone] - NOTICE_RANK[b.tone]);
   const hideable = all.filter((r) => r.tone !== 'error');
   const sig = hideable.map((r) => `${r.tone}:${r.sig}`).sort().join('|');
@@ -276,9 +317,18 @@ export function NoticeStack({ id, children, className = '' }) {
     } catch { /* ซ่อนได้แค่ในหน้านี้ */ }
   }
 
+  if (host) {
+    return (
+      <div ref={elRef} className="notice-stack no-print is-empty is-merged">
+        {createPortal(<NoticeCtx.Provider value={host.ctx}>{children}</NoticeCtx.Provider>, host.el)}
+      </div>
+    );
+  }
+
   return (
     <NoticeCtx.Provider value={ctx}>
       <div
+        ref={elRef}
         className={`notice-stack no-print${hidden ? ' is-hidden' : ''}${all.length ? '' : ' is-empty'}${className ? ` ${className}` : ''}`}
         role="region" aria-label="แจ้งเตือน"
       >
@@ -2158,78 +2208,81 @@ export function Modal({
   // dialog opened from inside any future card behaves the same way.
   if (typeof document === 'undefined') return null;
 
+  // `NoticePageCtx` เป็น null ในป๊อปอัป — กล่องแจ้งเตือนข้างในไม่ไปรวมกับกล่องของหน้า
   return createPortal(
-    <div className="modal-backdrop" onClick={requestClose}>
-      <div
-        ref={boxRef}
-        className={wide ? 'modal wide' : 'modal'}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={trapTab}
-      >
+    <NoticePageCtx.Provider value={null}>
+      <div className="modal-backdrop" onClick={requestClose}>
         <div
-          className={scrolled ? 'modal-head scrolled' : 'modal-head'}
-          onPointerDown={dragStart}
-          onPointerMove={dragMove}
-          onPointerUp={dragEnd}
-          onPointerCancel={dragEnd}
+          ref={boxRef}
+          className={wide ? 'modal wide' : 'modal'}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={trapTab}
         >
-          {/* Drawn only below 860px, where the dialog is a bottom sheet. Not a
-              control and not in the tab order — ✕ beside it is the labelled way
-              out, and this is the picture of the gesture. `offsetParent` on it
-              is also what tells the drag handlers whether the sheet layout is
-              on, so it is never merely decorative. */}
-          <div className="modal-grab" ref={grabRef} aria-hidden="true" />
-          <div className="who">
-            <div className="t" id={titleId}>{title}</div>
-            {subtitle && <div className="s">{subtitle}</div>}
-          </div>
-          {meta}
-          <button type="button" className="modal-x" onClick={requestClose} aria-label="ปิด">×</button>
-        </div>
-
-        <div
-          className="modal-body"
-          ref={bodyRef}
-          onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
-        >
-          {children}
-        </div>
-
-        {closeAsked ? (
-          <div className="modal-foot asking">
-            <div className="ask">{dirtyPrompt}</div>
-            {/* THE TWO ANSWERS SHARE A CARD, and that wrapper is the whole
-                reason this is not three loose children of the band. The band
-                wraps, so at a narrow width the prompt takes a line of its own
-                and the buttons drop below it — as siblings of the sentence they
-                landed there as two separate offers on a red wash, with nothing
-                saying the wash was the question rather than one of them. See
-                `.ask-acts` in app/styles.css. */}
-            <div className="ask-acts">
-              <button type="button" className="btn ghost" onClick={() => setCloseAsked(false)}>
-                {dirtyStayLabel}
-              </button>
-              <button type="button" className="btn danger" onClick={() => { setCloseAsked(false); onClose?.(); }}>
-                {dirtyLeaveLabel}
-              </button>
+          <div
+            className={scrolled ? 'modal-head scrolled' : 'modal-head'}
+            onPointerDown={dragStart}
+            onPointerMove={dragMove}
+            onPointerUp={dragEnd}
+            onPointerCancel={dragEnd}
+          >
+            {/* Drawn only below 860px, where the dialog is a bottom sheet. Not a
+                control and not in the tab order — ✕ beside it is the labelled way
+                out, and this is the picture of the gesture. `offsetParent` on it
+                is also what tells the drag handlers whether the sheet layout is
+                on, so it is never merely decorative. */}
+            <div className="modal-grab" ref={grabRef} aria-hidden="true" />
+            <div className="who">
+              <div className="t" id={titleId}>{title}</div>
+              {subtitle && <div className="s">{subtitle}</div>}
             </div>
+            {meta}
+            <button type="button" className="modal-x" onClick={requestClose} aria-label="ปิด">×</button>
           </div>
-        ) : footer && (
-          <div className="modal-foot">
-            {/* A function footer is handed `requestClose` — the same path the ×,
-                Escape and the backdrop take, so a dialog's own "ยกเลิก" asks
-                about unsaved work instead of being the one way out that does
-                not. Plain nodes still work; only the footers that need it ask
-                for it. */}
-            {typeof footer === 'function' ? footer(requestClose) : footer}
+
+          <div
+            className="modal-body"
+            ref={bodyRef}
+            onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
+          >
+            {children}
           </div>
-        )}
+
+          {closeAsked ? (
+            <div className="modal-foot asking">
+              <div className="ask">{dirtyPrompt}</div>
+              {/* THE TWO ANSWERS SHARE A CARD, and that wrapper is the whole
+                  reason this is not three loose children of the band. The band
+                  wraps, so at a narrow width the prompt takes a line of its own
+                  and the buttons drop below it — as siblings of the sentence they
+                  landed there as two separate offers on a red wash, with nothing
+                  saying the wash was the question rather than one of them. See
+                  `.ask-acts` in app/styles.css. */}
+              <div className="ask-acts">
+                <button type="button" className="btn ghost" onClick={() => setCloseAsked(false)}>
+                  {dirtyStayLabel}
+                </button>
+                <button type="button" className="btn danger" onClick={() => { setCloseAsked(false); onClose?.(); }}>
+                  {dirtyLeaveLabel}
+                </button>
+              </div>
+            </div>
+          ) : footer && (
+            <div className="modal-foot">
+              {/* A function footer is handed `requestClose` — the same path the ×,
+                  Escape and the backdrop take, so a dialog's own "ยกเลิก" asks
+                  about unsaved work instead of being the one way out that does
+                  not. Plain nodes still work; only the footers that need it ask
+                  for it. */}
+              {typeof footer === 'function' ? footer(requestClose) : footer}
+            </div>
+          )}
+        </div>
       </div>
-    </div>,
+    </NoticePageCtx.Provider>,
     document.body,
   );
 }
