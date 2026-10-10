@@ -223,6 +223,26 @@ const READABLE = [
   ['--amber-ink', '--amber-bg'],
   ['--ink', '--neutral-wash'],
   ['--ink-2', '--neutral-wash'],
+  // ── ข้อความรอง สีเขียว และสีเหลืองอำพัน บนพื้นที่มันวางจริง — 2026-10-10 ──
+  //
+  // ตรวจ QA ด้วย axe และสแกนทุกหน้าจอ เจอ `--muted-2` 3.41 บนการ์ด, `--muted-3`
+  // 2.98 (สว่าง) / 4.20 (มืด), เขียว 4.43 และอำพัน 3.46 ผู้ใช้สั่ง "แก้ให้ผ่าน"
+  // คู่ข้างล่างคือพื้นที่สแกนเจอตัวหนังสือพวกนี้วางอยู่จริง
+  ['--muted-2', '--card'],
+  ['--muted-2', '--bg'],
+  ['--muted-2', '--neutral-wash'],
+  ['--muted-2', '--green-wash'],
+  ['--muted-2', '--green-bg'],
+  ['--muted-3', '--card'],
+  ['--muted-3', '--green-wash'],
+  ['--muted-3', '--green-bg'],
+  ['--nav-idle', '--card'],
+  ['--green-text', '--card'],
+  ['--green-text', '--neutral-wash'],
+  ['--green-text', '--green-wash'],
+  ['--green-text', '--danger-bg'],
+  ['--on-fill', '--green'],
+  ['--on-fill', '--green-lift'],
 ];
 
 test('ธีมมืด — ตัวหนังสืออ่านออกทุกคู่ ตามมาตรฐาน AA', () => {
@@ -275,7 +295,12 @@ test('ธีมมืด — ปุ่มปิดบนกล่องแจ้
 });
 
 /**
- * The light theme is measured, not corrected.
+ * The light theme was measured, not corrected — UNTIL 2026-10-10.
+ *
+ * ย่อหน้าข้างล่างคือเหตุผลเดิม เก็บไว้เป็นประวัติ · วันที่ 2026-10-10 ผู้ใช้ตัดสินให้
+ * แก้ (เจ้าของแบรนด์คือคนที่ย่อหน้านั้นรอ) จึงปรับ `--green` #0F8A46 → #007B38,
+ * `--green-lift` #12A053 → #068743 และ `--amber` #A8791A → #926400 ในธีมสว่าง
+ * `LIGHT_FLOOR` ว่างแล้ว ทุกคู่ใน READABLE ต้องผ่าน 4.5 ทั้งสองธีม
  *
  * Three pairs in it have been below AA since long before there was a theme,
  * and all three are the same colour: the brand amber. Its caption sits on its
@@ -288,15 +313,13 @@ test('ธีมมืด — ปุ่มปิดบนกล่องแจ้
  * shortfalls are named here rather than left for somebody to rediscover, and
  * the day anybody decides to fix them this test says by how much.
  */
-const LIGHT_FLOOR = {
-  '--amber|--amber-bg': 3.45,
-  '--on-amber|--amber': 3.87,
-  '--green-text|--card': 4.42,
-};
+// It read `'--amber|--amber-bg': 3.45, '--on-amber|--amber': 3.87,
+// '--green-text|--card': 4.42` until 2026-10-10.
+const LIGHT_FLOOR = {};
 
 test('ธีมสว่าง — ไม่มีคู่ไหนแย่ลงกว่าเดิม', () => {
   const below = [];
-  for (const [fg, bg] of [...READABLE, ['--green-text', '--card']]) {
+  for (const [fg, bg] of READABLE) {
     const r = contrast(value(fg, 'light'), value(bg, 'light'));
     const floor = LIGHT_FLOOR[`${fg}|${bg}`] ?? 4.5;
     assert.ok(r >= floor, `${fg} บน ${bg} = ${r.toFixed(2)} (ต้องไม่ต่ำกว่า ${floor})`);
@@ -374,7 +397,10 @@ test('การ์ดสรุปยกตัวขึ้นจากพื้�
 });
 
 /**
- * The one pair that does not clear 4.5, and the dark theme did not cause it.
+ * The one pair that did not clear 4.5, and the dark theme did not cause it.
+ *
+ * ปิดแล้ว 2026-10-10: ผู้ใช้สั่งแก้ ธีมสว่างเป็น #007B38 วัดได้ 5.40 บนขาว · ย่อหน้า
+ * ข้างล่างคือเหตุผลตอนที่ยังตรึงค่าไว้
  *
  * Green text on white is #0F8A46 on #ffffff — 4.43, the brand green this app
  * has shipped with since before it had a theme. Asserted at the value it has
@@ -391,7 +417,7 @@ test('green text is the pair the dark theme improved most', () => {
   // token that had to be split out of --green, and the split is what let the
   // dark side clear AA without moving the light side at all.
   assert.ok(contrast(value('--green-text', 'dark'), value('--card', 'dark')) >= 4.5);
-  assert.equal(value('--green-text', 'light'), '#0F8A46');
+  assert.equal(value('--green-text', 'light'), '#007B38');
 });
 
 /**
@@ -536,8 +562,9 @@ test('ธีมมืด — สีเติมนำตระกูล แต�
   const onFill = contrast(value('--on-fill', 'dark'), value('--green', 'dark'));
   assert.ok(onFill >= 4.5, `ขาวบนสีเติม = ${onFill.toFixed(2)}`);
 
-  // Light keeps the exact brand value: on white it was never the problem.
-  assert.equal(value('--green', 'light'), '#0F8A46');
+  // Light kept the exact brand value #0F8A46 until 2026-10-10, when white on it
+  // (4.43) was ordered fixed. #007B38 is the same hue, 0.05 darker in OKLCH.
+  assert.equal(value('--green', 'light'), '#007B38');
 });
 
 /**
@@ -717,7 +744,8 @@ test('the fill and the text green are two tokens, not one', () => {
   // Both themes, both jobs, measured rather than assumed.
   for (const side of ['light', 'dark']) {
     const onFill = contrast(value('--on-fill', side), value('--green', side));
-    assert.ok(onFill >= 4.4, `ขาวบนสีเติม (${side}) = ${onFill.toFixed(2)}`);
+    // It read `>= 4.4` until 2026-10-10 — the light fill was 4.43.
+    assert.ok(onFill >= 4.5, `ขาวบนสีเติม (${side}) = ${onFill.toFixed(2)}`);
   }
 });
 

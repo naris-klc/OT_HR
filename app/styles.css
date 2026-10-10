@@ -28,8 +28,8 @@
   --ink: #14201A;          /* text, sidebar, hero card */
   --ink-2: #3C4A42;
   --muted: #5B6B62;
-  --muted-2: #7E8F85;
-  --muted-3: #8B998F;
+  --muted-2: #617168;
+  --muted-3: #617168;
   --muted-4: #9AA8A0;
 
   --bg: #EEF1EE;
@@ -44,8 +44,8 @@
   --line-lift: #D5DED8;
 
   /* ── brand ───────────────────────────────────────────────────────────── */
-  --green: #0F8A46;
-  --green-lift: #12A053;
+  --green: #007B38;
+  --green-lift: #068743;
   --green-dark: #0B6E37;
   --green-bg: #E8F4ED;
   /** The bar on the fourteen-day chart — a MARK, not a surface. See below. */
@@ -69,7 +69,7 @@
   --danger: #E4572E;
   --danger-ink: #B4402F;
   --danger-bg: #FBEAE7;
-  --amber: #A8791A;
+  --amber: #926400;
   --amber-ink: #815B0B;
   --amber-bg: #FBF1E0;
   --info: #2A6099;
@@ -190,9 +190,9 @@
      near-black in the dark one. Everything else that carries these colours is
      a card in both. The light halves are exactly what those two tokens were
      giving it, so ธีมสว่าง does not move. */
-  --nav-idle: #7E8F85;
+  --nav-idle: #617168;
   --nav-idle-lift: #14201A;
-  --nav-active: #0F8A46;
+  --nav-active: #007B38;
 
   /* THE SAME CONFIRMATION, IN FLOW — `.alert.ok`, which is what วันเกิดรอตรวจ
      now uses instead of a toast. Two token sets and not one, because the two
@@ -203,7 +203,7 @@
   --alert-ok-bg: #E8F4ED;
   --alert-ok-line: #C4E3D2;
   --alert-ok-ink: #0B6E37;
-  --alert-ok-x: #0F8A46;
+  --alert-ok-x: #007B38;
   --alert-ok-x-lift: #0B6E37;
 
   /* ── surfaces that are not the card ──────────────────────────────────── */
@@ -453,9 +453,12 @@
      track that green measures **2.71** — under the 3:1 a graphical object is
      held to, so the empty part and the full part of the bar stop being
      tellable apart. `--green`, the brand fill, measures **3.54** on it and is
-     also what the primary button beside it is drawn in.
+     also what the primary button beside it is drawn in. (4.31 since
+     2026-10-10, when the fill went from #0F8A46 to #007B38.)
 
-     THE DARK HALF IS `--green-lift`'s DARK VALUE TO THE DIGIT, because there
+     THE DARK HALF WAS `--green-lift`'s DARK VALUE TO THE DIGIT until
+     2026-10-10, when the lift dropped to #398552 so white on it clears 4.5;
+     the meter kept #3C8855, because lighter is what this track needs. There
      the comparison runs the other way: on the veiled track `--green`'s dark
      value measures 2.10 against 2.64 for the lift. Neither clears 3:1 and
      that is a shortfall this file inherited rather than made — raising it is a
@@ -467,7 +470,7 @@
      components/EmployeeView.jsx, so the over state fills the track completely
      and the red is read against the CARD, where it is 3.42. */
   --meter-track: #E2E7E3;
-  --meter-fill: #0F8A46;
+  --meter-fill: #007B38;
 
   --radius-lg: 16px;
   --radius: 14px;
@@ -596,8 +599,16 @@
   --ink: light-dark(#14201A, #E9EFEB);
   --ink-2: light-dark(#3C4A42, #C7D2CB);
   --muted: light-dark(#5B6B62, #A0ADA6);
-  --muted-2: light-dark(#7E8F85, #8A9791);
-  --muted-3: light-dark(#8B998F, #7C8983);
+  /* ข้อความรองต้องผ่าน AA บนพื้นที่มันวางจริง — 2026-10-10 ผู้ใช้สั่ง "แก้ให้ผ่าน"
+     เดิม --muted-2 #7E8F85 = 3.41 บนการ์ด · --muted-3 #8B998F = 2.98 และธีมมืด
+     #7C8983 = 4.20 · --nav-idle ใช้ค่าเดียวกับ --muted-2
+     ธีมสว่าง: #617168 = 5.16 บนการ์ด 4.53 บน --bg 4.57 บน --green-bg ·
+     --muted-3 เท่ากับ --muted-2 เพราะเทาที่จางกว่านี้ไม่ผ่าน AA บน --green-bg
+     อีกแล้ว ชื่อยังแยกไว้ให้ธีมมืดที่ยังมีที่ให้ไล่ระดับ ·
+     ธีมมืด: --muted-2 #8D9A94 = 5.23 · --muted-3 #8B9892 = 5.10 บนการ์ด 4.67
+     บน --green-bg */
+  --muted-2: light-dark(#617168, #8D9A94);
+  --muted-3: light-dark(#617168, #8B9892);
   --muted-4: light-dark(#9AA8A0, #6F7C76);
 
   /**
@@ -762,7 +773,7 @@
      over white is nothing. The fill goes the opposite way in each theme — see
      the fallback block, which carries the four numbers that decided it. */
   --meter-track: light-dark(#E2E7E3, rgba(255, 255, 255, .13));
-  --meter-fill: light-dark(#0F8A46, #3C8855);
+  --meter-fill: light-dark(#007B38, #3C8855);
 
   /**
    * ONE GREEN CANNOT DO BOTH JOBS, and the numbers say so exactly.
@@ -794,10 +805,17 @@
    * what a brand colour on a dark screen should be. The light theme keeps the
    * exact brand value, because on white it was never the problem.
    */
-  --green: light-dark(#0F8A46, #2E7747);
+  /* ธีมสว่างเป็น #0F8A46 จนถึง 2026-10-10 — ขาวบนมันได้ 4.43 ไม่ถึง AA และ
+     ย่อหน้าข้างบนบอกว่าค่านั้นเป็นของเจ้าของแบรนด์ ผู้ใช้ตัดสินให้แก้ จึงเป็น
+     #007B38: hue เดิม เข้มขึ้น 0.05 ใน OKLCH · ขาวบนมัน 5.40 · เป็นตัวหนังสือบนขาว
+     5.40 บน --danger-bg 4.63 · โทเคนเขียวธีมสว่างทุกตัวที่เคยเป็น #0F8A46
+     (--green-text --green-accent --nav-active --alert-ok-x --meter-fill) ย้ายตาม */
+  --green: light-dark(#007B38, #2E7747);
   /* Hover. Held about 0.05 lightness above the fill so the lift is still felt,
-     and white on it improves from 3.40 to 4.33 on the way past. */
-  --green-lift: light-dark(#12A053, #3C8855);
+     and white on it improves from 3.40 to 4.33 on the way past.
+     ตั้งแต่ 2026-10-10 ห่างจากสีเติม 0.04 ทั้งสองธีม และขาวบนมันผ่าน AA:
+     สว่าง #068743 = 4.61 (เดิม #12A053 = 3.40) · มืด #398552 = 4.52 (เดิม #3C8855) */
+  --green-lift: light-dark(#068743, #398552);
   /**
    * FROM HERE DOWN THE DARK GREENS ARE MUTED, and the fill above is not.
    *
@@ -822,7 +840,7 @@
    * which is what a brand colour is supposed to be.
    */
   /** Green as TEXT — links, the active tab on the phone bar, an ✓ in a list. */
-  --green-text: light-dark(#0F8A46, #9ACBAF);
+  --green-text: light-dark(#007B38, #9ACBAF);
   /**
    * The same green as text, but SATURATED IN THE DARK — one control only.
    *
@@ -840,7 +858,7 @@
    * The light value is `--green-text`'s own, unchanged: nothing about the light
    * theme was in question.
    */
-  --green-accent: light-dark(#0F8A46, #34D399);
+  --green-accent: light-dark(#007B38, #34D399);
   /* Was the darkest green — a TEXT colour on a pale green panel. On a dark
      panel the text has to be the lightest of the three, so this one inverts
      rather than shifts. */
@@ -918,8 +936,12 @@
    * The floor on that turn is `--danger` at 38°. Staying 24° off it with a third
    * of its chroma keeps a warning tellable from an error at a glance, which is
    * the whole reason they are two colours.
+   *
+   * ธีมสว่างเป็น #A8791A จนถึง 2026-10-10 — บนพื้นของมันเอง (ป้าย รอหัวหน้า) 3.46
+   * และขาวบนมัน (ตัวเลขบนแท็บ) 3.88 ผู้ใช้สั่งแก้ให้ผ่าน จึงเข้มขึ้น 0.07 ใน OKLCH
+   * เป็น #926400: บน --amber-bg 4.64 · ขาวบนมัน 5.19
    */
-  --amber: light-dark(#A8791A, #D6A67C);
+  --amber: light-dark(#926400, #D6A67C);
   /**
    * What sits ON an amber fill — the count chip and the ! in a warning.
    *
@@ -1029,7 +1051,7 @@
   --alert-ok-bg: light-dark(#E8F4ED, #022C22);
   --alert-ok-line: light-dark(#C4E3D2, #065F46);
   --alert-ok-ink: light-dark(#0B6E37, #A7F3D0);
-  --alert-ok-x: light-dark(#0F8A46, #34D399);
+  --alert-ok-x: light-dark(#007B38, #34D399);
   --alert-ok-x-lift: light-dark(#0B6E37, #A7F3D0);
 
   /**
@@ -1052,9 +1074,9 @@
    * distinction is carried by a filled pill instead, which is why `.nav` keeps
    * its own colours and is not touched by any of this.
    */
-  --nav-idle: light-dark(#7E8F85, #A1A1AA);
+  --nav-idle: light-dark(#617168, #A1A1AA);
   --nav-idle-lift: light-dark(#14201A, #E4E4E7);
-  --nav-active: light-dark(#0F8A46, #34D399);
+  --nav-active: light-dark(#007B38, #34D399);
 
   --scroll-thumb: light-dark(#CBD4CD, #33403A);
 
@@ -6349,8 +6371,10 @@ td > .approver-line { margin-top: 5px; }
    position rather than as two offers. `aria-pressed` says the same thing to a
    reader that cannot see which is filled.
 
-   The count rides inside the chip, in the chip's own ink at reduced opacity —
-   a second colour there would make the number look like a separate control. */
+   The count rides inside the chip, in the chip's own ink — a second colour
+   there would make the number look like a separate control. It sat at
+   `opacity: .75` until 2026-10-10, which took it to 3.55–3.60:1 (QA, under
+   AA); bold is what sets it apart now. */
 .filter-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 2px; }
 .filter-chip {
   display: inline-flex; align-items: center; gap: 7px;
@@ -6362,7 +6386,7 @@ td > .approver-line { margin-top: 5px; }
 }
 .filter-chip:hover { border-color: var(--green); color: var(--ink-2); }
 .filter-chip .n {
-  font-variant-numeric: tabular-nums; font-weight: 700; opacity: .75;
+  font-variant-numeric: tabular-nums; font-weight: 700;
 }
 .filter-chip.on {
   background: var(--green-tint); border-color: var(--green); color: var(--green-dark);
@@ -17165,8 +17189,10 @@ table.mini tbody tr:hover { background: none; }
 .mflow-node.acc { border-color: var(--green); background: var(--green-bg); }
 .mflow-node.done { border-color: var(--green); }
 /* The step that is not there for this บทบาท — drawn, and drawn as absent. A
-   picture with the box left out looks like a picture missing a box. */
-.mflow-node.gone { border-style: dashed; background: none; opacity: .75; }
+   picture with the box left out looks like a picture missing a box.
+   เส้นประกับพื้นโปร่งคือสิ่งที่บอกว่า "ไม่มี" · มี `opacity: .75` ด้วยจนถึง
+   2026-10-10 ซึ่งทำให้ตัวหนังสือในกล่องเหลือ 3.13:1 ไม่ผ่าน AA จึงเอาออก */
+.mflow-node.gone { border-style: dashed; background: none; }
 .mflow-k { font: 600 8.5px/1.5 var(--mono); letter-spacing: .06em; color: var(--muted-3); }
 .mflow-n { font: 600 11.5px/1.45 var(--sans); color: var(--ink); }
 .mflow-node.acc .mflow-n { color: var(--green-dark); }
