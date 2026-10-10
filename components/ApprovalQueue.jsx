@@ -728,12 +728,14 @@ export default function ApprovalQueue({
   }, [entries, roster, user.coversDepartments, passes]);
   /**
    * What the head says the queue holds — the แผนก filter's own words, since
-   * 2026-10-11 (รายงาน UX ฉ.2): ทุกแผนก until one is chosen, then its name.
+   * 2026-10-11 (รายงาน UX ฉ.2): nothing until one is chosen, then its name.
    * It said `เฉพาะแผนกIT` from the signer's own row, which was wrong for a
    * กรรมการผู้จัดการ whose queue also held people named to them one by one
-   * from other แผนก. ผู้ใช้เลือกถ้อยคำตามตัวกรองเพราะ *"น่าจะเป็นถ้อยคำกลางที่สุด"*.
+   * from other แผนก. It said ทุกแผนก for half a day; ผู้ใช้ตัดออกเพราะเป็นค่า
+   * ตั้งต้นของตัวกรอง ไม่ได้บอกอะไรเพิ่ม · ชื่อแผนกที่เลือกยังอยู่ เพราะช่องแผนก
+   * เลื่อนหายไปได้ แต่หัวการ์ดยังอยู่
    */
-  const deptName = (dept && departments.find((d) => d.value === dept)?.label) || 'ทุกแผนก';
+  const deptName = (dept && departments.find((d) => d.value === dept)?.label) || '';
 
   /**
    * NOT `optionsBy`, and the difference is the ORDER.
@@ -1313,7 +1315,8 @@ export default function ApprovalQueue({
                     ? 'ตรวจสอบรายเดือน · รายการที่อนุมัติแล้วจะเข้าสู่รายงานส่งออก'
                     : (
                       <>
-                        {'ตรวจสอบรายวัน · '}
+                        {'ตรวจสอบรายวัน'}
+                        {deptName && ' · '}
                         {/*
                           THE DEPARTMENT CLAUSE IS ONE WORD AS FAR AS THE LINE
                           BREAKER IS CONCERNED, and it has to be said out loud
@@ -1352,7 +1355,7 @@ export default function ApprovalQueue({
                             off the roster — and both left out the people named
                             to a signer one by one (`personalApprovers`), whose
                             rows are in the same list. See `deptName`. */}
-                        <span className="q-scope">{deptName}</span>
+                        {deptName && <span className="q-scope">{deptName}</span>}
                       </>
                     )}
               </>

@@ -373,17 +373,20 @@ test('ตัวกรองแผนกวาดทุกจอที่อน�
  * 2026-10-11 (รายงาน UX ฉ.2). It named the signer's own แผนก (or counted the
  * ones they hold), which left out the people named to them one by one: a
  * กรรมการผู้จัดการ read `เฉพาะแผนกIT` over two rows from บัญชี and ฝ่ายขาย.
- * ผู้ใช้เลือก ทุกแผนก / ชื่อแผนกที่เลือก — *"น่าจะเป็นถ้อยคำกลางที่สุด"*.
+ * ผู้ใช้เลือกถ้อยคำตามตัวกรอง แล้วตัด ทุกแผนก ออกในวันเดียวกัน เพราะเป็นค่าตั้งต้น
+ * ไม่ได้บอกอะไรเพิ่ม: ไม่เลือก = "ตรวจสอบรายวัน" · เลือก = "ตรวจสอบรายวัน · ฝ่ายขาย"
  */
-test('หัวข้อบอกแผนกตามตัวกรอง — ทุกแผนก หรือชื่อแผนกที่เลือก', () => {
+test('หัวข้อบอกแผนกตามตัวกรอง — เงียบตอนไม่เลือก ขึ้นชื่อแผนกตอนเลือก', () => {
   const at = code.indexOf('<span className="q-scope">');
   const scope = code.slice(at, code.indexOf('</span>', at));
   assert.ok(scope.includes('{deptName}'), 'หัวข้อไม่ได้อ่านจากตัวกรองแผนก');
   assert.ok(!scope.includes('user.department'), 'หัวข้อกลับไปอ่านแผนกของผู้เซ็น');
   assert.ok(
-    code.includes("const deptName = (dept && departments.find((d) => d.value === dept)?.label) || 'ทุกแผนก';"),
-    'ไม่ได้ใช้คำว่า ทุกแผนก ตอนยังไม่เลือก',
+    code.includes("const deptName = (dept && departments.find((d) => d.value === dept)?.label) || '';"),
+    'ตอนยังไม่เลือกแผนก หัวข้อต้องไม่มีคำบอกแผนก',
   );
+  assert.ok(code.includes("{deptName && ' · '}"), 'จุดคั่นค้างอยู่ตอนไม่ได้เลือกแผนก');
+  assert.ok(code.includes('{deptName && <span className="q-scope">'), 'ช่วงชื่อแผนกขึ้นทั้งที่ไม่ได้เลือก');
 });
 
 /** 2026-10-10 ชื่อแผนกจริงขึ้นต้นด้วย "แผนก" อยู่แล้ว — หัวคิวขึ้น "เฉพาะแผนกแผนกบัญชี…" */
