@@ -248,6 +248,15 @@ export const GET = route(async (req, { params }) => {
         };
         row.sessions.push(session);
       }
+      /**
+       * แถวนี้ระบายเหลืองบนใบ — วันหยุด วันเกิด หรือเหมารายวัน ที่มีรายการขอ OT
+       * (2026-10-10) · อ่านจากช่องชั่วโมง ไม่ใช่จาก `row.isHoliday`: วันเกิดลงช่อง
+       * วันหยุดเสมอ ส่วน `isHoliday` ไม่รู้วันเกิด · เหมารายวันบนวันทำงานลงช่อง
+       * วันปกติ จึงต้องดู `entry.flatDaily` ด้วย · OT วันทำงานธรรมดาไม่ระบาย
+       */
+      session.highlight = session.highlight
+        || Boolean(entry.flatDaily)
+        || seg.bucket !== BUCKETS.OT15_WEEKDAY;
       session.from = min(session.from, seg.start);
       session.to = max(session.to, seg.end);
       session[seg.bucket] += seg.hours;

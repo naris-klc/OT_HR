@@ -497,13 +497,16 @@ test('ตรวจสอบรายเดือน นับว่าใคร�
   assert.ok(!/dayReason/.test(src), 'รายงานรวมไม่ควรรู้จักเหตุผลของวันเลย');
 });
 
-test('F-HR-027: ระบายเหลืองเฉพาะแถวที่มี OT — ไม่ดูประเภทวัน จึงไม่บอกวันเกิด', () => {
+test('F-HR-027: ระบายเหลืองเฉพาะวันหยุด วันเกิด เหมารายวัน ที่มีรายการขอ OT', () => {
   const sheet = read('components/PrintForm.jsx');
-  assert.match(sheet, /className=\{row\.sessions\.length \? 'has-ot' : undefined\}/);
-  assert.doesNotMatch(sheet, /row\.isHoliday \?/, 'สีต้องไม่มาจากประเภทวัน');
+  assert.match(sheet, /className=\{row\.sessions\.some\(\(x\) => x\.highlight\) \? 'shade' : undefined\}/);
+  assert.doesNotMatch(sheet, /row\.isHoliday \?/, 'วันหยุดที่ไม่มี OT ต้องไม่ระบาย');
+  // วันเกิดลงช่องวันหยุดเสมอ · เหมารายวันบนวันทำงานลงช่องวันปกติ จึงต้องดูธง
+  const route = read('app/api/reports/form/[period]/route.js');
+  assert.match(route, /\|\| Boolean\(entry\.flatDaily\)\s*\|\| seg\.bucket !== BUCKETS\.OT15_WEEKDAY;/);
   const css = read('app/print.css');
-  assert.doesNotMatch(css, /tr\.hol\b/, 'กฎระบายวันหยุดทุกวันต้องหายไป');
-  const rule = css.match(/\.f027 tbody tr\.has-ot td \{[^}]*\}/);
-  assert.ok(rule, 'ต้องมีกฎ .f027 tbody tr.has-ot td');
+  assert.doesNotMatch(css, /tr\.(hol|has-ot)\b/, 'กฎเก่าต้องหายไป');
+  const rule = css.match(/\.f027 tbody tr\.shade td \{[^}]*\}/);
+  assert.ok(rule, 'ต้องมีกฎ .f027 tbody tr.shade td');
   assert.match(rule[0], /print-color-adjust: exact/, 'ไม่มีก็พิมพ์ออกมาไม่มีสี');
 });
