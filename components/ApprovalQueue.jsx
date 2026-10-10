@@ -1432,7 +1432,8 @@ export default function ApprovalQueue({
                 `.queue-tools .field > .field-head` in app/styles.css. It is
                 still the same `.field-head` the four `PickOne`s render, which is
                 why one rule reaches all five. */}
-            <div className="field-head"><label>ค้นหา</label></div>
+            {/* ค้นหาพนักงาน, as on every other filter bar — รายงาน UX ค.3, 2026-10-11 */}
+            <div className="field-head"><label>ค้นหาพนักงาน</label></div>
             {/* ⚠ `.searchbox` AND THE MAGNIFIER, 2026-09-10. This was the LAST of
                 the app's four search boxes without one — ตรวจสอบประจำเดือน always
                 had it, บันทึกประวัติระบบ and ทะเบียนพนักงาน were given it earlier
@@ -1522,7 +1523,7 @@ export default function ApprovalQueue({
               แสดงหายไปกับมัน ตารางกับหัวการ์ดบอกจำนวนแทน */}
           <div className="field">
             <div className="field-head"><label>เดือน</label></div>
-            <PickMonth label="เดือน" value={per} onChange={setPer} clearable allLabel="ทุกเดือน" />
+            <PickMonth label="ประจำเดือน" value={per} onChange={setPer} clearable allLabel="ทุกเดือน" />
           </div>
           {(q || dept || per || st || applicant) && (
             <ClearFilters onClear={() => { setQ(''); setDept(''); setPer(''); setSt(''); setApplicant(''); }} />

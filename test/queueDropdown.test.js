@@ -97,7 +97,7 @@ test('บทบาท แผนก ใช้ PickOne · เดือน ใช�
   assert.match(queue, /<PickOne\s+label="แผนก"[\s\S]*?allLabel="ทุกแผนก"/);
   // เดือน เลิกเป็น `PickOne` 2026-10-09 — ปฏิทินเดือนตัวเดียวกับทุกจอ ว่างได้
   // (ว่าง = ทุกเดือน) จึงมี ✕
-  assert.match(queue, /<PickMonth label="เดือน" value=\{per\} onChange=\{setPer\} clearable allLabel="ทุกเดือน" \/>/);
+  assert.match(queue, /<PickMonth label="ประจำเดือน" value=\{per\} onChange=\{setPer\} clearable allLabel="ทุกเดือน" \/>/);
   assert.ok(!/<PickOne\s+label="เดือน"/.test(queue), 'เดือน กลับไปเป็นรายการ');
   // FOUR SINCE 2026-09-04. บทบาท is the signers' half of the first slot — see
   // test/queueRoleFilter.js — and it takes the same control for the same
@@ -131,7 +131,7 @@ test('แท็บ สถานะ ขึ้นต้นแถบ ก่อน�
   const search = queueCode.indexOf('placeholder="ชื่อพนักงาน');
   const status = queueCode.indexOf('aria-label="สถานะ"');
   const dept = queueCode.indexOf('label="แผนก"');
-  const month = queueCode.indexOf('label="เดือน"');
+  const month = queueCode.indexOf('label="ประจำเดือน"');
   assert.ok(search > 0 && status > 0 && dept > 0 && month > 0, 'ตัวกรองหายไปหนึ่งตัว');
   assert.ok(status < search, 'แท็บ สถานะ ต้องอยู่ก่อนช่องค้นหา');
   assert.ok(search < dept, 'ช่องค้นหา ต้องอยู่ก่อน แผนก');

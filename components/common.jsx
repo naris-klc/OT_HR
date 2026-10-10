@@ -4222,7 +4222,8 @@ export function PickPerson({
   people,
   value,
   onChange,
-  allLabel = '— ทุกคน —',
+  // No dashes since 2026-10-11 (รายงาน UX ค.3) — ทุกแผนก / ทุกเดือน never had them.
+  allLabel = 'ทุกคน',
   placeholder = 'พิมพ์ชื่อ หรือ รหัสพนักงาน…',
   emptyLabel = 'ไม่พบพนักงานที่ตรงกับคำค้น',
   disabled = false,

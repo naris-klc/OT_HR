@@ -1025,12 +1025,12 @@ function LogList({
           label="กรองตามบัญชี"
           value={filters.actor}
           onChange={(v) => setFilter('actor', v)}
-          allLabel="— ทุกบัญชี —"
+          allLabel="ทุกบัญชี"
           options={[
             /* The rows nobody's session is attached to: refused logins, and
                requests turned away before a session existed. Its own choice
                because it is the one somebody scanning for trouble wants. */
-            { value: 'none', label: '— ไม่มีบัญชี (ยังไม่ได้เข้าระบบ) —' },
+            { value: 'none', label: 'ไม่มีบัญชี (ยังไม่ได้เข้าระบบ)' },
             ...(data?.actors || []).map((a) => ({
               value: a.id,
               label: `${a.code || '—'} · ${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
@@ -1042,7 +1042,7 @@ function LogList({
             label="กรองตามเหตุการณ์"
             value={filters.event}
             onChange={(v) => setFilter('event', v)}
-            allLabel="— ทั้งหมด —"
+            allLabel="ทั้งหมด"
             options={[
               { value: 'login', label: EVENT_LABEL.login },
               { value: 'login_failed', label: EVENT_LABEL.login_failed },
@@ -1054,7 +1054,7 @@ function LogList({
           label="กรองตามผลลัพธ์"
           value={filters.status}
           onChange={(v) => setFilter('status', v)}
-          allLabel="— ทุกผลลัพธ์ —"
+          allLabel="ทุกผลลัพธ์"
           options={Object.entries(STATUS_CLASS_LABEL)
             .filter(([k]) => k !== 'unknown')
             .map(([k, label]) => ({ value: k, label }))}

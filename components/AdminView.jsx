@@ -5828,7 +5828,9 @@ function RosterAudit() {
             the box (พิมพ์ชื่อ หรือ รหัสพนักงาน…) and the ทุกคน row at the top of
             its own list, read out loud underneath itself. Same deletion
             เว้นว่าง = ทุกประเภท took on การใช้สิทธิ์พิเศษ. */}
-        <Field label="กรองตามพนักงาน" className="search">
+        {/* ค้นหาพนักงาน since 2026-10-11 (รายงาน UX ค.3) — the label every
+            other filter bar gives the box you type a name into. */}
+        <Field label="ค้นหาพนักงาน" className="search">
           <PickPerson
             people={people}
             value={filters.employee}
@@ -5842,14 +5844,14 @@ function RosterAudit() {
             + '· การตั้งรหัสผ่านใหม่ไม่ได้แก้ฟิลด์ใด จึงไม่อยู่ในผลของตัวกรองนี้'}
           value={filters.field}
           onChange={(v) => setFilter('field', v)}
-          allLabel="— ทุกอย่าง —"
+          allLabel="ทุกอย่าง"
           options={AUDITED_FIELDS.map((f) => ({ value: f, label: FIELD_LABEL[f] || f }))}
         />
         <PickOne
           label="กรองตามประเภท"
           value={filters.action}
           onChange={(v) => setFilter('action', v)}
-          allLabel="— ทุกประเภท —"
+          allLabel="ทุกประเภท"
           options={Object.entries(ACTION_LABEL).map(([value, label]) => ({ value, label }))}
         />
         {/* Named บัญชีผู้แก้ไข, not ผู้แก้ไข: ฝ่ายบุคคล is one shared login for
@@ -5859,7 +5861,7 @@ function RosterAudit() {
           label="กรองตามบัญชีผู้แก้ไข"
           value={filters.by}
           onChange={(v) => setFilter('by', v)}
-          allLabel="— ทุกบัญชี —"
+          allLabel="ทุกบัญชี"
           options={actors.map((a) => ({
             value: a.id,
             label: `${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,

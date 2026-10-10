@@ -293,7 +293,9 @@ test('the roster picker is used where the list is long and nowhere else', () => 
   // Two since 2026-10-09: กรองตามพนักงาน, and อนุมัติรายคน's เพิ่มพนักงาน —
   // both search the whole roster, the long list this picker is for.
   assert.equal((admin.match(/<PickPerson/g) || []).length, 2);
-  const filters = admin.slice(admin.indexOf('กรองตามพนักงาน'), admin.indexOf('ล้างตัวกรองทั้งหมด'));
+  // ค้นหาพนักงาน is also ทะเบียนพนักงาน's label, higher in the file — open on
+  // the audit bar's own field (it read กรองตามพนักงาน until 2026-10-11).
+  const filters = admin.slice(admin.search(/<Field label="ค้นหาพนักงาน" className="search">\s*<PickPerson/), admin.indexOf('ล้างตัวกรองทั้งหมด'));
   assert.equal((filters.match(/<select/g) || []).length, 0, 'ตัวกรองยังมี <select> — เมนูของ OS จะกลับมา');
   assert.equal((filters.match(/<PickOne/g) || []).length, 3, 'ตัวกรองที่รายการสั้นต้องเป็น PickOne');
   // …and none of the three grew a search box on the way across: the slice opens
