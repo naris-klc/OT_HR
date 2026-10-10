@@ -488,10 +488,11 @@ test('none of the reviewer’s three decisions is on the owner’s pop-up', () =
   for (const word of ['อนุมัติใบ OT', 'แก้ไขชั่วโมง', '>ไม่อนุมัติ</button>']) {
     assert.ok(!mine.includes(word), `ปุ่มของฝ่ายบุคคลโผล่บนจอพนักงาน: ${word}`);
   }
-  /* The WORDS are still allowed here: "เหตุผลที่ไม่อนุมัติ" heads the panel that
-     tells the owner why a request came back, which is the thing on this pop-up
-     they most need to find. What may not appear is a BUTTON. */
-  has(mine, 'เหตุผลที่ไม่อนุมัติ');
+  /* The REASON is still here — the thing on this pop-up the owner most needs
+     to find. It was a red panel headed "เหตุผลที่ไม่อนุมัติ" until 2026-10-10;
+     it is now the quoted note on the lead `ApproverLine`, which printed the same
+     sentence above it. What may not appear is a BUTTON. */
+  has(mine, '<ApproverLine entry={e} signers={signers} className="lead" when />');
   // What is there instead: the way out, and the three things an owner may do.
   // ปิดหน้าต่าง ออกไป 2026-10-09 — ✕ บนหัวคือทางออก และใบที่ไม่มีปุ่มไม่วาดท้ายกล่อง
   assert.ok(!mine.includes('>ปิดหน้าต่าง</button>'), 'ปุ่มปิดหน้าต่างกลับมา');
@@ -579,4 +580,12 @@ test('lastAction reads the most recent matching row, and takes a list', () => {
   assert.equal(lastAction(entry, 'approve_mgr').byName, 'ง');
   assert.equal(lastAction(entry, ['reject_mgr', 'approve_mgr']).byName, 'ง');
   assert.equal(lastAction(entry, 'approve_hr'), null);
+});
+
+/** 2026-10-10 ป๊อปอัปใบที่ไม่อนุมัติพิมพ์เหตุผลสองที่ — บรรทัดบนสุด และกล่องแดงข้างล่าง */
+test('ป๊อปอัปของพนักงานพิมพ์เหตุผลที่ไม่อนุมัติที่เดียว — ในบรรทัดผู้อนุมัติ', () => {
+  const view = read('components/EmployeeView.jsx').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  const modal = view.slice(view.indexOf('<ApproverLine entry={e} signers={signers} className="lead" when />'));
+  assert.ok(modal.length < view.length, 'ป๊อปอัปไม่มีบรรทัดผู้อนุมัติแล้ว');
+  assert.ok(!modal.slice(0, modal.indexOf('</Modal>')).includes('e.rejectionReason'), 'เหตุผลกลับมาซ้ำในป๊อปอัป');
 });

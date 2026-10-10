@@ -1161,12 +1161,11 @@ function EntryDetail({
         </Alert>
       )}
 
-      {e.rejectionReason && (
-        <Alert kind="error">
-          <strong>เหตุผลที่ไม่อนุมัติ</strong>
-          <div>{e.rejectionReason}</div>
-        </Alert>
-      )}
+      {/* กล่องแดง เหตุผลที่ไม่อนุมัติ อยู่ตรงนี้จนถึง 2026-10-10 — ซ้ำกับ
+          `ApproverLine` บนสุด ซึ่งพิมพ์เหตุผลเดียวกันในเครื่องหมายคำพูด
+          (`approverLine` → `note`) · `rejectionReason` ถูกตั้งที่ route
+          ไม่อนุมัติที่เดียว ใบที่มีค่านี้จึงเป็นใบ rejected และบรรทัดบนสุด
+          มีเหตุผลเสมอ */}
 
       {/* ส่งคำขอถอนใบแล้ว · รอพิจารณา WAS THE BLOCK ABOVE THIS ONE. There is no
           waiting state left to describe — see lib/withdrawal.js — and a
