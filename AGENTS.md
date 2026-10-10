@@ -50,11 +50,28 @@ had moved.
 
 ```bash
 git status --short
+git rev-parse dev main        # สองบรรทัดต้องเป็น hash เดียวกัน
 ```
 
 Everything in that list is somebody else's work. It is the only thing that will
 still tell you, an hour and forty edits later, which of the dirty files are
 yours.
+
+**`dev` กับ `main` ต้องอยู่ที่ commit เดียวกันก่อนเริ่มงาน** สั่งไว้ 2026-10-10 ·
+ทุกงานจบด้วยการ merge เข้า `main` แล้ว push สองตัวนี้จึงควรตรงกันเสมอ ถ้าไม่ตรง
+แปลว่ามีงานที่ยังส่งไม่จบ หรือมีของใน `main` ที่ `dev` ไม่มี และงานใหม่ที่เริ่มบน
+ฐานแบบนั้นจะไปปนกับงานชิ้นนั้นตอน merge
+
+ถ้าไม่ตรง **หยุดก่อนแก้ไฟล์แรก** แล้วบอกผู้ใช้ว่าต่างกันกี่ commit และ commit
+อะไรบ้าง:
+
+```bash
+git log --oneline main..dev   # อยู่ใน dev แต่ยังไม่เข้า main
+git log --oneline dev..main   # อยู่ใน main แต่ dev ไม่มี
+```
+
+**ห้ามจัดการให้ตรงกันเอง** ไม่ว่าจะ merge, reset หรือ fast-forward เพราะ commit
+ที่ค้างอยู่อาจเป็นงานของ session อื่นที่ยังทำไม่เสร็จ ให้ผู้ใช้เป็นคนตัดสิน
 
 ### Rules that hold in every tree
 
