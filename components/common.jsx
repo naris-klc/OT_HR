@@ -3542,7 +3542,7 @@ export function PrintChrome({
     canSave && {
       label: 'สองปุ่มต่างกันตรงนี้',
       text: 'พิมพ์ = เปิดกล่องพิมพ์ของเบราว์เซอร์ (เลือกบันทึกเป็น PDF ในนั้นได้) '
-        + `· บันทึก PDF = ได้ไฟล์ ${filename}.pdf ทันที ไม่ต้องผ่านกล่องพิมพ์`,
+        + `· PDF = ได้ไฟล์ ${filename}.pdf ทันที ไม่ต้องผ่านกล่องพิมพ์`,
     },
     ...hints,
   ].filter((line) => line && line.text);
@@ -3557,9 +3557,18 @@ export function PrintChrome({
       <button className="btn with-icon print-go" onClick={() => window.print()} disabled={disabled}>
         <Icon name="printer" className="btn-icon" />พิมพ์
       </button>
+      {/* ป้ายเหลือ PDF คำเดียวกับไอคอน ตั้งแต่ 2026-10-11 — ผู้ใช้สั่ง *"กระชับ
+          ข้อความปุ่ม บันทึก PDF ให้เหลือแค่ ไอคอนและคำว่า PDF ทั้งแอป"* · ชื่อเต็ม
+          อยู่ที่ `aria-label` ให้โปรแกรมอ่านจอ และที่ `title` ให้คนที่ชี้เมาส์ค้าง */}
       {canSave && (
-        <button className="btn with-icon" onClick={save} disabled={disabled || saving}>
-          <Icon name="download" className="btn-icon" />{saving ? 'กำลังสร้างไฟล์…' : 'บันทึก PDF'}
+        <button
+          className="btn with-icon"
+          onClick={save}
+          disabled={disabled || saving}
+          aria-label="บันทึกเป็นไฟล์ PDF"
+          title="บันทึกเป็นไฟล์ PDF"
+        >
+          <Icon name="download" className="btn-icon" />{saving ? 'กำลังสร้างไฟล์…' : 'PDF'}
         </button>
       )}
       {/* ฝาพับของการ์ดข้างล่าง อยู่ในแถวนี้ตามที่ขอ — และเป็น `.fold-pill` ตัวเดียว
