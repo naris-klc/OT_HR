@@ -421,7 +421,7 @@ test('the queue heading reads รออนุมัติ, and the name is its o
   // `.t-name` is what the stylesheet reaches for; without the span the rules
   // above have nothing to hold the title's width against.
   assert.match(queue, /<span className="t-name">/);
-  assert.match(queue, /const queueName = isHr \? 'รออนุมัติ OT' : 'รออนุมัติ';/);
+  assert.match(queue, /const queueName = 'รออนุมัติ';/);
 });
 
 test('ชื่อแผนกใต้หัวข้อไม่ตกไปอยู่บรรทัดใหม่คนเดียว', () => {

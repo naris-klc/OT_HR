@@ -272,7 +272,10 @@ export default function ApprovalQueue({
    * naming a queue the heading calls something else names nothing the reader
    * can see.
    */
-  const queueName = isHr ? 'รออนุมัติ OT' : 'รออนุมัติ';
+  // One name for every บทบาท since 2026-10-11 (รายงาน UX ค.9) — HR's read
+  // 'รออนุมัติ OT' while the menu said that too and the หัวหน้า's said
+  // 'รายการรออนุมัติ'.
+  const queueName = 'รออนุมัติ';
   /**
    * WHICH STATUSES THIS SCREEN ASKS THE SERVER FOR — one place, read by the
    * fetch, by the สถานะ dropdown and by the empty states.

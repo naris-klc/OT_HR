@@ -525,9 +525,9 @@ function Login({ onLogin }) {
 const PAGE = {
   mine: ['บันทึกและประวัติ OT', 'MY OVERTIME'],
   // หัวหน้างาน only — ฝ่ายบุคคล sign from `confirm` below, and no account
-  // reaches both. Renamed with its tab on 2026-08-31; it read 'รออนุมัติ' until
-  // then.
-  approve: ['รายการรออนุมัติ', 'PENDING · MANAGER'],
+  // reaches both. Renamed with its tab on 2026-08-31 to 'รายการรออนุมัติ', and
+  // back to 'รออนุมัติ' on 2026-10-11 with `confirm` — see the tab list.
+  approve: ['รออนุมัติ', 'PENDING · MANAGER'],
   /**
    * `delegated` — รออนุมัติแทน — AND `unsigned` — ใบที่ไม่มีหัวหน้าเซ็นได้ —
    * STOOD HERE UNTIL 2026-09-18, both ฝ่ายบุคคล/ผู้ดูแลระบบ tabs mounting this
@@ -540,7 +540,7 @@ const PAGE = {
    * now signable here, wearing the green ป้าย รับช่วงอนุมัติแทน. See
    * docs/plan-merge-approval-queues.md.
    */
-  confirm: ['รออนุมัติ OT', 'PENDING · HR'],
+  confirm: ['รออนุมัติ', 'PENDING · HR'],
   /**
    * TWO KEYS, ONE COMPONENT — the month as the whole company, and the month as
    * the แผนก this person signs for.
@@ -1495,6 +1495,12 @@ function Shell({ session, onRefresh, onLogout }) {
    *   cost that actually gets paid. A หัวหน้า and ฝ่ายบุคคล talking about
    *   "รออนุมัติ OT" would be talking about two queues.
    *
+   *   ⚠ BOTH ARE `รออนุมัติ` SINCE 2026-10-11 (รายงาน UX ค.9) — ผู้ใช้เลือก
+   *   ชื่อเดียวทุกบทบาท เพราะเมนู หัวการ์ด และแถบล่างบนมือถือเรียกคิวเดียวกัน
+   *   สามชื่อ (รายการรออนุมัติ / รออนุมัติ OT / รออนุมัติ) · the cost above is
+   *   real and was accepted: a sentence about one of them now names its บทบาท
+   *   or its key (`approve` / `confirm`).
+   *
    * · สรุปทีม → รายงาน OT ประจำทีม, and NOT "สรุป OT ภาพรวมทีม" — the other
    *   two report tabs in this app were renamed to รายงาน OT ฝ่ายบัญชี and
    *   รายงาน OT แยกแผนก on the same day, so this one takes the same
@@ -1510,7 +1516,7 @@ function Shell({ session, onRefresh, onLogout }) {
   // routing matrix, on the server; this only decides that the tab exists.
   if (isSigner(user.role)) {
     tabs.push({
-      key: 'approve', label: 'รายการรออนุมัติ', icon: 'inbox', group: 'work', bar: 'queue',
+      key: 'approve', label: 'รออนุมัติ', icon: 'inbox', group: 'work', bar: 'queue',
       badge: queueBadge(counts.pendingMgr),
     });
     /**
@@ -1596,7 +1602,7 @@ function Shell({ session, onRefresh, onLogout }) {
   if (['hr', 'admin'].includes(user.role)) {
     tabs.push({
       key: 'confirm',
-      label: 'รออนุมัติ OT',
+      label: 'รออนุมัติ',
       icon: 'check',
       group: 'work',
       bar: 'queue',

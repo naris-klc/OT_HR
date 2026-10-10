@@ -124,7 +124,7 @@ export default function DepartmentView() {
           <NoticeRow
             tone="warn"
             title={`เดือนนี้ค้างอนุมัติ ${data.pending.count} รายการ (${hours(data.pending.hours)} ชม.) ไม่ถูกนับในสรุปนี้`}
-            detail={`ของพนักงาน ${data.pending.employees} คน · ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนสรุปแผนก`}
+            detail={`ของพนักงาน ${data.pending.employees} คน · ปิดคิวที่หน้า “รออนุมัติ” ก่อนสรุปแผนก`}
           />
         )}
       </NoticeStack>
