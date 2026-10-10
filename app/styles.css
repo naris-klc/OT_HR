@@ -4200,8 +4200,10 @@ td > .approver-line { margin-top: 5px; }
 
 /* แก้ไขข้อมูลพนักงาน, compact (แบบ A, 2026-10-09). The same tokens every box
    reads, set lower on this one form, so the inputs, the dropdowns, the date
-   box and the แผนก chips all follow without a rule of their own. */
-.edit-form.compact { --field-h: 36px; --field-pad-y: 7px; --field-size: 14px; --chip-h: 26px; }
+   box and the แผนก chips all follow without a rule of their own.
+   ตัวอักษรไม่ลด — ใช้ `--field-size` 15px เท่าทั้งแอป (ผู้ใช้สั่ง 2026-10-10:
+   "แก้ให้เสมอกันทั้ง app เป็น 15px") · WAS `--field-size: 14px` until 2026-10-10. */
+.edit-form.compact { --field-h: 36px; --field-pad-y: 7px; --chip-h: 26px; }
 .edit-form.compact .field { gap: 5px; }
 .edit-form.compact .form-grid { gap: 10px 14px; }
 .edit-form.compact .form-group + .form-group { margin-top: 12px; padding-top: 12px; }
