@@ -634,3 +634,20 @@ test('the gap count stands beside the dropdown, not only inside the list', () =>
   assert.ok(css.indexOf('.tab-badge {') < css.indexOf('.section-pick .tab-badge'),
     'a scoped .tab-badge rule was written above the definition');
 });
+
+// ── 4 · บันทึกประวัติระบบ ใช้แท็บชุดเดียวกัน ก็ต้องมี dropdown ของมือถือด้วย ────
+//
+// หน้านั้นใช้ `.section-tabs` ซึ่งถูกซ่อนที่ ≤860px แต่ไม่มี `.section-pick` และยังห่อ
+// ด้วย `.tabs-view` ที่ลบไปแล้ว บนมือถือจึงเหลือการ์ดเปล่าและสลับแท็บไม่ได้ จนถึง
+// 2026-10-10 (docs/plan-ux-audit-2026-10-10.md ก.1)
+
+test('every screen that draws .section-tabs also draws the phone\'s .section-pick', () => {
+  for (const file of [SETTINGS, 'components/LogSystem.jsx']) {
+    const src = sourceOf(file);
+    assert.match(src, /className="row section-tabs"/, `${file} lost its strip`);
+    const at = src.indexOf('<div className="section-pick">');
+    assert.ok(at > 0, `${file} hides its tabs below 860px with nothing in their place`);
+    assert.match(src.slice(at, at + 400), /<PickOne/, `${file}'s phone control is not PickOne`);
+    assert.ok(!src.includes('tabs-view'), `${file} still wraps its tabs in the deleted scroller`);
+  }
+});

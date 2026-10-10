@@ -131,7 +131,6 @@ function TopNotices({ children }) {
 export default function LogSystem() {
   const [tab, setTab] = useState('overview');
   const [noticeSlot, setNoticeSlot] = useState(null);
-  const [tabsRef, tabsEdge] = useScrollEdge(null);
 
   /**
    * The filters, shared across the three list tabs.
@@ -152,19 +151,29 @@ export default function LogSystem() {
   return (
     <NoticeSlot.Provider value={noticeSlot}>
       <div ref={setNoticeSlot} />
+      {/* แถบปุ่มบนจอกว้าง · dropdown บนมือถือ — แบบเดียวกับตั้งค่าระบบ (AdminView)
+          `.section-tabs` ถูกซ่อนที่ ≤860px ตั้งแต่ 2026-09-04 แต่หน้านี้ยังห่อด้วย
+          `.tabs-view` (ตัวเลื่อนแนวนอนที่ถูกลบไปพร้อมกัน) และไม่มี `.section-pick`
+          บนมือถือจึงเหลือการ์ดเปล่า สลับแท็บไม่ได้ จนถึง 2026-10-10 */}
       <div className="card">
-        <div className="tabs-view" data-edge={tabsEdge}>
-          <div className="row section-tabs" ref={tabsRef}>
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                className={`btn ${tab === t.key ? '' : 'ghost'}`}
-                onClick={() => setTab(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+        <div className="row section-tabs">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              className={`btn ${tab === t.key ? '' : 'ghost'}`}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="section-pick">
+          <PickOne
+            label="หน้าบันทึก"
+            value={tab}
+            onChange={setTab}
+            options={TABS.map((t) => ({ value: t.key, label: t.label }))}
+          />
         </div>
       </div>
 
