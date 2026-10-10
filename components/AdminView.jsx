@@ -6160,6 +6160,12 @@ function ResetPassword({ employee, onClose, onDone }) {
 function Holidays() {
   const [rows, setRows] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
+  /**
+   * ช่องปีพิมพ์เป็น พ.ศ. ตั้งแต่ 2026-10-11 (รายงาน UX ค.6) — ตารางข้างใต้เป็น
+   * 01/01/2569 อยู่แล้ว · `year` ยังเป็น ค.ศ. เพราะ API ถามแบบนั้น และเปลี่ยนเมื่อพิมพ์
+   * ครบสี่หลักเท่านั้น ไม่งั้นทุกตัวที่พิมพ์ระหว่างทางเป็นปีที่ถูกโหลด
+   */
+  const [yearText, setYearText] = useState(String(new Date().getFullYear() + 543));
   /** Whether เพิ่มวันหยุด is open — the only way this screen adds one by hand. */
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
@@ -6267,8 +6273,15 @@ function Holidays() {
           styles.css; nothing about the desktop changes. */}
       <div className="row holiday-tools" style={{ marginBottom: 14 }}>
         <div className="field" style={{ maxWidth: 120 }}>
-          <label>ปี (ค.ศ.)</label>
-          <input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+          <label>ปี (พ.ศ.)</label>
+          <input
+            type="number"
+            value={yearText}
+            onChange={(e) => {
+              setYearText(e.target.value);
+              if (/^\d{4}$/.test(e.target.value) && Number(e.target.value) > 2500) setYear(Number(e.target.value) - 543);
+            }}
+          />
         </div>
         <button
           className="btn ghost"

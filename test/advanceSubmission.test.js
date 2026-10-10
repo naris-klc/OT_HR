@@ -44,8 +44,10 @@ test('yesterday and last month are not this rule\'s business', () => {
 test('tomorrow is refused under the default, with today in the sentence', () => {
   const refusal = advanceSubmissionRefusal('2026-08-20', '2026-08-19', DEFAULT_POLICY);
   assert.equal(refusal.status, 400);
-  assert.match(refusal.error, /2026-08-20/);
-  assert.match(refusal.error, /2026-08-19/);
+  // พ.ศ. on screen since 2026-10-11 (รายงาน UX ค.6)
+  assert.match(refusal.error, /20\/08\/2569/);
+  assert.match(refusal.error, /19\/08\/2569/);
+  assert.doesNotMatch(refusal.error, /2026-/);
   // Under 0 there is no window, so the refusal must not name one — a reader
   // sent looking for "ล่วงหน้าได้ไม่เกิน n วัน" would not find it anywhere.
   assert.doesNotMatch(refusal.error, /ไม่เกิน/);
@@ -57,7 +59,7 @@ test('a positive window lets that many days through and no more', () => {
   const refusal = advanceSubmissionRefusal('2026-08-27', '2026-08-19', policy);
   assert.equal(refusal.status, 400);
   // The last date that WOULD work, so nobody has to do the arithmetic.
-  assert.match(refusal.error, /2026-08-26/);
+  assert.match(refusal.error, /26\/08\/2569/);
 });
 
 test('a window that crosses a month end is added in days, not in dates', () => {
@@ -207,7 +209,7 @@ test('a window lets that many days back through and no more', () => {
   assert.equal(refusal.status, 400);
   assert.match(refusal.error, /ไม่สามารถยื่นขอ OT ย้อนหลังเกินกำหนด 7 วันได้/);
   // The earliest date that WOULD work, so nobody has to do the arithmetic.
-  assert.match(refusal.error, /2026-08-12/);
+  assert.match(refusal.error, /12\/08\/2569/);
 });
 
 test('a window that crosses a month start is subtracted in days, not in dates', () => {

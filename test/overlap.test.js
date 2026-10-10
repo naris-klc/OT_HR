@@ -184,7 +184,7 @@ test('the refusal names the existing entry the way its own row prints it', () =>
   const found = findOverlaps(at('2026-08-10', '18:30', '20:30'), existing);
   const line = describeClash(found[0], { statusLabel: (s) => ({ pending_mgr: 'รอหัวหน้า' }[s]) });
 
-  assert.match(line, /2026-08-10/);
+  assert.match(line, /10\/08\/2569/);  // พ.ศ. like the row — 2026-10-11
   assert.match(line, /17:00–19:00/);
   assert.match(line, /รอหัวหน้า/);
   assert.match(line, /30 นาที/);

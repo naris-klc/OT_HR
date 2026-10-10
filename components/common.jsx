@@ -726,7 +726,7 @@ export function SegmentList({ segments }) {
     <ul className="seg-list">
       {segments.map((s, i) => (
         <li key={i}>
-          {s.date} {s.start}–{s.end} · {s.dayType === 'holiday' ? 'วันหยุด' : 'วันทำงาน'}
+          {thaiDate(s.date)} {s.start}–{s.end} · {s.dayType === 'holiday' ? 'วันหยุด' : 'วันทำงาน'}
           {DAY_REASON_LABEL[s.dayReason] ? ` (${DAY_REASON_LABEL[s.dayReason]})` : ''} ·
           {' '}×{s.multiplier} · {hours(s.hours)} ชม.
         </li>

@@ -2,7 +2,7 @@
 
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { api, thaiStamp } from '@/lib/api.js';
+import { api, thaiDate, thaiStamp } from '@/lib/api.js';
 import { ROLE_LABEL_TH } from '@/lib/roles.js';
 import { DateRange } from './PickDate.jsx';
 import {
@@ -311,7 +311,7 @@ function Overview({ onOpenTab, onFilter }) {
         */}
         <div className="log-chart">
           {data.days.map((d) => (
-            <div className="log-bar" key={d.date} title={`${d.date} · ${d.n} ครั้ง · แก้ไข ${d.writes} · เข้าระบบไม่สำเร็จ ${d.failedLogins}`}>
+            <div className="log-bar" key={d.date} title={`${thaiDate(d.date)} · ${d.n} ครั้ง · แก้ไข ${d.writes} · เข้าระบบไม่สำเร็จ ${d.failedLogins}`}>
               <div className="col">
                 <div className="fill" style={{ height: `${Math.round((d.n / busiest) * 100)}%` }}>
                   {/* Only on the days that have one. The height is the share of
