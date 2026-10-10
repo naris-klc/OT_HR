@@ -232,7 +232,10 @@ worktree full of files does not surface in everybody else's `git status`.
 - **The database.** Every tree reads the same `.env`, which points at the one
   `mongod` HR is using. `npm run seed`, `npm run backup`, `npm run restore` and
   every `migrate:` script reach across every worktree there is. File isolation
-  is all you bought.
+  is all you bought. **บนเครื่อง dev (`.env` มี `NODE_ENV=development`) ทดสอบกับ
+  ฐานนั้นได้เลย** — `next dev` ต่อฐานใน `.env` ไม่ต้อง build แยกหรือสร้างฐาน QA และ
+  แก้ข้อมูลเพื่อทดสอบได้ · seed/restore/`migrate:` ยังต้องถาม · สั่งไว้ 2026-10-10
+  — กติกาเต็มอยู่ใน [docs/qa-release.md](docs/qa-release.md) §เครื่อง dev
 - **The ports.** The verify recipe below uses `-p 3001`; two sessions verifying
   at once collide on it. Pick a port nobody is holding, and name the build
   directory after your task — `VERIFY_DIST_DIR=.next-verify-<task>`, which
@@ -274,6 +277,13 @@ laptop** — the machine docs/network.md gives an address for.
 > below is the laptop's rule, not a universal one.
 
 On the laptop a build is a deploy and the two are the same act.
+
+> **A dev machine is neither of these.** Since 2026-10-10 production is on
+> PMSV and is deployed only from there, by the user. A machine whose `.env`
+> carries `NODE_ENV=development` serves nobody: verify on it with `next dev`
+> against its own database, no scratch `distDir` build and no QA database —
+> docs/qa-release.md §เครื่อง dev. Everything below still applies to a
+> machine without that line.
 
 Three facts about this box that decide how a change gets verified, all
 established on 2026-08-27:
