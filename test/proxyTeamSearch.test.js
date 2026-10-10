@@ -468,8 +468,8 @@ test('ชื่อแผนกใต้หัวข้อไม่ตกไป�
     queue.indexOf('<span className="q-scope">'),
     queue.indexOf('</span>', queue.indexOf('<span className="q-scope">')),
   );
-  assert.ok(scope.includes("`เฉพาะ${deptPhrase(user.department?.name) || 'แผนก'}`"), 'ชื่อแผนกเดียวหายไปจากหัวข้อ');
-  assert.ok(scope.includes('`เฉพาะ ${user.coversDepartments.length} แผนกที่คุณดูแล`'), 'คนที่ดูแลหลายแผนกยังถูกบอกว่าเห็นแผนกเดียว');
+  // 2026-10-11 (ฉ.2): the clause is the แผนก filter's words — test/queueRoleFilter.test.js
+  assert.ok(scope.includes('{deptName}'), 'หัวข้อไม่ได้บอกแผนกตามตัวกรอง');
   assert.match(css, /\.hint \.q-scope \{ white-space: nowrap; \}/);
   // Both classes, so a name this short cannot escape into another component —
   // the trap `.box` sprang on the dropdown's tick-box, in this same stylesheet.

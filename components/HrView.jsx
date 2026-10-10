@@ -1486,20 +1486,18 @@ export default function HrView({
             </div>
             <div className="hint" style={{ margin: 0 }}>
               {periodLabel(period)}
-              {/* Whose rows these are, said once and only where it is not the
-                  whole company — the wide screen needs no qualifier, and a
-                  reader who has both tabs needs to know which one is open. */}
-              {scope === 'team' && ' · เฉพาะแผนกที่คุณเซ็นอนุมัติ'}
-              {/* AND WHICH แผนก, when one is chosen — 2026-09-10.
+              {/* WHICH แผนก, IN THE FILTER'S OWN WORDS — ทุกแผนก until one is
+                  chosen, on both tabs, since 2026-10-11 (รายงาน UX ฉ.4).
 
-                  The same rule as the line above it: said only where it is not
-                  everything. It reads as part of the same sentence because it
-                  is the same fact — this line is what the screen is a report OF,
-                  and once the month has been cut by department that is half of
-                  the answer. The dropdown itself is two rows down and scrolls
-                  away; the heading does not, and a total read without knowing
-                  whose it is is the figure this screen exists to get right. */}
-              {deptName && ` · ${deptName}`}
+                  The team tab read `เฉพาะแผนกที่คุณเซ็นอนุมัติ` and the company
+                  tab read nothing, so a การเงิน holding both saw two identical
+                  tables and one hint. ผู้ใช้เลือกถ้อยคำตามตัวกรองเพราะ *"น่าจะ
+                  เป็นถ้อยคำกลางที่สุด"* — ทุกแผนก is true of whatever the tab
+                  reaches. The chosen name was added 2026-09-10: the dropdown
+                  scrolls away and the heading does not, and a total read
+                  without knowing whose it is is the figure this screen exists
+                  to get right. */}
+              {` · ${deptName || 'ทุกแผนก'}`}
             </div>
           </div>
           <div className="row" style={{ gap: 10, alignItems: 'center' }}>
