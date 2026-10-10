@@ -429,7 +429,9 @@ test('the notice is at the top of the page, and takes no room when there is none
   const ret = jsx.lastIndexOf('return (', stack);
   assert.ok(!jsx.slice(ret, stack).includes('<div className="card">'), 'the notices are inside the card again');
   assert.ok(jsx.indexOf('<div className="card">', stack) > stack, 'the card does not follow the notices');
-  assert.match(jsx, /<NoticeStack id="entries">\s*\n\s*<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>\s*\n\s*<\/NoticeStack>/);
+  assert.match(jsx, /<NoticeStack id="entries">\s*\n\s*<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>/);
+  // …and the page's load error is a row in the same box since 2026-10-10 (รายงาน UX ข.2)
+  assert.match(jsx.slice(stack, jsx.indexOf('</NoticeStack>', stack)), /\{error && <NoticeRow tone="error" title=\{error\} \/>\}/);
   assert.match(css, /^\.notice-stack\.is-empty \{ display: none; \}/m);
   assert.ok(!/^\.notice-stack\.entry-notice/m.test(css), 'the slot under the name came back');
 });

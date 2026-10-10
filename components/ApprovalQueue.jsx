@@ -1702,7 +1702,8 @@ export default function ApprovalQueue({
         </div>
       )}
 
-      {error && <div style={{ padding: '0 18px' }}><Alert kind="error">{error}</Alert></div>}
+      {/* แถวแดงในกล่องแจ้งเตือนบนสุดของหน้า ตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — เคยเป็น `Alert` บนการ์ด */}
+      {error && <NoticeStack id="queue-error"><NoticeRow tone="error" title={error} /></NoticeStack>}
 
       {/*
         ── "YOU JUST CLEARED IT", ON A SCREEN THAT STILL HAS ROWS ON IT ───────

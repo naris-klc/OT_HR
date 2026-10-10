@@ -1066,7 +1066,8 @@ function LogList({
         </Field>
       </div>
 
-      {error && <Alert kind="error">{error}</Alert>}
+      {/* แถวแดงในกล่องแจ้งเตือนบนสุดของหน้า ตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — เคยเป็น `Alert` บนการ์ด */}
+      {error && <NoticeStack id="log-error"><NoticeRow tone="error" title={error} /></NoticeStack>}
       {!data && !error && <Empty>กำลังโหลด…</Empty>}
 
       {data && !data.records.length && (

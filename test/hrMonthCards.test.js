@@ -710,7 +710,13 @@ test('the panel is above the marks it explains, which one of them once only clai
   // The notes that stayed: footnotes to figures already read, not warnings to
   // read before starting.
   const notes = hrView.slice(open, hrView.indexOf('</>', open));
-  assert.ok(notes.includes('supersededCount') && notes.includes('birthDates'), 'the footnotes were pulled up too');
+  assert.ok(notes.includes('supersededCount'), 'the footnotes were pulled up too');
+  // ยังไม่มีวันเกิด n คน WAS THE OTHER FOOTNOTE until 2026-10-10 — on a phone it
+  // sat under every card on the page, where nobody reached it. It is a row in
+  // the top box now (รายงาน UX ข.2, approved from a mockup).
+  assert.ok(!/birthDates\.missing/.test(notes), 'the birthday row went back to the foot of the card');
+  const box = hrView.slice(hrView.indexOf('<NoticeStack id="month">'), hrView.indexOf('</NoticeStack>', hrView.indexOf('<NoticeStack id="month">')));
+  assert.match(box, /data\?\.birthDates\?\.missing > 0 && \(\s*<NoticeRow/);
   layoutIsTheStylesheets();
 });
 

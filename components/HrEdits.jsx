@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, thaiDate, thaiStamp, dayName, periodLabel } from '@/lib/api.js';
-import { Alert, Empty, Changes, StatusChip, editsOf } from './common.jsx';
+import { Empty, Changes, NoticeRow, NoticeStack, StatusChip, editsOf } from './common.jsx';
 import { PolicyVersionChange } from './PolicyVersion.jsx';
 import Icon from './icons.jsx';
 
@@ -77,7 +77,8 @@ export default function HrEdits({ employee, period, status, onClose }) {
         </button>
       </div>
 
-      {error && <Alert kind="error">{error}</Alert>}
+      {/* แถวแดงในกล่องแจ้งเตือนบนสุดของหน้า ตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — เคยเป็น `Alert` บนการ์ด */}
+      {error && <NoticeStack id="edits-error"><NoticeRow tone="error" title={error} /></NoticeStack>}
 
       {!entries ? (
         <Empty>กำลังโหลด…</Empty>

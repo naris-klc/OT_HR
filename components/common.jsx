@@ -259,7 +259,7 @@ const NoticePageCtx = React.createContext(null);
 export function NoticePage({ className = 'page', children }) {
   const [stacks, setStacks] = React.useState([]);
   const api = React.useMemo(() => ({
-    add: (s) => setStacks((list) => [...list.filter((x) => x.sid !== s.sid), s].sort((a, b) => (
+    add: (s) => setStacks((list) => [...list.filter((x) => x.sid !== s.sid && x.el.isConnected), s].sort((a, b) => (
       // eslint-disable-next-line no-bitwise
       a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))),
     remove: (sid) => setStacks((list) => list.filter((x) => x.sid !== sid)),
@@ -317,22 +317,20 @@ export function NoticeStack({ id, children, className = '' }) {
     } catch { /* ซ่อนได้แค่ในหน้านี้ */ }
   }
 
-  if (host) {
-    return (
-      <div ref={elRef} className="notice-stack no-print is-empty is-merged">
-        {createPortal(<NoticeCtx.Provider value={host.ctx}>{children}</NoticeCtx.Provider>, host.el)}
-      </div>
-    );
-  }
-
+  // โครงเดียวกันทั้งสองสถานะ — ถ้าสลับเป็นคนละโครง React จะสร้าง div ใหม่ และ
+  // `el` ที่ลงทะเบียนไว้กับหน้าจะเป็นโหนดที่หลุดจาก DOM แล้ว (เจอ 2026-10-10:
+  // กล่องบอก "1 เรื่อง" แต่แถวไปอยู่ในโหนดที่ไม่มีใครเห็น)
   return (
     <NoticeCtx.Provider value={ctx}>
       <div
         ref={elRef}
-        className={`notice-stack no-print${hidden ? ' is-hidden' : ''}${all.length ? '' : ' is-empty'}${className ? ` ${className}` : ''}`}
-        role="region" aria-label="แจ้งเตือน"
+        className={host
+          ? 'notice-stack no-print is-empty is-merged'
+          : `notice-stack no-print${hidden ? ' is-hidden' : ''}${all.length ? '' : ' is-empty'}${className ? ` ${className}` : ''}`}
+        role={host ? undefined : 'region'} aria-label={host ? undefined : 'แจ้งเตือน'}
       >
-        {all.length > 0 && (
+        {host && createPortal(<NoticeCtx.Provider value={host.ctx}>{children}</NoticeCtx.Provider>, host.el)}
+        {!host && all.length > 0 && (
           <div className="notice-head">
             {hidden && (
               <span className="notice-dots" aria-hidden="true">
@@ -349,7 +347,7 @@ export function NoticeStack({ id, children, className = '' }) {
             )}
           </div>
         )}
-        {children}
+        {!host && children}
       </div>
     </NoticeCtx.Provider>
   );

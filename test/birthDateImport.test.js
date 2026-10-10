@@ -492,5 +492,8 @@ test('ผลการนำเข้าที่เซิร์ฟเวอร�
 test('ข้อความผิดพลาดบนการ์ดทะเบียน ปิดได้', () => {
   const file = read('components/AdminView.jsx');
   const src = file.slice(file.indexOf('function Employees('), file.indexOf('function ResetPassword('));
-  assert.match(src, /onClose=\{\(\) => setError\(''\)\}/, 'แถบแดงบนการ์ดนี้ต้องมีปุ่มปิด');
+  // เป็น toast ข้อผิดพลาดตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — ข้อผิดพลาดไม่หายเอง
+  // และมี × ของ toast (components/Toast.jsx) · เดิมคือ `onClose` บน `Alert`
+  assert.match(src, /if \(!error\) return;\s*toast\(error, 'error'\);\s*setError\(''\);/, 'ข้อผิดพลาดบนหน้านี้ต้องปิดได้');
+  assert.ok(!src.includes(`<Alert kind="error" onClose={() => setError('')}>`), 'แถบแดงกลับไปอยู่บนการ์ด');
 });

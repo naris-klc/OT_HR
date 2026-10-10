@@ -6,7 +6,11 @@ import React, {
 
 const ToastContext = createContext(() => {});
 
-/** `const toast = useToast(); toast('ยืนยันแล้ว'); toast(err.message, 'error');` */
+/**
+ * `const toast = useToast(); toast('ยืนยันแล้ว'); toast(err.message, 'error');`
+ * `toast(node, 'ok', { sticky: true })` — อยู่จนกว่าจะกด × เหมือนข้อผิดพลาด ใช้กับ
+ * รหัสผ่านที่ HR ต้องจดหรืออ่านให้พนักงาน (2026-10-10 · เคยเป็นกล่อง + รับทราบ)
+ */
 export const useToast = () => useContext(ToastContext);
 
 const LIFE = 4000;
@@ -36,13 +40,13 @@ export function ToastHost({ children }) {
     setItems((list) => list.filter((x) => x.id !== id));
   }, []);
 
-  const push = useCallback((message, kind = 'ok') => {
+  const push = useCallback((message, kind = 'ok', { sticky = false } = {}) => {
     if (!message) return null;
     const id = (seq.current += 1);
     // Oldest goes when a fourth arrives: a stack taller than that covers the
     // thing it is reporting on, which on a phone is most of the screen.
     setItems((list) => [...list.slice(-(MAX - 1)), { id, message, kind }]);
-    if (kind !== 'error') {
+    if (kind !== 'error' && !sticky) {
       timers.current.set(id, setTimeout(() => dismiss(id), LIFE));
     }
     return id;

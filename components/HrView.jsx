@@ -7,7 +7,7 @@ import {
 } from '@/lib/api.js';
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
-  Alert, ClearButton, ClearFilters, Empty, InlineMark, NoticeRow, NoticeStack, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
+  ClearButton, ClearFilters, Empty, InlineMark, NoticeRow, NoticeStack, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
   PAGE_SIZE, RowAction, ShowMore, TablePager, WhoName, pageWindow,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -1416,6 +1416,43 @@ export default function HrView({
           />
         )}
 
+        {/* An employee with no วันเกิด on record is computed as though no
+            weekday of theirs was ever a holiday, which looks identical to
+            an employee whose birthday fell on a Sunday.
+
+            SHOWN WHETHER THE RULE IS ON OR OFF, SINCE 2026-09-03, and the
+            widening is the direct cost of a removal. It used to be drawn
+            only while the rule was OFF, because with it on the same gap was
+            said better by วันเกิดของเดือนนี้ — in its list of people whose
+            month could not be checked — and saying it twice on one screen
+            made both copies easier to skip. That table is gone with the
+            rest of ฝ่ายบุคคล's birthday work, and this is now the only place
+            anybody is told. It matters MORE with the rule on, not less: a
+            person with no วันเกิด on record cannot tick the box on their own
+            request, and the refusal they meet says to ask ฝ่ายบุคคล. */}
+        {data?.birthDates?.missing > 0 && (
+          <NoticeRow
+            tone="info"
+            title={`ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ`}
+            detail={data.birthDates.ruleEnabled
+              ? 'คนเหล่านี้ติ๊กช่อง “วันเกิด” ในใบขอ OT ไม่ได้ จนกว่าจะกรอกวันเกิดให้'
+              : 'กรอกให้ครบก่อนเปิดกฎสวัสดิการวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง'}
+            more={(
+              <>
+                <ShowMore
+                  items={data.birthDates.missingFor}
+                  unit="คน"
+                  join=" · "
+                  render={(e) => `${e.code} ${e.name}`}
+                />
+                <div style={{ marginTop: 4, fontSize: 11.5 }}>
+                  <AddBirthDateHint onOpen={onOpenRoster} />
+                </div>
+              </>
+            )}
+          />
+        )}
+
         {error && <NoticeRow tone="error" title={error} />}
       </NoticeStack>
       <div className="card flush month-panel">
@@ -2745,38 +2782,10 @@ export default function HrView({
                 </div>
               )}
 
-              {/* An employee with no วันเกิด on record is computed as though no
-                  weekday of theirs was ever a holiday, which looks identical to
-                  an employee whose birthday fell on a Sunday.
-
-                  SHOWN WHETHER THE RULE IS ON OR OFF, SINCE 2026-09-03, and the
-                  widening is the direct cost of a removal. It used to be drawn
-                  only while the rule was OFF, because with it on the same gap was
-                  said better by วันเกิดของเดือนนี้ — in its list of people whose
-                  month could not be checked — and saying it twice on one screen
-                  made both copies easier to skip. That table is gone with the
-                  rest of ฝ่ายบุคคล's birthday work, and this is now the only place
-                  anybody is told. It matters MORE with the rule on, not less: a
-                  person with no วันเกิด on record cannot tick the box on their own
-                  request, and the refusal they meet says to ask ฝ่ายบุคคล. */}
-              {data.birthDates?.missing > 0 && (
-                <Alert kind="info">
-                  {`ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ`}
-                  {data.birthDates.ruleEnabled
-                    ? ' — คนเหล่านี้ติ๊กช่อง “วันเกิด” ในใบขอ OT ไม่ได้ จนกว่าจะกรอกวันเกิดให้'
-                    : ' — กรอกให้ครบก่อนเปิดกฎสวัสดิการวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง'}
-                  <ShowMore
-                    style={{ marginTop: 4 }}
-                    items={data.birthDates.missingFor}
-                    unit="คน"
-                    join=" · "
-                    render={(e) => `${e.code} ${e.name}`}
-                  />
-                  <div style={{ marginTop: 4, fontSize: 11.5 }}>
-                    <AddBirthDateHint onOpen={onOpenRoster} />
-                  </div>
-                </Alert>
-              )}
+              {/* ยังไม่มีวันเกิดของพนักงาน n คน อยู่ท้ายการ์ดนี้เป็น `Alert` จนถึง
+                  2026-10-10 — บนมือถือตกไปล่างสุดของหน้า · ตอนนี้เป็นแถวในกล่อง
+                  แจ้งเตือนบนสุด (`NoticeStack id="month"`) รายชื่ออยู่หลัง ▾
+                  (รายงาน UX ข.2) */}
             </div>
 
           </>

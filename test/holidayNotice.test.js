@@ -585,3 +585,17 @@ test('หนึ่งหน้าหนึ่งกล่อง — กล่อ
   assert.match(modal.slice(0, modal.indexOf('\n}\n')), /<NoticePageCtx\.Provider value=\{null\}>/,
     'กล่องในป๊อปอัปจะหนีไปรวมกับกล่องของหน้าข้างหลัง');
 });
+
+/** ข.2 ในรายงาน UX 2026-10-10 — แบนเนอร์ขึ้นกล่องบนสุด ผลของปุ่มเป็น toast */
+test('ไม่มีกล่อง + ปุ่ม รับทราบ บนหน้าตั้งค่า และหน้าที่ไม่มีกล่องเองวางกล่องว่างไว้บนสุด', () => {
+  const admin = readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8');
+  const profile = readFileSync(join(ROOT, 'components/ProfileView.jsx'), 'utf8');
+  const hr = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
+  const strip = (s) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/>\s*รับทราบ\s*</.test(strip(admin)), 'ผลของปุ่มกลับไปเป็นกล่อง + รับทราบ');
+  assert.match(admin, /<NoticeStack id="settings" \/>\s*\{\/\* ── EIGHT SECTIONS/, 'กล่องว่างบนสุดของตั้งค่าระบบหายไป');
+  assert.match(profile, /<div className="stack profile-page">[\s\S]{0,300}<NoticeStack id="profile" \/>/);
+  assert.match(admin, /toast\(<IssuedMessage issued=\{issued\} \/>, issued\.missing \? 'error' : 'ok', \{ sticky: true \}\)/,
+    'รหัสผ่านที่เพิ่งออกต้องอยู่จนกด × — HR ต้องจด');
+  assert.ok(!/<Alert kind="info">\s*\{`ยังไม่มีวันเกิด/.test(hr), 'แบนเนอร์วันเกิดกลับไปอยู่ท้ายการ์ด');
+});

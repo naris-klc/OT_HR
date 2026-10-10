@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
 import { DELEGATED_APPROVAL_RECORDED } from '@/lib/delegation.js';
-import { Alert, Empty, Field, Modal, PickOne, RowAction } from './common.jsx';
+import { Alert, Empty, Field, Modal, NoticeRow, NoticeStack, PickOne, RowAction } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
 import Icon from './icons.jsx';
@@ -124,14 +124,18 @@ export default function Delegation({ user, scope = 'mine' }) {
         queue's copy; the quotes already mark it, and the tail's bold is the
         one thing on this line worth a weight.
       */}
-      <Alert kind="info">
-        <span title={`การมอบหมายหมดอายุเองตามวันที่กำหนด ไม่มีอะไรต้องกลับมาปิด · เป็นการเพิ่มสิทธิ์ ไม่ใช่ย้าย หัวหน้างานเจ้าของคิวยังอนุมัติเองได้ตลอด · ทุกการอนุมัติของผู้รับช่วง${DELEGATED_APPROVAL_RECORDED} · ผู้รับช่วงมอบหมายต่อเป็นทอดไม่ได้`}>
-          <strong>หมดอายุตามกำหนด</strong> · ให้สิทธิ์อนุมัติจะบันทึกว่า “ทำแทน” พร้อมชื่อ ·{' '}
-          <strong>ส่งต่อไม่ได้</strong>
-        </span>
-      </Alert>
-
-      {error && <Alert kind="error">{error}</Alert>}
+      {/* `Alert` ในการ์ดจนถึง 2026-10-10 · เป็นแถวในกล่องแจ้งเตือนบนสุดของหน้า
+          (รายงาน UX ข.2) — กล่องนี้ส่งแถวไปรวมในกล่องที่หน้าแม่วางไว้บนสุด
+          (`NoticePage` · ตั้งค่าระบบและโปรไฟล์ต่างมีกล่องว่างไว้รับ) สี่ข้อเท็จจริง
+          เดิมยังครบ: หัวเรื่องสองข้อ รายละเอียดอีกสอง */}
+      <NoticeStack id="delegation">
+        <NoticeRow
+          tone="info"
+          title="การมอบหมายหมดอายุเองตามกำหนด · ผู้รับช่วงมอบหมายต่อเป็นทอดไม่ได้"
+          detail={`เป็นการเพิ่มสิทธิ์ ไม่ใช่ย้าย หัวหน้างานเจ้าของคิวยังอนุมัติเองได้ตลอด · ทุกการอนุมัติของผู้รับช่วง${DELEGATED_APPROVAL_RECORDED}`}
+        />
+        {error && <NoticeRow tone="error" title={error} />}
+      </NoticeStack>
 
       {!rows ? <Empty>กำลังโหลด…</Empty> : groups.length === 0 ? (
         <Empty>{all ? 'ยังไม่มีการมอบหมายในระบบ' : 'ยังไม่เคยมอบหมายผู้รับช่วง'}</Empty>

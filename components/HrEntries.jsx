@@ -7,7 +7,7 @@ import {
   Modal, NoBreakMark, ProxyMark,
   RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
-  NoticeStack, RowAction, ShowMore, StatusChip, editsOf, trailOf,
+  NoticeRow, NoticeStack, RowAction, ShowMore, StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail, isBirthdayWelfare, isProxyFiled } from '@/lib/entries.js';
 import {
@@ -616,6 +616,8 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
         worse than no link — it passes nothing and gets a plain sentence. */}
     <NoticeStack id="entries">
       <PolicyVersionBanner spread={spread} onGoMonthly={onClose} />
+      {/* ข้อผิดพลาดของหน้าอยู่ในกล่องเดียวกัน ตั้งแต่ 2026-10-10 — เคยเป็น `Alert` ในการ์ด */}
+      {error && <NoticeRow tone="error" title={error} />}
     </NoticeStack>
     <div className="card">
       <div className="row" style={{ alignItems: 'flex-start' }}>
@@ -640,8 +642,6 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
           กลับ
         </button>
       </div>
-
-      {error && <Alert kind="error">{error}</Alert>}
 
       {!entries ? (
         <Empty>กำลังโหลด…</Empty>
