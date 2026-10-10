@@ -604,7 +604,10 @@ function CompanySheet({ company, periods }) {
                           เหมารายวัน department is a mark nobody reads. */}
                       {row.entryCount === 0 && zeroRowReason(row.department) && (
                         <div className="note-mark">
-                          ไม่มี OT — {zeroRowReason(row.department)}
+                          {/* The none label IS ไม่มี OT since 2026-10-11 — say it once. */}
+                          {zeroRowReason(row.department) === 'ไม่มี OT'
+                            ? 'ไม่มี OT'
+                            : `ไม่มี OT — ${zeroRowReason(row.department)}`}
                         </div>
                       )}
                     </td>

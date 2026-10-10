@@ -29,7 +29,7 @@ test('an ordinary department explains nothing — its nought is about the month'
 });
 
 test('the two modes each name themselves', () => {
-  assert.equal(zeroRowReason({ otMode: 'none' }), 'ไม่มีโอที');
+  assert.equal(zeroRowReason({ otMode: 'none' }), 'ไม่มี OT');
   assert.equal(zeroRowReason({ otMode: 'daily' }), 'เหมารายวัน');
 });
 

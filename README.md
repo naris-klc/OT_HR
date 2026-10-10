@@ -1434,7 +1434,7 @@ lookup ที่ไม่เจออะไรกับบทบาทที่�
 | นำเข้าพนักงานจาก CSV | ✅ | ✅ | `rosterPermission` ต่อแถว |
 | **แผนก** | | | |
 | เพิ่มแผนก | ✅ | ✅ | `departmentPermission` |
-| แก้ชื่อ / รหัส / เพดาน / รูปแบบโอที | ✅ | ✅ | `departmentPermission` |
+| แก้ชื่อ / รหัส / เพดาน / รูปแบบ OT | ✅ | ✅ | `departmentPermission` |
 | ปิดใช้งานแผนก | ❌ | ✅ | `departmentPermission` |
 | เปิดใช้งานแผนกคืน | ❌ | ✅ | `departmentPermission` |
 | ลบแผนกถาวร — **เฉพาะแผนกที่ไม่มีอะไรอ้างถึง** | ❌ | ✅ | `departmentDeletePermission` + `departmentDeleteBlock` |

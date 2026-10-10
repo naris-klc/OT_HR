@@ -48,7 +48,7 @@ export const POST = route(async (req) => {
   // Refused rather than defaulted — see `otModeFrom`. A department created
   // with a mode nobody recognises would read as an ordinary one.
   const mode = otModeFrom(otMode);
-  if (mode === null) return fail('รูปแบบโอทีของแผนกไม่ถูกต้อง', 400);
+  if (mode === null) return fail('รูปแบบ OT ของแผนกไม่ถูกต้อง', 400);
 
   const department = await Department.create({
     code, name, nameTh,

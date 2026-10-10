@@ -665,7 +665,7 @@ function capNote(policy) {
     : 'กรอก 0 = ทุกใบจะติดธง “เกินเพดาน” ให้ฝ่ายบุคคลตรวจ แต่ยังยื่นได้ '
       + '(ตั้งค่าปัจจุบันคือ “เตือน” ไม่ใช่ “ปฏิเสธ”)';
   return `หมายเหตุ: เว้นว่าง = ไม่จำกัดเพดาน · ${zero}`
-    + ' · เพดานนับรวมวันหยุดด้วย ถ้าต้องการปิดโอทีเฉพาะวันทำงานปกติ ให้ตั้งที่ “รูปแบบโอที” ในปุ่มแก้ไข';
+    + ' · เพดานนับรวมวันหยุดด้วย ถ้าต้องการปิด OT เฉพาะวันทำงานปกติ ให้ตั้งที่ “รูปแบบ OT” ในปุ่มแก้ไข';
 }
 
 /** The line printed under the table; `capNote` is the full sentence and lives in the inputs' `title`. */
@@ -686,7 +686,7 @@ function capNoteShort(policy) {
  */
 const DEPT_ACTIVE_LOCK = 'ปิด/เปิดใช้งานแผนก ทำได้โดยผู้ดูแลระบบเท่านั้น '
   + '— เป็นวิธีเดียวที่จะเอาแผนกซึ่งมีประวัติแล้วออกจากระบบ พนักงานในแผนกจะยื่น OT ไม่ได้ '
-  + 'และแผนกจะหายจากช่องเลือกทุกที่ · ชื่อ รหัส เพดาน หัวหน้า และรูปแบบโอที แก้ได้ตามปกติที่ปุ่ม “แก้ไข”';
+  + 'และแผนกจะหายจากช่องเลือกทุกที่ · ชื่อ รหัส เพดาน หัวหน้า และรูปแบบ OT แก้ได้ตามปกติที่ปุ่ม “แก้ไข”';
 
 /** What ปิดใช้งาน DOES, behind the (?) beside สถานะ in แก้ไขแผนก.
 
@@ -992,7 +992,7 @@ function Departments({ user, onGo, roster }) {
                 <td className="name-col">
                   {d.nameTh || d.name}
                   {/* Only when it is not the ordinary one. A chip on every row
-                      saying "มีโอทีตามปกติ" would leave the two rows that
+                      saying "มี OT ตามปกติ" would leave the two rows that
                       matter looking like the rest of the table. */}
                   {otModeOf(d) !== 'normal' && (
                     <div>
@@ -1222,7 +1222,7 @@ const SIGNED_BY_HR_TIP = 'ปกติใบ OT ต้องผ่านหั�
   + ' และมีลายเซ็นเดียว · ใบที่ยื่นไปแล้วยังค้างอยู่ขั้นเดิม ไม่ย้ายตาม';
 
 /** Said in full once, because every clause of it is a thing somebody asks. */
-const OT_MODE_TIP = 'เลือก "ไม่มีโอที" หรือ "เหมารายวัน" แล้วพนักงานแผนกนี้จะยื่นโอทีของ'
+const OT_MODE_TIP = 'เลือก "ไม่มี OT" หรือ "เหมารายวัน" แล้วพนักงานแผนกนี้จะยื่น OT ของ'
   + 'วันทำงานปกติไม่ได้ ระบบจะปฏิเสธพร้อมบอกเหตุผล · วันหยุดบริษัทและสวัสดิการวันเกิด'
   + 'ยังยื่นได้ตามปกติ และฝ่ายบุคคลยังบันทึกวันเกิดให้ได้เหมือนเดิม '
   + '· ไม่เหมือนกับการตั้งเพดานเป็น 0 ซึ่งจะไปปิดวันหยุดด้วย';
@@ -1405,10 +1405,10 @@ function DepartmentForm({
         </section>
 
         <section className="form-group">
-          <div className="gh">รูปแบบโอที</div>
+          <div className="gh">รูปแบบ OT</div>
           <div className="form-grid">
             <PickOne
-              label="โอทีวันทำงานปกติ"
+              label="OT วันทำงานปกติ"
               tip={OT_MODE_TIP}
               value={form.otMode}
               onChange={(v) => set({ otMode: v })}
