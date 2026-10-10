@@ -468,7 +468,7 @@ test('ชื่อแผนกใต้หัวข้อไม่ตกไป�
     queue.indexOf('<span className="q-scope">'),
     queue.indexOf('</span>', queue.indexOf('<span className="q-scope">')),
   );
-  assert.ok(scope.includes("`เฉพาะแผนก${user.department?.name || ''}`"), 'ชื่อแผนกเดียวหายไปจากหัวข้อ');
+  assert.ok(scope.includes("`เฉพาะ${deptPhrase(user.department?.name) || 'แผนก'}`"), 'ชื่อแผนกเดียวหายไปจากหัวข้อ');
   assert.ok(scope.includes('`เฉพาะ ${user.coversDepartments.length} แผนกที่คุณดูแล`'), 'คนที่ดูแลหลายแผนกยังถูกบอกว่าเห็นแผนกเดียว');
   assert.match(css, /\.hint \.q-scope \{ white-space: nowrap; \}/);
   // Both classes, so a name this short cannot escape into another component —

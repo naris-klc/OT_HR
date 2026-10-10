@@ -151,6 +151,18 @@ const OPENS_ON = Object.freeze({ division_manager: 'dept_manager' });
  * first-step queue does not list any more (`wholeFlow`), so it went with them
  * rather than sitting here as a branch nothing can reach.
  */
+/**
+ * "แผนก" + ชื่อแผนก โดยไม่เติมซ้ำ — 2026-10-10 · ชื่อแผนกบนระบบจริงเกือบทุกแผนก
+ * ขึ้นต้นด้วย "แผนก" อยู่แล้ว (แผนกบัญชีและการเงิน) หัวคิวจึงขึ้น
+ * "เฉพาะแผนกแผนกบัญชี…" ให้ผู้อนุมัติที่ถือแผนกเดียวเห็นทุกวัน · seed ตั้งชื่อ
+ * แบบไม่มีคำนำหน้า (วิศวกรรม) เลยไม่เคยเจอ · ชื่ออังกฤษ (IT) เว้นวรรคหนึ่งช่อง
+ */
+function deptPhrase(name) {
+  if (!name) return '';
+  if (name.startsWith('แผนก')) return name;
+  return /^[\u0E00-\u0E7F]/.test(name) ? `แผนก${name}` : `แผนก ${name}`;
+}
+
 function watchingNote(entry, stage, user) {
   if (entry?.status === stage) {
     return isOwnRequest(entry, user)
@@ -1340,7 +1352,7 @@ export default function ApprovalQueue({
                         <span className="q-scope">
                           {user.coversDepartments?.length > 1
                             ? `เฉพาะ ${user.coversDepartments.length} แผนกที่คุณดูแล`
-                            : `เฉพาะแผนก${user.department?.name || ''}`}
+                            : `เฉพาะ${deptPhrase(user.department?.name) || 'แผนก'}`}
                         </span>
                       </>
                     )}
@@ -4083,7 +4095,7 @@ function QueueCleared({ cleared, isHr, mode = 'signer', covers = 0, scope = '' }
      */
     const where = {
       hr: 'ค้นจากทุกแผนกทั้งบริษัท',
-      signer: covers > 1 ? `ค้นจาก ${covers} แผนกที่คุณดูแล` : `ค้นจากแผนก${scope || 'ของคุณ'}`,
+      signer: covers > 1 ? `ค้นจาก ${covers} แผนกที่คุณดูแล` : `ค้นจาก${deptPhrase(scope) || 'แผนกของคุณ'}`,
     }[mode];
     const next = {
       hr: 'ใบจะขึ้นที่นี่ตั้งแต่ตอนที่พนักงานยื่น ทั้งใบที่ยังรอหัวหน้าเซ็นและใบที่ถึงคิวคุณแล้ว',
