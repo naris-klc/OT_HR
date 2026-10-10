@@ -2170,9 +2170,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2868 tests
-across 161 files**, measured 2026-10-09 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2871 tests
+across 161 files**, measured 2026-10-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2868 tests" until the QA of 2026-10-10 (docs/plan-qa-fixes-2026-10-10.md).
 It read "2866 tests" until ผู้ใต้บังคับบัญชาที่อนุมัติ reached ข้อมูลส่วนตัว (2026-10-09).
 It read "2864 tests" until ผู้อนุมัติรายคน reached the team report (2026-10-09).
 It read "2850 tests across 160 files" until **ผู้อนุมัติรายคน** (2026-10-09) —
@@ -14585,8 +14586,9 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2868 tests**, about 9 s, measured 2026-10-09 across 161
-  files, all green (it read "2866 tests" until ผู้ใต้บังคับบัญชาที่อนุมัติ;
+- `npm test` — **2871 tests**, about 9 s, measured 2026-10-10 across 161
+  files, all green (it read "2868 tests" until the QA of 2026-10-10;
+  "2866 tests" until ผู้ใต้บังคับบัญชาที่อนุมัติ;
   "2850 tests … across 160 files" until ผู้อนุมัติ
   รายคน added `personalApprovers`; "2842 tests" until the status tabs on ตรวจสอบ
   ประจำเดือน rewrote `monthStatusFilter`). **`policyReading` is the newest file** — the one-sentence
