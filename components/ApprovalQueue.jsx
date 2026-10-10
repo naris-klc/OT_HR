@@ -726,6 +726,14 @@ export default function ApprovalQueue({
       }))
       .sort((a, b) => a.label.localeCompare(b.label, 'th'));
   }, [entries, roster, user.coversDepartments, passes]);
+  /**
+   * What the head says the queue holds — the แผนก filter's own words, since
+   * 2026-10-11 (รายงาน UX ฉ.2): ทุกแผนก until one is chosen, then its name.
+   * It said `เฉพาะแผนกIT` from the signer's own row, which was wrong for a
+   * กรรมการผู้จัดการ whose queue also held people named to them one by one
+   * from other แผนก. ผู้ใช้เลือกถ้อยคำตามตัวกรองเพราะ *"น่าจะเป็นถ้อยคำกลางที่สุด"*.
+   */
+  const deptName = (dept && departments.find((d) => d.value === dept)?.label) || 'ทุกแผนก';
 
   /**
    * NOT `optionsBy`, and the difference is the ORDER.
@@ -1338,22 +1346,13 @@ export default function ApprovalQueue({
                           title, and the head to exactly the geometry it had
                           before either change.
                         */}
-                        {/* ONE DEPARTMENT IS NAMED; SEVERAL ARE COUNTED.
-
-                            `เฉพาะแผนกวิศวกรรม` was true of every signer while a
-                            signature reached exactly one team. A ผู้จัดการฝ่าย
-                            holds every แผนก HR ticked onto them, and naming only
-                            their own — which is where their OWN hours are
-                            reported, not the whole of what they sign — would
-                            describe a narrower screen than the one in front of
-                            them. Named against `coversDepartments`, the roster's
-                            own count, so it does not change with which teams
-                            happen to have somebody waiting today. */}
-                        <span className="q-scope">
-                          {user.coversDepartments?.length > 1
-                            ? `เฉพาะ ${user.coversDepartments.length} แผนกที่คุณดูแล`
-                            : `เฉพาะ${deptPhrase(user.department?.name) || 'แผนก'}`}
-                        </span>
+                        {/* THE แผนก FILTER'S WORDS, NOT THE SIGNER'S ROW — since
+                            2026-10-11 (ฉ.2). It read `เฉพาะแผนกIT` for one แผนก
+                            and `เฉพาะ 3 แผนกที่คุณดูแล` for several, both counted
+                            off the roster — and both left out the people named
+                            to a signer one by one (`personalApprovers`), whose
+                            rows are in the same list. See `deptName`. */}
+                        <span className="q-scope">{deptName}</span>
                       </>
                     )}
               </>

@@ -368,12 +368,22 @@ test('ตัวกรองแผนกวาดทุกจอที่อน�
   // 2026-10-09 เป็นปฏิทิน `PickMonth` ที่ไม่มีรายการให้ว่าง — test/queueDropdown.test.js
 });
 
-/** And the head says the same thing in words — a name for one, a count for many. */
-test('หัวข้อบอกขอบเขตให้ตรง — ชื่อแผนกเมื่อมีแผนกเดียว จำนวนเมื่อมีหลายแผนก', () => {
+/**
+ * And the head says the same thing in words — THE FILTER'S WORDS since
+ * 2026-10-11 (รายงาน UX ฉ.2). It named the signer's own แผนก (or counted the
+ * ones they hold), which left out the people named to them one by one: a
+ * กรรมการผู้จัดการ read `เฉพาะแผนกIT` over two rows from บัญชี and ฝ่ายขาย.
+ * ผู้ใช้เลือก ทุกแผนก / ชื่อแผนกที่เลือก — *"น่าจะเป็นถ้อยคำกลางที่สุด"*.
+ */
+test('หัวข้อบอกแผนกตามตัวกรอง — ทุกแผนก หรือชื่อแผนกที่เลือก', () => {
   const at = code.indexOf('<span className="q-scope">');
   const scope = code.slice(at, code.indexOf('</span>', at));
-  assert.ok(scope.includes('user.coversDepartments?.length > 1'), 'คนที่ดูแลหลายแผนกยังถูกบอกว่าเห็นแผนกเดียว');
-  assert.ok(scope.includes("`เฉพาะ${deptPhrase(user.department?.name) || 'แผนก'}`"), 'ชื่อแผนกเดียวหายไป');
+  assert.ok(scope.includes('{deptName}'), 'หัวข้อไม่ได้อ่านจากตัวกรองแผนก');
+  assert.ok(!scope.includes('user.department'), 'หัวข้อกลับไปอ่านแผนกของผู้เซ็น');
+  assert.ok(
+    code.includes("const deptName = (dept && departments.find((d) => d.value === dept)?.label) || 'ทุกแผนก';"),
+    'ไม่ได้ใช้คำว่า ทุกแผนก ตอนยังไม่เลือก',
+  );
 });
 
 /** 2026-10-10 ชื่อแผนกจริงขึ้นต้นด้วย "แผนก" อยู่แล้ว — หัวคิวขึ้น "เฉพาะแผนกแผนกบัญชี…" */

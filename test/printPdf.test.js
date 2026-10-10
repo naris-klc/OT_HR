@@ -383,3 +383,16 @@ test('the browser is looked for where one already is, and PDF_BROWSER wins', () 
     else process.env.PDF_BROWSER = saved;
   }
 });
+
+/**
+ * ป้ายปุ่มคือ PDF คำเดียว — ผู้ใช้สั่ง 2026-10-11 *"กระชับข้อความปุ่ม บันทึก PDF ให้
+ * เหลือแค่ ไอคอนและคำว่า PDF ทั้งแอป"* · ชื่อเต็มย้ายไปอยู่ที่ aria-label/title
+ */
+test('ปุ่มบันทึกไฟล์เขียนแค่ PDF ข้างไอคอน ชื่อเต็มอยู่ที่ aria-label', () => {
+  const common = read('components/common.jsx');
+  assert.ok(common.includes("{saving ? 'กำลังสร้างไฟล์…' : 'PDF'}"), 'ป้ายปุ่มไม่ใช่ PDF');
+  assert.ok(common.includes('aria-label="บันทึกเป็นไฟล์ PDF"'), 'ชื่อเต็มของปุ่มหายไปจากโปรแกรมอ่านจอ');
+  for (const file of ['components/common.jsx', 'components/ManualView.jsx']) {
+    assert.ok(!/>บันทึก PDF</.test(read(file)), `${file} ยังมีปุ่มคำว่า บันทึก PDF`);
+  }
+});
