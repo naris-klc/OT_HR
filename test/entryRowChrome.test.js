@@ -777,3 +777,13 @@ test('ป้ายวันเกิดเขียนว่า วันเก�
   assert.match(body, />\s*วันเกิด\s*<\/span>/);
   assert.ok(!body.includes('OT สวัสดิการวันเกิด'), 'ป้ายกลับไปเป็นคำยาว');
 });
+
+/** ข.6 ในรายงาน UX 2026-10-10 — หน้า OT ของฉันใช้ `history` ขณะที่หน้า HR ใช้ `compare` */
+test('ปุ่ม ข้อมูลเดิม ทุกหน้าใช้ไอคอน compare', () => {
+  for (const f of ['components/HrEntries.jsx', 'components/EmployeeView.jsx']) {
+    const src = read(f);
+    const hits = [...src.matchAll(/<RowAction\s+icon="(\w+)"\s+label=\{[^}]*ข้อมูลเดิม/g)];
+    assert.ok(hits.length > 0, `${f}: หาปุ่ม ข้อมูลเดิม ไม่เจอ`);
+    for (const [, icon] of hits) assert.equal(icon, 'compare', `${f}: ข้อมูลเดิม ใช้ไอคอน ${icon}`);
+  }
+});
