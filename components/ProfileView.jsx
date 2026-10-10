@@ -25,7 +25,7 @@ export default function ProfileView({ user, jumpTo = null, onPasswordChanged, on
        restating every queue, table and modal in the app. See the rule beside
        `.profile-form`. */
     <div className="stack profile-page">
-      {/* กล่องแจ้งเตือนของหน้า — ว่างเอง ผู้รับช่วงอนุมัติ และ ผู้ใต้บังคับบัญชา
+      {/* กล่องแจ้งเตือนของหน้า — ว่างเอง ผู้รับช่วงอนุมัติ และ พนักงานที่คุณมีสิทธิ์อนุมัติ
           ส่งแถวมารวมที่นี่ผ่าน `NoticePage` (2026-10-10 · รายงาน UX ข.2) */}
       <NoticeStack id="profile" />
       {/* สองคอลัมน์ (แบบ A, เลือกไว้ 2026-10-08): ซ้ายคือข้อมูลกับธีม ขวาคือรหัสผ่านกับทางออก
@@ -72,16 +72,19 @@ export default function ProfileView({ user, jumpTo = null, onPasswordChanged, on
   );
 }
 
-// ── ผู้ใต้บังคับบัญชาที่อนุมัติ ─────────────────────────────────────────────
+// ── พนักงานที่คุณมีสิทธิ์อนุมัติ ────────────────────────────────────────────
 
 /** 10 to a page, and a pager only past that — asked for in as many words. */
 const TEAM_PAGE = 10;
 
 /**
- * ผู้ใต้บังคับบัญชาที่อนุมัติ — the people whose first step this person signs,
+ * พนักงานที่คุณมีสิทธิ์อนุมัติ — the people whose first step this person signs,
  * at the foot of the page. แบบ C, chosen from three mockups on 2026-10-09:
  * grouped by แผนก with a count on each heading, no รายคน/ตามแผนก tag — the
  * reader asked WHO, and how HR wired each one is ทะเบียนพนักงาน's business.
+ *
+ * หัวการ์ดเคยเป็น "ผู้ใต้บังคับบัญชาที่อนุมัติ" จนถึง 2026-10-11 — อ่านได้ว่า
+ * ลูกน้องเป็นคนอนุมัติ ทั้งที่หมายถึงคนที่ผู้อ่านอนุมัติให้ ชื่อใหม่ผู้ใช้เลือกเอง
  *
  * Groups are cut per page: a แผนก that runs across the page break shows its
  * heading again on the next page, counting the rows on THAT page, so no row
@@ -112,7 +115,7 @@ function MyTeam() {
 
   return (
     <div className="card my-team">
-      <h2>ผู้ใต้บังคับบัญชาที่อนุมัติ</h2>
+      <h2>พนักงานที่คุณมีสิทธิ์อนุมัติ</h2>
       <div className="hint">
         {people ? `${total} คน · ` : ''}แก้ไม่ได้ — แจ้งฝ่ายบุคคล
       </div>
@@ -138,7 +141,7 @@ function MyTeam() {
           total={total}
           onPage={setPage}
           onPageSize={(n) => { setPageSize(n); setPage(1); }}
-          label="ผู้ใต้บังคับบัญชาที่อนุมัติ"
+          label="พนักงานที่คุณมีสิทธิ์อนุมัติ"
           unit="คน"
           always
         />
@@ -459,15 +462,21 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
 
   return (
     <div className="card profile-password" ref={cardRef}>
-      <h2>เปลี่ยนรหัสผ่าน</h2>
       {/* ONE LINE, NO FOLD — แบบ C, 2026-10-09. It was a `Disclosure` of
           five lines on a phone (…อ่านต่อ) from 2026-09-10. The two facts a
           reader needs WHILE TYPING went under their own boxes: รหัสผ่านเดิม
           says what the issued password is, and รหัสผ่านใหม่ checks its rule
           as an input validation (grey → ✓ green → red), asked for in as many
           words: *เงื่อนไขให้แสดงแบบ input validation*. What is left here is
-          the one fact no box owns. */}
-      <div className="hint">เครื่องอื่นที่เข้าระบบค้างไว้ ยังใช้ได้จนหมดเวลา</div>
+          the one fact no box owns.
+
+          หัวกับบรรทัดนี้อยู่ใน `<div>` เดียวกันตั้งแต่ 2026-10-11 กฎหัว+hint
+          ของทั้งแอปจึงวางไว้บรรทัดเดียวกัน (จอแคบตกลงบรรทัดใหม่เอง) — ประหยัด
+          ความสูงให้การ์ดนี้เท่าฝั่งข้อมูลกับธีม ดู `.profile-grid` */}
+      <div className="profile-pw-head">
+        <h2>เปลี่ยนรหัสผ่าน</h2>
+        <div className="hint">เครื่องอื่นที่เข้าระบบค้างไว้ ยังใช้ได้จนหมดเวลา</div>
+      </div>
 
       {/*
         ⚠ THIS BOX HAD A ▲/▼ FROM 2026-09-10 TO 2026-09-14, with

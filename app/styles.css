@@ -6048,7 +6048,7 @@ td > .approver-line { margin-top: 5px; }
 /* ข้อมูลส่วนตัว, read-only. A description list rather than a table: it is one
    person's facts, not rows to compare. Four facts in two columns under the
    name; the name, รหัสพนักงาน and ตำแหน่ง are the card's header. */
-/* ผู้ใต้บังคับบัญชาที่อนุมัติ — the last card on ข้อมูลส่วนตัว (แบบ C,
+/* พนักงานที่คุณมีสิทธิ์อนุมัติ — the last card on ข้อมูลส่วนตัว (แบบ C,
    2026-10-09). A heading per แผนก with its count, then one 44px row per person:
    name, then รหัส · ตำแหน่ง in grey. Names wrap at the space (keep-all), and a
    row is a flex child that may shrink (`min-width: 0`). */
@@ -6076,9 +6076,23 @@ td > .approver-line { margin-top: 5px; }
 .profile-note { margin: 12px 0 0; }
 
 /* Two columns from 861px (the app's own breakpoint), one below it. `minmax(0, 1fr)`
-   so a long department name cannot push a column wider than its half. */
-.profile-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+   so a long department name cannot push a column wider than its half.
+
+   ขอบล่างสองฝั่งตรงกันเสมอ (2026-10-11 — ผู้ใช้บอกว่าหน้านี้ "ดูไม่สมมาตร"):
+   วัดที่ 1440 การ์ดรหัสผ่านยาวกว่าการ์ดธีมราว 40px จึงทำสองอย่าง —
+   (1) การ์ดรหัสผ่านกระชับขึ้น: หัวกับ hint อยู่บรรทัดเดียว (`.profile-pw-head`)
+   และช่องห่าง 10px (`.profile-form`) · (2) `stretch` แทน `start`: ส่วนที่ยัง
+   ต่างกัน (คำเตือนรหัสที่ HR ตั้ง ข้อความผิดพลาด) การ์ดข้อมูลยืดรับ บรรทัด
+   แก้ไม่ได้ ไปอยู่ล่างสุด และปุ่มบันทึกของการ์ดรหัสผ่านลงไปชิดขอบล่าง · ใต้
+   860px เป็นคอลัมน์เดียว ไม่มีอะไรให้ยืด */
+.profile-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
 .profile-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.profile-col > .card:first-child { flex: 1; display: flex; flex-direction: column; }
+.profile-col > .card:first-child .profile-note { margin-top: auto; padding-top: 12px; }
+.profile-password { display: flex; flex-direction: column; }
+.profile-password .profile-form { flex: 1; }
+.profile-password .profile-submit { margin-top: auto; }
+.profile-pw-head { margin-bottom: 10px; }
 @media (max-width: 860px) { .profile-grid { grid-template-columns: minmax(0, 1fr); } }
 
 .profile-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -6139,8 +6153,10 @@ td > .approver-line { margin-top: 5px; }
 
 /* Stacked, not the app's usual side-by-side .row: the three password boxes are
    a sequence to work down, and side by side they invite typing into the wrong
-   one. Capped so the fields do not stretch across a desktop card. */
-.profile-form { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+   one. Capped so the fields do not stretch across a desktop card.
+   ช่องห่าง 10px ทุกความกว้าง — เป็น 14px บนจอกว้างจนถึง 2026-10-11 ลดเพื่อให้
+   การ์ดนี้สูงเท่าฝั่งข้อมูลกับธีม ดู `.profile-grid` */
+.profile-form { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
 .profile-form .btn { align-self: flex-start; }
 .profile-submit .profile-actions { width: 100%; }
 

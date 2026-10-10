@@ -7,7 +7,7 @@ import { deptReach, idOf } from '@/lib/entries.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
 
 /**
- * ผู้ใต้บังคับบัญชาที่อนุมัติ — the people whose first step the CALLER signs,
+ * พนักงานที่คุณมีสิทธิ์อนุมัติ — the people whose first step the CALLER signs,
  * for the card at the foot of ข้อมูลส่วนตัว (แบบ C, grouped by แผนก, agreed
  * 2026-10-09).
  *
