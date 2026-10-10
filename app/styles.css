@@ -10774,8 +10774,10 @@ table.mini tbody tr:hover { background: none; }
 @media (max-width: 860px) {
   .dm-grid { grid-template-columns: minmax(0, 1fr); }
 }
-/* จอแคบ: วันที่กับเวลาของช่วงขึ้นสองบรรทัดได้ ไม่งั้นคอลัมน์ ×3 หลุดขอบที่ 360 */
-@media (max-width: 480px) {
+/* จอแคบ: วันที่กับเวลาของช่วงขึ้นสองบรรทัดได้ ไม่งั้นคอลัมน์ ×3 หลุดขอบที่ 360 ·
+   เป็น 480px จนถึง 2026-10-10 ซึ่งเป็นเส้นที่แปด — design.md §6 มีเจ็ดเส้น จึงย้ายมา
+   ใช้เส้น 560 ที่มีอยู่ ที่ 481–560 ป๊อปอัปได้ระยะขอบแคบแบบมือถือ */
+@media (max-width: 560px) {
   .dm-panel { padding: 10px 12px; }
   .dm-rates td:first-child .nb { white-space: normal; }
 }
