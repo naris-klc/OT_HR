@@ -1486,18 +1486,18 @@ export default function HrView({
             </div>
             <div className="hint" style={{ margin: 0 }}>
               {periodLabel(period)}
-              {/* WHICH แผนก, IN THE FILTER'S OWN WORDS — ทุกแผนก until one is
+              {/* WHICH แผนก, IN THE FILTER'S OWN WORDS — nothing until one is
                   chosen, on both tabs, since 2026-10-11 (รายงาน UX ฉ.4).
 
                   The team tab read `เฉพาะแผนกที่คุณเซ็นอนุมัติ` and the company
                   tab read nothing, so a การเงิน holding both saw two identical
-                  tables and one hint. ผู้ใช้เลือกถ้อยคำตามตัวกรองเพราะ *"น่าจะ
-                  เป็นถ้อยคำกลางที่สุด"* — ทุกแผนก is true of whatever the tab
-                  reaches. The chosen name was added 2026-09-10: the dropdown
-                  scrolls away and the heading does not, and a total read
-                  without knowing whose it is is the figure this screen exists
-                  to get right. */}
-              {` · ${deptName || 'ทุกแผนก'}`}
+                  tables and one hint. ทุกแผนก stood here for half a day;
+                  ผู้ใช้ตัดออกเพราะเป็นค่าตั้งต้นของตัวกรอง ไม่ได้บอกอะไรเพิ่ม.
+                  The chosen name stays, as it has since 2026-09-10: the
+                  dropdown scrolls away and the heading does not, and a total
+                  read without knowing whose it is is the figure this screen
+                  exists to get right. */}
+              {deptName && ` · ${deptName}`}
             </div>
           </div>
           <div className="row" style={{ gap: 10, alignItems: 'center' }}>

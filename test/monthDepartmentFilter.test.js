@@ -389,10 +389,12 @@ test('it sits on the filter bar, third, where รออนุมัติ OT put
 test('every sentence that could be read as the whole company names the แผนก', () => {
   // THE HEADING. The dropdown is two rows down and scrolls away; this line does
   // not, and a total read without knowing whose it is is the figure this screen
-  // exists to get right. Since 2026-10-11 (รายงาน UX ฉ.4) it says ทุกแผนก too,
-  // on both tabs — the team tab's `เฉพาะแผนกที่คุณเซ็นอนุมัติ` went with it,
-  // because การเงิน read two identical tables with one hint between them.
-  assert.match(hrView, /\{` · \$\{deptName \|\| 'ทุกแผนก'\}`\}/);
+  // exists to get right. Since 2026-10-11 (รายงาน UX ฉ.4) both tabs say only
+  // that — the team tab's `เฉพาะแผนกที่คุณเซ็นอนุมัติ` went, because การเงิน read
+  // two identical tables with one hint between them, and ทุกแผนก went the same
+  // day because the filter's default adds nothing.
+  assert.match(hrView, /\{deptName && ` · \$\{deptName\}`\}/);
+  assert.ok(!hrView.includes("deptName || 'ทุกแผนก'"), 'หัวการ์ดกลับไปเขียน ทุกแผนก ตอนไม่ได้เลือก');
   assert.ok(!hrView.includes("' · เฉพาะแผนกที่คุณเซ็นอนุมัติ'"), 'หัวหน้าทีมกลับไปเขียนขอบเขตเอง ไม่ตามตัวกรอง');
   // THE EMPTY MONTH. "ไม่มีรายการในเดือนนี้" with ผลิต2 chosen is very nearly a
   // lie — the month may be full and this is one department out of eighteen that
