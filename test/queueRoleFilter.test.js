@@ -209,7 +209,7 @@ test('บทบาท อยู่ระหว่างช่องค้นห�
   const search = code.indexOf('placeholder="ชื่อพนักงาน');
   const role = code.indexOf('label="บทบาท"');
   const dept = code.indexOf('label="แผนก"');
-  const month = code.indexOf('label="เดือน"');
+  const month = code.indexOf('label="ประจำเดือน"');
   assert.ok(search > 0 && role > 0 && dept > 0 && month > 0, 'ตัวกรองหายไปหนึ่งตัว');
   assert.ok(search < role && role < dept && dept < month, 'ลำดับตัวกรองไม่ใช่ ค้นหา · บทบาท · แผนก · เดือน');
 });

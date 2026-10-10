@@ -167,7 +167,7 @@ export default function PeriodStatus({
           always with its count, because nothing above them named it. */}
       {state.review.length > 0 && (
         <div className="hint" style={{ margin: '4px 0 0' }}>
-          ควรตรวจก่อนพิมพ์ (ไม่ได้ค้างใคร):
+          ตรวจก่อนพิมพ์:
           {state.review.map((item) => (
             <div key={item.kind}>· {item.text}</div>
           ))}
@@ -213,7 +213,8 @@ export default function PeriodStatus({
     const detail = [
       ...state.outstanding.map((item) => (state.outstanding.length > 1 ? item.text : item.why)),
       ...(state.review.length
-        ? [`ควรตรวจก่อนพิมพ์ (ไม่ได้ค้างใคร) ${state.review.map((item) => item.text).join(' · ')}`]
+        // It read ควรตรวจก่อนพิมพ์ + ไม่ได้ค้างใคร in brackets until 2026-10-11 — ผู้ใช้สั่งตัดคำฟุ่มเฟือย
+        ? [`ตรวจก่อนพิมพ์: ${state.review.map((item) => item.text).join(' · ')}`]
         : []),
     ].join(' · ');
     return (

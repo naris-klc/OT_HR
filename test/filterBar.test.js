@@ -78,7 +78,7 @@ const rule = (selector) => {
 
 /** Every screen that draws a filter bar, and the label on each control of it. */
 const BARS = [
-  ['components/ApprovalQueue.jsx', ['ค้นหา', 'แผนก', 'เดือน']],
+  ['components/ApprovalQueue.jsx', ['ค้นหาพนักงาน', 'แผนก', 'ประจำเดือน']],
   /* สถานะที่นับ left this bar on 2026-10-09 — it is tabs on the card head now. */
   ['components/HrView.jsx', ['ค้นหาพนักงาน', 'แผนก', 'ประจำเดือน']],
   ['components/AccountingView.jsx', ['บริษัท', 'ประจำเดือน']],
@@ -87,7 +87,7 @@ const BARS = [
   ['components/AdminView.jsx', ['ค้นหาพนักงาน', 'ตำแหน่ง', 'แผนก', 'บทบาท']],
   /* TWO SCREENS IN ONE FILE — ทะเบียนพนักงาน above and ประวัติการแก้ทะเบียน
      here, which became the app's last `.form-grid` filter bar on 2026-09-15. */
-  ['components/AdminView.jsx', ['กรองตามพนักงาน', 'กรองตามสิ่งที่ถูกแก้',
+  ['components/AdminView.jsx', ['ค้นหาพนักงาน', 'กรองตามสิ่งที่ถูกแก้',
     'กรองตามประเภท', 'กรองตามบัญชีผู้แก้ไข']],
   /* The two one-control bars, 2026-09-15 — a bar with one field on it is still
      the bar. Both were a `.field` with its label stacked over the box. */
@@ -299,10 +299,10 @@ test('ตัวกรองสี่ช่องของ ประวัติ�
   assert.match(code, /<div className="queue-tools" style=\{\{ marginBottom: 12 \}\}>/);
   assert.ok(!code.includes('className="form-grid"'), 'ยังเป็น .form-grid อยู่');
   // The one box that is typed into takes the bar's double width.
-  assert.match(code, /<Field label="กรองตามพนักงาน" className="search">/);
+  assert.match(code, /<Field label="ค้นหาพนักงาน" className="search">/);
   // All four are inside the one bar, and so is ล้างตัวกรองทั้งหมด.
   const bar = code.slice(code.indexOf('<div className="queue-tools"'), code.indexOf('{error &&'));
-  for (const label of ['กรองตามพนักงาน', 'กรองตามสิ่งที่ถูกแก้', 'กรองตามประเภท', 'กรองตามบัญชีผู้แก้ไข']) {
+  for (const label of ['ค้นหาพนักงาน', 'กรองตามสิ่งที่ถูกแก้', 'กรองตามประเภท', 'กรองตามบัญชีผู้แก้ไข']) {
     assert.ok(bar.includes(`label="${label}"`), `${label} ไม่ได้อยู่บนแถบ`);
   }
   assert.match(bar, /\{narrowed && \(\s*\n\s*<ClearFilters/, 'ปุ่มล้างตัวกรองไม่ได้อยู่บนแถบ');

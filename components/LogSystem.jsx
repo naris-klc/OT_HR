@@ -2,7 +2,7 @@
 
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { api, thaiStamp } from '@/lib/api.js';
+import { api, thaiDate, thaiStamp } from '@/lib/api.js';
 import { ROLE_LABEL_TH } from '@/lib/roles.js';
 import { DateRange } from './PickDate.jsx';
 import {
@@ -311,7 +311,7 @@ function Overview({ onOpenTab, onFilter }) {
         */}
         <div className="log-chart">
           {data.days.map((d) => (
-            <div className="log-bar" key={d.date} title={`${d.date} · ${d.n} ครั้ง · แก้ไข ${d.writes} · เข้าระบบไม่สำเร็จ ${d.failedLogins}`}>
+            <div className="log-bar" key={d.date} title={`${thaiDate(d.date)} · ${d.n} ครั้ง · แก้ไข ${d.writes} · เข้าระบบไม่สำเร็จ ${d.failedLogins}`}>
               <div className="col">
                 <div className="fill" style={{ height: `${Math.round((d.n / busiest) * 100)}%` }}>
                   {/* Only on the days that have one. The height is the share of
@@ -1025,12 +1025,12 @@ function LogList({
           label="กรองตามบัญชี"
           value={filters.actor}
           onChange={(v) => setFilter('actor', v)}
-          allLabel="— ทุกบัญชี —"
+          allLabel="ทุกบัญชี"
           options={[
             /* The rows nobody's session is attached to: refused logins, and
                requests turned away before a session existed. Its own choice
                because it is the one somebody scanning for trouble wants. */
-            { value: 'none', label: '— ไม่มีบัญชี (ยังไม่ได้เข้าระบบ) —' },
+            { value: 'none', label: 'ไม่มีบัญชี (ยังไม่ได้เข้าระบบ)' },
             ...(data?.actors || []).map((a) => ({
               value: a.id,
               label: `${a.code || '—'} · ${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
@@ -1042,7 +1042,7 @@ function LogList({
             label="กรองตามเหตุการณ์"
             value={filters.event}
             onChange={(v) => setFilter('event', v)}
-            allLabel="— ทั้งหมด —"
+            allLabel="ทั้งหมด"
             options={[
               { value: 'login', label: EVENT_LABEL.login },
               { value: 'login_failed', label: EVENT_LABEL.login_failed },
@@ -1054,7 +1054,7 @@ function LogList({
           label="กรองตามผลลัพธ์"
           value={filters.status}
           onChange={(v) => setFilter('status', v)}
-          allLabel="— ทุกผลลัพธ์ —"
+          allLabel="ทุกผลลัพธ์"
           options={Object.entries(STATUS_CLASS_LABEL)
             .filter(([k]) => k !== 'unknown')
             .map(([k, label]) => ({ value: k, label }))}

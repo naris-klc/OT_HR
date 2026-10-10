@@ -1961,7 +1961,7 @@ function BatchResult({ results, nameOf, form, onDone, onRetryFailed }) {
     <div className="card">
       <h2>สรุปผลการบันทึกแทน</h2>
       <div className="hint" style={{ marginBottom: 12 }}>
-        {form.workDate} · {form.startTime}–{form.endTime}
+        {thaiDate(form.workDate)} · {form.startTime}–{form.endTime}
         {form.description ? ` · ${form.description}` : ''}
       </div>
 

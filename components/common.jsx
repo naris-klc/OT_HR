@@ -726,7 +726,7 @@ export function SegmentList({ segments }) {
     <ul className="seg-list">
       {segments.map((s, i) => (
         <li key={i}>
-          {s.date} {s.start}–{s.end} · {s.dayType === 'holiday' ? 'วันหยุด' : 'วันทำงาน'}
+          {thaiDate(s.date)} {s.start}–{s.end} · {s.dayType === 'holiday' ? 'วันหยุด' : 'วันทำงาน'}
           {DAY_REASON_LABEL[s.dayReason] ? ` (${DAY_REASON_LABEL[s.dayReason]})` : ''} ·
           {' '}×{s.multiplier} · {hours(s.hours)} ชม.
         </li>
@@ -4222,7 +4222,8 @@ export function PickPerson({
   people,
   value,
   onChange,
-  allLabel = '— ทุกคน —',
+  // No dashes since 2026-10-11 (รายงาน UX ค.3) — ทุกแผนก / ทุกเดือน never had them.
+  allLabel = 'ทุกคน',
   placeholder = 'พิมพ์ชื่อ หรือ รหัสพนักงาน…',
   emptyLabel = 'ไม่พบพนักงานที่ตรงกับคำค้น',
   disabled = false,

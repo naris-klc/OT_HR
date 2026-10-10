@@ -136,7 +136,7 @@ export const PATCH = route(async (req, { params }) => {
   // fall back to "this department does ordinary OT".
   if (otMode !== undefined) {
     const mode = otModeFrom(otMode);
-    if (mode === null) return fail('รูปแบบโอทีของแผนกไม่ถูกต้อง', 400);
+    if (mode === null) return fail('รูปแบบ OT ของแผนกไม่ถูกต้อง', 400);
     department.otMode = mode;
   }
 

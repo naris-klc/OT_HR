@@ -272,7 +272,10 @@ export default function ApprovalQueue({
    * naming a queue the heading calls something else names nothing the reader
    * can see.
    */
-  const queueName = isHr ? 'รออนุมัติ OT' : 'รออนุมัติ';
+  // One name for every บทบาท since 2026-10-11 (รายงาน UX ค.9) — HR's read
+  // 'รออนุมัติ OT' while the menu said that too and the หัวหน้า's said
+  // 'รายการรออนุมัติ'.
+  const queueName = 'รออนุมัติ';
   /**
    * WHICH STATUSES THIS SCREEN ASKS THE SERVER FOR — one place, read by the
    * fetch, by the สถานะ dropdown and by the empty states.
@@ -1429,7 +1432,8 @@ export default function ApprovalQueue({
                 `.queue-tools .field > .field-head` in app/styles.css. It is
                 still the same `.field-head` the four `PickOne`s render, which is
                 why one rule reaches all five. */}
-            <div className="field-head"><label>ค้นหา</label></div>
+            {/* ค้นหาพนักงาน, as on every other filter bar — รายงาน UX ค.3, 2026-10-11 */}
+            <div className="field-head"><label>ค้นหาพนักงาน</label></div>
             {/* ⚠ `.searchbox` AND THE MAGNIFIER, 2026-09-10. This was the LAST of
                 the app's four search boxes without one — ตรวจสอบประจำเดือน always
                 had it, บันทึกประวัติระบบ and ทะเบียนพนักงาน were given it earlier
@@ -1518,8 +1522,8 @@ export default function ApprovalQueue({
               ได้ — ว่างคือ ทุกเดือน — จึงมี ✕ ให้ล้างกลับ ตัวเลขต่อเดือนที่รายการเคย
               แสดงหายไปกับมัน ตารางกับหัวการ์ดบอกจำนวนแทน */}
           <div className="field">
-            <div className="field-head"><label>เดือน</label></div>
-            <PickMonth label="เดือน" value={per} onChange={setPer} clearable allLabel="ทุกเดือน" />
+            <div className="field-head"><label>ประจำเดือน</label></div>
+            <PickMonth label="ประจำเดือน" value={per} onChange={setPer} clearable allLabel="ทุกเดือน" />
           </div>
           {(q || dept || per || st || applicant) && (
             <ClearFilters onClear={() => { setQ(''); setDept(''); setPer(''); setSt(''); setApplicant(''); }} />

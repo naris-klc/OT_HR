@@ -291,7 +291,7 @@ test('an item carries the count and the consequence separately', () => {
   // `formPrintScope` became ตั้งแต่ยื่นขอ and both queues started reaching the
   // paper. The missing SIGNATURE is what is true of a รออนุมัติ row under every
   // answer to that setting — including the two where the row does not print.
-  assert.equal(item.why, 'ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา');
+  assert.equal(item.why, 'ใบที่พิมพ์จะยังไม่มีชื่อผู้อนุมัติ');
   assert.equal(item.text, `${item.short} — ${item.why}`);
   // The count belongs to `short` alone — a `why` carrying it would put the
   // number back on both lines by another route.
@@ -361,7 +361,8 @@ test('แถวเดียวพูดครบ ไม่มีฝาพับ�
   // ผลที่ตามมา — `why` ตัวเดียวเมื่อมีกองเดียว เพราะหัวข้อถือตัวเลขไปแล้ว
   assert.match(compact, /state\.outstanding\.length > 1 \? item\.text : item\.why/);
   // ควรตรวจก่อนพิมพ์ ตามหลังกองที่ค้าง และไม่เคยขึ้นหัวข้อ
-  assert.match(compact, /ควรตรวจก่อนพิมพ์ \(ไม่ได้ค้างใคร\)/);
+  assert.match(compact, /`ตรวจก่อนพิมพ์: \$\{/);
+  assert.ok(!compact.includes('(ไม่ได้ค้างใคร)'), 'คำฟุ่มเฟือยที่ผู้ใช้ตัดออกกลับมา (2026-10-11)');
   // เดือนก่อน พร้อมทางไป — เอ่ยชื่อช่อง ไม่ใช่ทิศทาง · อยู่หลัง ▾ ของแถว
   assert.match(compact, /more=\{lastMonth && \(/);
   assert.match(compact, /<strong>เดือนก่อน · \{periodLabel\(previousPeriod\(period\)\)\}<\/strong>/);

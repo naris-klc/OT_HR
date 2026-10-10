@@ -84,7 +84,7 @@ test('all four แผนก signers get both the queue and the team report', () 
   // tab whose label was changed without its glyph is the drift worth catching.
   assert.match(
     block,
-    /key: 'approve', label: 'รายการรออนุมัติ', icon: 'inbox', group: 'work', bar: 'queue',\s*\r?\n?\s*badge: queueBadge\(counts\.pendingMgr\),/,
+    /key: 'approve', label: 'รออนุมัติ', icon: 'inbox', group: 'work', bar: 'queue',\s*\r?\n?\s*badge: queueBadge\(counts\.pendingMgr\),/,
   );
   /**
    * BOTH UNCONDITIONAL, AND THE SECOND ONE'S KEY IS `team`.
@@ -166,16 +166,16 @@ test('การเงิน add ตรวจสอบประจำเดือ
   }
 });
 
-test('รายการรออนุมัติ and รออนุมัติ OT are two different queues and keep two names', () => {
-  // No account reaches both — `approve` is manager-only and `confirm` is
-  // hr/admin-only — so this is not about a collision on any one screen. It is
-  // about every sentence written afterwards: two screens under one name is a
-  // sentence that cannot say which one it means.
-  assert.match(builder, /key: 'approve', label: 'รายการรออนุมัติ'/);
+test('both approval queues are called รออนุมัติ — one name for every บทบาท', () => {
+  // They were รายการรออนุมัติ and รออนุมัติ OT until 2026-10-11, kept apart so a
+  // sentence could say which one it meant. ผู้ใช้เลือกชื่อเดียว (รายงาน UX ค.9):
+  // the menu, the card head and the phone's bottom bar called one queue three
+  // names. No account reaches both, so nothing collides on a screen.
+  assert.match(builder, /key: 'approve', label: 'รออนุมัติ'/);
   // The `confirm` entry wrapped onto its own lines on 2026-09-03, when its
   // badge gained the withdrawal overlap argument. What is pinned is the key
   // paired with the label, not the two of them sharing a line.
-  assert.match(builder, /key: 'confirm',\s*\r?\n?\s*label: 'รออนุมัติ OT'/);
+  assert.match(builder, /key: 'confirm',\s*\r?\n?\s*label: 'รออนุมัติ'/);
   assert.ok(at('approve') < at('confirm'), 'the two queue tabs changed places');
 });
 

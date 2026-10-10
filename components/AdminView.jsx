@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, thaiDate, thaiStamp, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
+import { readEra } from '@/lib/smartDate.js';
 import {
   HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
   chosenPasswordPermission, defaultPassword, dropsAnAdmin, unsignedStaff, UNNAMEABLE_ROLES,
@@ -665,7 +666,7 @@ function capNote(policy) {
     : 'กรอก 0 = ทุกใบจะติดธง “เกินเพดาน” ให้ฝ่ายบุคคลตรวจ แต่ยังยื่นได้ '
       + '(ตั้งค่าปัจจุบันคือ “เตือน” ไม่ใช่ “ปฏิเสธ”)';
   return `หมายเหตุ: เว้นว่าง = ไม่จำกัดเพดาน · ${zero}`
-    + ' · เพดานนับรวมวันหยุดด้วย ถ้าต้องการปิดโอทีเฉพาะวันทำงานปกติ ให้ตั้งที่ “รูปแบบโอที” ในปุ่มแก้ไข';
+    + ' · เพดานนับรวมวันหยุดด้วย ถ้าต้องการปิด OT เฉพาะวันทำงานปกติ ให้ตั้งที่ “รูปแบบ OT” ในปุ่มแก้ไข';
 }
 
 /** The line printed under the table; `capNote` is the full sentence and lives in the inputs' `title`. */
@@ -686,7 +687,7 @@ function capNoteShort(policy) {
  */
 const DEPT_ACTIVE_LOCK = 'ปิด/เปิดใช้งานแผนก ทำได้โดยผู้ดูแลระบบเท่านั้น '
   + '— เป็นวิธีเดียวที่จะเอาแผนกซึ่งมีประวัติแล้วออกจากระบบ พนักงานในแผนกจะยื่น OT ไม่ได้ '
-  + 'และแผนกจะหายจากช่องเลือกทุกที่ · ชื่อ รหัส เพดาน หัวหน้า และรูปแบบโอที แก้ได้ตามปกติที่ปุ่ม “แก้ไข”';
+  + 'และแผนกจะหายจากช่องเลือกทุกที่ · ชื่อ รหัส เพดาน หัวหน้า และรูปแบบ OT แก้ได้ตามปกติที่ปุ่ม “แก้ไข”';
 
 /** What ปิดใช้งาน DOES, behind the (?) beside สถานะ in แก้ไขแผนก.
 
@@ -992,7 +993,7 @@ function Departments({ user, onGo, roster }) {
                 <td className="name-col">
                   {d.nameTh || d.name}
                   {/* Only when it is not the ordinary one. A chip on every row
-                      saying "มีโอทีตามปกติ" would leave the two rows that
+                      saying "มี OT ตามปกติ" would leave the two rows that
                       matter looking like the rest of the table. */}
                   {otModeOf(d) !== 'normal' && (
                     <div>
@@ -1222,7 +1223,7 @@ const SIGNED_BY_HR_TIP = 'ปกติใบ OT ต้องผ่านหั�
   + ' และมีลายเซ็นเดียว · ใบที่ยื่นไปแล้วยังค้างอยู่ขั้นเดิม ไม่ย้ายตาม';
 
 /** Said in full once, because every clause of it is a thing somebody asks. */
-const OT_MODE_TIP = 'เลือก "ไม่มีโอที" หรือ "เหมารายวัน" แล้วพนักงานแผนกนี้จะยื่นโอทีของ'
+const OT_MODE_TIP = 'เลือก "ไม่มี OT" หรือ "เหมารายวัน" แล้วพนักงานแผนกนี้จะยื่น OT ของ'
   + 'วันทำงานปกติไม่ได้ ระบบจะปฏิเสธพร้อมบอกเหตุผล · วันหยุดบริษัทและสวัสดิการวันเกิด'
   + 'ยังยื่นได้ตามปกติ และฝ่ายบุคคลยังบันทึกวันเกิดให้ได้เหมือนเดิม '
   + '· ไม่เหมือนกับการตั้งเพดานเป็น 0 ซึ่งจะไปปิดวันหยุดด้วย';
@@ -1405,10 +1406,10 @@ function DepartmentForm({
         </section>
 
         <section className="form-group">
-          <div className="gh">รูปแบบโอที</div>
+          <div className="gh">รูปแบบ OT</div>
           <div className="form-grid">
             <PickOne
-              label="โอทีวันทำงานปกติ"
+              label="OT วันทำงานปกติ"
               tip={OT_MODE_TIP}
               value={form.otMode}
               onChange={(v) => set({ otMode: v })}
@@ -5828,7 +5829,9 @@ function RosterAudit() {
             the box (พิมพ์ชื่อ หรือ รหัสพนักงาน…) and the ทุกคน row at the top of
             its own list, read out loud underneath itself. Same deletion
             เว้นว่าง = ทุกประเภท took on การใช้สิทธิ์พิเศษ. */}
-        <Field label="กรองตามพนักงาน" className="search">
+        {/* ค้นหาพนักงาน since 2026-10-11 (รายงาน UX ค.3) — the label every
+            other filter bar gives the box you type a name into. */}
+        <Field label="ค้นหาพนักงาน" className="search">
           <PickPerson
             people={people}
             value={filters.employee}
@@ -5842,14 +5845,14 @@ function RosterAudit() {
             + '· การตั้งรหัสผ่านใหม่ไม่ได้แก้ฟิลด์ใด จึงไม่อยู่ในผลของตัวกรองนี้'}
           value={filters.field}
           onChange={(v) => setFilter('field', v)}
-          allLabel="— ทุกอย่าง —"
+          allLabel="ทุกอย่าง"
           options={AUDITED_FIELDS.map((f) => ({ value: f, label: FIELD_LABEL[f] || f }))}
         />
         <PickOne
           label="กรองตามประเภท"
           value={filters.action}
           onChange={(v) => setFilter('action', v)}
-          allLabel="— ทุกประเภท —"
+          allLabel="ทุกประเภท"
           options={Object.entries(ACTION_LABEL).map(([value, label]) => ({ value, label }))}
         />
         {/* Named บัญชีผู้แก้ไข, not ผู้แก้ไข: ฝ่ายบุคคล is one shared login for
@@ -5859,7 +5862,7 @@ function RosterAudit() {
           label="กรองตามบัญชีผู้แก้ไข"
           value={filters.by}
           onChange={(v) => setFilter('by', v)}
-          allLabel="— ทุกบัญชี —"
+          allLabel="ทุกบัญชี"
           options={actors.map((a) => ({
             value: a.id,
             label: `${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
@@ -6158,6 +6161,12 @@ function ResetPassword({ employee, onClose, onDone }) {
 function Holidays() {
   const [rows, setRows] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
+  /**
+   * ช่องปีพิมพ์เป็น พ.ศ. ตั้งแต่ 2026-10-11 (รายงาน UX ค.6) — ตารางข้างใต้เป็น
+   * 01/01/2569 อยู่แล้ว · `year` ยังเป็น ค.ศ. เพราะ API ถามแบบนั้น และเปลี่ยนเมื่อพิมพ์
+   * ครบสี่หลักเท่านั้น ไม่งั้นทุกตัวที่พิมพ์ระหว่างทางเป็นปีที่ถูกโหลด
+   */
+  const [yearText, setYearText] = useState(String(new Date().getFullYear() + 543));
   /** Whether เพิ่มวันหยุด is open — the only way this screen adds one by hand. */
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
@@ -6265,8 +6274,17 @@ function Holidays() {
           styles.css; nothing about the desktop changes. */}
       <div className="row holiday-tools" style={{ marginBottom: 14 }}>
         <div className="field" style={{ maxWidth: 120 }}>
-          <label>ปี (ค.ศ.)</label>
-          <input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+          <label>ปี (พ.ศ.)</label>
+          <input
+            type="number"
+            value={yearText}
+            onChange={(e) => {
+              setYearText(e.target.value);
+              // พ.ศ. → ค.ศ. through `readEra`, the one place a year is moved back
+              const era = readEra(e.target.value);
+              if (/^\d{4}$/.test(e.target.value) && era.converted) setYear(era.year);
+            }}
+          />
         </div>
         <button
           className="btn ghost"
