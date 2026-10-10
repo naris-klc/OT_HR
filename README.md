@@ -9974,7 +9974,8 @@ at nearly one size is a block, and a block is read as one thing or skipped as
 one thing — the third line is the only one that says what to DO about the other
 two. A lighter amber was what was asked for and is the one option that costs
 readability: `--amber` on `--amber-bg` already measures **3.46:1** in ธีมสว่าง —
-a known, recorded debt of this palette — and 85% opacity would take it to 2.80.
+a known, recorded debt of this palette (paid on 2026-10-10: `--amber` is
+#926400 in ธีมสว่าง since, 4.64) — and 85% opacity would take it to 2.80.
 `--muted` on the same ground is **5.04** and passes AA; on `--green-bg`, which is
 what the `ok` variant of this same notice is drawn on, 4.99. So the line that
 separates from the amber is also the only one in the box that passes. The rule
@@ -10167,6 +10168,10 @@ about 60px more. Not done: it is a title, not spacing.
 > แต่ไม่เคยมีชั้น `.say` จึงไม่มีอะไรย้าย · **ทางแก้คือ `--amber-ink` ที่ 5.46**
 > ซึ่งเป็นการเปลี่ยนทั้งแอปและเป็นเรื่องของคนที่เป็นเจ้าของแบรนด์ ตามที่ไฟล์นั้น
 > เขียนไว้เอง ไม่ใช่สิ่งที่แอบใส่มากับการย่อแถบ
+>
+> **ปิดแล้ว 2026-10-10** — ผู้ใช้สั่งแก้หลัง QA: `--amber` ธีมสว่างเป็น #926400
+> วัดได้ 4.64 บน `--amber-bg` และเพดานใน `test/theme.test.js` ถูกถอดออก · ดู
+> [docs/plan-qa-fixes-2026-10-10.md](docs/plan-qa-fixes-2026-10-10.md)
 
 **และคอมเมนต์หนึ่งจุดผิดมาตั้งแต่ 2026-08-13** `PolicyVersion.jsx` เขียนไว้ว่า
 กล่องนั้นต้องมีลูกคนเดียวเพราะ *"`.alert` is a flex row whose first item is the
