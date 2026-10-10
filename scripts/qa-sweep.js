@@ -86,26 +86,38 @@ async function login(page, code) {
 
 const NAV = 'nav a, nav button, aside a, aside button';
 
+// The name a menu item is listed and clicked by. A collapsed sidebar repeats the label in its
+// tooltip, so "AB" + "AB" is one name. Runs in the page.
+function navName(e) {
+  const s = (e.getAttribute('aria-label') || e.textContent || '').trim().replace(/\s+/g, ' ');
+  return s.length % 2 === 0 && s.slice(0, s.length / 2) === s.slice(s.length / 2) ? s.slice(0, s.length / 2) : s;
+}
+
 async function navItems(page) {
-  return page.evaluate((sel) => {
+  return page.evaluate(({ sel, fn }) => {
+    const navName = new Function(`return (${fn})`)();
     const els = [...document.querySelectorAll(sel)].filter((e) => e.offsetParent !== null);
-    // A collapsed sidebar repeats the label in its tooltip, so "AB" + "AB" is one name.
-    const once = (s) => (s.length % 2 === 0 && s.slice(0, s.length / 2) === s.slice(s.length / 2) ? s.slice(0, s.length / 2) : s);
-    return [...new Set(els.map((e) => once((e.getAttribute('aria-label') || e.textContent || '').trim().replace(/\s+/g, ' '))).filter(Boolean))];
-  }, NAV);
+    return [...new Set(els.map(navName).filter(Boolean))];
+  }, { sel: NAV, fn: navName.toString() });
 }
 
 async function clickNav(page, label) {
-  // The visible text is label + live count + tooltip, so match on the front half with digits removed.
-  const key = label.replace(/[\d()›]/g, '').trim();
-  const half = key.slice(0, Math.max(4, Math.floor(key.length / 2))).trim();
-  const loc = page.locator(NAV).filter({ hasText: half });
-  for (let i = 0; i < await loc.count(); i++) {
-    if (await loc.nth(i).isVisible()) { await loc.nth(i).click(); await settle(page); return true; }
-  }
-  const byAria = page.locator(`[aria-label="${label}"]`);
-  if (await byAria.count() && await byAria.first().isVisible()) { await byAria.first().click(); await settle(page); return true; }
-  return false;
+  // The WHOLE name, with the live count taken out of both sides. This matched the front half of
+  // the name until 2026-10-10, and "รายงาน OT แยกแผนก" and "รายงาน OT การเงิน" share theirs —
+  // so the sweep pressed การเงิน twice and never opened แยกแผนก.
+  const found = await page.evaluate(({ sel, fn, want }) => {
+    const navName = new Function(`return (${fn})`)();
+    const bare = (s) => s.replace(/[\d()›]/g, '').replace(/\s+/g, ' ').trim();
+    document.querySelectorAll('[data-qa-nav]').forEach((e) => e.removeAttribute('data-qa-nav'));
+    const hit = [...document.querySelectorAll(sel)]
+      .find((e) => e.offsetParent !== null && bare(navName(e)) === bare(want));
+    if (hit) hit.setAttribute('data-qa-nav', '');
+    return !!hit;
+  }, { sel: NAV, fn: navName.toString(), want: label });
+  if (!found) return false;
+  await page.locator('[data-qa-nav]').first().click();
+  await settle(page);
+  return true;
 }
 
 /** Runs in the page. */
