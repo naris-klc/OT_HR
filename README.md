@@ -71,6 +71,10 @@ named tunnel ของ Cloudflare ซึ่งเป็น profile ที่ต�
 ที่ §Status เตือนไว้: build ไม่ทำให้แอปล่มแล้ว แต่ `.env` ที่รากของ repo ยังชี้ไป
 ที่ฐานข้อมูลจริง และ dev server ที่รันเฉย ๆ ก็อ่านไฟล์นั้น
 
+**จะส่งงานให้ deploy?** ทำตาม [docs/qa-release.md](docs/qa-release.md) ก่อน —
+เกณฑ์ว่า "พร้อม deploy" แปลว่าอะไร และ `npm run qa:sweep` ซึ่งไล่ทุกจอของทั้ง 4 บทบาท
+ด้วย browser (playwright-core กับ axe-core เป็น devDependency ไม่เข้าอิมเมจที่ใช้รันจริง)
+
 Locked out of the only ผู้ดูแลระบบ account? `npm run reset-admin -- ADMIN` —
 see [ใครทำอะไรได้](#ใครทำอะไรได้--ฝ่ายบุคคล-กับ-ผู้ดูแลระบบ).
 
