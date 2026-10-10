@@ -135,10 +135,10 @@
 .f027 table tbody tr:last-child td { border-bottom: 0.25mm solid #000; }
 .f027 table tbody tr:hover { background: none; }
 
-/* วันที่มี OT ระบายเหลืองทั้งแถว ไม่ว่าวันหยุด วันเกิด หรือวันทำงาน (2026-10-10)
-   — วันหยุดที่ไม่มี OT ไม่ระบาย · เคยระบายวันหยุดทุกวัน
-   ตั้งแต่ 2026-10-09 */
-.f027 tbody tr.has-ot td {
+/* วันหยุด วันเกิด และเหมารายวัน ที่มีรายการขอ OT ระบายเหลืองทั้งแถว (2026-10-10)
+   — OT วันทำงานธรรมดาไม่ระบาย วันหยุดที่ไม่มี OT ก็ไม่ระบาย · เคยระบาย
+   วันหยุดทุกวันตั้งแต่ 2026-10-09 */
+.f027 tbody tr.shade td {
   background: #ffff00;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -235,7 +235,7 @@
   overflow-wrap: break-word;
 }
 .f027 td.desc { font-size: 6.8pt; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-/* Besides the three yellow headings, the only fill is `tr.has-ot` above. */
+/* Besides the three yellow headings, the only fill is `tr.shade` above. */
 .f027 tr.total td { font-weight: 700; }
 /* สรุปรวม runs from จาก to the last hour column — either side is open paper. */
 .f027 tr.total td.blank { border: 0; }
