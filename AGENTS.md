@@ -234,7 +234,8 @@ worktree full of files does not surface in everybody else's `git status`.
   every `migrate:` script reach across every worktree there is. File isolation
   is all you bought. **บนเครื่อง dev (`.env` มี `NODE_ENV=development`) ทดสอบกับ
   ฐานนั้นได้เลย** — `next dev` ต่อฐานใน `.env` ไม่ต้อง build แยกหรือสร้างฐาน QA และ
-  แก้ข้อมูลเพื่อทดสอบได้ · seed/restore/`migrate:` ยังต้องถาม · สั่งไว้ 2026-10-10
+  แก้ข้อมูลเพื่อทดสอบได้ (รวม seed เวลาสแกนนิ้วของบัญชี `PMZ…` — 2026-10-11) ·
+  seed/restore/`migrate:` ยังต้องถาม · สั่งไว้ 2026-10-10
   — กติกาเต็มอยู่ใน [docs/qa-release.md](docs/qa-release.md) §เครื่อง dev
 - **The ports.** The verify recipe below uses `-p 3001`; two sessions verifying
   at once collide on it. Pick a port nobody is holding, and name the build
