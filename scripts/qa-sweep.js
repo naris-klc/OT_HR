@@ -4,6 +4,8 @@
  *
  *   QA_BASE=http://127.0.0.1:3011 npm run qa:sweep
  *   QA_BASE=... QA_ROLE=hr npm run qa:sweep          # one role only
+ *   QA_BASE=... QA_ACCOUNTS=hr=PMZ107,admin=PMZ108 npm run qa:sweep
+ *                                     # other codes per role — see below
  *
  * ── It only reads ───────────────────────────────────────────────────────────
  *
@@ -14,6 +16,13 @@
  * otherwise), and the live database does not have them. QA_BASE has no default
  * for that reason — a sweep that silently ran against :3000 would be measuring
  * HR's screens with HR's data.
+ *
+ * ALL EIGHT บทบาท SINCE 2026-10-10. It swept four (พนักงาน หัวหน้างาน
+ * ฝ่ายบุคคล ผู้ดูแลระบบ) because the seed had no one else, so การเงิน's menu and
+ * the queues of the three higher signers were never opened. `QA_ACCOUNTS`
+ * replaces the code for any role named in it — what a dev machine's own
+ * database uses for its `[ทดสอบ]` accounts, which cannot reuse the seed's codes
+ * (`ADMIN` is a real account there).
  *
  * ── What counts as a finding ────────────────────────────────────────────────
  *
@@ -47,7 +56,24 @@ if (!BASE) {
   process.exit(2);
 }
 const PASSWORD = process.env.QA_PASSWORD || process.env.SEED_PASSWORD || 'primus123';
-const ROLES = { employee: 'PM-0412', manager: 'PM-0100', hr: 'HR-001', admin: 'ADMIN' };
+const ROLES = {
+  employee: 'PM-0412',
+  manager: 'PM-0100',
+  finance: 'PM-0700',
+  dept_manager: 'PM-0800',
+  division_manager: 'PM-0900',
+  managing_director: 'PM-0999',
+  hr: 'HR-001',
+  admin: 'ADMIN',
+};
+for (const pair of (process.env.QA_ACCOUNTS || '').split(',').filter(Boolean)) {
+  const [role, code] = pair.split('=').map((x) => x.trim());
+  if (!(role in ROLES) || !code) {
+    console.error(`QA_ACCOUNTS: อ่าน "${pair}" ไม่ได้ — ใช้รูป บทบาท=รหัส เช่น hr=PMZ107 (บทบาท: ${Object.keys(ROLES).join(' ')})`);
+    process.exit(1);
+  }
+  ROLES[role] = code;
+}
 const ONLY = process.env.QA_ROLE;
 const OUT = process.env.QA_OUT || path.join(os.tmpdir(), 'primus-ot-qa');
 const WIDTHS = [1440, 1024, 861, 860, 640, 390, 360];

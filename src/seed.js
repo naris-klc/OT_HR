@@ -32,6 +32,10 @@ const DEPARTMENTS = [
   { code: 'QC', name: 'Quality Control', nameTh: 'ควบคุมคุณภาพ', monthlyCapHours: 40, weeklyCapHours: null },
   { code: 'WH', name: 'Warehouse', nameTh: 'คลังสินค้า', monthlyCapHours: null, weeklyCapHours: null },
   { code: 'ADM', name: 'Administration', nameTh: 'สำนักงาน', monthlyCapHours: null, weeklyCapHours: null },
+  // สามแผนกของบทบาทที่เพิ่ม 2026-10-10 — ดู ROLE_PEOPLE ข้างล่าง
+  { code: 'ACC', name: 'Accounting', nameTh: 'บัญชีและการเงิน', monthlyCapHours: null, weeklyCapHours: null },
+  { code: 'SALES', name: 'Sales', nameTh: 'ขาย', monthlyCapHours: null, weeklyCapHours: null },
+  { code: 'EXEC', name: 'Executive Office', nameTh: 'สำนักกรรมการผู้จัดการ', monthlyCapHours: null, weeklyCapHours: null },
 ];
 
 const PEOPLE = [
@@ -101,6 +105,33 @@ const PEOPLE = [
   { code: 'THT0056', name: 'ถาวร แป้นวงษ์', position: 'ช่างประกอบ', dept: 'PROD', role: 'employee' },
   { code: 'THT0074', name: 'สุจินดา แรงกสิวิทย์', position: 'เจ้าหน้าที่ตรวจสอบ', dept: 'QC', role: 'employee' },
   { code: 'THT0018', name: 'จรรยา ประสิทธิ์เกษมกัน', position: 'เจ้าหน้าที่คลังสินค้า', dept: 'WH', role: 'employee' },
+
+  /**
+   * บทบาทที่ seed ไม่เคยมี จนถึง 2026-10-10 — การเงิน · ผู้จัดการแผนก ·
+   * ผู้จัดการฝ่าย · กรรมการผู้จัดการ
+   *
+   * ก่อนหน้านี้มีบัญชีแค่ 4 บทบาทจาก 8 จอของการเงิน (คิวแผนกตัวเอง + รายงาน
+   * ทั้งบริษัท) และคิวของผู้อนุมัติขั้นสูงจึงไม่เคยถูกเปิดในการตรวจหน้าจอเลย
+   * (docs/plan-ux-audit-2026-10-10.md) · วางให้ทุกคนมีใบรอในคิวของตัวเองอย่างน้อย
+   * หนึ่งใบ ตามเส้นทางใน `APPROVED_BY` (lib/roles.js):
+   *
+   *   PM-0701 พนักงาน ACC          → PM-0700 การเงิน ถือ ACC
+   *   PM-0101 หัวหน้างาน PROD       → PM-0800 ผู้จัดการแผนก ถือ PROD
+   *   PM-0800 ผู้จัดการแผนก PROD    → PM-0900 ผู้จัดการฝ่าย ถือ PROD เพิ่ม (`approves`)
+   *   PM-0901 พนักงาน SALES         → PM-0900 — SALES ไม่มีหัวหน้างาน จึงข้ามขั้นขึ้นไป
+   *   PM-0700 · PM-0900             → PM-0999 กรรมการผู้จัดการ ผ่าน `personalApprovers`
+   *                                   (สองบทบาทนี้ไม่มีขั้นแรกตามบทบาท)
+   *   PM-0999 กรรมการผู้จัดการ      → ไม่มีขั้นแรก ไป ฝ่ายบุคคล ตรง
+   *
+   * กรรมการผู้จัดการอยู่แผนกของตัวเอง (EXEC) ไม่ใช่ ADM: ADM ไม่มีผู้อนุมัติขั้นแรก
+   * และใบที่ PM-0210 ยื่นจาก ADM ต้องยังไป ฝ่ายบุคคล ตรงเหมือนเดิม
+   */
+  { code: 'PM-0700', name: 'ศิริพร ทองคำ', position: 'ผู้จัดการบัญชีและการเงิน', dept: 'ACC', role: 'finance', personalApprovers: ['PM-0999'] },
+  { code: 'PM-0701', name: 'วนิดา ศรีเมือง', position: 'เจ้าหน้าที่บัญชี', dept: 'ACC', role: 'employee' },
+  { code: 'PM-0800', name: 'ไพโรจน์ บุญเรือง', position: 'ผู้จัดการแผนกผลิต', dept: 'PROD', role: 'dept_manager' },
+  { code: 'PM-0900', name: 'กิตติพงษ์ รุ่งเรือง', position: 'ผู้จัดการฝ่ายขาย', dept: 'SALES', role: 'division_manager', approves: ['PROD'], personalApprovers: ['PM-0999'] },
+  { code: 'PM-0901', name: 'ปิยะนุช แก้วมณี', position: 'พนักงานขาย', dept: 'SALES', role: 'employee' },
+  { code: 'PM-0999', name: 'ธีระ วัฒนกุล', position: 'กรรมการผู้จัดการ', dept: 'EXEC', role: 'managing_director' },
 ];
 
 /**
@@ -156,7 +187,26 @@ const THEMTECH_EXAMPLES = [
   },
 ];
 
-const ALL_EXAMPLES = [...WORKED_EXAMPLES, ...THEMTECH_EXAMPLES];
+/**
+ * ใบของบทบาทที่เพิ่ม 2026-10-10 — อย่างน้อยหนึ่งใบรอในคิวของผู้อนุมัติแต่ละคน
+ * ข้างบน และมีใบที่ผ่านแล้ว/ไม่อนุมัติปน ให้ป๊อปอัปรายละเอียดมีขั้นให้ดู ·
+ * `signer` คือใครเซ็นขั้นแรก (ค่าตั้งต้น PM-0100) · `firstStep: false` คือใบที่
+ * ไม่มีขั้นแรก
+ */
+const ROLE_EXAMPLES = [
+  { label: 'F1', by: 'PM-0701', workDate: '2026-08-11', startTime: '17:00', endTime: '20:00', description: 'ปิดงบรายเดือน', status: 'pending_mgr' },
+  { label: 'F2', by: 'PM-0701', workDate: '2026-08-04', startTime: '17:00', endTime: '19:00', description: 'กระทบยอดธนาคาร', status: 'approved', signer: 'PM-0700' },
+  { label: 'F3', by: 'PM-0700', workDate: '2026-08-12', startTime: '17:00', endTime: '20:00', description: 'เตรียมเอกสารผู้สอบบัญชี', status: 'pending_mgr' },
+  { label: 'D1', by: 'PM-0101', workDate: '2026-08-13', startTime: '17:00', endTime: '21:00', description: 'คุมไลน์ผลิตรอบเร่ง', status: 'pending_mgr' },
+  { label: 'D2', by: 'PM-0290', workDate: '2026-08-14', startTime: '17:00', endTime: '20:00', description: 'ซ่อมเครื่องตัดไลน์ 2', status: 'approved', signer: 'PM-0800' },
+  { label: 'V1', by: 'PM-0800', workDate: '2026-08-18', startTime: '17:00', endTime: '20:00', description: 'วางแผนกำลังผลิตไตรมาส 4', status: 'pending_mgr' },
+  { label: 'V2', by: 'PM-0901', workDate: '2026-08-17', startTime: '17:00', endTime: '20:00', description: 'ออกบูธงานแสดงสินค้า', status: 'pending_mgr' },
+  { label: 'V3', by: 'PM-0901', workDate: '2026-08-03', startTime: '17:00', endTime: '19:30', description: 'เยี่ยมลูกค้าชลบุรี', status: 'rejected', signer: 'PM-0900', rejectReason: 'งานนี้อยู่ในเวลางานปกติ' },
+  { label: 'M1', by: 'PM-0900', workDate: '2026-08-19', startTime: '17:00', endTime: '20:00', description: 'ประชุมสรุปยอดขายกับตัวแทน', status: 'pending_mgr' },
+  { label: 'M2', by: 'PM-0999', workDate: '2026-08-20', startTime: '17:00', endTime: '19:00', description: 'ประชุมคณะกรรมการ', status: 'pending_hr', firstStep: false },
+];
+
+const ALL_EXAMPLES = [...WORKED_EXAMPLES, ...THEMTECH_EXAMPLES, ...ROLE_EXAMPLES];
 
 /**
  * Everything this file creates, so the guard below can tell it apart from
@@ -237,6 +287,7 @@ async function run() {
       // birthday because ทะเบียนพนักงาน does not know when it is.
       ...(p.birthDate ? { birthDate: p.birthDate } : {}),
     });
+    if (p.approves) employee.approvesDepartments = p.approves.map((c) => depts.get(c)._id);
     await employee.setPassword(PASSWORD);
     await employee.save();
     people.set(p.code, employee);
@@ -244,9 +295,14 @@ async function run() {
       await Department.findByIdAndUpdate(depts.get(p.dept)._id, { manager: employee._id });
     }
   }
+  // After everybody exists — a named signer can sit further down the list.
+  for (const p of PEOPLE.filter((x) => x.personalApprovers)) {
+    await Employee.findByIdAndUpdate(people.get(p.code)._id, {
+      personalApprovers: p.personalApprovers.map((c) => people.get(c)._id),
+    });
+  }
 
   const hr = people.get('HR-001');
-  const manager = people.get('PM-0100');
   // One calendar for the run, day types per example: the author differs between
   // them and a birthday is a holiday for one person only.
   const calendar = await loadCalendar(ALL_EXAMPLES.map((e) => e.workDate));
@@ -271,9 +327,14 @@ async function run() {
     });
     applyComputation(entry, result, ctx);
     entry.log(author, 'submit', `worked example ${ex.label}`, null);
-    if (ex.status !== 'pending_mgr') {
-      entry.managerDecision = { by: manager._id, at: new Date(), note: 'ตรวจสอบแล้ว' };
-      entry.log(manager, 'approve_mgr', null, 'pending_mgr');
+    const signer = people.get(ex.signer || 'PM-0100');
+    if (ex.status === 'rejected') {
+      entry.managerDecision = { by: signer._id, at: new Date(), note: ex.rejectReason };
+      entry.rejectionReason = ex.rejectReason;
+      entry.log(signer, 'reject_mgr', ex.rejectReason, 'pending_mgr');
+    } else if (ex.status !== 'pending_mgr' && ex.firstStep !== false) {
+      entry.managerDecision = { by: signer._id, at: new Date(), note: 'ตรวจสอบแล้ว' };
+      entry.log(signer, 'approve_mgr', null, 'pending_mgr');
     }
     if (ex.status === 'approved') {
       entry.hrDecision = { by: hr._id, at: new Date(), note: 'ยืนยัน' };
@@ -292,6 +353,7 @@ async function run() {
   console.log(`\nseeded ${DEPARTMENTS.length} departments, ${PEOPLE.length} people, ${HOLIDAYS.length} holidays`);
   console.log(`login with any code above, password: ${PASSWORD}`);
   console.log('  employee PM-0412 · manager PM-0100 · hr HR-001 · admin ADMIN');
+  console.log('  finance PM-0700 · dept_manager PM-0800 · division_manager PM-0900 · managing_director PM-0999');
   // The one row with a วันเกิด, and the reason it is worth naming here: it is
   // what makes วันเกิดรอตรวจ show anything at all on a fresh database.
   console.log('  PM-0210 มาลี (ฝ่ายบุคคล, พนักงาน) เกิด 15 ส.ค. — ใช้ทดสอบสวัสดิการวันเกิด');
