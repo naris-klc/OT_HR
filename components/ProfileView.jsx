@@ -25,7 +25,7 @@ export default function ProfileView({ user, jumpTo = null, onPasswordChanged, on
        restating every queue, table and modal in the app. See the rule beside
        `.profile-form`. */
     <div className="stack profile-page">
-      {/* กล่องแจ้งเตือนของหน้า — ว่างเอง ผู้รับช่วงอนุมัติ และ พนักงานที่คุณมีสิทธิ์อนุมัติ
+      {/* กล่องแจ้งเตือนของหน้า — ว่างเอง เปลี่ยนรหัสผ่าน ผู้รับช่วงอนุมัติ และ พนักงานที่คุณมีสิทธิ์อนุมัติ
           ส่งแถวมารวมที่นี่ผ่าน `NoticePage` (2026-10-10 · รายงาน UX ข.2) */}
       <NoticeStack id="profile" />
       {/* สองคอลัมน์ (แบบ A, เลือกไว้ 2026-10-08): ซ้ายคือข้อมูลกับธีม ขวาคือรหัสผ่านกับทางออก
@@ -494,11 +494,20 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
         sentence now — the password in use is the รหัสพนักงาน — and that is
         what the card's explanation leaned on to be foldable (until 2026-10-09,
         when it stopped folding and moved under the boxes).
+
+        ไม่ใช่ `Alert` ในการ์ดแล้วตั้งแต่ 2026-10-11 — ผู้ใช้สั่งให้ย้ายไปกล่อง
+        แจ้งเตือนบนสุดของหน้า: กล่องนี้ส่งแถวไปรวมในกล่อง `profile` ผ่าน
+        `NoticePage` แบบเดียวกับ ผู้รับช่วงอนุมัติแทน · ประโยคเต็มอยู่ในหัวเรื่อง
+        เพราะบนมือถือเห็นแค่หัวเรื่อง · ซ่อนได้ด้วย ซ่อน ของกล่อง แต่แถบหัวยังบอก
+        ว่าซ่อนไว้ (design.md §5.1)
       */}
       {pending && !ok && (
-        <Alert kind="warn">
-          คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้ ซึ่งคือรหัสพนักงานของคุณ และมีคนอื่นทราบด้วย
-        </Alert>
+        <NoticeStack id="password">
+          <NoticeRow
+            tone="warn"
+            title="คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้ ซึ่งคือรหัสพนักงานของคุณ และมีคนอื่นทราบด้วย"
+          />
+        </NoticeStack>
       )}
       {error && <Alert kind="error">{error}</Alert>}
 

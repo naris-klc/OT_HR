@@ -10230,7 +10230,8 @@ The box now reads *"คุณยังใช้รหัสผ่านที่
 went with the arrow was *"จึงควรเปลี่ยนเป็นรหัสผ่านของคุณเองที่ฟอร์มนี้"*, and the
 form it names is directly underneath the Alert. **The clause that stayed is the
 one the fold was built around**: the `Disclosure` above this box is foldable at
-all only because the amber Alert repeats that the password in use is the
+all only because the amber Alert (a `NoticeRow` in the page's top notice box
+since 2026-10-11) repeats that the password in use is the
 รหัสพนักงาน, which is written into the comment there and pinned in
 `test/tempPassword.test.js`.
 
