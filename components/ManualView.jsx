@@ -2315,7 +2315,7 @@ const SECTIONS = [
               <Desk title="ตรวจสอบประจำเดือน" nav={<MkRow on>ตรวจสอบประจำเดือน</MkRow>}>
                 <span className="mk-alert col">
                   <span className="mk-alert-t"><InlineMark tone="warn" />งวด กันยายน 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ</span>
-                  <MkNote>ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา</MkNote>
+                  <MkNote>ใบที่พิมพ์จะยังไม่มีชื่อผู้อนุมัติ</MkNote>
                 </span>
                 <MkNote>เดือนก่อน · สิงหาคม 2569 — มีใบรออนุมัติค้างอยู่ 12 ใบ · เลือกเดือนนั้นในช่อง ประจำเดือน เพื่อตรวจก่อนพิมพ์</MkNote>
               </Desk>
@@ -2324,7 +2324,7 @@ const SECTIONS = [
               <Phone title="ตรวจสอบประจำเดือน" bar={<MkSlot icon="chart" label="รายงาน" on />}>
                 <span className="mk-alert col">
                   <span className="mk-alert-t"><InlineMark tone="warn" />งวด กันยายน 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ</span>
-                  <MkNote>ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา</MkNote>
+                  <MkNote>ใบที่พิมพ์จะยังไม่มีชื่อผู้อนุมัติ</MkNote>
                 </span>
               </Phone>
             )}
