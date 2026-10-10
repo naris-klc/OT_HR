@@ -4,8 +4,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { isSigner, roleLabel } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
-import { Alert, PasswordInput, TablePager, pageWindow } from './common.jsx';
+import { Alert, NoticeRow, NoticeStack, PasswordInput, TablePager, pageWindow } from './common.jsx';
 import Icon from './icons.jsx';
+import { useToast } from './Toast.jsx';
 import Delegation from './Delegation.jsx';
 
 /**
@@ -24,6 +25,9 @@ export default function ProfileView({ user, jumpTo = null, onPasswordChanged, on
        restating every queue, table and modal in the app. See the rule beside
        `.profile-form`. */
     <div className="stack profile-page">
+      {/* กล่องแจ้งเตือนของหน้า — ว่างเอง ผู้รับช่วงอนุมัติ และ ผู้ใต้บังคับบัญชา
+          ส่งแถวมารวมที่นี่ผ่าน `NoticePage` (2026-10-10 · รายงาน UX ข.2) */}
+      <NoticeStack id="profile" />
       {/* สองคอลัมน์ (แบบ A, เลือกไว้ 2026-10-08): ซ้ายคือข้อมูลกับธีม ขวาคือรหัสผ่านกับทางออก
           — ฟอร์มรหัสผ่านกว้างแค่ 380px ฝั่งขวาของการ์ดเดิมจึงว่างทั้งหน้า · ต่ำกว่า
           860px เรียงลงเป็นคอลัมน์เดียว */}
@@ -112,7 +116,7 @@ function MyTeam() {
       <div className="hint">
         {people ? `${total} คน · ` : ''}แก้ไม่ได้ — แจ้งฝ่ายบุคคล
       </div>
-      {error && <Alert kind="error">{error}</Alert>}
+      {error && <NoticeStack id="my-team"><NoticeRow tone="error" title={error} /></NoticeStack>}
       {people && total === 0 && <div className="hint team-empty">ยังไม่มีพนักงานที่คุณอนุมัติ</div>}
       {groups.map((g, i) => (
         <section key={`${g.name}-${i}`} className="team-group">
@@ -380,7 +384,10 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
-  const [ok, setOk] = useState('');
+  // ผลสำเร็จเป็น toast ตั้งแต่ 2026-10-10 (เคยเป็น `Alert kind="ok"` ในการ์ด ·
+  // รายงาน UX ข.2) — `ok` เหลือหน้าที่เดียวคือซ่อนคำเตือนรหัสผ่านที่ HR ตั้งให้
+  const [ok, setOk] = useState(false);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   /**
    * A BOX THAT WAS LEFT EMPTY SAYS SO ON ITS OWN, once it has been visited —
@@ -433,14 +440,15 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
   async function submit(e) {
     e.preventDefault();
     setError('');
-    setOk('');
+    setOk(false);
     setBusy(true);
     try {
       await api.post('/employees/me/password', { current, next });
       setCurrent('');
       setNext('');
       setConfirm('');
-      setOk('เปลี่ยนรหัสผ่านแล้ว · ครั้งต่อไปให้เข้าสู่ระบบด้วยรหัสผ่านใหม่');
+      setOk(true);
+      toast('เปลี่ยนรหัสผ่านแล้ว · ครั้งต่อไปให้เข้าสู่ระบบด้วยรหัสผ่านใหม่');
       await onDone?.();
     } catch (err) {
       setError(err.message);
@@ -484,7 +492,6 @@ export function ChangePassword({ onDone, pending = false, jump = false, children
         </Alert>
       )}
       {error && <Alert kind="error">{error}</Alert>}
-      {ok && <Alert kind="ok">{ok}</Alert>}
 
       <form onSubmit={submit} className="profile-form">
         <div className="field">

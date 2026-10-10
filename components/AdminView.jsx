@@ -81,12 +81,13 @@ const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 // the printed sheets use it.
 import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, PickMany,
-  NoticeRow, NoticeStack, RowAction, ClearFilters,
+  InlineMark, NoticeRow, NoticeStack, RowAction, ClearFilters,
   ClearButton, PAGE_SIZE, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
   pageQuery, useShowMore, pageWindow, serverRows, useKeptFetch, usePageClamp,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
+import { useToast } from './Toast.jsx';
 // One clause of the เพดาน note depends on capBehaviour — see `capNote`.
 import { usePolicy } from './policyContext.jsx';
 
@@ -145,6 +146,11 @@ export default function AdminView({ user, initialSection }) {
 
   return (
     <>
+      {/* กล่องแจ้งเตือนของหน้า — ว่างเอง แต่อยู่บนสุดเหนือการ์ดแท็บ กล่องของแต่ละ
+          หัวข้อ (แผนกและเพดาน · นโยบาย · ผู้รับช่วง · พนักงาน …) จึงส่งแถวมารวม
+          ที่นี่ผ่าน `NoticePage` แทนที่จะขึ้นใต้การ์ดแท็บ — 2026-10-10 (รายงาน UX
+          ข.1/ข.2) · บนหน้าแรกของผู้ดูแลระบบ กล่องของหน้าแรกอยู่สูงกว่าและรับแทน */}
+      <NoticeStack id="settings" />
       {/* ── EIGHT SECTIONS, TWO CONTROLS, ONE LIST ─────────────────────────
           `SECTIONS` is the whole of what the choices are and in what order;
           these two are how the choice is MADE, and which one is on screen is
@@ -506,17 +512,17 @@ function Heads({ department, people, depts, gap, onGo }) {
           wear the badge above and the ⚠ below it at the same time. */}
       {!hrHeads && (nobody || stranded.length > 0) && (
         <>
-          {/* The same ⚠ the cap-breach note wears in the approval queue — one
+          {/* The same mark the cap-breach note wears in the approval queue — one
               mark for "this row needs somebody to do something", not a second
               vocabulary for the same idea. `title` carries the consequence,
               which is the sentence a pill has no room for. */}
           {nobody ? (
             <span className="head-badge gap" title={HEAD_GAP_TIP}>
-              ⚠ ยังไม่มีหัวหน้า
+              <InlineMark tone="warn" />ยังไม่มีหัวหน้า
             </span>
           ) : stranded.map((key) => (
             <span key={key} className="head-badge gap" title={HEAD_GAP_TIP}>
-              ⚠ ยังไม่มีหัวหน้า{companyShort(key)}
+              <InlineMark tone="warn" />ยังไม่มีหัวหน้า{companyShort(key)}
             </span>
           ))}
           {onGo && (
@@ -751,7 +757,8 @@ function Departments({ user, onGo, roster }) {
   const [deleting, setDeleting] = useState(null);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
-  const [ok, setOk] = useState('');
+  // ผลของปุ่มเป็น toast ตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — เคยเป็น `Alert kind="ok"` บนการ์ด
+  const toast = useToast();
 
   /**
    * Which departments have nobody to sign for them — the same reading the
@@ -792,7 +799,7 @@ function Departments({ user, onGo, roster }) {
   async function create(values) {
     setError('');
     await api.post('/departments', values);
-    setOk('เพิ่มแผนกแล้ว');
+    toast('เพิ่มแผนกแล้ว');
     setAdding(false);
     load();
   }
@@ -800,7 +807,7 @@ function Departments({ user, onGo, roster }) {
   async function update(id, patch) {
     try {
       await api.patch(`/departments/${id}`, patch);
-      setOk('บันทึกแล้ว');
+      toast('บันทึกแล้ว');
       load();
     } catch (err) { setError(err.message); }
   }
@@ -849,7 +856,7 @@ function Departments({ user, onGo, roster }) {
     setChecking(true);
     try {
       await api.del(`/departments/${dept._id}`);
-      setOk(`ลบแผนก ${dept.code} · ${dept.nameTh || dept.name} แล้ว`);
+      toast(`ลบแผนก ${dept.code} · ${dept.nameTh || dept.name} แล้ว`);
       setDeleting(null);
       setEditing(null);
       load();
@@ -892,7 +899,6 @@ function Departments({ user, onGo, roster }) {
         <h2>แผนก</h2>
         <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />เพิ่มแผนก</button>
       </div>
-      {ok && <Alert kind="ok">{ok}</Alert>}
 
       {/* ── the two ways to read the table ────────────────────────────────────
           BETWEEN THE BANNER AND THE TABLE, because that is the seam it belongs
@@ -1109,7 +1115,7 @@ function Departments({ user, onGo, roster }) {
           onClose={() => setEditing(null)}
           onSave={async (values) => {
             await api.patch(`/departments/${editing._id}`, values);
-            setOk('บันทึกแล้ว');
+            toast('บันทึกแล้ว');
             setEditing(null);
             load();
           }}
@@ -2672,6 +2678,30 @@ function Employees({ user }) {
   const [sending, setSending] = useState(false);
   const fileRef = useRef(null);
   /**
+   * ผลของปุ่มเป็น toast — 2026-10-10 (รายงาน UX ข.2 · design.md §5.1 "ผลหลังกด
+   * ปุ่ม → toast") · `error` `saved` `issued` เคยเป็น `Alert` บนการ์ดพร้อมปุ่ม
+   * "รับทราบ" หรือ × · state ยังเป็นตัวเดิม ที่เปลี่ยนคือวิธีแสดง: พอมีค่าก็ส่งเป็น
+   * toast แล้วล้างทิ้ง · ข้อผิดพลาดและรหัสผ่านอยู่จนกว่าจะกด × (เหตุผลเดิมของ
+   * รหัสผ่าน: มันคือสิ่งที่ HR ต้องจด ข้อความที่หายเองระหว่างหยิบปากกาคือรหัสที่
+   * ต้องรีเซ็ตใหม่)
+   */
+  const toast = useToast();
+  useEffect(() => {
+    if (!error) return;
+    toast(error, 'error');
+    setError('');
+  }, [error, toast]);
+  useEffect(() => {
+    if (!saved) return;
+    toast(<SavedMessage saved={saved} />, saved.auditLogged ? 'ok' : 'error');
+    setSaved(null);
+  }, [saved, toast]);
+  useEffect(() => {
+    if (!issued) return;
+    toast(<IssuedMessage issued={issued} />, issued.missing ? 'error' : 'ok', { sticky: true });
+    setIssued(null);
+  }, [issued, toast]);
+  /**
    * Re-open the file picker from wherever the reader currently is.
    *
    * Every refusal on this card ends with the same instruction — go back to
@@ -3150,12 +3180,8 @@ function Employees({ user }) {
         </div>
       </div>
 
-      {/* Dismissible, like every other notice on this card. It is the one that
-          had no way off the screen: a failed load or a refused save stayed
-          above the table for the rest of the session, and the only way out was
-          reloading the page — which loses the search you were in the middle
-          of. `Alert` has taken an `onClose` all along. */}
-      {error && <Alert kind="error" onClose={() => setError('')}>{error}</Alert>}
+      {/* `error` เป็น toast ข้อผิดพลาดตั้งแต่ 2026-10-10 — ดู effect ข้างบน · ยังปิดได้
+          ด้วย × อย่างที่ตั้งใจไว้ (กล่องเดิมค้างจนต้องโหลดหน้าใหม่) */}
 
       {/*
         A FILE THE SERVER REFUSED — the file named, the lines listed, the picker
@@ -3169,137 +3195,43 @@ function Employees({ user }) {
         refused upload is never "what went wrong", it is "is half of it in the
         roster now".
       */}
+      {/* แถวแดงในกล่องแจ้งเตือนบนสุดของหน้าตั้งแต่ 2026-10-10 (รายงาน UX ข.2) ·
+          เคยเป็น `Alert` บนการ์ด · แถวแดงซ่อนไม่ได้ จึงมีปุ่ม ปิด ในส่วนที่กาง */}
       {importError && (
-        <Alert kind="error" onClose={() => setImportError(null)}>
-          <div>
-            <strong>นำเข้าไม่สำเร็จ — {importError.name}</strong>
-            {' '}· ยังไม่มีข้อมูลใดถูกบันทึกลงทะเบียน แม้แต่แถวเดียว
-          </div>
-          <div style={{ marginTop: 6 }}>{importError.message}</div>
-          {importError.lines.length > 0 && (
-            <ShowMore
-              as="ul"
-              style={{ marginTop: 6, marginLeft: 18 }}
-              items={importError.lines}
-              unit="บรรทัด"
-              render={(l, i) => (
-                <li key={`${l.line}-${i}`}>
-                  บรรทัด {l.line}{l.raw ? ` (“${l.raw}”)` : ''}: {l.reason}
-                </li>
-              )}
-            />
-          )}
-          <div className="say">
-            แก้ตามบรรทัดข้างบนใน Excel · บันทึกเป็น .csv (คอลัมน์วันเกิดควรเป็น YYYY-MM-DD)
-            {' '}แล้วเลือกไฟล์ใหม่อีกครั้ง
-          </div>
-          <div className="row" style={{ marginTop: 8 }}>
-            <button className="btn" onClick={pickFile}><Icon name="upload" />เลือกไฟล์ใหม่</button>
-            <button className="btn ghost" onClick={() => setImportError(null)}>ปิด</button>
-          </div>
-        </Alert>
+        <NoticeStack id="employees-import">
+          <NoticeRow
+            tone="error"
+            title={`นำเข้าไม่สำเร็จ — ${importError.name}`}
+            detail={`ยังไม่มีข้อมูลใดถูกบันทึกลงทะเบียน แม้แต่แถวเดียว · ${importError.message}`}
+            action={<button className="btn ghost sm" onClick={pickFile}><Icon name="upload" />เลือกไฟล์ใหม่</button>}
+            more={(
+              <>
+                {importError.lines.length > 0 && (
+                  <ShowMore
+                    as="ul"
+                    style={{ marginTop: 6, marginLeft: 18 }}
+                    items={importError.lines}
+                    unit="บรรทัด"
+                    render={(l, i) => (
+                      <li key={`${l.line}-${i}`}>
+                        บรรทัด {l.line}{l.raw ? ` (“${l.raw}”)` : ''}: {l.reason}
+                      </li>
+                    )}
+                  />
+                )}
+                <div className="say">
+                  แก้ตามบรรทัดข้างบนใน Excel · บันทึกเป็น .csv (คอลัมน์วันเกิดควรเป็น YYYY-MM-DD)
+                  {' '}แล้วเลือกไฟล์ใหม่อีกครั้ง
+                </div>
+                <button className="btn ghost sm" style={{ marginTop: 6 }} onClick={() => setImportError(null)}>ปิด</button>
+              </>
+            )}
+          />
+        </NoticeStack>
       )}
 
-      {/*
-        What the last save did beyond writing the field.
-
-        Two things can happen on a roster edit that the table cannot show. A
-        moved วันเกิด replays that person's ใบ ที่ยังไม่อนุมัติ — their hours
-        change without anybody touching an entry, and a count of that belongs on
-        screen. And an audit row that could not be written means the change
-        stands with no record of who made it, which is worth interrupting for.
-      */}
-      {saved && (
-        <Alert kind={saved.auditLogged ? 'ok' : 'error'}>
-          {!saved.auditLogged && (
-            <div>
-              <strong>บันทึกการแก้ไขลงประวัติไม่สำเร็จ</strong>
-              {' '}— ข้อมูลถูกแก้แล้ว แต่จะไม่มีบันทึกว่าใครแก้ กรุณาแจ้งผู้ดูแลระบบ
-            </div>
-          )}
-          {saved.auditLogged && (
-            <div>
-              บันทึก {saved.code} แล้ว · แก้ไข {saved.changed} ฟิลด์ · เก็บไว้ในประวัติการแก้ทะเบียนแล้ว
-            </div>
-          )}
-          {saved.recomputed && (
-            <div style={{ marginTop: 6 }}>
-              เปลี่ยนวันเกิดของ {saved.code} แล้ว ·
-              {saved.recomputed.updated > 0
-                ? ` คำนวณใหม่ ${saved.recomputed.updated} รายการ`
-                : ' ไม่มีรายการให้คำนวณใหม่'}
-              {/* `changed` is the number whose FIGURES moved; `updated` counts
-                  every row the replay wrote, most of which land on the same
-                  hours. Only the first is worth a second sentence. */}
-              {saved.recomputed.changed > 0 && (
-                <> · ชั่วโมงเปลี่ยนจริง {saved.recomputed.changed} รายการ
-                  {saved.recomputed.approvedReplayed > 0
-                    && ` (ในนั้นเป็นใบที่อนุมัติแล้ว ${saved.recomputed.approvedReplayed} รายการ — เก็บค่าเดิมไว้ในประวัติรายการแล้ว)`}
-                </>
-              )}
-              {/* A ⚠ line naming the months ปิดงวด had kept out of the run
-                  stood here until 2026-08-31. There is no such month now — the
-                  feature was withdrawn, see lib/periodStatus.js — so a replay
-                  reaches every entry the filter names, whatever month it is in,
-                  and the only rows it leaves are the approved ones. */}
-            </div>
-          )}
-          <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setSaved(null)}>
-            รับทราบ
-          </button>
-        </Alert>
-      )}
-
-      {/* The password, once. Dismissed by hand rather than by the next action:
-          it is the thing HR has to write down or read out, and a notice that
-          clears itself while somebody is reaching for a pen is a password
-          nobody can recover — only reset. */}
-      {issued && (
-        <Alert kind={issued.missing ? 'error' : 'ok'}>
-          {/* Three things this can be reporting, and only the first of them is
-              a password nobody may lose: one the server made, one HR typed and
-              still has, and one that has gone missing between the two. */}
-          {issued.missing ? (
-            <>
-              <div>
-                <strong>สร้างบัญชี {issued.code} · {issued.name} แล้ว แต่ไม่ทราบรหัสผ่าน</strong>
-                {' '}— เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านกลับมา และระบบเก็บไว้แบบเข้ารหัสทางเดียว
-              </div>
-              <div className="say">
-                บัญชีนี้ยังเข้าระบบไม่ได้จนกว่าจะรีเซ็ต — กดปุ่ม “รีเซ็ตรหัส” ที่แถวของคนนี้
-                {' '}และแจ้งผู้ดูแลระบบว่าเกิดเหตุนี้ขึ้น
-              </div>
-            </>
-          ) : issued.chosen ? (
-            <>
-              <div>
-                สร้างบัญชี {issued.code} · {issued.name} แล้ว — ใช้รหัสผ่านที่ตั้งไว้ในหน้าต่างเพิ่มพนักงาน
-              </div>
-              <div className="say">
-                ระบบไม่แสดงรหัสนั้นซ้ำที่ใดอีก เพราะเก็บไว้แบบเข้ารหัสทางเดียว — หากจำไม่ได้
-                {' '}ให้ใช้ปุ่ม “รีเซ็ตรหัส” ซึ่งจะตั้งกลับเป็นรหัสพนักงาน
-                {' '}· พนักงานเข้าใช้งานได้ทันที และจะมีแถบเตือนให้ตั้งรหัสผ่านของตัวเองจนกว่าจะเปลี่ยน
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                {issued.reset ? 'รีเซ็ตรหัสผ่านให้' : 'สร้างบัญชี'} {issued.code} · {issued.name} แล้ว
-                {' '}— รหัสผ่านแรกเข้าคือ{' '}
-                <strong style={{ fontFamily: 'var(--mono, monospace)', fontSize: 17, letterSpacing: '.04em' }}>
-                  {issued.password}
-                </strong>
-              </div>
-              <div className="say">
-                แจ้งรหัสนี้ให้พนักงาน · เข้าใช้งานได้ทันที และมีแถบเตือนให้ตั้งรหัสของตัวเองจนกว่าจะเปลี่ยน
-                {' '}· นี่คือรหัสพนักงานของคนนี้เอง จึงดูซ้ำได้จากทะเบียนตลอด — แต่ระหว่างที่ยังไม่ได้เปลี่ยน
-                {' '}<strong>ใครที่เห็นรหัสพนักงานก็เข้าบัญชีนี้ได้</strong> จึงควรให้เข้าระบบตั้งรหัสของตัวเองโดยเร็ว
-              </div>
-            </>
-          )}
-          <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setIssued(null)}>รับทราบ</button>
-        </Alert>
-      )}
+      {/* ผลการบันทึก (`saved`) และรหัสผ่านที่เพิ่งออก (`issued`) เป็น toast ตั้งแต่
+          2026-10-10 — ข้อความอยู่ใน `SavedMessage` / `IssuedMessage` ท้ายไฟล์นี้ */}
 
       {/*
         The same thing for a CSV import, which can create a hundred accounts at
@@ -3377,7 +3309,7 @@ function Employees({ user }) {
               */}
               {pending.dates.converted.length > 0 && (
                 <div className="era-badge">
-                  ℹ️ ระบบได้แปลงปี พ.ศ. เป็น ค.ศ. ให้อัตโนมัติแล้ว {pending.dates.converted.length} รายการ
+                  <InlineMark tone="info" />ระบบได้แปลงปี พ.ศ. เป็น ค.ศ. ให้อัตโนมัติแล้ว {pending.dates.converted.length} รายการ
                 </div>
               )}
               {/*
@@ -3432,100 +3364,106 @@ function Employees({ user }) {
         </Alert>
       )}
 
+      {/* ผลนำเข้าเป็นแถวในกล่องแจ้งเตือนบนสุดของหน้าตั้งแต่ 2026-10-10 (รายงาน UX
+          ข.2) — หัวเรื่องคือจำนวน รายละเอียดทุกข้อเดิมอยู่หลัง ▾ · สีเดิม: แดงเมื่อมี
+          คนที่ไม่มีหัวหน้าเซ็นให้ เหลืองเมื่อมีแถวที่ข้ามหรือไม่ได้บันทึกประวัติ */}
+      {/* WHICH SHEET THOSE ROWS CAME OUT OF — from the reader that did the
+          work, not from the file's name. A workbook with five tabs has four
+          this did not look at, and "163 แถว" with no tab named is a number
+          nobody can act on when it is the wrong one. */}
       {result && (
-        <Alert kind={
-          result.unsignable?.length ? 'error'
-            : (result.auditUnlogged || result.errors?.length || result.warnings?.length ? 'warn' : 'ok')
-        }
-        >
-          นำเข้าใหม่ {result.created} คน · ปรับปรุง {result.updated} คน
-          {/* WHICH SHEET THOSE ROWS CAME OUT OF — from the reader that did the
-              work, not from the file's name. A workbook with five tabs has four
-              this did not look at, and "163 แถว" with no tab named is a number
-              nobody can act on when it is the wrong one. */}
-          {result.source?.kind === 'xlsx' && result.source.sheet && (
-            <span> · จากไฟล์ .xlsx แผ่นงาน “{result.source.sheet}”</span>
-          )}
-          {/*
-            FIRST, and `error` rather than `warn`.
+        <NoticeStack id="employees-result">
+          <NoticeRow
+            tone={result.unsignable?.length ? 'error'
+              : (result.auditUnlogged || result.errors?.length || result.warnings?.length ? 'warn' : 'ok')}
+            title={`นำเข้าใหม่ ${result.created} คน · ปรับปรุง ${result.updated} คน${
+              result.source?.kind === 'xlsx' && result.source.sheet ? ` · จากไฟล์ .xlsx แผ่นงาน “${result.source.sheet}”` : ''}`}
+            more={(result.unsignable?.length || result.auditUnlogged || result.birthDates?.order
+              || result.errors?.length || result.warnings?.length) ? (
+                <>
+                  {/*
+                    FIRST, and `error` rather than `warn`.
 
-            Everything else in this box is about the file — a row that failed, a
-            column that could not be read. This one is about the roster the file
-            produced, and the people named have working accounts that can file
-            OT which nobody is able to approve. Nothing else on this screen, or
-            any other, would say so: the request simply waits.
+                    Everything else in this box is about the file — a row that failed, a
+                    column that could not be read. This one is about the roster the file
+                    produced, and the people named have working accounts that can file
+                    OT which nobody is able to approve. Nothing else on this screen, or
+                    any other, would say so: the request simply waits.
 
-            They need not appear in the uploaded file at all — demoting the only
-            หัวหน้า of a department strands that department's staff, whose rows
-            the file never mentions. So this lists people, not lines.
-          */}
-          {result.unsignable?.length > 0 && (
-            <div style={{ marginTop: 6 }}>
-              <strong>
-                {result.unsignable.length} คนไม่มีหัวหน้าคนใดเซ็นอนุมัติ OT ให้ได้
-              </strong>
-              {' '}— บัญชีถูกสร้างแล้วและใช้งานได้ แต่ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดได้
-              <ShowMore
-                as="ul"
-                style={{ marginTop: 4, marginLeft: 18 }}
-                items={result.unsignable}
-                unit="คน"
-                render={(p) => (
-                  <li key={p.code}>
-                    {p.code} · {p.name} — แผนก {p.department}
-                    {p.company && ` · ${companyLabel(p.company)}`}
-                  </li>
-                )}
-              />
-              <div style={{ marginTop: 4 }}>
-                ตั้งหัวหน้าให้แผนกนั้น หรือแก้ “เซ็นให้บริษัท” ของหัวหน้าที่มีอยู่ให้ครอบคลุมบริษัทของพวกเขา
-              </div>
-            </div>
-          )}
-          {result.auditUnlogged > 0 && (
-            <div style={{ marginTop: 4 }}>
-              <strong>{result.auditUnlogged} แถวไม่ได้ถูกบันทึกลงประวัติการแก้ทะเบียน</strong>
-              {' '}— ข้อมูลถูกนำเข้าแล้ว แต่จะไม่มีบันทึกว่าแถวเหล่านั้นเปลี่ยนอะไร
-            </div>
-          )}
-          {result.birthDates?.order && (
-            <div className="say">
-              วันเกิด {result.birthDates.count} ค่า อ่านเป็น {ORDER_LABEL[result.birthDates.order]}
-              {/* Two more clauses hung here until 2026-09-04 — "ตามลำดับที่คุณ
-                  ระบุเอง" and "อ่านตามค่าเริ่มต้นขององค์กร" — and both existed
-                  because the order could come from somewhere other than the
-                  file. It cannot now, so what is left is a description of the
-                  shape, which the preview said in the same words before the
-                  upload: the two agreeing is how anybody checks that the file
-                  HR approved is the file that was imported. */}
-              {/* The same count the preview showed, from the server this time.
-                  The two agreeing is the only way anybody can check that the
-                  file HR approved is the file that was imported. */}
-              {result.birthDates.converted > 0
-                && ` · แปลงปี พ.ศ. เป็น ค.ศ. ${result.birthDates.converted} รายการ`}
-            </div>
-          )}
-          {result.errors?.length > 0 && (
-            <ShowMore
-              as="ul"
-              style={{ marginTop: 6, marginLeft: 18 }}
-              items={result.errors}
-              unit="บรรทัด"
-              render={(er, i) => <li key={i}>บรรทัด {er.line}: {er.error}</li>}
-            />
-          )}
-          {result.warnings?.length > 0 && (
-            <ShowMore
-              as="ul"
-              style={{ marginTop: 6, marginLeft: 18 }}
-              items={result.warnings}
-              unit="บรรทัด"
-              render={(w, i) => (
-                <li key={i}>บรรทัด {w.line} ({w.code}): {w.warning} — โปรดตรวจสอบช่องบริษัทด้านล่าง</li>
-              )}
-            />
-          )}
-        </Alert>
+                    They need not appear in the uploaded file at all — demoting the only
+                    หัวหน้า of a department strands that department's staff, whose rows
+                    the file never mentions. So this lists people, not lines.
+                  */}
+                  {result.unsignable?.length > 0 && (
+                    <div style={{ marginTop: 6 }}>
+                      <strong>
+                        {result.unsignable.length} คนไม่มีหัวหน้าคนใดเซ็นอนุมัติ OT ให้ได้
+                      </strong>
+                      {' '}— บัญชีถูกสร้างแล้วและใช้งานได้ แต่ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดได้
+                      <ShowMore
+                        as="ul"
+                        style={{ marginTop: 4, marginLeft: 18 }}
+                        items={result.unsignable}
+                        unit="คน"
+                        render={(p) => (
+                          <li key={p.code}>
+                            {p.code} · {p.name} — แผนก {p.department}
+                            {p.company && ` · ${companyLabel(p.company)}`}
+                          </li>
+                        )}
+                      />
+                      <div style={{ marginTop: 4 }}>
+                        ตั้งหัวหน้าให้แผนกนั้น หรือแก้ “เซ็นให้บริษัท” ของหัวหน้าที่มีอยู่ให้ครอบคลุมบริษัทของพวกเขา
+                      </div>
+                    </div>
+                  )}
+                  {result.auditUnlogged > 0 && (
+                    <div style={{ marginTop: 4 }}>
+                      <strong>{result.auditUnlogged} แถวไม่ได้ถูกบันทึกลงประวัติการแก้ทะเบียน</strong>
+                      {' '}— ข้อมูลถูกนำเข้าแล้ว แต่จะไม่มีบันทึกว่าแถวเหล่านั้นเปลี่ยนอะไร
+                    </div>
+                  )}
+                  {result.birthDates?.order && (
+                    <div className="say">
+                      วันเกิด {result.birthDates.count} ค่า อ่านเป็น {ORDER_LABEL[result.birthDates.order]}
+                      {/* Two more clauses hung here until 2026-09-04 — "ตามลำดับที่คุณ
+                          ระบุเอง" and "อ่านตามค่าเริ่มต้นขององค์กร" — and both existed
+                          because the order could come from somewhere other than the
+                          file. It cannot now, so what is left is a description of the
+                          shape, which the preview said in the same words before the
+                          upload: the two agreeing is how anybody checks that the file
+                          HR approved is the file that was imported. */}
+                      {/* The same count the preview showed, from the server this time.
+                          The two agreeing is the only way anybody can check that the
+                          file HR approved is the file that was imported. */}
+                      {result.birthDates.converted > 0
+                        && ` · แปลงปี พ.ศ. เป็น ค.ศ. ${result.birthDates.converted} รายการ`}
+                    </div>
+                  )}
+                  {result.errors?.length > 0 && (
+                    <ShowMore
+                      as="ul"
+                      style={{ marginTop: 6, marginLeft: 18 }}
+                      items={result.errors}
+                      unit="บรรทัด"
+                      render={(er, i) => <li key={i}>บรรทัด {er.line}: {er.error}</li>}
+                    />
+                  )}
+                  {result.warnings?.length > 0 && (
+                    <ShowMore
+                      as="ul"
+                      style={{ marginTop: 6, marginLeft: 18 }}
+                      items={result.warnings}
+                      unit="บรรทัด"
+                      render={(w, i) => (
+                        <li key={i}>บรรทัด {w.line} ({w.code}): {w.warning} — โปรดตรวจสอบช่องบริษัทด้านล่าง</li>
+                      )}
+                    />
+                  )}
+                </>
+              ) : null}
+          />
+        </NoticeStack>
       )}
 
       {/*
@@ -5633,7 +5571,8 @@ function DocumentCode() {
   const [before, setBefore] = useState(null);
   const [formCode, setFormCode] = useState('');
   const [error, setError] = useState('');
-  const [ok, setOk] = useState('');
+  // ผลของปุ่มเป็น toast ตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — เคยเป็น `Alert kind="ok"` บนการ์ด
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -5672,7 +5611,7 @@ function DocumentCode() {
       await api.patch('/settings', { formCode: value });
       setBefore(value);
       setFormCode(value);
-      setOk('บันทึกแล้ว — ใบ F-HR-027 ที่พิมพ์หลังจากนี้จะใช้ค่าใหม่');
+      toast('บันทึกแล้ว — ใบ F-HR-027 ที่พิมพ์หลังจากนี้จะใช้ค่าใหม่');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -5684,7 +5623,6 @@ function DocumentCode() {
     <div className="card">
       <h2>รหัสเอกสาร OT</h2>
       {error && <Alert kind="error">{error}</Alert>}
-      {ok && <Alert kind="ok">{ok}</Alert>}
 
       {/* No `.form-grid` here on purpose: one field in a two-column grid leaves
           half a row of nothing beside it, and the box itself holds fourteen
@@ -5705,7 +5643,7 @@ function DocumentCode() {
         <input
           value={formCode}
           placeholder="F-HR-027 Rev.4"
-          onChange={(e) => { setFormCode(e.target.value); setOk(''); }}
+          onChange={(e) => setFormCode(e.target.value)}
         />
         {!formCode.trim() && (
           <div className="field-note error">รหัสฟอร์มว่างไม่ได้ — ใบที่พิมพ์ออกมาจะไม่มีเลขที่เอกสาร</div>
@@ -5940,7 +5878,8 @@ function RosterAudit() {
         )}
       </div>
 
-      {(error || loadError) && <Alert kind="error">{error || loadError}</Alert>}
+      {/* แถวแดงในกล่องแจ้งเตือนบนสุดของหน้า ตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — เคยเป็น `Alert` บนการ์ด */}
+      {(error || loadError) && <NoticeStack id="roster-audit"><NoticeRow tone="error" title={error || loadError} /></NoticeStack>}
       {!records && !error && !loadError && <Empty>กำลังโหลด…</Empty>}
       {records && (
         <div className="audit-list" ref={listRef} aria-busy={busy}>
@@ -6223,7 +6162,15 @@ function Holidays() {
   /** Whether เพิ่มวันหยุด is open — the only way this screen adds one by hand. */
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState(null);
+  /**
+   * ผลของปุ่ม — 2026-10-10 (รายงาน UX ข.2): ไม่มีบรรทัดที่ผิด = toast · มี = แถว
+   * เหลืองในกล่องแจ้งเตือนบนสุดพร้อมรายการบรรทัดหลัง ▾ · เคยเป็น `Alert` บนการ์ด
+   */
+  const [result, setResultState] = useState(null);
+  const toast = useToast();
+  const setResult = (r) => {
+    if (r && !r.errors?.length) { toast(r.msg); setResultState(null); } else setResultState(r);
+  };
   /** The row ลบ was pressed on, waiting for an answer — the whole confirm. */
   const [removing, setRemoving] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -6293,21 +6240,25 @@ function Holidays() {
         เสาร์–อาทิตย์เป็นวันหยุดโดยอัตโนมัติ ไม่ต้องบันทึกที่นี่ · หน้านี้เก็บเฉพาะวันหยุดพิเศษของบริษัท
         · การเพิ่มหรือลบวันหยุดจะคำนวณรายการ OT ของวันนั้นใหม่ทันที
       </div>
-      {error && <Alert kind="error">{error}</Alert>}
-      {result && (
-        <Alert kind={result.errors?.length ? 'warn' : 'ok'}>
-          {result.msg}
-          {result.errors?.length > 0 && (
-            <ShowMore
-              as="ul"
-              style={{ marginTop: 6, marginLeft: 18 }}
-              items={result.errors}
-              unit="บรรทัด"
-              render={(er, i) => <li key={i}>บรรทัด {er.line}: {er.error}</li>}
-            />
-          )}
-        </Alert>
-      )}
+      <NoticeStack id="holidays">
+        {error && <NoticeRow tone="error" title={error} />}
+        {result && (
+          <NoticeRow
+            tone="warn"
+            title={result.msg}
+            detail={`มี ${result.errors.length} บรรทัดที่นำเข้าไม่ได้`}
+            more={(
+              <ShowMore
+                as="ul"
+                style={{ marginTop: 6, marginLeft: 18 }}
+                items={result.errors}
+                unit="บรรทัด"
+                render={(er, i) => <li key={i}>บรรทัด {er.line}: {er.error}</li>}
+              />
+            )}
+          />
+        )}
+      </NoticeStack>
 
       {/* `holiday-tools` is the phone layout's hook for this row — the two CSV
           buttons are the longest labels on the screen and at the app's ordinary
@@ -6692,7 +6643,7 @@ const POLICY_FIELDS = [
      */
     warn: (value, policy) => (
       (Number(value) === 5 || Number(value) === 10) && policy.roundingMode !== 'exact'
-        ? '⚠️ การปัดเศษ 5 หรือ 10 นาที อาจทำให้เมื่อแปลงเป็นทศนิยม 2 ตำแหน่งแล้ว '
+        ? 'การปัดเศษ 5 หรือ 10 นาที อาจทำให้เมื่อแปลงเป็นทศนิยม 2 ตำแหน่งแล้ว '
           + 'ผลรวมในรายงานคลาดเคลื่อนได้ 0.01 ชม. (แนะนำ 15 หรือ 30 นาที)'
         : ''
     ),
@@ -6714,7 +6665,7 @@ const POLICY_FIELDS = [
      */
     hint: 'ข้อนี้เพิ่มอย่างเดียวไม่เคยลด '
       + '· ผ่อนปรนครึ่งบล็อกพอดีให้ผลเท่ากับ “ปัดเข้าหาค่าใกล้ที่สุด” '
-      + '· ⚠ ขยับเส้นที่ระบบปฏิเสธงานสั้น ๆ ด้วย ควรทบทวน “เวลาขั้นต่ำในการเริ่มนับ OT” พร้อมกัน',
+      + '· ขยับเส้นที่ระบบปฏิเสธงานสั้น ๆ ด้วย ควรทบทวน “เวลาขั้นต่ำในการเริ่มนับ OT” พร้อมกัน',
     /**
      * Two traps, and neither is the inert note's job.
      *
@@ -6731,12 +6682,12 @@ const POLICY_FIELDS = [
       const inc = Number(policy.roundingIncrementMinutes);
       if (!grace || policy.roundingMode !== 'floor') return '';
       if (grace >= inc) {
-        return `⚠️ ผ่อนปรน ${grace} นาที ไม่น้อยกว่าบล็อกที่ปัด (${inc} นาที) `
+        return `ผ่อนปรน ${grace} นาที ไม่น้อยกว่าบล็อกที่ปัด (${inc} นาที) `
           + 'ซึ่งจะเท่ากับยกทั้งบล็อกให้งานที่ยังไม่ได้ทำ ระบบจะข้ามค่านี้และปัดลงตามปกติ '
           + '— ตั้งบล็อกที่ปัดให้มากกว่านี้ก่อน';
       }
       if (grace * 2 === inc) {
-        return `⚠️ ผ่อนปรน ${grace} นาที บนบล็อก ${inc} นาที ให้ผลเท่ากับ `
+        return `ผ่อนปรน ${grace} นาที บนบล็อก ${inc} นาที ให้ผลเท่ากับ `
           + '“ปัดเข้าหาค่าใกล้ที่สุด” ทุกนาที ไม่ได้ผ่อนปรนมากกว่านั้น';
       }
       return '';
@@ -6956,10 +6907,13 @@ const POLICY_FIELDS = [
       if (['signed', 'approved'].includes(value)) return '';
       if (value === 'draft') {
         // Shortened 2026-10-08 — asked for in as many words, กระชับข้อความ.
-        return 'ℹ️ ใบที่พิมพ์มีรายการที่ยังไม่อนุมัติ ช่องลงชื่อหัวหน้าเว้นว่างไว้ '
-          + '· ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ';
+        return {
+          tone: 'info',
+          text: 'ใบที่พิมพ์มีรายการที่ยังไม่อนุมัติ ช่องลงชื่อหัวหน้าเว้นว่างไว้ '
+            + '· ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ',
+        };
       }
-      return '⚠️ ใบที่พิมพ์อาจมีรายการที่ยังไม่อนุมัติ · ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ';
+      return 'ใบที่พิมพ์อาจมีรายการที่ยังไม่อนุมัติ · ถ้าถูกปฏิเสธทีหลัง ยอดบนกระดาษจะไม่ตรงกับระบบ';
     },
   },  {
     section: 5,
@@ -7036,7 +6990,7 @@ const POLICY_FIELDS = [
      * then, and counts against a ceiling for a month nobody has worked yet.
      */
     warn: (value) => (value === null
-      ? '⚠️ ไม่จำกัด หมายถึงยื่นใบลงวันที่ปีหน้าก็ได้ — ใบนั้นจะค้างอยู่ในคิวจนถึงวันนั้น '
+      ? 'ไม่จำกัด หมายถึงยื่นใบลงวันที่ปีหน้าก็ได้ — ใบนั้นจะค้างอยู่ในคิวจนถึงวันนั้น '
         + 'และถูกนับรวมในเพดานของเดือนที่ยังไม่มีใครทำงาน'
       : ''),
   },
@@ -7076,7 +7030,7 @@ const POLICY_FIELDS = [
      */
     warn: (value) => (value === null
       ? ''
-      : `⚠️ พนักงานที่กลับมาจากลาป่วยหรือไปทำงานต่างจังหวัดเกิน ${value} วัน `
+      : `พนักงานที่กลับมาจากลาป่วยหรือไปทำงานต่างจังหวัดเกิน ${value} วัน `
         + 'จะบันทึก OT ที่ทำไปแล้วไม่ได้เลย — ต้องให้ฝ่ายบุคคลเป็นผู้บันทึกให้ '
         + '· ระบบไม่มีช่องผ่อนผันรายใบสำหรับข้อนี้'),
   },
@@ -7128,7 +7082,7 @@ const POLICY_FIELDS = [
      * knowing.
      */
     warn: (value) => (value === null ? '' :
-      `⚠️ พ้นวันที่ ${value} แล้ว พนักงานแก้ไข ยกเลิก หรือขอถอนใบของงวดนั้นเองไม่ได้ `
+      `พ้นวันที่ ${value} แล้ว พนักงานแก้ไข ยกเลิก หรือขอถอนใบของงวดนั้นเองไม่ได้ `
       + 'และหัวหน้าตัดสินคำขอที่ค้างอยู่ไม่ได้ด้วย — เหลือทางเดียวคือฝ่ายบุคคล '
       + `· ใบที่ยื่นย้อนหลังข้ามเดือนจะเลยวันที่ ${value} ตั้งแต่วินาทีที่ยื่น`),
   },
@@ -7154,7 +7108,7 @@ const POLICY_FIELDS = [
      * eight hours whatever the person actually worked.
      */
     warn: (value) => (value === 'all'
-      ? '⚠️ ทุกตำแหน่งจะเห็นช่องเหมารายวัน — ใบที่ติ๊กช่องนี้นับ 8 ชม. เสมอ '
+      ? 'ทุกตำแหน่งจะเห็นช่องเหมารายวัน — ใบที่ติ๊กช่องนี้นับ 8 ชม. เสมอ '
         + 'ไม่ว่าจะอยู่ถึงกี่โมง และเวลาเริ่ม–สิ้นสุดจะถูกล็อกไว้ที่ 08:00–17:00'
       : ''),
   },
@@ -7180,7 +7134,7 @@ const POLICY_FIELDS = [
       all: 'ไม่จำกัดวัน — วันทำงานปกติก็ติ๊กเหมารายวันได้',
     },
     warn: (value) => (value === 'all'
-      ? '⚠️ วันทำงานปกติจะติ๊กเหมารายวันได้ด้วย — เย็นวันพุธที่อยู่ต่อ 3 ชม. จะกลายเป็น 8 ชม. ได้'
+      ? 'วันทำงานปกติจะติ๊กเหมารายวันได้ด้วย — เย็นวันพุธที่อยู่ต่อ 3 ชม. จะกลายเป็น 8 ชม. ได้'
       : ''),
   },
   {
@@ -7423,7 +7377,8 @@ function Policy({ user }) {
   /** Whether the rules in force are ones the system has on record — see below. */
   const [live, setLive] = useState(null);
   const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
+  // ผลของปุ่มเป็น toast ตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — เคยเป็น `Alert kind="ok"` บนการ์ด
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   /**
    * Why the rules are changing, typed before the change is made.
@@ -7535,7 +7490,7 @@ function Policy({ user }) {
     setError('');
     try {
       const res = await api.post('/settings/policy-versions', { note: note || undefined });
-      setMsg(res.created
+      toast(res.created
         ? `บันทึกกฎที่ใช้อยู่เป็นเวอร์ชัน ${res.version.seq} แล้ว · ใบที่ยื่นต่อจากนี้จะถูกกำกับเวอร์ชันตามปกติ`
         : `กฎที่ใช้อยู่ตรงกับเวอร์ชัน ${res.version.seq} อยู่แล้ว`);
       setNote('');
@@ -7613,7 +7568,7 @@ function Policy({ user }) {
        * เปลี่ยนวิธีคำนวณ ก็ไม่ต้องเอาของเก่ามาคำนวณใหม่. It was never really the
        * lock that held it — it is the approved check, which is still here.
        */
-      setMsg(res.recomputed?.updated
+      toast(res.recomputed?.updated
         ? `บันทึกแล้ว${stamped} · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ${skipped}`
         : `บันทึกแล้ว${stamped}${skipped}`);
       setNote('');
@@ -7657,7 +7612,6 @@ function Policy({ user }) {
         · การแก้ข้อที่มีผลต่อการคำนวณจะคำนวณใบใหม่ทันทีตามข้อ “เปลี่ยนนโยบายแล้วคำนวณใบใหม่”
         — ใบที่วันทำงานอยู่ก่อนวันเริ่มใช้ยังคิดตามกฎเดิม
       </div>
-      {msg && <Alert kind="ok">{msg}</Alert>}
       <LivePolicyClean policy={policy} defaults={defaults} overrides={overrides} />
 
       {/* Both typed before the dropdown is touched, because changing a dropdown
@@ -7970,7 +7924,7 @@ function Policy({ user }) {
                       about the option that is selected, and it appears as the
                       selection is made. ConfirmPolicyChange carries the same
                       sentence, because the dialog comes up over this row. */}
-                  {warning && <div className="policy-warn">{warning}</div>}
+                  {warning && <PolicyWarn warning={warning} />}
                   {/* Under the value and not under the question, for the same
                       reason `.policy-override` below is: it is about this
                       answer's standing, not about what is being asked. Below
@@ -8061,6 +8015,16 @@ function optionLabel(field, value, policy) {
   }
   const found = options.find(([v]) => String(v) === String(value));
   return found ? found[1] : String(value);
+}
+
+/**
+ * คำเตือนใต้ตัวเลือกในนโยบายการคำนวณ — `warn` ของแต่ละข้อคืนข้อความ (เตือน) หรือ
+ * `{ tone: 'info', text }` (บอกให้รู้) · จนถึง 2026-10-10 ข้อความขึ้นต้นด้วย ⚠️/ℹ️
+ * ที่พิมพ์ไว้ในตัว ตอนนี้เป็นวงกลม ! / i แบบกล่องแจ้งเตือน (รายงาน UX ข.4)
+ */
+function PolicyWarn({ warning }) {
+  const { tone = 'warn', text } = typeof warning === 'string' ? { text: warning } : warning;
+  return <div className="policy-warn"><InlineMark tone={tone} />{text}</div>;
 }
 
 /**
@@ -8203,7 +8167,7 @@ function ConfirmPolicyChange({
         {/* The reason is a field on the page behind, and this is the last moment
             it can still be typed into: the version row is append-only, so a
             version saved without one carries a date and a diff for good. */}
-        {warning && <div className="policy-warn">{warning}</div>}
+        {warning && <PolicyWarn warning={warning} />}
 
         {inert && <div className="policy-inert">{inert.text}</div>}
 
@@ -8639,5 +8603,110 @@ function PolicyChanges({ changes, seq }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * What the last roster save did beyond writing the field — the toast's text.
+ *
+ * Two things can happen on a roster edit that the table cannot show. A moved
+ * วันเกิด replays that person's ใบ ที่ยังไม่อนุมัติ — their hours change without
+ * anybody touching an entry, and a count of that belongs on screen. And an audit
+ * row that could not be written means the change stands with no record of who
+ * made it, which is worth interrupting for (an error toast, which stays).
+ *
+ * An `Alert` on the roster card with a รับทราบ button until 2026-10-10.
+ */
+function SavedMessage({ saved }) {
+  return (
+    <>
+      {!saved.auditLogged && (
+        <div>
+          <strong>บันทึกการแก้ไขลงประวัติไม่สำเร็จ</strong>
+          {' '}— ข้อมูลถูกแก้แล้ว แต่จะไม่มีบันทึกว่าใครแก้ กรุณาแจ้งผู้ดูแลระบบ
+        </div>
+      )}
+      {saved.auditLogged && (
+        <div>
+          บันทึก {saved.code} แล้ว · แก้ไข {saved.changed} ฟิลด์ · เก็บไว้ในประวัติการแก้ทะเบียนแล้ว
+        </div>
+      )}
+      {saved.recomputed && (
+        <div style={{ marginTop: 6 }}>
+          เปลี่ยนวันเกิดของ {saved.code} แล้ว ·
+          {saved.recomputed.updated > 0
+            ? ` คำนวณใหม่ ${saved.recomputed.updated} รายการ`
+            : ' ไม่มีรายการให้คำนวณใหม่'}
+          {/* `changed` is the number whose FIGURES moved; `updated` counts
+              every row the replay wrote, most of which land on the same
+              hours. Only the first is worth a second sentence. */}
+          {saved.recomputed.changed > 0 && (
+            <> · ชั่วโมงเปลี่ยนจริง {saved.recomputed.changed} รายการ
+              {saved.recomputed.approvedReplayed > 0
+                && ` (ในนั้นเป็นใบที่อนุมัติแล้ว ${saved.recomputed.approvedReplayed} รายการ — เก็บค่าเดิมไว้ในประวัติรายการแล้ว)`}
+            </>
+          )}
+          {/* A ⚠ line naming the months ปิดงวด had kept out of the run
+              stood here until 2026-08-31. There is no such month now — the
+              feature was withdrawn, see lib/periodStatus.js — so a replay
+              reaches every entry the filter names, whatever month it is in,
+              and the only rows it leaves are the approved ones. */}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * The password, once — the toast's text, and the toast stays until × (sticky):
+ * it is the thing HR has to write down or read out, and a notice that clears
+ * itself while somebody is reaching for a pen is a password nobody can recover,
+ * only reset. An `Alert` with รับทราบ on the roster card until 2026-10-10.
+ */
+function IssuedMessage({ issued }) {
+  return (
+    <>
+      {/* Three things this can be reporting, and only the first of them is
+          a password nobody may lose: one the server made, one HR typed and
+          still has, and one that has gone missing between the two. */}
+      {issued.missing ? (
+        <>
+          <div>
+            <strong>สร้างบัญชี {issued.code} · {issued.name} แล้ว แต่ไม่ทราบรหัสผ่าน</strong>
+            {' '}— เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านกลับมา และระบบเก็บไว้แบบเข้ารหัสทางเดียว
+          </div>
+          <div className="say">
+            บัญชีนี้ยังเข้าระบบไม่ได้จนกว่าจะรีเซ็ต — กดปุ่ม “รีเซ็ตรหัส” ที่แถวของคนนี้
+            {' '}และแจ้งผู้ดูแลระบบว่าเกิดเหตุนี้ขึ้น
+          </div>
+        </>
+      ) : issued.chosen ? (
+        <>
+          <div>
+            สร้างบัญชี {issued.code} · {issued.name} แล้ว — ใช้รหัสผ่านที่ตั้งไว้ในหน้าต่างเพิ่มพนักงาน
+          </div>
+          <div className="say">
+            ระบบไม่แสดงรหัสนั้นซ้ำที่ใดอีก เพราะเก็บไว้แบบเข้ารหัสทางเดียว — หากจำไม่ได้
+            {' '}ให้ใช้ปุ่ม “รีเซ็ตรหัส” ซึ่งจะตั้งกลับเป็นรหัสพนักงาน
+            {' '}· พนักงานเข้าใช้งานได้ทันที และจะมีแถบเตือนให้ตั้งรหัสผ่านของตัวเองจนกว่าจะเปลี่ยน
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            {issued.reset ? 'รีเซ็ตรหัสผ่านให้' : 'สร้างบัญชี'} {issued.code} · {issued.name} แล้ว
+            {' '}— รหัสผ่านแรกเข้าคือ{' '}
+            <strong style={{ fontFamily: 'var(--mono, monospace)', fontSize: 17, letterSpacing: '.04em' }}>
+              {issued.password}
+            </strong>
+          </div>
+          <div className="say">
+            แจ้งรหัสนี้ให้พนักงาน · เข้าใช้งานได้ทันที และมีแถบเตือนให้ตั้งรหัสของตัวเองจนกว่าจะเปลี่ยน
+            {' '}· นี่คือรหัสพนักงานของคนนี้เอง จึงดูซ้ำได้จากทะเบียนตลอด — แต่ระหว่างที่ยังไม่ได้เปลี่ยน
+            {' '}<strong>ใครที่เห็นรหัสพนักงานก็เข้าบัญชีนี้ได้</strong> จึงควรให้เข้าระบบตั้งรหัสของตัวเองโดยเร็ว
+          </div>
+        </>
+      )}
+    </>
   );
 }

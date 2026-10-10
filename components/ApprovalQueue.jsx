@@ -26,7 +26,7 @@ import {
   Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, EntryLead, EntryHistoryBlock, ShowMore,
-  NoticeRow, NoticeStack,
+  InlineMark, NoticeRow, NoticeStack,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -151,6 +151,18 @@ const OPENS_ON = Object.freeze({ division_manager: 'dept_manager' });
  * first-step queue does not list any more (`wholeFlow`), so it went with them
  * rather than sitting here as a branch nothing can reach.
  */
+/**
+ * "แผนก" + ชื่อแผนก โดยไม่เติมซ้ำ — 2026-10-10 · ชื่อแผนกบนระบบจริงเกือบทุกแผนก
+ * ขึ้นต้นด้วย "แผนก" อยู่แล้ว (แผนกบัญชีและการเงิน) หัวคิวจึงขึ้น
+ * "เฉพาะแผนกแผนกบัญชี…" ให้ผู้อนุมัติที่ถือแผนกเดียวเห็นทุกวัน · seed ตั้งชื่อ
+ * แบบไม่มีคำนำหน้า (วิศวกรรม) เลยไม่เคยเจอ · ชื่ออังกฤษ (IT) เว้นวรรคหนึ่งช่อง
+ */
+function deptPhrase(name) {
+  if (!name) return '';
+  if (name.startsWith('แผนก')) return name;
+  return /^[\u0E00-\u0E7F]/.test(name) ? `แผนก${name}` : `แผนก ${name}`;
+}
+
 function watchingNote(entry, stage, user) {
   if (entry?.status === stage) {
     return isOwnRequest(entry, user)
@@ -1340,7 +1352,7 @@ export default function ApprovalQueue({
                         <span className="q-scope">
                           {user.coversDepartments?.length > 1
                             ? `เฉพาะ ${user.coversDepartments.length} แผนกที่คุณดูแล`
-                            : `เฉพาะแผนก${user.department?.name || ''}`}
+                            : `เฉพาะ${deptPhrase(user.department?.name) || 'แผนก'}`}
                         </span>
                       </>
                     )}
@@ -1690,7 +1702,8 @@ export default function ApprovalQueue({
         </div>
       )}
 
-      {error && <div style={{ padding: '0 18px' }}><Alert kind="error">{error}</Alert></div>}
+      {/* แถวแดงในกล่องแจ้งเตือนบนสุดของหน้า ตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — เคยเป็น `Alert` บนการ์ด */}
+      {error && <NoticeStack id="queue-error"><NoticeRow tone="error" title={error} /></NoticeStack>}
 
       {/*
         ── "YOU JUST CLEARED IT", ON A SCREEN THAT STILL HAS ROWS ON IT ───────
@@ -2066,7 +2079,7 @@ export default function ApprovalQueue({
                         over the week and the month at once, and the reviewer
                         needs both to know what moving the shift would fix. */}
                     {describeBreaches(e).map((b) => (
-                      <div className="cell-note" key={b.scope + b.text}>⚠ {b.text}</div>
+                      <div className="cell-note" key={b.scope + b.text}><InlineMark tone="warn" />{b.text}</div>
                     ))}
                     {/* code + column: a bucket-scoped minimum can leave two
                         warnings on one entry sharing a code. */}
@@ -2585,11 +2598,11 @@ function ConfirmModal({
           and every dialog the same day, and "close this window and go find
           another one" is not an instruction any more.
 
-          `mark={false}` because the headline carries its own ⚠️ — the amber
-          badge `.alert` draws would be a second mark for one warning. */}
+          The headline typed its own ⚠️ under `mark={false}` until 2026-10-10;
+          the amber badge `.alert` draws is that mark now (รายงาน UX ข.4). */}
       {capped.length > 0 && (
-        <Alert kind="warn" mark={false}>
-          <strong>⚠️ {overCeilingApproveHead(capped.length)}</strong>
+        <Alert kind="warn">
+          <strong>{overCeilingApproveHead(capped.length)}</strong>
           {/* Every ceiling each of them passed, by name. `describeBreaches` is
               the same wording the row underneath and the pop-up already use —
               a reason is being demanded for exactly this, so the sheet has to
@@ -4083,7 +4096,7 @@ function QueueCleared({ cleared, isHr, mode = 'signer', covers = 0, scope = '' }
      */
     const where = {
       hr: 'ค้นจากทุกแผนกทั้งบริษัท',
-      signer: covers > 1 ? `ค้นจาก ${covers} แผนกที่คุณดูแล` : `ค้นจากแผนก${scope || 'ของคุณ'}`,
+      signer: covers > 1 ? `ค้นจาก ${covers} แผนกที่คุณดูแล` : `ค้นจาก${deptPhrase(scope) || 'แผนกของคุณ'}`,
     }[mode];
     const next = {
       hr: 'ใบจะขึ้นที่นี่ตั้งแต่ตอนที่พนักงานยื่น ทั้งใบที่ยังรอหัวหน้าเซ็นและใบที่ถึงคิวคุณแล้ว',

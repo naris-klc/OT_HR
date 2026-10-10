@@ -373,7 +373,20 @@ test('หัวข้อบอกขอบเขตให้ตรง — ชื
   const at = code.indexOf('<span className="q-scope">');
   const scope = code.slice(at, code.indexOf('</span>', at));
   assert.ok(scope.includes('user.coversDepartments?.length > 1'), 'คนที่ดูแลหลายแผนกยังถูกบอกว่าเห็นแผนกเดียว');
-  assert.ok(scope.includes("`เฉพาะแผนก${user.department?.name || ''}`"), 'ชื่อแผนกเดียวหายไป');
+  assert.ok(scope.includes("`เฉพาะ${deptPhrase(user.department?.name) || 'แผนก'}`"), 'ชื่อแผนกเดียวหายไป');
+});
+
+/** 2026-10-10 ชื่อแผนกจริงขึ้นต้นด้วย "แผนก" อยู่แล้ว — หัวคิวขึ้น "เฉพาะแผนกแผนกบัญชี…" */
+test('ชื่อแผนกไม่ถูกเติมคำว่า "แผนก" ซ้ำ', () => {
+  const at = code.indexOf('function deptPhrase(');
+  const body = code.slice(at, code.indexOf('\n}\n', at) + 2);
+  const deptPhrase = new Function(`${body}; return deptPhrase;`)();
+  assert.equal(deptPhrase('แผนกบัญชีและการเงิน'), 'แผนกบัญชีและการเงิน');
+  assert.equal(deptPhrase('วิศวกรรม'), 'แผนกวิศวกรรม');
+  assert.equal(deptPhrase('IT'), 'แผนก IT');
+  assert.equal(deptPhrase(''), '');
+  assert.equal(deptPhrase(undefined), '');
+  assert.ok(code.includes("`ค้นจาก${deptPhrase(scope) || 'แผนกของคุณ'}`"), 'ประโยคคิวว่างยังเติม "แผนก" เอง');
 });
 
 // ── 5. the three reasons a row carries no buttons ───────────────────────────

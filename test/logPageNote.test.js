@@ -51,7 +51,7 @@ test('the footer took its stylesheet with it', () => {
 test('how far back the log goes is still said somewhere', () => {
   // The one fact in the old footer that was about THIS collection rather than
   // about the law. It qualifies the count, so it went to the count.
-  const tile = log.slice(log.indexOf('label="REQUESTS"'));
+  const tile = log.slice(log.indexOf('label="คำขอทั้งหมด"'));
   const note = tile.slice(0, tile.indexOf('onClick'));
   assert.match(note, /ทั้งหมดในระบบ/);
   assert.match(note, /เก่าสุด/);

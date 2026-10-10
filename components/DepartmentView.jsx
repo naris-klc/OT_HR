@@ -291,8 +291,12 @@ function DepartmentCard({ dept, period, index }) {
             below add up to 820px on a 375px screen and the three figures the
             sheet is about are the three columns off the right edge. The widths
             and the colgroup are untouched: they are what makes a stack of these
-            cards read straight on a desktop, and paper has its own rules. */}
-        <table className="fixed dept-table">
+            cards read straight on a desktop, and paper has its own rules.
+            `stack-table` ตั้งแต่ 2026-10-10 (รายงาน UX ข.8): ต่ำกว่า 860px เป็นการ์ด
+            หนึ่งคนหนึ่งใบแบบตารางอื่นในแอป ชื่อ + รหัสเป็นหัวการ์ด ตัวเลขมีป้าย
+            (`data-label`) แถวรวมเป็นการ์ดใบสุดท้าย · เดสก์ท็อปและกระดาษไม่เปลี่ยน
+            — ตารางย่อ 312px ที่บีบชื่อจนตัดกลางคำออกไปพร้อมกัน */}
+        <table className="fixed dept-table stack-table">
           <colgroup>
             <col style={{ width: 74 }} />
             <col />
@@ -320,7 +324,7 @@ function DepartmentCard({ dept, period, index }) {
                     {row.employee.name}
                     <div className="cell-sub">{row.employee.code}</div>
                   </td>
-                  <td className="co-col">
+                  <td className="co-col" data-label="บริษัท">
                     <span className="co">{row.companyLabel}</span>
                     {row.pendingCount > 0 && (
                       <div className="cell-note">
@@ -328,15 +332,15 @@ function DepartmentCard({ dept, period, index }) {
                       </div>
                     )}
                   </td>
-                  <td className="num b-15">{cell(row.ot15Hours)}</td>
-                  <td className="num b-3">{cell(row.ot3Hours)}</td>
+                  <td className="num b-15" data-label="×1.5">{cell(row.ot15Hours)}</td>
+                  <td className="num b-3" data-label="×3">{cell(row.ot3Hours)}</td>
                   {/* Red when any of this row was signed past its department's
                       ceiling, with the approver's own sentences in the tooltip —
                       the same figure, the same colour and the same words as on
                       รายงาน OT ฝ่ายบัญชี. Not a warning: the hours are approved,
                       correct and being paid. See `OverCeilingFigure` in
                       components/common.jsx. */}
-                  <td className="num total-col">
+                  <td className="num total-col" data-label="รวม ชม.">
                     <OverCeilingFigure over={row.overCeiling}>{cell(row.otHours)}</OverCeilingFigure>
                   </td>
                 </tr>
@@ -410,9 +414,9 @@ function DepartmentCard({ dept, period, index }) {
               <td className="seq" />
               <td className="who-col sum-k">รวมชั่วโมงทำOT</td>
               <td className="co-col" />
-              <td className="num b-15">{hours(t.ot15Hours)}</td>
-              <td className="num b-3">{hours(t.ot3Hours)}</td>
-              <td className="num total-col">{hours(t.otHours)}</td>
+              <td className="num b-15" data-label="×1.5">{hours(t.ot15Hours)}</td>
+              <td className="num b-3" data-label="×3">{hours(t.ot3Hours)}</td>
+              <td className="num total-col" data-label="รวม ชม.">{hours(t.otHours)}</td>
             </tr>
           </tfoot>
         </table>
@@ -447,7 +451,7 @@ function AllDepartments({ departments, total }) {
             the department cards, so the bundle's last sheet lines up with the
             sheets it totals. Only the middle differs: one wide column for the
             department name where the cards carry name and บริษัท. */}
-        <table className="fixed dept-table alldept">
+        <table className="fixed dept-table alldept stack-table">
           <colgroup>
             <col style={{ width: 74 }} />
             <col />
@@ -471,10 +475,10 @@ function AllDepartments({ departments, total }) {
               <tr key={d.id}>
                 <td className="seq">{i + 1}</td>
                 <td className="who-col">{d.name}</td>
-                <td className="num head-col">{d.totals.headcount}</td>
-                <td className="num b-15">{cell(d.totals.ot15Hours)}</td>
-                <td className="num b-3">{cell(d.totals.ot3Hours)}</td>
-                <td className="num total-col"><strong>{cell(d.totals.otHours)}</strong></td>
+                <td className="num head-col" data-label="จำนวนคน">{d.totals.headcount}</td>
+                <td className="num b-15" data-label="×1.5">{cell(d.totals.ot15Hours)}</td>
+                <td className="num b-3" data-label="×3">{cell(d.totals.ot3Hours)}</td>
+                <td className="num total-col" data-label="รวม ชม."><strong>{cell(d.totals.otHours)}</strong></td>
               </tr>
             ))}
           </tbody>
@@ -483,10 +487,10 @@ function AllDepartments({ departments, total }) {
             <tr className="grand">
               <td className="seq" />
               <td className="who-col sum-k">รวมชั่วโมงทำOT</td>
-              <td className="num head-col">{total.headcount}</td>
-              <td className="num b-15">{hours(total.ot15Hours)}</td>
-              <td className="num b-3">{hours(total.ot3Hours)}</td>
-              <td className="num total-col">{hours(total.otHours)}</td>
+              <td className="num head-col" data-label="จำนวนคน">{total.headcount}</td>
+              <td className="num b-15" data-label="×1.5">{hours(total.ot15Hours)}</td>
+              <td className="num b-3" data-label="×3">{hours(total.ot3Hours)}</td>
+              <td className="num total-col" data-label="รวม ชม.">{hours(total.otHours)}</td>
             </tr>
           </tfoot>
         </table>

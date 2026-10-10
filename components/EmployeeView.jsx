@@ -773,10 +773,12 @@ export default function EmployeeView({ user, onChanged, openSignal = 0, notices 
                           {/* Offered on rows with something earlier to show —
                               a rewrite, the refused request this one replaced, or
                               a filing this person did not make. On the rest a
-                              button that opens "ยื่นคำขอ" alone is noise. */}
+                              button that opens "ยื่นคำขอ" alone is noise.
+                              ไอคอน `history` จนถึง 2026-10-10 — ตามพจนานุกรมใน
+                              icons.jsx ข้อมูลเดิม คือ `compare` เหมือนหน้า HR */}
                           {(editsOf(e).length > 0 || e.refiledFrom || isProxyFiled(e)) && (
                             <RowAction
-                              icon="history"
+                              icon="compare"
                               label={showHistory === e._id ? 'ซ่อนข้อมูลเดิม' : 'ข้อมูลเดิม'}
                               on={showHistory === e._id}
                               onClick={() => setShowHistory(showHistory === e._id ? null : e._id)}
@@ -1159,12 +1161,11 @@ function EntryDetail({
         </Alert>
       )}
 
-      {e.rejectionReason && (
-        <Alert kind="error">
-          <strong>เหตุผลที่ไม่อนุมัติ</strong>
-          <div>{e.rejectionReason}</div>
-        </Alert>
-      )}
+      {/* กล่องแดง เหตุผลที่ไม่อนุมัติ อยู่ตรงนี้จนถึง 2026-10-10 — ซ้ำกับ
+          `ApproverLine` บนสุด ซึ่งพิมพ์เหตุผลเดียวกันในเครื่องหมายคำพูด
+          (`approverLine` → `note`) · `rejectionReason` ถูกตั้งที่ route
+          ไม่อนุมัติที่เดียว ใบที่มีค่านี้จึงเป็นใบ rejected และบรรทัดบนสุด
+          มีเหตุผลเสมอ */}
 
       {/* ส่งคำขอถอนใบแล้ว · รอพิจารณา WAS THE BLOCK ABOVE THIS ONE. There is no
           waiting state left to describe — see lib/withdrawal.js — and a

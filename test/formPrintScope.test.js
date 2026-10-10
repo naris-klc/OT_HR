@@ -551,14 +551,16 @@ test('the shipped answer informs, the narrow ones are silent, and screen warns',
 
   // Silent on both narrow answers, and it is the branch that yields ''.
   assert.match(warn, /if \(\['signed', 'approved'\]\.includes\(value\)\) return '';/);
-  // The shipped answer's own branch, and what it must not be: a ⚠️.
+  // The shipped answer's own branch, and what it must not be: a warning.
+  // It was told apart by a typed ℹ️ against ⚠️ until 2026-10-10; it is a
+  // `tone: 'info'` object now, and `PolicyWarn` draws the mark (รายงาน UX ข.4).
   assert.match(warn, /if \(value === 'draft'\)/);
-  const draft = warn.slice(warn.indexOf("value === 'draft'"), warn.indexOf('return \'⚠️'));
-  assert.match(draft, /ℹ️/);
-  assert.ok(!draft.includes('⚠️'), 'the answer HR chose warns about itself');
+  const draft = warn.slice(warn.indexOf("value === 'draft'"), warn.indexOf('\n      }\n'));
+  assert.match(draft, /tone: 'info'/);
   assert.match(draft, /ช่องลงชื่อหัวหน้าเว้นว่างไว้/, 'the note must name what stays blank');
-  // …so the ⚠️ belongs to whatever is left, which is ตาม “สถานะที่นับ”.
-  assert.match(warn, /return '⚠️ /);
+  // …so the plain string — a warning — belongs to whatever is left, which is ตาม “สถานะที่นับ”.
+  assert.match(warn.slice(warn.indexOf('\n      }\n')), /return 'ใบที่พิมพ์อาจมีรายการ/);
+  assert.ok(!/[⚠ℹ]/.test(warn), 'ข้อความกลับไปพิมพ์ ⚠️/ℹ️ เอง');
   // The old spelling tested one value against one string and would go on
   // passing while quietly warning on the answer that ships.
   assert.ok(!warn.includes("value === 'approved'"), 'the warning still tests a single answer');

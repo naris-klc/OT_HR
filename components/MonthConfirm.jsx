@@ -132,10 +132,11 @@ export default function MonthConfirm({
           function the queue calls in the browser, asked on whichever side is
           holding the entry.
 
-          `mark={false}` because the headline carries its own ⚠️. */}
+          The headline typed its own ⚠️ under `mark={false}` until 2026-10-10;
+          the badge `.alert` draws is that mark now. */}
       {tally.capOver > 0 && (
-        <Alert kind="warn" mark={false}>
-          <strong>⚠️ {overCeilingApproveHead(tally.capOver)}</strong>
+        <Alert kind="warn">
+          <strong>{overCeilingApproveHead(tally.capOver)}</strong>
           <ShowMore
             as="ul"
             className="alert-list"

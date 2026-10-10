@@ -6,7 +6,7 @@ import {
 } from '@/lib/roles.js';
 import { mayCorrectEntries } from '@/lib/entries.js';
 import { printName } from '@/lib/printFile.js';
-import { Disclosure, Empty, PrintChrome } from './common.jsx';
+import { Disclosure, Empty, InlineMark, PrintChrome } from './common.jsx';
 import Icon from './icons.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -2286,7 +2286,7 @@ const SECTIONS = [
                       <MkBtn>ยืนยัน (17)</MkBtn>
                     </span>
                   </span>
-                  <MkNote>⚠️ 2 รายการเกินเพดาน — ต้องระบุเหตุผล</MkNote>
+                  <MkNote><InlineMark tone="warn" />2 รายการเกินเพดาน — ต้องระบุเหตุผล</MkNote>
                   <span className="mk-headrow">
                     <MkTick on>สมชาย ใจดี · ฝ่ายผลิต</MkTick>
                     <span className="mk-acts"><MkIconBtn icon="check" tone="ok" /></span>
@@ -2316,7 +2316,7 @@ const SECTIONS = [
             desk={(
               <Desk title="ตรวจสอบประจำเดือน" nav={<MkRow on>ตรวจสอบประจำเดือน</MkRow>}>
                 <span className="mk-alert col">
-                  <span className="mk-alert-t">⚠ งวด กันยายน 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ</span>
+                  <span className="mk-alert-t"><InlineMark tone="warn" />งวด กันยายน 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ</span>
                   <MkNote>ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา</MkNote>
                 </span>
                 <MkNote>เดือนก่อน · สิงหาคม 2569 — มีใบรออนุมัติค้างอยู่ 12 ใบ · เลือกเดือนนั้นในช่อง ประจำเดือน เพื่อตรวจก่อนพิมพ์</MkNote>
@@ -2325,7 +2325,7 @@ const SECTIONS = [
             phone={(
               <Phone title="ตรวจสอบประจำเดือน" bar={<MkSlot icon="chart" label="รายงาน" on />}>
                 <span className="mk-alert col">
-                  <span className="mk-alert-t">⚠ งวด กันยายน 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ</span>
+                  <span className="mk-alert-t"><InlineMark tone="warn" />งวด กันยายน 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ</span>
                   <MkNote>ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา</MkNote>
                 </span>
               </Phone>

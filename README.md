@@ -2791,9 +2791,11 @@ implementation, not two: `OverCeilingFigure` and `OverCeilingNote` moved from
 `components/AccountingView.jsx` into `components/common.jsx` on the same day, for
 the reason `BIRTHDAY_REMARK` is a constant — two copies of a remark become two
 remarks the day somebody rewords one. Where the marks GO is still each screen's:
-ส่งบัญชี has a หมายเหตุ column and puts them in it; แยกแผนก has six columns adding
+ส่งบัญชี has a หมายเหตุ column and puts them in it; แยกแผนก had six columns adding
 up to 312px so that a 375px phone need not scroll, none of which can hold prose,
-and gives them a row of their own under the row they explain.
+and gives them a row of their own under the row they explain. (Below 860px
+แยกแผนก has been `.stack-table` cards since 2026-10-10 — the row of notes is the
+tail of that person's card.)
 
 **The reasons fold, the heading does not** (2026-09-10, asked of แยกแผนก, where
 one person's three reasons filled the screen). `OverCeilingNote` carries a ▲/▼:
@@ -13043,8 +13045,8 @@ hours land in 1.50 and 3.00 by the ordinary holiday rule.
 
 **The marks are a ROW, not a cell, and that is the one thing this screen does
 differently.** They went in บริษัท first, which is where ค้างอนุมัติ has always
-lived. Below 860px that column is 64px — the six columns add up to 312px so that
-a 375px phone need not scroll at all, and every one of those widths is measured
+lived. Below 860px that column was 64px — the six columns added up to 312px so that
+a 375px phone need not scroll at all (cards since 2026-10-10, รายงาน UX ข.8), and every one of those widths is measured
 against a figure or a word. Walked at 375px on 2026-09-09 against a clone of the
 live database, a row carrying three over-ceiling reasons came to about 800px
 tall with its sentences set three characters to the line. Moved to `tr.row-notes`

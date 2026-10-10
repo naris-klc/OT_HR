@@ -3470,6 +3470,11 @@ button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertica
   font: 400 12.5px/1.45 var(--sans); color: var(--muted);
 }
 .approver-line .mark { flex: none; font-size: 11.5px; line-height: 1.55; }
+/* ไอคอนแทน ✅ ❌ ⏳ (2026-10-10) — สูงเท่าบรรทัดแรก สีตามโทเคนของผล */
+.approver-line .mark svg, .approval-steps .mark svg { display: block; width: 15px; height: 15px; margin-top: 2px; stroke-width: 2.25; }
+.approver-line .mark .notice-ic.inline { margin: 0; vertical-align: -0.15em; }
+.approver-line.ok .mark, .approval-steps > li.ok .mark { color: var(--green-dark); }
+.approver-line.no .mark, .approval-steps > li.no .mark { color: var(--danger-ink); }
 .approver-line .why { color: var(--ink-2); }
 .approver-line .why::before { content: ' '; }
 /* Only the two that are asking for something get ink of their own, and neither
@@ -7000,6 +7005,13 @@ td > .approver-line { margin-top: 5px; }
 .notice-ic.error { background: var(--danger); }
 .notice-ic.info { background: var(--info); }
 .notice-ic.ok { background: var(--green); }
+/* `InlineMark` — วงกลมเดียวกันวางในบรรทัดข้อความ แทน ⚠️ ✓ ที่เคยพิมพ์เป็นตัวอักษร
+   (2026-10-10) · ขนาดตามตัวอักษรของบรรทัด จึงใช้ได้ทั้งในชิป 11.5px และหัวการ์ด */
+.notice-ic.inline {
+  display: inline-grid; vertical-align: -0.2em;
+  width: 1.45em; height: 1.45em; margin-right: .4em;
+  font-size: .78em;
+}
 .notice-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .notice-row.open .notice-text { white-space: normal; }
 .notice-title { font-weight: 600; }
@@ -10774,8 +10786,10 @@ table.mini tbody tr:hover { background: none; }
 @media (max-width: 860px) {
   .dm-grid { grid-template-columns: minmax(0, 1fr); }
 }
-/* จอแคบ: วันที่กับเวลาของช่วงขึ้นสองบรรทัดได้ ไม่งั้นคอลัมน์ ×3 หลุดขอบที่ 360 */
-@media (max-width: 480px) {
+/* จอแคบ: วันที่กับเวลาของช่วงขึ้นสองบรรทัดได้ ไม่งั้นคอลัมน์ ×3 หลุดขอบที่ 360 ·
+   เป็น 480px จนถึง 2026-10-10 ซึ่งเป็นเส้นที่แปด — design.md §6 มีเจ็ดเส้น จึงย้ายมา
+   ใช้เส้น 560 ที่มีอยู่ ที่ 481–560 ป๊อปอัปได้ระยะขอบแคบแบบมือถือ */
+@media (max-width: 560px) {
   .dm-panel { padding: 10px 12px; }
   .dm-rates td:first-child .nb { white-space: normal; }
 }
@@ -14194,126 +14208,13 @@ table.mini tbody tr:hover { background: none; }
     table-layout: auto; width: max-content; min-width: 100%;
   }
 
-  /* ── สรุป OT แยกแผนก declares its widths, and has to ────────────────────
-     This screen is a STACK of tables — one per department, each its own
-     `<table>`. Self-sizing columns are decided per table, so วิศวกรรม sizes
-     ชื่อ-นามสกุล to its own longest name and ผลิต to a different one, and the
-     three cards' columns stop lining up with each other. Read down the stack,
-     nothing is in a column at all.
-
-     That is exactly what the colgroup on this table was for — "the cards stack,
-     and a column has to land in the same place in every one of them" — and
-     turning the table over to `max-content` overrode it. There is no way to
-     have both: aligning separate tables to each other is not something CSS can
-     do from their contents, only from a figure they are all given.
-
-     So the ceilings become the widths, and `min-width` is their sum so that
-     `table-layout: fixed` has no leftover to share out. The colgroup's own
-     820px worth of inline widths are still reset with `!important` — those are
-     the desktop's numbers, not these.
-
-     Every figure below is measured against what its column actually has to
-     hold, not rounded up for comfort:
-
-       ลำดับที่  34  — one or two digits, centred. The heading is the longest
-                      thing in it and is allowed to wrap rather than set it.
-       ชื่อ       72  — AT ITS FLOOR, and the floor is not the name. "THT0056"
-                      is seven characters of 12px mono — about 50px — plus 14px
-                      of padding, so 64px is the narrowest this column can be
-                      before an employee code stops fitting on one line. 72
-                      leaves that 8px of margin and nothing more. Names wrap
-                      inside it, which the cell already does for the code line
-                      beneath them.
-       บริษัท    64  — sized to the COMPANY, which is all this cell holds on an
-                      ordinary row: "ไพรมัส" is about 42px at 13px, plus 14px
-                      of padding. It is not sized to the ค้างอนุมัติ warning
-                      that shares the cell, because that line is on a minority
-                      of rows and sizing every card's column to an exception
-                      was what made this the widest thing on the sheet. The
-                      warning wraps onto three or four lines when it appears —
-                      a taller row on the rows that have something wrong with
-                      them, which is not a bad place to spend height.
-       1.50/3.00 46  — "13.5" is 30px of mono at 13px, plus 14px of padding.
-       รวม ชม.   50  — bold, and its heading takes two lines.
-
-     Sum is 312px. A 375px phone has 321px once `main` and `.card` have taken
-     their padding, so the department cards now fit without scrolling at all.
-
-     `table.dept-table`, NOT `.dept-table`, AND THAT IS THE WHOLE POINT OF THIS
-     RULE. The base stylesheet carries
-
-         table.fixed { table-layout: fixed; min-width: 820px; }
-
-     and this table is `class="fixed dept-table"`. `table.fixed` is an element
-     plus a class; a bare `.dept-table` is one class, which loses — being later
-     in the file and inside a media query buys nothing, because media queries
-     add no specificity. So every `min-width` written here across several
-     revisions was overruled and the table stayed 820px wide.
-
-     Which is what the complaint was the whole time. Under `table-layout: fixed`
-     a table forced to 820px with 312px of declared columns shares the other
-     508px out among them — about 85px added to every column, including the
-     figure columns — so each round of narrowing the declared widths did
-     nothing except change how much padding got handed back. Matching
-     `table.fixed`'s specificity and coming after it is the fix. */
-  table.dept-table { table-layout: fixed; width: 100%; min-width: 312px; }
-  .dept-table th.seq { width: 34px; }
-  .dept-table th.who-col { width: 72px; }
-  .dept-table th.co-col { width: 64px; }
-  .dept-table th.b-15, .dept-table th.b-3 { width: 46px; }
-  .dept-table th.total-col { width: 50px; }
-
-  /* ── AND THE HEADINGS HAVE TO BE ALLOWED TO WRAP, or the widths above lie ──
-     Every figure in the list above is measured against the DATA, and two of
-     them are written down as being narrower than their own heading on purpose:
-     ลำดับที่ says "the heading is the longest thing in it and is allowed to
-     wrap rather than set it", and รวม ชม. says "its heading takes two lines".
-
-     NEITHER WAS TRUE. The base stylesheet has `th { white-space: nowrap }` at
-     one element of specificity, nothing in this table overrode it, and
-     `table-layout: fixed` gives a cell no room to grow — so instead of wrapping
-     the headings ran out of their cells and were CLIPPED. Measured at 360px on
-     2026-08-27, and reported before that as "รวม ชม. โดนตัด":
-
-         ลำดับที่   needs 41  has 34   ->  read "ลำดับ"
-         รวม ชม.    needs 53  has 50   ->  read "รวม ช"
-         จำนวนคน    needs 53  has 48   ->  on รวมทุกแผนก
-
-     One rule, and the widths above become true rather than being widened. The
-     alternative was +12px on the card table and +18 on รวมทุกแผนก, which would
-     have cost the property the whole block was tuned for — that 312px fits a
-     375px phone without scrolling at all.
-
-     THE HEADER ROW GETS A SECOND LINE, on the two tables that need one. That is
-     what the notes above already promised, and it is what สรุป OT ส่งบัญชี's
-     headings have always done a few rules up (`×1.5` over `ปกติ`). `.num`
-     keeps its right alignment, so a wrapped figure heading still sits over its
-     column. */
-  .dept-table th { white-space: normal; }
-
-  /* `overflow-wrap: anywhere` is on every cell in these tables so a declared
-     width can break a word rather than be pushed open. An employee code is the
-     one thing that must never be broken — "THT00" over "56" is not a code
-     anybody can check against a payroll file — and this column is now sized to
-     the width of exactly one. Exempted here so that if it ever does not fit,
-     the code overflows visibly rather than splitting silently. */
-  .dept-table td.who-col .cell-sub { white-space: nowrap; overflow-wrap: normal; }
-
-  /* NOTHING HERE FOR `.row-notes`, AND THAT IS THE RESULT, NOT AN OMISSION.
-     The marks were in บริษัท first and this block held two rules trying to make
-     a bulleted list fit 64px. Measured at 375px on 2026-09-09 the cell is 211px
-     wide once the row spans, the worst row on this database (three reasons) is
-     199px tall against about 800px before, and the `padding: 8px 7px` a few
-     rules up is already the right indent. The bullets stay for the same reason:
-     `disc` outside the text is what keeps a wrapped reason under itself rather
-     than under its own date, and at 211px there is room for it. */
-
-  /* รวมทุกแผนก has จำนวนคน where the cards have บริษัท — a count, not a label,
-     so it takes a figure's width and the whole table comes to 294px. A 375px
-     phone has 321px left after its own padding and the card's, so this one now
-     fits with room to spare and stops scrolling sideways altogether. */
-  table.dept-table.alldept { min-width: 294px; }
-  .dept-table.alldept th.head-col { width: 46px; }
+  /* ── สรุป OT แยกแผนก ไม่อยู่ในกฎ max-content ข้างบน — เป็นการ์ด ──────────
+     ตั้งแต่ 2026-10-10 ตารางนี้เป็น `.stack-table` (รายงาน UX ข.8) ดูบล็อก
+     "รายงาน OT แยกแผนก เป็นการ์ด" ใต้ `.stack-table` · ก่อนหน้านั้นเป็นตาราง
+     ย่อที่ประกาศความกว้างรวม 312px ให้พอดีจอ 375 โดยไม่ต้องเลื่อน (ชื่อ 72px ·
+     บริษัท 64px · ตัวเลข 46/50px และหัวคอลัมน์ตัดบรรทัดได้) — ที่ 390 ชื่อถูกตัด
+     กลางคำ ("แรง/กสิวิทย์") และแถวรวมบีบเป็น "รวมชั่วโมง/ทำOT" · เหตุผลเดิมทุก
+     ตัวเลขอยู่ใน git log -S "min-width: 312px" */
 
   /* CEILINGS ON THE PROSE COLUMNS — the other half of `max-content`, and it is
      not optional.
@@ -15139,30 +15040,8 @@ table.mini tbody tr:hover { background: none; }
   .acct-table tbody tr:hover td.who-col,
   .allco-table tbody tr:hover td.who-col { background: var(--green-wash); }
 
-  /* สรุป OT แยกแผนก ONCE FROZE TWO — ลำดับที่ as well as the name, because that
-     number is the line number on the printed sheet and reading the screen
-     against the paper is what it is for. It does not any more, and the reason
-     is worth writing down because it is a real fork, not a preference:
-
-     A second frozen column has to declare a distance from the edge, and that
-     distance is the width of the first one. Which means the first one's width
-     has to be a number in this file rather than whatever its contents come to
-     — and once one column is declared under `table-layout: fixed`, every column
-     has to be, or the leftover gets shared out equally among the ones that are
-     not and four-character figures end up in 113px columns.
-
-     So it was: TWO FROZEN COLUMNS, or COLUMNS THAT SIZE THEMSELVES. Not both,
-     short of measuring in script. Sizing themselves is what was asked for, so
-     ลำดับที่ now slides under the name like everything else, and the name pins
-     at `left: 0`, which needs no measurement of anything. */
-  .dept-table col { width: auto !important; }
-  .dept-table th.who-col, .dept-table td.who-col {
-    position: sticky; left: 0; z-index: 1;
-    box-shadow: 3px 0 6px -3px var(--shadow-1);
-  }
-  .dept-table tbody td.who-col { background: var(--card); }
-  .dept-table thead th.who-col { z-index: 3; background: var(--neutral-wash); }
-  .dept-table tbody tr:hover td.who-col { background: var(--green-wash); }
+  /* สรุป OT แยกแผนก ตรึงคอลัมน์ชื่อไว้ตอนเลื่อนข้าง จนถึง 2026-10-10 — เป็นการ์ด
+     แล้วไม่มีอะไรให้เลื่อน (ดูบล็อกการ์ดใต้ `.stack-table`) */
 
   /* รวม ชม. IS NOT PINNED. It was for one revision and is not any more.
      Scrolling sideways, the name is what you need held; the total is one of the
@@ -15442,6 +15321,50 @@ table.mini tbody tr:hover { background: none; }
   }
   .stack-table tbody td:not([data-label])::before { content: none; }
   .stack-table tbody td .btn { min-height: var(--btn-h); }
+
+  /* ── รายงาน OT แยกแผนก เป็นการ์ด — 2026-10-10 (รายงาน UX ข.8) ─────────────
+     ผู้ใช้อนุมัติจาก mockup: ชื่อ + รหัสเป็นหัวการ์ด · บริษัท ×1.5 ×3 รวม ชม.
+     มีป้าย · แถวรวมเป็นการ์ดใบสุดท้าย · ลำดับที่ไม่แสดง (มีบนกระดาษ) ·
+     หมายเหตุใต้แถว (วันเกิด · เกินเพดาน) ต่อท้ายการ์ดของคนนั้น
+
+     `table.dept-table` ทั้งตัวเพราะ `table.fixed { min-width: 820px }` ชนะ
+     `.stack-table` ด้วย specificity — บันทึกไว้ในบล็อกเดิมของตารางนี้ */
+  table.dept-table.stack-table { min-width: 0; table-layout: auto; }
+  .dept-table.stack-table td.seq,
+  .dept-table.stack-table td:empty { display: none; }
+  .dept-table.stack-table td.who-col {
+    font-weight: 600; color: var(--ink); background: none;
+    /* ชื่อขึ้นบรรทัดใหม่ที่ช่องว่าง ไม่ตัดกลางคำ — design.md §6.1 */
+    overflow-wrap: normal;
+  }
+  .dept-table.stack-table td.who-col .cell-sub { font-weight: 400; }
+  .dept-table.stack-table tbody tr:has(+ tr.row-notes) {
+    border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+  }
+  .dept-table.stack-table tbody tr:has(+ tr.row-notes) > td { padding-bottom: 0; }
+  .dept-table.stack-table tbody tr.row-notes {
+    margin-top: -10px; padding-top: 4px;
+    border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0;
+  }
+  .dept-table.stack-table tbody tr.row-notes > td { background: none; }
+  /* แถวรวมใช้กฎการ์ดเดียวกับแถวใน tbody — `.stack-table` เขียนไว้ให้ tbody
+     อย่างเดียว ตารางอื่นไม่มี tfoot */
+  .dept-table.stack-table tfoot { display: block; padding: 0 12px 12px; }
+  .dept-table.stack-table tfoot tr {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 15px; border: 1px solid var(--green-tint); border-radius: var(--radius);
+    background: var(--green-bg);
+  }
+  .dept-table.stack-table tfoot td {
+    display: block; text-align: right; border: 0; padding: 0; background: none;
+  }
+  .dept-table.stack-table tfoot td.who-col { text-align: left; }
+  .dept-table.stack-table tfoot td::before {
+    content: attr(data-label);
+    float: left; margin-right: 16px; text-align: left; white-space: nowrap;
+    font: 400 13px/1.5 var(--sans); color: var(--muted-2);
+  }
+  .dept-table.stack-table tfoot td:not([data-label])::before { content: none; }
 
   /* A DESCRIPTION THAT WRAPS, AND THE LABEL DIRECTLY UNDER IT.
 

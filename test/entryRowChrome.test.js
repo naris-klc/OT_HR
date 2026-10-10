@@ -429,7 +429,9 @@ test('the notice is at the top of the page, and takes no room when there is none
   const ret = jsx.lastIndexOf('return (', stack);
   assert.ok(!jsx.slice(ret, stack).includes('<div className="card">'), 'the notices are inside the card again');
   assert.ok(jsx.indexOf('<div className="card">', stack) > stack, 'the card does not follow the notices');
-  assert.match(jsx, /<NoticeStack id="entries">\s*\n\s*<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>\s*\n\s*<\/NoticeStack>/);
+  assert.match(jsx, /<NoticeStack id="entries">\s*\n\s*<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>/);
+  // …and the page's load error is a row in the same box since 2026-10-10 (รายงาน UX ข.2)
+  assert.match(jsx.slice(stack, jsx.indexOf('</NoticeStack>', stack)), /\{error && <NoticeRow tone="error" title=\{error\} \/>\}/);
   assert.match(css, /^\.notice-stack\.is-empty \{ display: none; \}/m);
   assert.ok(!/^\.notice-stack\.entry-notice/m.test(css), 'the slot under the name came back');
 });
@@ -776,4 +778,36 @@ test('ป้ายวันเกิดเขียนว่า วันเก�
   const body = mark.slice(0, mark.indexOf('\n}\n')).replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
   assert.match(body, />\s*วันเกิด\s*<\/span>/);
   assert.ok(!body.includes('OT สวัสดิการวันเกิด'), 'ป้ายกลับไปเป็นคำยาว');
+});
+
+/** ข.6 ในรายงาน UX 2026-10-10 — หน้า OT ของฉันใช้ `history` ขณะที่หน้า HR ใช้ `compare` */
+test('ปุ่ม ข้อมูลเดิม ทุกหน้าใช้ไอคอน compare', () => {
+  for (const f of ['components/HrEntries.jsx', 'components/EmployeeView.jsx']) {
+    const src = read(f);
+    const hits = [...src.matchAll(/<RowAction\s+icon="(\w+)"\s+label=\{[^}]*ข้อมูลเดิม/g)];
+    assert.ok(hits.length > 0, `${f}: หาปุ่ม ข้อมูลเดิม ไม่เจอ`);
+    for (const [, icon] of hits) assert.equal(icon, 'compare', `${f}: ข้อมูลเดิม ใช้ไอคอน ${icon}`);
+  }
+});
+
+/**
+ * ข.4 ในรายงาน UX 2026-10-10 — ✅ ❌ ⏳ ⚠️ ℹ️ ที่พิมพ์เป็นตัวอักษรขึ้นเป็น emoji
+ * สีและขนาดต่างกันไปตามเครื่อง และไม่ตามธีมมืด · ไอคอนมาจาก `Icon`, วงกลม ! i
+ * มาจาก `InlineMark` หรือเครื่องหมายที่ `Alert` วาดเอง · ✓ ✕ ตัวเดียวสีตามตัวอักษร
+ * (ช่องติ๊ก รหัสผ่านตรงกัน) ไม่ใช่ emoji จึงยังใช้ได้
+ */
+test('ไม่มี emoji เป็นไอคอนบนจอ — ใช้ชุดไอคอนของแอป', async () => {
+  const { readdirSync } = await import('node:fs');
+  const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  const files = [
+    ...readdirSync(join(ROOT, 'components')).filter((f) => f.endsWith('.jsx')).map((f) => `components/${f}`),
+    'lib/approverLine.js',
+  ];
+  const hits = files.flatMap((f) => strip(read(f)).split('\n')
+    .filter((l) => /[✅❌⏳⚠ℹ]/u.test(l)).map((l) => `${f}: ${l.trim().slice(0, 60)}`));
+  assert.deepEqual(hits, []);
+  // ค่า icon ของบรรทัดผู้อนุมัติต้องเป็นชื่อในชุดไอคอน (หรือ warn ที่วาดเป็นวงกลม !)
+  for (const [, name] of read('lib/approverLine.js').matchAll(/icon: '(\w+)'/g)) {
+    assert.ok(name === 'warn' || new RegExp(`\n  ${name}: [(<]`).test(icons), `ไม่มีไอคอน ${name}`);
+  }
 });

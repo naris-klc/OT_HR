@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
-import { Alert, NoticeRow, NoticeStack, PasswordInput, TipButton, TipLayer } from './common.jsx';
+import { Alert, NoticePage, NoticeRow, NoticeStack, PasswordInput, TipButton, TipLayer } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { ToastHost } from './Toast.jsx';
@@ -2122,7 +2122,9 @@ function Shell({ session, onRefresh, onLogout }) {
         </header>
 
         <main>
-          <div className="page">
+          {/* `NoticePage` คือ `.page` ที่รวมกล่องแจ้งเตือนทุกกล่องของหน้าเป็นกล่องเดียว
+              (2026-10-10 · ดู components/common.jsx) */}
+          <NoticePage className="page">
             {/*
               กล่องแจ้งเตือนของหน้าแรก — `NoticeStack id="home"` ตั้งแต่ 2026-10-08,
               ระบบแจ้งเตือนเดียวทั้งแอป. These were three boxes in three styles
@@ -2231,7 +2233,7 @@ function Shell({ session, onRefresh, onLogout }) {
             {tab === 'manual' && (
               <ManualView user={user} navGroups={navGroups} barSlots={barSlots} />
             )}
-          </div>
+          </NoticePage>
         </main>
 
         {/* The spacer clears whatever is pinned to the bottom of THIS screen.

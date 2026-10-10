@@ -213,3 +213,17 @@ test('the label sits against the middle of the two lines it labels', () => {
   // they keep the `flex-start` of the rule they all share.
   assert.match(block, /td:not\(\.log-when\)[^{]*\{\s*display: flex; align-items: flex-start/);
 });
+
+/**
+ * ไม่มีเบรกพอยต์ที่แปด — docs/design.md §6 · ข.9 ในรายงาน UX 2026-10-10 เจอ
+ * `max-width: 480px` ของป๊อปอัปรายละเอียดหลุดมาโดยไม่มีอะไรจับ
+ */
+test('ทุก @media ใช้เฉพาะเส้นที่ design.md §6 มีอยู่', () => {
+  const allowed = new Set(['min-width: 861px', 'max-width: 860px', 'max-width: 900px', 'max-width: 640px',
+    'max-width: 560px', 'min-width: 360px', 'max-width: 389px']);
+  const plain = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const used = [...plain.matchAll(/@media[^{]*\{/g)]
+    .flatMap(([head]) => [...head.matchAll(/(min|max)-width:\s*(\d+)px/g)].map((m) => `${m[1]}-width: ${m[2]}px`));
+  assert.ok(used.length > 30, 'อ่าน @media ไม่ได้');
+  assert.deepEqual([...new Set(used)].filter((w) => !allowed.has(w)), []);
+});

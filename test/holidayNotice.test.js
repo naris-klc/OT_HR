@@ -565,3 +565,37 @@ test('ทุกบทบาทเห็นประกาศ ไม่ใช่�
   assert.ok(bare.includes("home !== 'mine'"),
     'ประกาศจะถูกวาดซ้อนสองอันบนหน้า OT ของฉัน');
 });
+
+/**
+ * ข.1 ในรายงาน UX 2026-10-10 — หน้าแรกของหัวหน้า/HR/admin มีกล่องของหน้าแรก
+ * แล้วคิว/แผนกและเพดาน/นโยบาย วาดกล่องของตัวเองซ้อนต่อ · `NoticePage` (ตัวมันคือ
+ * `.page`) ให้กล่องที่อยู่ล่างกว่าส่งแถวไปรวมในกล่องแรก ใช้ context ของกล่องแรก
+ * จึงนับ เรียง และซ่อนร่วมกัน · ป๊อปอัปตัดบริบทนี้ทิ้ง
+ */
+test('หนึ่งหน้าหนึ่งกล่อง — กล่องที่สองรวมเข้ากล่องแรกของหน้า', () => {
+  const app = readFileSync(join(ROOT, 'components/App.jsx'), 'utf8');
+  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8').replace(/\r\n/g, '\n');
+  assert.match(app, /<NoticePage className="page">[\s\S]*<NoticeStack id="home">[\s\S]*<\/NoticePage>/,
+    'เนื้อหาของหน้าไม่ได้อยู่ใน NoticePage — กล่องของหน้าแรกกับกล่องของคิวจะซ้อนกันอีก');
+  const stack = common.slice(common.indexOf('export function NoticeStack('));
+  assert.match(stack, /const host = page\?\.primary && page\.primary\.sid !== sid \? page\.primary : null;/);
+  assert.match(stack, /createPortal\(<NoticeCtx\.Provider value=\{host\.ctx\}>\{children\}<\/NoticeCtx\.Provider>, host\.el\)/,
+    'แถวของกล่องที่สองต้องลงทะเบียนกับกล่องแรก ไม่งั้นหัวกล่องนับและซ่อนไม่ครบ');
+  const modal = common.slice(common.indexOf('export function Modal('));
+  assert.match(modal.slice(0, modal.indexOf('\n}\n')), /<NoticePageCtx\.Provider value=\{null\}>/,
+    'กล่องในป๊อปอัปจะหนีไปรวมกับกล่องของหน้าข้างหลัง');
+});
+
+/** ข.2 ในรายงาน UX 2026-10-10 — แบนเนอร์ขึ้นกล่องบนสุด ผลของปุ่มเป็น toast */
+test('ไม่มีกล่อง + ปุ่ม รับทราบ บนหน้าตั้งค่า และหน้าที่ไม่มีกล่องเองวางกล่องว่างไว้บนสุด', () => {
+  const admin = readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8');
+  const profile = readFileSync(join(ROOT, 'components/ProfileView.jsx'), 'utf8');
+  const hr = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
+  const strip = (s) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/>\s*รับทราบ\s*</.test(strip(admin)), 'ผลของปุ่มกลับไปเป็นกล่อง + รับทราบ');
+  assert.match(admin, /<NoticeStack id="settings" \/>\s*\{\/\* ── EIGHT SECTIONS/, 'กล่องว่างบนสุดของตั้งค่าระบบหายไป');
+  assert.match(profile, /<div className="stack profile-page">[\s\S]{0,300}<NoticeStack id="profile" \/>/);
+  assert.match(admin, /toast\(<IssuedMessage issued=\{issued\} \/>, issued\.missing \? 'error' : 'ok', \{ sticky: true \}\)/,
+    'รหัสผ่านที่เพิ่งออกต้องอยู่จนกด × — HR ต้องจด');
+  assert.ok(!/<Alert kind="info">\s*\{`ยังไม่มีวันเกิด/.test(hr), 'แบนเนอร์วันเกิดกลับไปอยู่ท้ายการ์ด');
+});
