@@ -547,7 +547,8 @@ test('the shipped answer informs, the narrow ones are silent, and screen warns',
   const code = sourceOf(SETTINGS);
   const row = code.slice(code.indexOf("key: 'formPrintScope'"));
   const field = row.slice(0, row.indexOf('\n  },'));
-  const warn = field.slice(field.indexOf('warn: '));
+  // CRLF-safe: the '\n      }\n' cuts below assume bare newlines (autocrlf checkout)
+  const warn = field.slice(field.indexOf('warn: ')).replace(/\r\n/g, '\n');
 
   // Silent on both narrow answers, and it is the branch that yields ''.
   assert.match(warn, /if \(\['signed', 'approved'\]\.includes\(value\)\) return '';/);
