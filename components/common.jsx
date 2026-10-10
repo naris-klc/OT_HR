@@ -4896,7 +4896,7 @@ export function PickOne({
               NOT ON THE FLOATING PANEL, where the label is still on the screen
               a few pixels above the list and this would be the same word
               twice. */}
-          {sheet && <div className="nav-sheet-head">{label}</div>}
+          {/* หัวแผ่น (ชื่อช่อง + ✕) วาดโดย `Popover` ตั้งแต่ 2026-10-10 */}
           {/* ── พิมพ์เพื่อกรองรายการ ─────────────────────────────────────────
               `.searchbox` AND THE SAME MAGNIFIER as every other search box in
               the app — this is a search box that happens to be inside a panel,
@@ -5254,14 +5254,14 @@ export function PickMany({
             shape={rows.length}
             label={label}
             /* EVERY WAY OUT BUT ESCAPE SAVES — a press on the page behind, a
-               scroll, ปิด on a sheet. A panel whose ticks are lost by pressing
+               scroll, ✕ on a sheet. A panel whose ticks are lost by pressing
                next to it is a panel that punishes the ordinary way people leave
                one. */
             onClose={() => commit(draft)}
             className="one-pop"
             matchWidth
           >
-            {sheet && <div className="nav-sheet-head">{label}</div>}
+            {/* หัวแผ่น (ชื่อช่อง + ✕) วาดโดย `Popover` ตั้งแต่ 2026-10-10 */}
             {searchable && (
               <div className="one-search">
                 <div className="field">

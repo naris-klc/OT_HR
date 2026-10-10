@@ -373,10 +373,13 @@ test('บนมือถือ ดรอปดาวน์เปิดเป็�
   // The heading, which is the one thing added rather than moved. On a sheet
   // only: a floating panel opens under the box it belongs to with the label
   // still on screen, and repeating it there would be the same word twice.
-  assert.match(source, /\{sheet && <div className="nav-sheet-head">\{label\}<\/div>\}/);
-  // เพิ่มเติม's own class, not a second copy of that type — and it is held out
-  // of the scroll by the rule the drawer already needed.
-  assert.match(read('components/App.jsx'), /<div className="nav-sheet-head">\{slot\.label\}<\/div>/);
+  // Since 2026-10-10 `Popover` draws it for every sheet, beside the ✕ that
+  // replaced ปิด — so the dropdown no longer draws its own copy.
+  const pop = read('components/popover.jsx');
+  assert.match(pop, /\{sheet && \(\s*<div className="pop-sheet-head">\s*<div className="nav-sheet-head">\{label\}<\/div>/);
+  assert.ok(!/\{sheet && <div className="nav-sheet-head">\{label\}<\/div>\}/.test(source), 'หัวแผ่นซ้ำสองชั้น');
+  // เพิ่มเติม's own class, not a second copy of that type — on the floating panel only now.
+  assert.match(read('components/App.jsx'), /\{!sheet && <div className="nav-sheet-head">\{slot\.label\}<\/div>\}/);
   assert.match(css, /\.pop\.sheet > \.drawer-who, \.pop\.sheet > \.nav-sheet-head, \.pop\.sheet > \.pop-foot \{ flex: none; \}/);
 });
 

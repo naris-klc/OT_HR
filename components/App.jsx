@@ -10,7 +10,7 @@ import { BackProvider } from './nav.jsx';
 // The panel the three pickers already open — portaled out of whatever would
 // clip it, dismissed by Escape and by a press outside, and a bottom sheet below
 // 860px. The phone bar's slot menus ARE that panel; see `BarSlot`.
-import { Popover, PopFoot, useSheet } from './popover.jsx';
+import { Popover, useSheet } from './popover.jsx';
 import { PolicyProvider } from './policyContext.jsx';
 import EmployeeView from './EmployeeView.jsx';
 import ApprovalQueue from './ApprovalQueue.jsx';
@@ -912,7 +912,8 @@ function BarSlot({ slot, tab, onGo }) {
           onClose={close}
           className="nav-pop"
         >
-          <div className="nav-sheet-head">{slot.label}</div>
+          {/* On a sheet `Popover` draws this name with the ✕ beside it (2026-10-10) */}
+          {!sheet && <div className="nav-sheet-head">{slot.label}</div>}
           <div className="nav-sheet" role="menu" aria-label={slot.label}>
             {slot.items.map((t) => (
               <button
@@ -929,10 +930,8 @@ function BarSlot({ slot, tab, onGo }) {
               </button>
             ))}
           </div>
-          {/* ปิด, on a sheet only. A floating panel is dismissed by pressing the
-              page it is over; a sheet has a scrim over that page, and "press the
-              dark part" is a convention rather than a control. */}
-          <PopFoot sheet={sheet} onClose={close} />
+          {/* ปิด stood here on a sheet until 2026-10-10 — the ✕ in the sheet's
+              head is the way out now (`Popover`). */}
         </Popover>
       )}
     </>
@@ -1095,7 +1094,6 @@ function NavDrawer({ groups, tab, user, initials, onGo, onLogout }) {
               <span className="label">ออกจากระบบ</span>
             </button>
           </div>
-          <PopFoot sheet={sheet} onClose={close} />
         </Popover>
       )}
     </>

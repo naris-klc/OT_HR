@@ -1134,7 +1134,6 @@ function Departments({ user, onGo, roster }) {
           onClose={() => setDeleting(null)}
           footer={(
             <>
-              <button className="btn ghost" onClick={() => setDeleting(null)}>ปิด</button>
               {/* The way out is offered here rather than described, because
                   "ใช้ปิดใช้งานแทน" printed in a refusal that then closes back
                   to a table is an instruction to go and find a pill two
@@ -3196,7 +3195,9 @@ function Employees({ user }) {
         roster now".
       */}
       {/* แถวแดงในกล่องแจ้งเตือนบนสุดของหน้าตั้งแต่ 2026-10-10 (รายงาน UX ข.2) ·
-          เคยเป็น `Alert` บนการ์ด · แถวแดงซ่อนไม่ได้ จึงมีปุ่ม ปิด ในส่วนที่กาง */}
+          เคยเป็น `Alert` บนการ์ด · แถวแดงซ่อนไม่ได้ และไม่มีปุ่ม ปิด (✕ ทั้งแอป
+          2026-10-10) — หายเองเมื่อเลือกไฟล์ใหม่ (`choose` ล้าง `importError`)
+          หรือออกจากหน้า */}
       {importError && (
         <NoticeStack id="employees-import">
           <NoticeRow
@@ -3223,7 +3224,6 @@ function Employees({ user }) {
                   แก้ตามบรรทัดข้างบนใน Excel · บันทึกเป็น .csv (คอลัมน์วันเกิดควรเป็น YYYY-MM-DD)
                   {' '}แล้วเลือกไฟล์ใหม่อีกครั้ง
                 </div>
-                <button className="btn ghost sm" style={{ marginTop: 6 }} onClick={() => setImportError(null)}>ปิด</button>
               </>
             )}
           />
@@ -5309,7 +5309,6 @@ function RosterTrail({ employee, depts, onClose }) {
       subtitle={`${employee.code} · ${employee.name}`}
       onClose={onClose}
       wide
-      footer={<button className="btn ghost" onClick={onClose}>ปิด</button>}
     >
       <div className="hint">
         บันทึกแบบต่อท้ายอย่างเดียว แก้ย้อนหลังไม่ได้ ·

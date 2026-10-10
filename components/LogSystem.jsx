@@ -1220,7 +1220,6 @@ function RecordDetail({ record: r, onClose }) {
       subtitle={at(r.at)}
       meta={`${r.method} ${r.path}`}
       onClose={onClose}
-      footer={<button className="btn ghost" onClick={onClose}>ปิด</button>}
     >
       <dl className="log-detail">
         <Row k="เหตุการณ์" v={EVENT_LABEL[r.event] || r.event} />
