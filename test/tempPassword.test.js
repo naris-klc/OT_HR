@@ -588,11 +588,14 @@ test('signing in reaches the app, and the flag is said in ink instead', () => {
   // the fact can no longer be hidden by anything — which is what this assertion
   // now says, and it says it without naming the half that used to be behind the
   // press, because there is no half.
+  // ย้ายจาก `<Alert kind="warn">` ในการ์ดไปเป็นแถวในกล่องแจ้งเตือนบนสุดของหน้า
+  // 2026-10-11 — ประโยคเต็มต้องอยู่ใน `title` เพราะบนมือถือเห็นแค่หัวเรื่อง
   assert.match(
     profile,
-    /<Alert kind="warn">\s*คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้ ซึ่งคือรหัสพนักงานของคุณ และมีคนอื่นทราบด้วย\s*<\/Alert>/,
+    /<NoticeStack id="password">\s*<NoticeRow\s+tone="warn"\s+title="คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้ ซึ่งคือรหัสพนักงานของคุณ และมีคนอื่นทราบด้วย"\s*\/>/,
     'the one fact this box exists to say is not whole on screen',
   );
+  assert.ok(!/<Alert kind="warn">\s*คุณยังใช้รหัสผ่าน/.test(profile), 'คำเตือนกลับไปเป็น Alert ในการ์ด');
   assert.ok(!profile.includes('alert-fold'), 'ฝาพับกลับมาบนกล่องที่ถูกถอนไปแล้ว');
 });
 
