@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import Employee from '@/src/models/Employee.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { signToken, setAuthCookie, publicUser } from '@/lib/session.js';
@@ -8,6 +9,25 @@ import {
 import { noteActor, noteAuthEvent } from '@/lib/requestContext.js';
 
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+/**
+ * รหัสพนักงานจริงยาวไม่เกินสิบตัว · เกินจากนี้ไม่ต้องไปถามฐาน — `codeMatcher`
+ * สร้าง regex ยาวตามที่พิมพ์มา และรหัสแสนตัวอักษรทำให้ Mongo ปฏิเสธ regex
+ * จน route ตอบ 500 · พบตอนตรวจ API 2026-10-10
+ */
+const MAX_CODE_LENGTH = 64;
+
+/**
+ * hash ตัวหลอก สำหรับรหัสที่ไม่มีในทะเบียนหรือบัญชีที่ปิดใช้งาน
+ *
+ * ไม่มีตัวนี้ ทางที่ไม่เจอคนตอบใน ~4 ms ส่วนทางที่เจอคนแต่รหัสผ่านผิดต้องรอ
+ * bcrypt ~90 ms — วัดบนเครื่องนี้ 2026-10-10 สองกลุ่มไม่ซ้อนกันเลย คนนอกจึง
+ * ไล่หาได้ว่ารหัสไหนมีอยู่จริง ทั้งที่ข้อความตอบกลับเหมือนกันทุกคำ (ย่อหน้า
+ * ONE MESSAGE ข้างล่าง) · สร้างด้วย `hashPassword` ตัวเดียวกับของจริง cost
+ * จึงตามกันเสมอ · สร้างครั้งแรกที่มีคนล็อกอินแล้วเก็บไว้
+ */
+let decoy;
+const decoyHash = () => (decoy ??= Employee.hashPassword(randomBytes(16).toString('hex')));
 
 export const POST = route(async (req) => {
   const { code, password } = await body(req);
@@ -38,13 +58,17 @@ export const POST = route(async (req) => {
    * being told their password was wrong. `codeMatcher` finds the row and
    * `sameCode` decides it is the right one; see src/lib/employeeCode.js.
    */
-  const matcher = codeMatcher(code);
+  const matcher = String(code).length <= MAX_CODE_LENGTH ? codeMatcher(code) : null;
   const found = matcher
     ? await Employee.findOne({ code: matcher }).select('+passwordHash').populate('department')
     : null;
   const user = found && sameCode(found.code, code) ? found : null;
 
-  if (!user || !user.active || !(await user.verifyPassword(password))) {
+  // bcrypt ทำงานทุกทาง — ดู `decoyHash` ข้างบน
+  const passwordHash = user?.active ? user.passwordHash : await decoyHash();
+  const passwordOk = await Employee.schema.methods.verifyPassword.call({ passwordHash }, password);
+
+  if (!user || !user.active || !passwordOk) {
     /**
      * ONE MESSAGE, WHATEVER WENT WRONG — unchanged, and the `hint` beside it
      * keeps that property. A wrong code, a deactivated account and a wrong

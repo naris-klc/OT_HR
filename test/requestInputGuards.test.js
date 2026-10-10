@@ -211,3 +211,37 @@ test('งวดของการคำนวณใหม่ถูกตรว�
     'การใส่ค่าลง filter ในบรรทัดเดียวคือรูปเดิมที่ไม่มีด่าน',
   );
 });
+
+// ── QA 2026-10-10: body ที่เป็น JSON ถูกต้องแต่ไม่ใช่ object · login ─────────
+
+test('body() คืน object เสมอ แม้ JSON ที่ส่งมาจะเป็น null สตริง หรือ array', () => {
+  // `null` เคยถูกคืนตรง ๆ แล้ว `const { code } = null` ทำให้ login · เปลี่ยน
+  // รหัสผ่าน · PATCH settings · preview ตอบ 500 (ยิงจริง 2026-10-10) · อ่านจาก
+  // ซอร์สเพราะ lib/http.js import `next/server` ซึ่ง node --test โหลดไม่ได้
+  const text = src('lib/http.js');
+  const fn = text.slice(text.indexOf('export async function body('), text.indexOf('export function query('));
+  assert.match(fn, /typeof parsed === 'object' && !Array\.isArray\(parsed\) \? parsed : \{\}/);
+  assert.doesNotMatch(fn, /return text \? JSON\.parse\(text\) : \{\};/, 'รูปเดิมที่คืน null ได้');
+});
+
+test('login ใช้เวลาเท่ากันไม่ว่ารหัสพนักงานจะมีอยู่จริงหรือไม่', () => {
+  // ก่อน 2026-10-10 รหัสที่ไม่มีในทะเบียนข้าม bcrypt ไปเลย ตอบใน ~4 ms เทียบกับ
+  // ~90 ms ของรหัสที่มีจริง — ไล่หารหัสพนักงานได้จากเวลาอย่างเดียว
+  const text = src('app/api/auth/login/route.js');
+  assert.match(text, /user\?\.active \? user\.passwordHash : await decoyHash\(\)/,
+    'รหัสที่ไม่เจอและบัญชีที่ปิดใช้งาน ต้องเทียบกับ hash ตัวหลอก');
+  assert.match(text, /decoy \?\?= Employee\.hashPassword\(/,
+    'hash ตัวหลอกต้องมาจาก hashPassword ตัวเดียวกับของจริง cost จึงตามกัน');
+  assert.ok(
+    text.indexOf('verifyPassword.call({ passwordHash }') < text.indexOf('if (!user || !user.active || !passwordOk)'),
+    'bcrypt ต้องรันก่อนตัดสิน — ไม่ใช่เฉพาะทางที่เจอคน',
+  );
+  assert.doesNotMatch(text, /!user\.active \|\| !\(await user\.verifyPassword/,
+    'รูปเดิมที่ short-circuit ข้าม bcrypt');
+});
+
+test('รหัสพนักงานยาวผิดปกติ ไม่ถูกส่งไปสร้าง regex', () => {
+  // รหัสแสนตัวอักษรทำให้ Mongo ปฏิเสธ regex ที่ `codeMatcher` สร้าง → 500
+  const text = src('app/api/auth/login/route.js');
+  assert.match(text, /String\(code\)\.length <= MAX_CODE_LENGTH \? codeMatcher\(code\) : null/);
+});

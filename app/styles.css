@@ -3208,8 +3208,12 @@ button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertica
 @media (max-width: 860px) {
   .act-tip { display: contents; }
 }
+/* `position: relative` ให้คำที่พับไว้ยึดกับปุ่ม · ไม่มีบรรทัดนี้ ตัว absolute
+   ยึดกับกล่องนอก `.table-wrap` จึงไม่ถูกกล่องเลื่อนของตารางตัด แล้วดันทั้งหน้า
+   ให้เลื่อนแนวนอน — ตารางแผนกในตั้งค่าระบบที่ 861–925px กว้างเกินจอ 88px
+   (พบตอนตรวจ responsive 2026-10-10) */
 @media (min-width: 861px) {
-  .btn.act-icon { width: var(--btn-h-sm); height: var(--btn-h-sm); min-height: 0; padding: 0; flex: none; }
+  .btn.act-icon { position: relative; width: var(--btn-h-sm); height: var(--btn-h-sm); min-height: 0; padding: 0; flex: none; }
   .btn.act-icon .btn-word {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap;

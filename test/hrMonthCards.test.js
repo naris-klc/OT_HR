@@ -272,6 +272,9 @@ test('พิมพ์ F-HR-027 stayed, because it is the one act that is not "op
   // out of the accessibility tree and leave `aria-label` as the only name.
   // App-wide since 2026-10-08: every RowAction hides its word the same way.
   assert.match(css, /\.btn\.act-icon \.btn-word \{[\s\S]*?clip-path: inset\(50%\);/);
+  // คำที่พับเป็น absolute จึงต้องยึดกับปุ่ม — ไม่งั้นหลุดกล่องเลื่อนของตาราง
+  // แล้วดันทั้งหน้าให้เลื่อนแนวนอน (ตารางแผนก 861px เกินจอ 88px · 2026-10-10)
+  assert.match(css, /\.btn\.act-icon \{ position: relative;/);
   // …and the phone card puts the words back, because down there this cell is
   // the foot of a person's card rather than a column of a table.
   assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \.btn-word \{/);
