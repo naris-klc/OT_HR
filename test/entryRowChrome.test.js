@@ -29,7 +29,7 @@ import { dirname, join } from 'node:path';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (f) => readFileSync(join(ROOT, f), 'utf8');
+const read = (f) => readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 const jsx = read('components/HrEntries.jsx');
 const css = read('app/styles.css');
 const icons = read('components/icons.jsx');

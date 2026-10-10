@@ -25,7 +25,8 @@ import { REPORTABLE_STATUSES, reportStatuses } from '../lib/reports.js';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const view = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
+const read = (f) => readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
+const view = read('components/HrView.jsx');
 
 /** The array as the screen declares it, with `ALL_LIVE_STATUSES` resolved. */
 const allLive = /const ALL_LIVE_STATUSES = '([^']+)';/.exec(view);
@@ -83,7 +84,7 @@ test('แท็บกรองคนตามใบที่ยังค้า�
 });
 
 test('เลขบนแท็บมาจาก tabCounts ของเราต์ ช่องตรงกับ count ของแต่ละแท็บ', () => {
-  const route = readFileSync(join(ROOT, 'app/api/reports/monthly/[period]/route.js'), 'utf8');
+  const route = read('app/api/reports/monthly/[period]/route.js');
   assert.match(route, /const tabCounts = \{ all: 0, pendingHr: 0, pendingMgr: 0, approved: 0 \};/);
   assert.match(route, /\n    tabCounts,\n/);
   assert.match(view, /data\.tabCounts\[t\.count\]/);
@@ -92,7 +93,7 @@ test('เลขบนแท็บมาจาก tabCounts ของเราต
 });
 
 test('เลขบนแท็บสีตามสถานะ เท่ากับป้ายสถานะ · ทั้งหมด และ 0 เป็นเทา', () => {
-  const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+  const css = read('app/styles.css');
   assert.match(view, /label: 'รอ HR', count: 'pendingHr', tone: 'pending_hr'/);
   assert.match(view, /label: 'รอหัวหน้า', count: 'pendingMgr', tone: 'pending_mgr'/);
   assert.match(view, /label: 'อนุมัติแล้ว', count: 'approved', tone: 'approved'/);

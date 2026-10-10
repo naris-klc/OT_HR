@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (f) => readFileSync(join(ROOT, f), 'utf8');
+const read = (f) => readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 
 /**
  * แผนก และ เดือน บนหน้า รายการรออนุมัติ — the app's own dropdown, not the OS's.
