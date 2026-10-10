@@ -74,8 +74,9 @@ yours.
   attributable within minutes: the next session cannot tell your half-finished
   change from its own, and the documentation rule below is written per commit
   for exactly this reason.
-- **งานเสร็จทุกครั้ง: commit → merge เข้า `main` → `git push` → เคลียร์ worktree
-  ของตัวเอง** สั่งไว้ 2026-10-08 · ทำครบทุกขั้นในรอบเดียวกัน ไม่ต้องรอถาม ·
+- **งานเสร็จทุกครั้ง: QA ตาม docs/qa-release.md → commit → merge เข้า `main` →
+  `git push` → เคลียร์ worktree ของตัวเอง** สั่งไว้ 2026-10-08 (ขั้น QA เพิ่ม
+  2026-10-10 — §ก่อนบอกว่า "พร้อม deploy") · ทำครบทุกขั้นในรอบเดียวกัน ไม่ต้องรอถาม ·
   push เฉพาะ `main` · เคลียร์เฉพาะ worktree และ branch ที่ตัวเองสร้าง (ยกเลิก
   junction/symlink `node_modules` ก่อน แล้วเช็กว่า `node_modules` ของ main ยังอยู่
   ครบ) · worktree ของ session อื่นห้ามแตะ แม้ดูเหมือนค้าง
@@ -424,10 +425,16 @@ already built**, and rebuilding it is the specific mistake they exist to prevent
 
 ## ก่อนบอกว่า "พร้อม deploy" — ผ่าน docs/qa-release.md ก่อน
 
-**สั่งไว้ 2026-10-10:** งานที่จะส่งให้ผู้ใช้ deploy ต้องผ่าน
-[docs/qa-release.md](docs/qa-release.md) ทุกชั้นที่งานนั้นแตะถึง และรายงานผลเป็น
-PASS / FAIL / BLOCKED / NOT TESTED · ชั้นที่ไม่ได้ทำต้องเขียนไว้ว่าไม่ได้ทำ เพราะ
-ถ้าละไว้เฉย ๆ คนอ่านจะเข้าใจว่าผ่าน
+**สั่งไว้ 2026-10-10:** **ทุกงานที่จะ merge เข้า `main`** ต้องผ่าน
+[docs/qa-release.md](docs/qa-release.md) ทุกชั้นที่งานนั้นแตะถึงก่อน — ทำเองโดย
+ไม่ต้องรอผู้ใช้สั่ง เพราะทุกอย่างที่อยู่ใน `main` คือของที่ผู้ใช้อาจหยิบไป deploy
+ได้ทุกเมื่อ · รายงานผลเป็น PASS / FAIL / BLOCKED / NOT TESTED ในข้อความส่งงาน
+ทุกครั้ง · ชั้นที่ไม่ได้ทำต้องเขียนไว้ว่าไม่ได้ทำ เพราะถ้าละไว้เฉย ๆ คนอ่านจะ
+เข้าใจว่าผ่าน
+
+งานเล็กทำแค่ชั้นที่เกี่ยวข้องก็พอ เช่น แก้ข้อความในเอกสารใช้แค่ชั้นที่ 1 แล้ว
+เขียนว่าชั้นอื่น NOT TESTED เพราะไม่เกี่ยว · แต่งานที่แตะการคำนวณ สิทธิ์ login
+ฐานข้อมูล หรือหน้าจอ ห้ามตัดชั้นที่เกี่ยวกับเรื่องนั้นออก
 
 เหตุผล: agent ที่รายงานว่า "เทสต์ผ่านหมด" ยังส่งระบบที่คนใช้จริงเข้าไม่ได้มาแล้ว
 เพราะมันทดสอบเฉพาะสิ่งที่มันคิดถึง และใช้บัญชีที่มีอยู่ใน automation ของมันเอง ·
