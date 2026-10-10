@@ -135,9 +135,10 @@
 .f027 table tbody tr:last-child td { border-bottom: 0.25mm solid #000; }
 .f027 table tbody tr:hover { background: none; }
 
-/* วันหยุดประจำสัปดาห์และวันหยุดบริษัท ระบายเหลืองทั้งแถว เหมือนกระดาษ
-   F-HR-027 — วันเกิดไม่ระบาย (`row.isHoliday` ไม่รู้วันเกิด) */
-.f027 tbody tr.hol td {
+/* วันที่มี OT ระบายเหลืองทั้งแถว ไม่ว่าวันหยุด วันเกิด หรือวันทำงาน (2026-10-10)
+   — วันหยุดที่ไม่มี OT ไม่ระบาย · เคยระบายวันหยุดทุกวัน
+   ตั้งแต่ 2026-10-09 */
+.f027 tbody tr.has-ot td {
   background: #ffff00;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -234,8 +235,7 @@
   overflow-wrap: break-word;
 }
 .f027 td.desc { font-size: 6.8pt; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-/* The three yellow headings are the only fill on the sheet — holidays are not
-   tinted, exactly as on the paper form. */
+/* Besides the three yellow headings, the only fill is `tr.has-ot` above. */
 .f027 tr.total td { font-weight: 700; }
 /* สรุปรวม runs from จาก to the last hour column — either side is open paper. */
 .f027 tr.total td.blank { border: 0; }

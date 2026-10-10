@@ -497,15 +497,13 @@ test('ตรวจสอบรายเดือน นับว่าใคร�
   assert.ok(!/dayReason/.test(src), 'รายงานรวมไม่ควรรู้จักเหตุผลของวันเลย');
 });
 
-test('F-HR-027: แถววันหยุดระบายเหลืองจาก row.isHoliday เท่านั้น — วันเกิดไม่ระบาย', () => {
+test('F-HR-027: ระบายเหลืองเฉพาะแถวที่มี OT — ไม่ดูประเภทวัน จึงไม่บอกวันเกิด', () => {
   const sheet = read('components/PrintForm.jsx');
-  assert.match(sheet, /className=\{row\.isHoliday \? 'hol' : undefined\}/);
+  assert.match(sheet, /className=\{row\.sessions\.length \? 'has-ot' : undefined\}/);
+  assert.doesNotMatch(sheet, /row\.isHoliday \?/, 'สีต้องไม่มาจากประเภทวัน');
   const css = read('app/print.css');
-  const rule = css.match(/\.f027 tbody tr\.hol td \{[^}]*\}/);
-  assert.ok(rule, 'ต้องมีกฎ .f027 tbody tr.hol td');
+  assert.doesNotMatch(css, /tr\.hol\b/, 'กฎระบายวันหยุดทุกวันต้องหายไป');
+  const rule = css.match(/\.f027 tbody tr\.has-ot td \{[^}]*\}/);
+  assert.ok(rule, 'ต้องมีกฎ .f027 tbody tr.has-ot td');
   assert.match(rule[0], /print-color-adjust: exact/, 'ไม่มีก็พิมพ์ออกมาไม่มีสี');
-  // isHoliday มาจาก formDayTypes ที่ไม่รับวันเกิด
-  const route = read('app/api/reports/form/[period]/route.js');
-  assert.match(route, /isHoliday: date \? dayTypes\[date\]\.type === 'holiday'/);
-  assert.match(route, /formDayTypes\(dates/);
 });
