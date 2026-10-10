@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, thaiDate, thaiStamp, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
+import { readEra } from '@/lib/smartDate.js';
 import {
   HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
   chosenPasswordPermission, defaultPassword, dropsAnAdmin, unsignedStaff, UNNAMEABLE_ROLES,
@@ -6279,7 +6280,9 @@ function Holidays() {
             value={yearText}
             onChange={(e) => {
               setYearText(e.target.value);
-              if (/^\d{4}$/.test(e.target.value) && Number(e.target.value) > 2500) setYear(Number(e.target.value) - 543);
+              // พ.ศ. → ค.ศ. through `readEra`, the one place a year is moved back
+              const era = readEra(e.target.value);
+              if (/^\d{4}$/.test(e.target.value) && era.converted) setYear(era.year);
             }}
           />
         </div>
