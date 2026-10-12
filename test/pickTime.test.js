@@ -473,7 +473,7 @@ test('วงแหวน focus ไม่ประกาศสีซ้ำกั�
   // boxes are the app's field ring, which IS a shared declaration.
   assert.match(rules, /\.time-slot:focus-visible \{ outline-offset: -2px; \}/);
   assert.ok(!/\.time-slot:focus-visible \{[^}]*outline: 2px solid/.test(rules));
-  assert.match(rules, /\.time-num:focus \{ outline: none; border-color: var\(--green\); box-shadow: 0 0 0 3px var\(--focus-ring\); \}/);
+  assert.match(rules, /\.time-num:focus \{ outline: none; border-color: var\(--green\); box-shadow: var\(--ring-focus\); \}/);
 });
 
 test('สองรูปทรงก่อนหน้าไม่เหลืออยู่ในไฟล์ไหนเลย', () => {

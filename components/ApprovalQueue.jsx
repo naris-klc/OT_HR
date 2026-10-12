@@ -2346,7 +2346,7 @@ export default function ApprovalQueue({
              * reader never chose. The count is what makes that visible and
              * ดูทั้งหมด is one press, the same act ล้างตัวกรอง performs above.
              */
-            <div className="empty">
+            <Empty>
               <strong>ไม่มีรายการที่ตรงกับตัวกรอง</strong>
               <div className="hint" style={{ marginTop: 4 }}>
                 มีอีก {entries.length} ใบในคิวนี้ที่ตัวกรองซ่อนอยู่
@@ -2359,7 +2359,7 @@ export default function ApprovalQueue({
                   ดูทั้งหมด
                 </button>
               </div>
-            </div>
+            </Empty>
           )
         )}
         </>
@@ -4046,13 +4046,13 @@ function EntryPeek({ entries, collapsed }) {
 function QueueCleared({ cleared, isHr }) {
   if (!cleared) {
     return (
-      <div className="empty">
+      <Empty>
         <strong>ยังไม่มีใบ OT ที่รออนุมัติ</strong>
-      </div>
+      </Empty>
     );
   }
   return (
-    <div className="empty cleared">
+    <Empty className="cleared">
       <div className="tick">✓</div>
       <strong>เคลียร์คิวครบทุกรายการแล้ว</strong>
       <div className="hint" style={{ marginTop: 4 }}>
@@ -4060,7 +4060,7 @@ function QueueCleared({ cleared, isHr }) {
           ? 'รายการที่อนุมัติไปแล้วอยู่ในตรวจสอบประจำเดือนและรายงานส่งออก'
           : 'รายการที่อนุมัติแล้วส่งต่อให้ฝ่ายบุคคลเรียบร้อย'}
       </div>
-    </div>
+    </Empty>
   );
 }
 

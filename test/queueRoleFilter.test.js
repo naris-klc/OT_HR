@@ -520,7 +520,7 @@ test('จอว่างมีหัวข้อเดียวกันทุ�
   assert.ok(at > 0, 'QueueCleared หายไป');
   const fn = code.slice(at, code.indexOf('\n}', at));
   assert.ok(fn.includes('<strong>ยังไม่มีใบ OT ที่รออนุมัติ</strong>'), 'หัวข้อจอว่างหายไป — ตารางเปล่าแยกไม่ออกจากหน้าที่โหลดพลาด');
-  const notCleared = fn.slice(fn.indexOf('if (!cleared)'), fn.indexOf('className="empty cleared"'));
+  const notCleared = fn.slice(fn.indexOf('if (!cleared)'), fn.indexOf('<Empty className="cleared">'));
   assert.ok(!notCleared.includes('className="hint"'), 'บรรทัดรองใต้หัวข้อจอว่างกลับมา');
   assert.ok(!fn.includes('ค้นจาก'), 'ประโยคขอบเขต ค้นจาก… กลับมา');
   // The ✓ panel is still its own state — "you just finished" is not the same

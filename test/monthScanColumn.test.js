@@ -443,7 +443,7 @@ test('ทั้งสามสถานะเป็นป้ายมีพื�
   }
 
   // ทรงที่ยืมมา ต้องเป็นทรงที่มีอยู่จริง และเป็นทรงเดียวกับที่ `StatusChip` ใส่
-  assert.match(css, /^\.chip \{\s*\n\s*display: inline-block; padding: 4px 10px; border-radius: 20px;/m);
+  assert.match(css, /^\.chip \{\s*\n\s*display: inline-block; padding: 4px 10px; border-radius: var\(--radius-lg\);/m);
   assert.match(read('components/common.jsx'), /className=\{`chip st-\$\{status\}`\}/);
 
   // สองเม็ดที่ซ้อนกันต้องไม่ชนกัน — ป้ายสองใบที่ติดกันอ่านเป็นป้ายใบเดียวที่ขาด

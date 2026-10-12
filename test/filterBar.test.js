@@ -435,7 +435,8 @@ test('ล้างตัวกรองบนทุกแถบเป็นไ�
     // ปุ่มคำที่ยังเหลือต้องอยู่ใน <Empty> หรือ .empty-act เท่านั้น
     for (const m of code.matchAll(/>\s*ล้างตัวกรอง(?:ทั้งหมด)?\s*<\/button>/g)) {
       const before = code.slice(Math.max(0, m.index - 600), m.index);
-      assert.ok(before.includes('empty-act'), `${f} ยังมีปุ่มล้างตัวกรองที่เป็นคำนอกข้อความว่าง`);
+      // `<Empty action={…}>` ตั้งแต่ 2026-10-12 — Empty วาด .empty-act ให้เอง
+      assert.ok(before.includes('empty-act') || before.includes('<Empty action={('), `${f} ยังมีปุ่มล้างตัวกรองที่เป็นคำนอกข้อความว่าง`);
     }
   }
   // Stretched to the bar's row, square, since 2026-10-12 — `--field-h` (40)

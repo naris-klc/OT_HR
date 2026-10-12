@@ -3627,7 +3627,13 @@ function Employees({ user }) {
         that is not what this box does.
       */}
       {(find || filtering) && shown.length === 0 ? (
-        <Empty>
+        /* ปุ่มเดียวกับบนแถบกรอง วางตรงที่คนอ่านกำลังมอง: ตารางว่างสูงศูนย์แถว บนมือถือ
+           แถบกรองจึงเลื่อนพ้นจอไปแล้วตอนอ่านประโยคนี้ */
+        <Empty action={(
+          <button type="button" className="btn ghost sm" onClick={() => { setFind(''); setFilters(NO_FILTERS); }}>
+            <Icon name="reset" />ล้างตัวกรอง
+          </button>
+        )}>
           {/* WHICH OF THE FOUR IS EMPTYING THE TABLE, NAMED — 2026-09-14. With
               one search box the sentence could only ever be about the query;
               with three boxes beside it, "ไม่พบพนักงาน" on its own leaves a
@@ -3648,19 +3654,6 @@ function Employees({ user }) {
           </strong>
           {find && <div>ค้นได้จากรหัสพนักงานและชื่อ-สกุลเท่านั้น</div>}
           {filtering && <div>{filterWords}</div>}
-          {/* The same press as the one on the bar, put where the reader is
-              looking when they need it: the bar is above a table that is now
-              nought rows tall, so on a phone it has scrolled off the top by the
-              time this sentence is read. */}
-          <div className="empty-act">
-            <button
-              type="button"
-              className="btn ghost sm"
-              onClick={() => { setFind(''); setFilters(NO_FILTERS); }}
-            >
-              <Icon name="reset" />ล้างตัวกรอง
-            </button>
-          </div>
         </Empty>
       ) : (
       <>

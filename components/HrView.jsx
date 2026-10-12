@@ -1927,16 +1927,13 @@ export default function HrView({
         ) : inTab.length === 0 && tab.empty ? (
           /* แท็บที่ไม่มีใคร — 2026-10-09 · มาก่อนคำของแผนกและของเดือน เพราะ
              เดือนอาจเต็มอยู่ แค่ไม่มีใครค้างที่ขั้นนี้ · ทางออกคือแท็บ ทั้งหมด */
-          <div className="empty">
-            <div>{tab.empty}{dept && ` · ${deptName}`}</div>
-            <button
-              className="btn ghost sm"
-              style={{ marginTop: 10 }}
-              onClick={() => setStatusFilter(DEFAULT_STATUS)}
-            >
+          <Empty action={(
+            <button className="btn ghost sm" onClick={() => setStatusFilter(DEFAULT_STATUS)}>
               ดูทั้งหมด
             </button>
-          </div>
+          )}>
+            <div>{tab.empty}{dept && ` · ${deptName}`}</div>
+          </Empty>
         ) : data.employees.length === 0 ? (
           /* ไม่มีรายการในเดือนนี้ WAS THE WHOLE OF THIS UNTIL 2026-09-10, and
              with a แผนก chosen it is a sentence that is very nearly a lie: the
@@ -1949,16 +1946,13 @@ export default function HrView({
              the way out directly under it, which is the same shape the search's
              own empty state has had since it was written a few lines below. */
           dept ? (
-            <div className="empty">
-              <div>ไม่มีรายการของ “{deptName}” ในเดือนนี้</div>
-              <button
-                className="btn ghost sm"
-                style={{ marginTop: 10 }}
-                onClick={() => setDept('')}
-              >
+            <Empty action={(
+              <button className="btn ghost sm" onClick={() => setDept('')}>
                 ดูทุกแผนก
               </button>
-            </div>
+            )}>
+              <div>ไม่มีรายการของ “{deptName}” ในเดือนนี้</div>
+            </Empty>
           ) : <Empty>ไม่มีรายการในเดือนนี้</Empty>
         ) : (
           <>
@@ -1986,17 +1980,14 @@ export default function HrView({
             )}
 
             {shown.length === 0 ? (
-              <div className="empty">
-                <div>ไม่พบข้อมูลพนักงานที่ค้นหา “{query}”</div>
-                <button
-                  className="btn ghost sm"
-                  style={{ marginTop: 10 }}
-                  onClick={() => setFind('')}
-                >
+              <Empty action={(
+                <button className="btn ghost sm" onClick={() => setFind('')}>
                   <Icon name="reset" />
                   ล้างค้นหา
                 </button>
-              </div>
+              )}>
+                <div>ไม่พบข้อมูลพนักงานที่ค้นหา “{query}”</div>
+              </Empty>
             ) : (
             <>
             {/* ── แถบเลือก — DRAWN WHENEVER THERE IS ANYTHING TO CONFIRM ─────

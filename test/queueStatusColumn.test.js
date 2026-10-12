@@ -520,7 +520,7 @@ test('ปุ่ม ไม่อนุมัติ ที่ปิดไว้เ
      มาวางตรงนี้คือเอาเทาคนละเฉดมาวางข้างกัน ซึ่งคือเรื่องที่ถูกทักมาตั้งแต่แรก */
   assert.match(
     css,
-    /\.foot-split \.btn\.ghost\.danger:disabled \{\s*\r?\n\s*background: var\(--neutral-wash\); color: var\(--muted-2\);\s*\r?\n\s*border-color: transparent; box-shadow: inset 0 0 0 1px var\(--line\);/,
+    /\.foot-split \.btn\.ghost\.danger:disabled \{\s*\r?\n\s*background: var\(--neutral-wash\); color: var\(--muted-2\);\s*\r?\n\s*border-color: transparent; box-shadow: var\(--ring-line\);/,
     'ไม่อนุมัติ ท้ายกล่องรายละเอียดยังคงสีแดงตอนถูกปิด',
   );
   assert.ok(

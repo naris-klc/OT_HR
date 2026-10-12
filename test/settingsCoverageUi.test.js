@@ -539,7 +539,7 @@ test('the badge is a circle at one digit, not a square and not a pill', () => {
   const css = styles();
   const rule = css.slice(css.indexOf('.tab-badge {'));
   const body = rule.slice(0, rule.indexOf('}'));
-  assert.match(body, /min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;/);
+  assert.match(body, /min-width: 18px; height: 18px; padding: 0 5px; border-radius: var\(--radius-pill\);/);
   assert.match(body, /font: 700 11px\/1 var\(--sans\)/);
   // Centred as a flex item against a Thai label, and never stretched by one.
   assert.match(body, /display: inline-flex; align-items: center; justify-content: center;/);

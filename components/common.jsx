@@ -2381,8 +2381,21 @@ export function Fact({ k, v, sub, wide = false }) {
   );
 }
 
-export function Empty({ children }) {
-  return <div className="empty">{children}</div>;
+/**
+ * สถานะว่าง · `action` คือทางออก (ปุ่ม ล้างค้นหา / ดูทั้งหมด) วางใน `.empty-act` ·
+ * `className` สำหรับแบบที่มีหน้าตาของตัวเอง (`cleared` ของคิว)
+ *
+ * 2026-10-12 (รายงาน UX หมวด จ): ก่อนหน้านั้นสามจอเขียน `<div className="empty">`
+ * เองพร้อมปุ่มทางออกคนละระยะ (inline 10px · `.empty-act` 14px) —
+ * test/rawDesignValues.test.js ห้ามเขียนเองอีก
+ */
+export function Empty({ children, action = null, className = '' }) {
+  return (
+    <div className={className ? `empty ${className}` : 'empty'}>
+      {children}
+      {action && <div className="empty-act">{action}</div>}
+    </div>
+  );
 }
 
 // ── dialog fields ───────────────────────────────────────────────────────────

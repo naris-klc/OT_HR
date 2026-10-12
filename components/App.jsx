@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
-import { Alert, NoticePage, NoticeRow, NoticeStack, PasswordInput, TipButton, TipLayer } from './common.jsx';
+import { Alert, Empty, NoticePage, NoticeRow, NoticeStack, PasswordInput, TipButton, TipLayer } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { ToastHost } from './Toast.jsx';
@@ -86,7 +86,7 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="empty">กำลังโหลด…</div>;
+  if (loading) return <Empty>กำลังโหลด…</Empty>;
   if (!session) return <Login onLogin={setSession} />;
   /**
    * THERE IS NO SCREEN BETWEEN SIGNING IN AND THE APP. Signing in lands on the
