@@ -1101,6 +1101,11 @@ test('the รายละเอียด pop-up still shows the whole story', ()
   assert.match(grid, /<span className="dm-tag over">\{describeBreaches\(e\)\.map/, 'the filed-day breach left the grid with it');
   // ไม่มีคำนำ เกินเพดานแผนก — ซ้อนหน้าข้อความของ breachLines อีก (2026-10-12)
   assert.doesNotMatch(grid, /เกินเพดานแผนก/);
+  // ไม่มีป้ายเขียว ไม่เกินเพดาน (2026-10-12) — มันขึ้นเหนือการ์ดเดือนสีแดง 51 / 30
+  // เพราะตอนยื่นใบยังไม่เกิน ผู้ใช้ชี้ว่าขัดกับเรื่องจริง · แทนด้วยป้ายเทาที่บอกว่า
+  // เป็นเรื่องของวันยื่น (เหตุที่อนุมัติแล้วระบบไม่ถามเหตุผล)
+  assert.doesNotMatch(grid, /dm-tag ok/, 'ป้ายเขียว ไม่เกินเพดาน กลับมา');
+  assert.match(grid, /: <span className="dm-tag">ตอนยื่นยังไม่เกินเพดาน<\/span>\}/);
   /*
    * AND THE TINT IS STILL THE SERVER'S ANSWER, NOT THE CARD'S.
    *

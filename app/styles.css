@@ -10904,7 +10904,6 @@ table.mini tbody tr:hover { background: none; }
   background: var(--neutral-wash); color: var(--ink-2); border: 1px solid var(--line-soft);
 }
 .dm-tag b { font: 600 12.5px/1.5 var(--mono); color: var(--ink); }
-.dm-tag.ok { background: var(--green-bg); color: var(--green-dark); border-color: var(--ok-line); }
 .dm-tag.over { background: var(--danger-bg); color: var(--danger-ink); border-color: var(--danger-line); font-weight: 600; white-space: normal; }
 .dm-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
 .dm-panel {
