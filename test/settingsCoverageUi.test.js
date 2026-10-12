@@ -473,7 +473,8 @@ test('the chips filter the table and say how many of each there are', () => {
   );
   assert.match(code, /แสดงทั้งหมด/);
   assert.match(code, /เฉพาะที่ใช้งานอยู่/);
-  assert.match(code, /ไม่มีหัวหน้างาน\s*\n?\s*<span className="n">\{gaps\.length\}<\/span>/);
+  // `.count` of the status-filter bar since 2026-10-12 (ค.1), red via `warn`.
+  assert.match(code, /ไม่มีหัวหน้างาน<\/span>\s*\n?\s*<span className="count warn">\{gaps\.length\}<\/span>/);
   // ทั้งหมด IS THE DEFAULT. This screen answers "what departments exist";
   // opening it already filtered would leave somebody looking for one they
   // switched off last month and concluding it had been deleted.
@@ -484,11 +485,12 @@ test('a healthy roster draws no chips at all', () => {
   // A pair reading “ไม่มีหัวหน้างาน (0)” is a control that can only ever be
   // pressed to show nothing, sitting where the warning would be.
   const code = sourceOf(SETTINGS);
-  assert.match(code, /\{\(gaps\.length > 0 \|\| closed\.length > 0\) && \(\s*<div className="filter-chips"/);
+  // 2026-10-12: ชิปกลมเป็นแถบ `dept-view` แบบตัวกรองสถานะ (รายงาน UX ค.1)
+  assert.match(code, /\{\(gaps\.length > 0 \|\| closed\.length > 0\) && \(\s*<div className="queue-tabs month-tabs dept-view"/);
   // …and each chip follows the same rule on its own, so a roster with a gap
   // and nothing switched off does not grow a เฉพาะที่ใช้งานอยู่ that hides
   // nothing.
-  const chips = code.slice(code.indexOf('className="filter-chips"'), code.indexOf('table-wrap'));
+  const chips = code.slice(code.indexOf('dept-view"'), code.indexOf('table-wrap'));
   assert.match(chips, /\{closed\.length > 0 && \(/);
   assert.match(chips, /\{gaps\.length > 0 && \(/);
 });
@@ -547,7 +549,7 @@ test('the badge is a circle at one digit, not a square and not a pill', () => {
 
 test('every chip says which one is pressed, in markup and not only in colour', () => {
   const code = sourceOf(SETTINGS);
-  const chips = code.slice(code.indexOf('className="filter-chips"'), code.indexOf('table-wrap'));
+  const chips = code.slice(code.indexOf('dept-view"'), code.indexOf('table-wrap'));
   for (const v of ['all', 'active', 'gaps']) {
     assert.match(chips, new RegExp(`aria-pressed=\\{view === '${v}'\\}`), `the ${v} chip lost aria-pressed`);
   }

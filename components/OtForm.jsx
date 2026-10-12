@@ -1483,7 +1483,7 @@ export default function OtForm({
           placeholder="เช่น สอบเทียบชุด PM-3000"
           required
         />
-        {/* THREE STATES, ONE LINE. Empty-when-pressed and too-long cannot both be
+        {/* THREE STATES, AT MOST ONE LINE (the quiet third is gone, below). Empty-when-pressed and too-long cannot both be
             true of the same box, and two sentences stacked under one field read
             as two problems. The blank one wears `.field-note error` — the class
             the login screen's two boxes wear, the app's warm red under a border
@@ -1493,13 +1493,13 @@ export default function OtForm({
           <span className="field-note error" id={`${formId}-description-refusal`}>
             {descriptionRefusal}
           </span>
-        ) : (
-          <span style={{ fontSize: 12, color: over ? 'var(--danger-ink)' : 'var(--muted)' }}>
-            {over
-              ? `ข้อความเดิมยาวเกินกำหนด กรุณาตัดให้เหลือไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษรก่อนบันทึก`
-              : `ไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษร`}
+        ) : over ? (
+          <span style={{ fontSize: 12, color: 'var(--danger-ink)' }}>
+            {`ข้อความเดิมยาวเกินกำหนด กรุณาตัดให้เหลือไม่เกิน ${DESCRIPTION_MAX_CHARS} ตัวอักษรก่อนบันทึก`}
           </span>
-        )}
+        ) : null}
+        {/* บรรทัด "ไม่เกิน 22 ตัวอักษร" ตอนปกติเอาออก 2026-10-12 (รายงาน UX ค.8) —
+            ซ้ำกับตัวนับ n/22 บนป้ายของช่อง */}
       </div>
 
       {/* ── รายละเอียดเพิ่มเติม — the room the paper does not have ────────────

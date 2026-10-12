@@ -2110,6 +2110,33 @@ main { padding: var(--page-pad-y) var(--page-pad-x); flex: 1; min-width: 0; }
 .stat .value .unit { font: 400 13px/1 var(--sans); color: var(--ink-2); }
 .stat .note { margin-top: 7px; font: 400 12.5px/1.5 var(--sans); color: var(--ink-2); }
 
+/* ── สามกล่องอัตรา OT หน้าแรกพนักงาน: คนละสี (2026-10-12, mockup ux-m แบบ ข) ──
+   ปกติเขียว · วันหยุด ×1.5 ฟ้า · วันหยุด ×3 อำพัน ป้ายอัตราเป็นชิปขาวที่มุม
+   เลข 0 ใช้ --muted ให้เห็นทันทีว่าเดือนนี้มี OT ชนิดไหน · ป้ายกับบรรทัดช่วงเวลา
+   ยังเป็น --ink-2 ซึ่งบนพื้นสามสีวัดได้ ≥ 8 (AAA เหมือนบนการ์ดขาว — theme.test) */
+.stat.rate.weekday { background: var(--green-bg); border-color: var(--ok-line); }
+.stat.rate.hol15 { background: var(--info-bg); border-color: var(--info-line); }
+.stat.rate.hol3 { background: var(--amber-bg); border-color: var(--amber-line); }
+.stat.rate .label { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 500 13px/1.2 var(--sans); letter-spacing: 0; }
+.stat.rate .rate-chip { flex: none; font: 700 11.5px/1 var(--mono); background: var(--card); border-radius: 999px; padding: 3px 7px; }
+.stat.rate .value { flex-wrap: wrap; row-gap: 2px; margin-top: 10px; }
+.stat.rate .value > span:first-child { font-weight: 700; }
+.stat.rate.weekday :is(.rate-chip, .value > span:first-child) { color: var(--green-dark); }
+.stat.rate.hol15 :is(.rate-chip, .value > span:first-child) { color: var(--info); }
+.stat.rate.hol3 :is(.rate-chip, .value > span:first-child) { color: var(--amber-ink); }
+.stat.rate.zero .value > span:first-child { color: var(--muted); }
+/* สามช่องทุกความกว้าง — auto-fit 260px ของ `.grid` เรียงเป็นสามแถวที่ 861–1000px */
+.grid.rate-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stat.rate .label > span:first-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 860px) {
+  .grid.rate-stats { gap: 8px; }
+  .stat.rate { padding: 10px 10px 12px; }
+  .stat.rate .label { font-size: 12px; gap: 4px; }
+  .stat.rate .rate-chip { font-size: 11px; padding: 3px 5px; }
+  .stat.rate .ot-pre, .stat.rate .note { display: none; }
+  .stat.rate .value { gap: 4px; }
+}
+
 /* The ×1.5 / ×3 breakdown (components/common.jsx → BucketSplit): the engine's
    answer to "which column does this session land in", read side by side. Laid
    out on the same auto-fit grid as .stat above — the boxes are the same idea
@@ -2377,6 +2404,16 @@ main { padding: var(--page-pad-y) var(--page-pad-x); flex: 1; min-width: 0; }
 .holiday-card > .table-wrap, .holiday-card > .empty { margin: var(--head-pad-y) var(--head-pad-x) var(--card-pad); }
 .holiday-card .card-head > .row { align-items: center; margin: 0; }
 .holiday-card .holiday-year { flex: none; width: 140px; min-width: 0; }
+/* หัวการ์ดแถบเดียวกันบนการ์ดที่ยังมีระยะใน — นโยบายการคำนวณ · ประวัติการแก้ทะเบียน
+   (รายงาน UX ค.2 + ค.8, 2026-10-12) · หน้าตาเท่า `.card.flush > .card-head` โดยไม่ต้อง
+   ถอดระยะในของเนื้อหาทั้งการ์ด · แถบกรองที่ตามมาติดใต้หัวพอดี ไม่มีเส้นซ้อน */
+.card:not(.flush) > .card-head.bleed {
+  margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--card-gap);
+  padding: var(--head-pad-y) var(--head-pad-x); border-bottom: 1px solid var(--line-soft);
+}
+/* นโยบาย: เหตุผลกว้างเต็มที่เหลือ วันที่ชิดขวา (ค.2) — มือถือทั้งสองเต็มแถวตาม `.field` */
+.policy-change > .field.reason { flex: 1 1 320px; }
+.policy-change > .field.since { flex: none; width: 200px; margin-left: auto; }
 
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .card-head .t { font: 600 15px/1 var(--sans); }
@@ -6441,7 +6478,7 @@ td > .approver-line { margin-top: 5px; }
    `test/settingsCoverageUi.test.js` still holds that there is exactly one of
    it. What this deletion removes is a caller, not the rule. */
 
-/* ── the chips above แผนก ────────────────────────────────────────────────────
+/* ── the chips above แผนก (แผนกเปลี่ยนเป็นแถบ .dept-view 2026-10-12 — ที่เหลือคือ .policy-days) ──
    TWO WAYS TO READ ONE TABLE, and they are chips rather than buttons because
    neither of them DOES anything — pressing one changes what is on the screen
    and nothing in the database, which is the distinction `.btn` carries on every
@@ -6455,7 +6492,6 @@ td > .approver-line { margin-top: 5px; }
    there would make the number look like a separate control. It sat at
    `opacity: .75` until 2026-10-10, which took it to 3.55–3.60:1 (QA, under
    AA); bold is what sets it apart now. */
-.filter-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 2px; }
 .filter-chip {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 7px 13px; border-radius: 999px; cursor: pointer;
@@ -6472,12 +6508,21 @@ td > .approver-line { margin-top: 5px; }
   background: var(--green-tint); border-color: var(--green); color: var(--green-dark);
   font-weight: 600;
 }
-/* The one that finds problems keeps the banner's colour whether it is pressed
-   or not — it is the same finding, and a chip that only turned red once you
-   had already pressed it would be telling you what you just asked for. */
-.filter-chip.warn { border-color: var(--danger); color: var(--danger-ink); }
-.filter-chip.warn:hover { background: var(--danger-bg); border-color: var(--danger); }
-.filter-chip.warn.on { background: var(--danger-bg); color: var(--danger-ink); font-weight: 600; }
+/* ชิปแผนกเลิกใช้ 2026-10-12 (รายงาน UX ค.1) — เป็นแถบ `.dept-view` ข้างล่างแล้ว ·
+   `.filter-chip` ยังเป็นปุ่มวันหยุดประจำสัปดาห์ของนโยบาย (`.policy-days`) */
+
+/* แผนก: แถบเลือกมุมมองแบบตัวกรองสถานะ (`.queue-tools > .month-tabs`) — กว้าง
+   เท่าเนื้อหา กล่อง 3px · เลขของ ไม่มีหัวหน้างาน แดงไม่ว่าจะกดหรือไม่ เพราะเป็น
+   ข้อเดียวกับแบนเนอร์ — ถ้าแดงเฉพาะตอนกดจะบอกแค่สิ่งที่เพิ่งกดไป · มือถือเต็มแถว
+   แบ่งเท่ากัน ป้ายบนเลขล่างตามกฎ `.month-tabs button` ของมือถือ */
+.dept-view { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; border-radius: 10px; margin: 10px 0 2px; }
+.month-tabs button .count.warn { background: var(--danger-bg); color: var(--danger-ink); }
+@media (max-width: 860px) {
+  .dept-view { display: flex; flex-wrap: nowrap; }
+  /* ป้ายตัดบรรทัดได้ — "เฉพาะที่ใช้งานอยู่" กว้างกว่าหนึ่งในสามของ 360px */
+  .month-tabs.dept-view button { white-space: normal; text-align: center; padding: 6px 4px; }
+  .month-tabs.dept-view button .lbl { min-width: 0; max-width: 100%; line-height: 1.3; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .tabs-view::before, .tabs-view::after { transition: none; }
@@ -8211,6 +8256,11 @@ td > .approver-line { margin-top: 5px; }
 .state-badge:disabled { cursor: default; }
 .state-badge:disabled:hover { border-color: var(--line); color: var(--muted); }
 .state-badge.on:disabled:hover { border-color: var(--green-bg); color: var(--green-dark); }
+/* ตารางพนักงานใช้ป้ายเดียวกันเป็นป้ายอ่านอย่างเดียว (`span.static`, ค.5 2026-10-12)
+   — ไม่มีลูกศรมือ ไม่มี hover เพราะเปิด/ปิดบัญชีอยู่ในฟอร์มแก้ไข */
+.state-badge.static { cursor: default; white-space: nowrap; }
+.state-badge.static:hover { border-color: var(--line); color: var(--muted); }
+.state-badge.static.on:hover { border-color: var(--green-bg); color: var(--green-dark); }
 
 /* ── THE DOT IS THE STATE, AND OFF IS RED SINCE 2026-09-02 ─────────────────
    It was `--muted-2` — the same grey as the word beside it, which meant the
@@ -9566,7 +9616,16 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
    there is no pointer on it to undo. A rule here would also be the first
    desktop declaration `.total-row` has ever had — everything else about that
    row is the phone block's — and test/hrMonthCards.test.js checks exactly
-   that. */
+   that.
+   ↑ จริงจนถึง 2026-10-12: วันนั้นแถวนี้ได้กฎจอคอมข้อแรกข้างล่าง — สีเท่านั้น
+   ไม่ใช่ cursor */
+/* รวมทั้งหมด เป็นแถบเขียวแบบ `tfoot tr.grand` ของแยกแผนกและส่งบัญชี (รายงาน UX
+   ค.11 แบบ ข, 2026-10-12) — ทุกหน้าใช้แบบเดียวกัน หาแถวรวมง่ายเมื่อตารางยาว ·
+   แถวนี้อยู่ใน tbody (ตารางนี้ไม่มี tfoot) จึงต้องบอกเอง · มือถือเป็นการ์ดใบ
+   สุดท้ายที่พื้นเขียวเหมือนกัน ในบล็อก 860px */
+@media (min-width: 861px) {
+  .hr-table tr.total-row > td { border-top: 1.5px solid var(--line); background: var(--green-bg); color: var(--green-dark); }
+}
 
 
 .hr-table td.edits-col .edits-pill {
@@ -10101,6 +10160,9 @@ th.why-col { width: 150px; }
   margin-top: calc(-1 * var(--card-pad)); border-top: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
+/* ใต้หัวการ์ด `.bleed` (ประวัติการแก้ทะเบียน, 2026-10-12) แถบติดหัวพอดี — เส้นใต้
+   หัวการ์ดคือเส้นคั่น ไม่ต้องมีเส้นบนของแถบซ้อนอีกเส้น */
+.card:not(.flush) > .card-head.bleed + .queue-tools { border-top: 0; margin-top: calc(-1 * var(--card-gap)); }
 
 /* ══ THE LABEL LIVES INSIDE THE BOX — 2026-09-10 ════════════════════════════
 
@@ -15020,7 +15082,7 @@ table.mini tbody tr:hover { background: none; }
     grid-template-areas: 'who cap';
     margin-top: 12px;
     padding: 11px 15px;
-    background: var(--neutral-wash);
+    background: var(--green-bg); color: var(--green-dark);
   }
   /* NO SCROLLPORT AROUND THE LIST EITHER. `.table-wrap` is `overflow-x: auto`
      at every other width, and `overflow-x: auto` computes `overflow-y` to
@@ -15055,7 +15117,7 @@ table.mini tbody tr:hover { background: none; }
      more — see the block headed ค้นหา IS A STRIP above — so a landing sized
      for it would now leave 94px of empty ground over the first card. */
   .table-wrap.card-list { overflow: visible; scroll-margin-top: 86px; }
-  .hr-table tbody tr.total-row:hover { background: var(--neutral-wash); }
+  .hr-table tbody tr.total-row:hover { background: var(--green-bg); }
   .hr-table tbody tr.total-row td.total-col {
     grid-area: cap; text-align: right; white-space: nowrap;
     font: 600 15.5px/1.4 var(--mono); font-variant-numeric: tabular-nums;

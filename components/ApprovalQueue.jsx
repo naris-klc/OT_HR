@@ -2747,8 +2747,8 @@ export function RejectModal({ entries, busy, onClose, onReject }) {
    empty reason; nothing in the application reaches it any more, and the
    `capOverride` already on stored rows is still read by `wasOverCeiling`. */
 
-/** The reason and the notification choice, shared by the batch dialog and the
-    in-pop-up refusal so the two cannot drift apart. */
+/** The reason, shared by the batch dialog and the in-pop-up refusal so the two
+    cannot drift apart. */
 function RejectFields({ value, onChange, many }) {
   const set = (patch) => onChange({ ...value, ...patch });
   return (
@@ -2768,32 +2768,10 @@ function RejectFields({ value, onChange, many }) {
         </div>
       </div>
 
-      <div>
-        <div className="kicker-sm" style={{ marginBottom: 8 }}>แจ้งกลับไปยัง</div>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={value.notify.employee}
-            onChange={(e) => set({ notify: { ...value.notify, employee: e.target.checked } })}
-          />
-          พนักงานผู้ยื่นคำขอ
-        </label>
-        <label className="check" style={{ marginTop: 8 }}>
-          <input
-            type="checkbox"
-            checked={value.notify.manager}
-            onChange={(e) => set({ notify: { ...value.notify, manager: e.target.checked } })}
-          />
-          หัวหน้างานผู้อนุมัติ
-        </label>
-        {/* The reason lands on the entry either way — that part is real. The
-            push channel is not built yet, and a tick box that quietly does
-            nothing is worse on this screen than one that says so. */}
-        <Alert kind="info">
-          เหตุผลจะปรากฏบนรายการในระบบเสมอ ·
-          {' '}ยังไม่ได้เชื่อมต่อการแจ้งเตือนทางอีเมล/LINE — ตัวเลือกนี้จะมีผลเมื่อเปิดใช้งานระบบแจ้งเตือน
-        </Alert>
-      </div>
+      {/* "แจ้งกลับไปยัง" (ติ๊ก พนักงาน / หัวหน้างาน + กล่องบอกว่ายังไม่เชื่อม
+          อีเมล/LINE) อยู่ตรงนี้จนถึง 2026-10-12 — เอาออกตามรายงาน UX ค.8 เพราะ
+          ติ๊กแล้วไม่มีผล: เซิร์ฟเวอร์ไม่อ่าน `notify` เลย · state ยังส่งค่าเริ่มต้น
+          ไปเหมือนเดิม ถ้าวันหนึ่งมีระบบแจ้งเตือนจริงค่อยใส่กลับ */}
     </>
   );
 }

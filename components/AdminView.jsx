@@ -918,37 +918,39 @@ function Departments({ user, onGo, roster }) {
           answers "what departments exist" — opening it already filtered would
           leave somebody looking for a department they switched off last month
           and concluding it had been deleted. */}
+      {/* แถบขาวแบบตัวกรองสถานะของคิว ไม่ใช่ชิปกลม (รายงาน UX ค.1, 2026-10-12) ·
+          เลขของ ไม่มีหัวหน้างาน เป็นสีแดงเสมอ เหตุผลเดิมของชิปแดง */}
       {(gaps.length > 0 || closed.length > 0) && (
-        <div className="filter-chips" role="group" aria-label="กรองรายการแผนก">
+        <div className="queue-tabs month-tabs dept-view" role="group" aria-label="กรองรายการแผนก">
           <button
             type="button"
-            className={`filter-chip ${view === 'all' ? 'on' : ''}`}
+            className={view === 'all' ? 'active' : ''}
             aria-pressed={view === 'all'}
             onClick={() => setView('all')}
           >
-            แสดงทั้งหมด
-            <span className="n">{rows.length}</span>
+            <span className="lbl">แสดงทั้งหมด</span>
+            <span className="count">{rows.length}</span>
           </button>
           {closed.length > 0 && (
             <button
               type="button"
-              className={`filter-chip ${view === 'active' ? 'on' : ''}`}
+              className={view === 'active' ? 'active' : ''}
               aria-pressed={view === 'active'}
               onClick={() => setView('active')}
             >
-              เฉพาะที่ใช้งานอยู่
-              <span className="n">{rows.length - closed.length}</span>
+              <span className="lbl">เฉพาะที่ใช้งานอยู่</span>
+              <span className="count">{rows.length - closed.length}</span>
             </button>
           )}
           {gaps.length > 0 && (
             <button
               type="button"
-              className={`filter-chip warn ${view === 'gaps' ? 'on' : ''}`}
+              className={view === 'gaps' ? 'active' : ''}
               aria-pressed={view === 'gaps'}
               onClick={() => setView('gaps')}
             >
-              ไม่มีหัวหน้างาน
-              <span className="n">{gaps.length}</span>
+              <span className="lbl">ไม่มีหัวหน้างาน</span>
+              <span className="count warn">{gaps.length}</span>
             </button>
           )}
         </div>
@@ -3708,7 +3710,14 @@ function Employees({ user }) {
                     </span>
                   )}
                 </td>
-                <td data-label="สถานะ">{p.active ? 'ใช้งาน' : 'ปิดใช้งาน'}</td>
+                {/* ป้ายจุดสีแบบตารางแผนก (รายงาน UX ค.5, 2026-10-12) — ที่นี่กดไม่ได้
+                    (`static`): เปิด/ปิดบัญชีอยู่ในฟอร์มแก้ไข */}
+                <td data-label="สถานะ">
+                  <span className={`state-badge static ${p.active ? 'on' : 'off'}`}>
+                    <span className="dot" aria-hidden="true" />
+                    {p.active ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                  </span>
+                </td>
                 <td>
                   {/* `row-actions`, the class the phone layout sizes and
                       spaces buttons by — not a bare `row` with an inline
@@ -5755,21 +5764,16 @@ function RosterAudit() {
 
   return (
     <div className="card">
-      <h2>ประวัติการแก้ทะเบียน</h2>
-      <div className="hint">
-        ทุกการเพิ่ม แก้ไข และตั้งรหัสผ่านใหม่ในทะเบียนพนักงาน เรียงจากใหม่ไปเก่า ·
-        {' '}บันทึกแบบต่อท้ายอย่างเดียว แก้ย้อนหลังไม่ได้ เหมือนประวัตินโยบายการคำนวณ
-        {' '}· การตั้งรหัสผ่านใหม่บันทึกไว้เฉพาะว่าเกิดขึ้น
-        {' '}<strong>ไม่มีการเก็บตัวรหัสผ่านไม่ว่ารูปแบบใด</strong>
-        {' '}· การแก้ไขใบ OT เป็นคนละเรื่องและอยู่ที่ประวัติของใบนั้นเอง
-        {/* THE NOTE THAT WAS UNDER กรองตามบัญชีผู้แก้ไข, 2026-09-15. It is a true
-            and non-obvious fact — the list is built from what the trail
-            recorded, so somebody deleted from the roster is still in it — and it
-            is about the SCREEN rather than about one control, which is where a
-            sentence that long belongs on a bar of equal-height boxes. The same
-            move บันทึกประวัติระบบ made with the same sentence on 2026-09-10. */}
-        {' '}· รายชื่อในช่อง <strong>กรองตามบัญชีผู้แก้ไข</strong> มาจากประวัติเอง
-        {' '}ไม่ใช่ทะเบียนวันนี้
+      {/* หัวการ์ดแบบวันหยุด คำอธิบายบรรทัดเดียว (รายงาน UX ค.2 + ค.8, 2026-10-12) ·
+          ประโยคเดิมยาวสี่บรรทัด: ต่อท้ายอย่างเดียวเหมือนประวัตินโยบาย · การแก้ใบ OT
+          อยู่ที่ประวัติของใบ · รายชื่อในช่องผู้แก้ไขมาจากประวัติ ไม่ใช่ทะเบียนวันนี้ */}
+      <div className="card-head bleed">
+        <div style={{ minWidth: 0 }}>
+          <div className="t"><span className="t-name">ประวัติการแก้ทะเบียน</span></div>
+          <div className="hint" style={{ margin: 0 }}>
+            ทุกการเพิ่ม แก้ไข และตั้งรหัสผ่านใหม่ เรียงจากใหม่ไปเก่า · แก้ย้อนหลังไม่ได้ · ไม่เก็บรหัสผ่าน
+          </div>
+        </div>
       </div>
 
       {/*
@@ -6353,14 +6357,15 @@ function Holidays() {
           putting on the screen. The day being deleted is named in the subtitle
           because the question used to be asked without it — "ลบวันหยุดนี้?" over a
           table where นี้ was whichever row the finger had just left, and the
-          browser box it was asked in could not show that row. */}
+          browser box it was asked in could not show that row. ปุ่มยืนยันชื่อ
+          ลบวันหยุด ไม่ใช่ ตกลง ตั้งแต่ 2026-10-12 (รายงาน UX ค.12) */}
       {removing && (
         <ConfirmDialog
           title="ยืนยันการลบวันหยุดนี้หรือไม่?"
           subtitle={`${thaiDate(removing.date)} · วัน${dayName(removing.date)} · ${removing.name}`}
           danger
           busy={busy}
-          confirmLabel={busy ? 'กำลังลบ…' : 'ตกลง'}
+          confirmLabel={busy ? 'กำลังลบ…' : 'ลบวันหยุด'}
           onCancel={() => setRemoving(null)}
           onConfirm={() => remove(removing)}
         >
@@ -7622,11 +7627,14 @@ function Policy({ user }) {
       <LivePolicy policy={policy} defaults={defaults} overrides={overrides} />
     </NoticeStack>
     <div className="card">
-      <h2>นโยบายการคำนวณ</h2>
-      <div className="hint">
-        ทุกข้อในหน้านี้คือคำถามที่ยังรอคำตอบจากฝ่ายบุคคล ค่าเริ่มต้นคือข้อเสนอแนะจากเอกสารข้อกำหนด
-        · การแก้ข้อที่มีผลต่อการคำนวณจะคำนวณใบใหม่ทันทีตามข้อ “เปลี่ยนนโยบายแล้วคำนวณใบใหม่”
-        — ใบที่วันทำงานอยู่ก่อนวันเริ่มใช้ยังคิดตามกฎเดิม
+      {/* หัวการ์ดแบบวันหยุด คำอธิบายบรรทัดเดียว (รายงาน UX ค.2 + ค.8, 2026-10-12) */}
+      <div className="card-head bleed">
+        <div style={{ minWidth: 0 }}>
+          <div className="t"><span className="t-name">นโยบายการคำนวณ</span></div>
+          <div className="hint" style={{ margin: 0 }}>
+            แก้ข้อที่มีผลต่อการคำนวณแล้วคำนวณใบใหม่ทันที · ใบก่อนวันเริ่มใช้คิดตามกฎเดิม
+          </div>
+        </div>
       </div>
       <LivePolicyClean policy={policy} defaults={defaults} overrides={overrides} />
 
@@ -7641,8 +7649,9 @@ function Policy({ user }) {
           up because both labels are the first thing in their column; the note
           hangs off the bottom, where an explanation belongs. */}
       {canEdit && (
-        <div className="row" style={{ alignItems: 'flex-start' }}>
-          <div className="field" style={{ maxWidth: 520, flex: 1 }}>
+        <div className="row policy-change" style={{ alignItems: 'flex-start' }}>
+          {/* เหตุผลกว้างเต็มที่เหลือ วันที่ชิดขวา (ค.2, 2026-10-12) — `.policy-change` */}
+          <div className="field reason">
             <label>เหตุผลของการเปลี่ยนแปลง (ไม่บังคับ แต่จะถูกบันทึกไว้กับเวอร์ชัน)</label>
             <input
               value={note}
@@ -7665,7 +7674,7 @@ function Policy({ user }) {
             the enforcement — a browser is never that — it is the same answer
             arriving earlier.
           */}
-          <div className="field" style={{ maxWidth: 200 }}>
+          <div className="field since">
             <label>กฎใหม่มีผลตั้งแต่</label>
             <PickDate
               label="กฎใหม่มีผลตั้งแต่"
@@ -8419,8 +8428,11 @@ function UnversionedEntries({ unversioned }) {
       detail="ยื่นก่อนระบบเริ่มบันทึก"
       more={(
         <div>
-          รัน <code>npm run migrate:policy-version</code> หนึ่งครั้งเพื่อกำกับให้ครบ ·
-          {' '}สคริปต์เขียนเฉพาะเลขเวอร์ชัน ไม่แตะชั่วโมงหรือสถานะของใบใด
+          {/* เคยบอกคำสั่ง npm run migrate:policy-version ตรง ๆ — คนที่อ่านจอนี้
+              (ฝ่ายบุคคล) รันเองไม่ได้ จึงเป็น ติดต่อผู้ดูแลระบบ ตั้งแต่ 2026-10-12
+              (รายงาน UX ค.8) · คำสั่งอยู่ใน README */}
+          ติดต่อผู้ดูแลระบบให้กำกับเวอร์ชันให้ครบ ·
+          {' '}การกำกับเขียนเฉพาะเลขเวอร์ชัน ไม่แตะชั่วโมงหรือสถานะของใบใด
         </div>
       )}
     />
@@ -8506,7 +8518,7 @@ function PolicyHistory({
       </div>
 
       {versions.length === 0 ? (
-        <Empty>ยังไม่มีเวอร์ชันที่บันทึกไว้ — รัน npm run migrate:policy-version เพื่อสร้างเวอร์ชันแรก</Empty>
+        <Empty>ยังไม่มีเวอร์ชันที่บันทึกไว้ — ติดต่อผู้ดูแลระบบเพื่อสร้างเวอร์ชันแรก</Empty>
       ) : (
         <div className="table-wrap">
           <table className="pver-table">

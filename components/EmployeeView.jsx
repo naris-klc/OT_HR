@@ -27,7 +27,7 @@ import { usePolicy } from './policyContext.jsx';
  * join the holiday row here so the screen has one notice box, not two stacked
  * (2026-10-08, ระบบแจ้งเตือนเดียวทั้งแอป).
  */
-export default function EmployeeView({ user, onChanged, openSignal = 0, notices = null }) {
+export default function EmployeeView({ user, onChanged, openSignal = 0, notices = null, onFormOpen = null }) {
   /**
    * วันตัดของงวด — the copy /auth/me sent at sign-in, same as the date picker's.
    *
@@ -107,6 +107,10 @@ export default function EmployeeView({ user, onChanged, openSignal = 0, notices 
 
   // The mobile FAB lives in the shell, so it asks for the form by bumping a counter.
   useEffect(() => { if (openSignal > 0) setShowForm(true); }, [openSignal]);
+  // …and is told when the form is up, so it can step aside (ค.16, 2026-10-12).
+  const formUp = Boolean(showForm || reusing || editing);
+  useEffect(() => { onFormOpen?.(formUp); }, [formUp, onFormOpen]);
+  useEffect(() => () => onFormOpen?.(false), [onFormOpen]);
 
   // The header mark closes the form before it leaves the tab.
   useBackHandler(Boolean(showForm || reusing || editing), () => {
@@ -338,20 +342,27 @@ export default function EmployeeView({ user, onChanged, openSignal = 0, notices 
       </div>
 
       {/* ── the three rate buckets ───────────────────────────────────────── */}
-      <div className="grid">
+      {/* สามกล่องคนละสี ป้ายอัตราที่มุม เลข 0 สีจาง · มือถือเรียงแถวเดียว ตัดบรรทัดช่วงเวลา (2026-10-12) */}
+      <div className="grid rate-stats">
         <Stat
-          label="OT วันปกติ ×1.5"
-          value={hours(buckets[BUCKETS.OT15_WEEKDAY] ?? 0)}
+          tone="weekday"
+          kind="วันปกติ"
+          rate="×1.5"
+          value={buckets[BUCKETS.OT15_WEEKDAY] ?? 0}
           note="หลัง 17:00 น. ของวันทำงาน"
         />
         <Stat
-          label="OT วันหยุด ×1.5"
-          value={hours(buckets[BUCKETS.OT15_HOLIDAY] ?? 0)}
+          tone="hol15"
+          kind="วันหยุด"
+          rate="×1.5"
+          value={buckets[BUCKETS.OT15_HOLIDAY] ?? 0}
           note="วันหยุด ช่วง 08:00–17:00 น."
         />
         <Stat
-          label="OT วันหยุด ×3"
-          value={hours(buckets[BUCKETS.OT3_HOLIDAY] ?? 0)}
+          tone="hol3"
+          kind="วันหยุด"
+          rate="×3"
+          value={buckets[BUCKETS.OT3_HOLIDAY] ?? 0}
           note="วันหยุด นอกเวลา 08:00–17:00 น."
         />
       </div>
@@ -1248,12 +1259,15 @@ function EntryDetail({
   );
 }
 
-function Stat({ label, value, note }) {
+function Stat({ tone, kind, rate, value, note }) {
   return (
-    <div className="stat">
-      <div className="label">{label}</div>
+    <div className={`stat rate ${tone}${value ? '' : ' zero'}`}>
+      <div className="label">
+        <span><span className="ot-pre">OT </span>{kind}</span>
+        <span className="rate-chip">{rate}</span>
+      </div>
       <div className="value">
-        <span>{value}</span>
+        <span>{hours(value)}</span>
         <span className="unit">ชม.</span>
       </div>
       <div className="note">{note}</div>

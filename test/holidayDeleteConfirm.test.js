@@ -105,6 +105,8 @@ test('ปุ่ม ลบ ถามก่อน ไม่ได้ลบทั�
   assert.ok(!/onClick=\{\(\) => remove\(/.test(holidays), 'ยังมีปุ่มที่ลบทันทีเหลืออยู่');
   assert.match(holidays, /<ConfirmDialog[\s\S]*?onConfirm=\{\(\) => remove\(removing\)\}/,
     'มีแต่ ตกลง ในหน้าต่างเท่านั้นที่ลบได้');
+  // ปุ่มบอกว่าจะลบอะไร ไม่ใช่ ตกลง ลอย ๆ (รายงาน UX ค.12, 2026-10-12)
+  assert.match(holidays, /confirmLabel=\{busy \? 'กำลังลบ…' : 'ลบวันหยุด'\}/);
 });
 
 test('คำถามบอกว่ากำลังลบวันไหน', () => {
