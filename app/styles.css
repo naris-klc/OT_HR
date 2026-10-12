@@ -494,16 +494,31 @@
      top and bottom, one 15px/1.3 line, and a 1px border. It is a floor rather
      than a fixed height — a box of chips grows as they wrap, and a textarea
      sets its own. */
-  --field-h: 46px;
+  --field-h: 40px;
   /* ความสูงปุ่ม action ทั้งแอป — 2026-10-09 *"ลดความสูงเริ่มต้นของปุ่ม action ทั้งแอป"*
      เลือก 36 จาก mockup detail-modal-2 · *"ให้ปุ่มบนมือถือเริ่มต้นที่ 36px ได้"* —
      เลิกกฎ 44–46px บนมือถือสำหรับปุ่ม `.btn` (เป้ากดยังกว้างเต็มแถวในหลายที่)
      ปุ่มเล็ก `.btn.sm` และปุ่มไอคอนในแถว 30 · ช่องกรอก `--field-h` ไม่เกี่ยว */
   --btn-h: 36px;
   --btn-h-sm: 30px;
-  --field-pad-y: 12px;
+  --field-pad-y: 9px;
   --field-pad-x: 14px;
   --field-size: 15px;
+  /* ── ระยะห่างของโครงหน้า — 2026-10-12 ──────────────────────────────────
+     ผู้ใช้: *"padding margin เยอะไปทำให้เกิด gap ช่องว่างเยอะมาก"* แล้วเลือกฝั่ง
+     "กระชับ" จาก mockup ux-c · ลดแค่ระยะห่าง ตัวอักษร ปุ่ม 36px และแถวรายการ 44px
+     บนมือถือคงเดิม · ช่องกรอกลดจาก 46 เป็น 40 (`--field-pad-y` 12 → 9) ในรอบเดียวกัน
+     · ค่าที่เคยเป็นตัวเลขซ้ำกันหลายที่ (ขอบหน้า 28 · ในการ์ด 18 · ระหว่างการ์ด
+     16/18 · หัวการ์ด 16 · แถบตัวกรอง 14) มาอยู่ที่นี่ บล็อก ≤860px ข้างล่างตั้งค่าของ
+     มือถือ · ตัวเลขเฉพาะจอยังมีอีกมากที่ไม่ได้ย้ายมา */
+  --page-pad-y: 16px;
+  --page-pad-x: 20px;
+  --card-pad: 14px;
+  --card-gap: 12px;
+  --head-pad-y: 11px;
+  --head-pad-x: 14px;
+  --tools-pad-y: 10px;
+  --cell-pad-y: 4px;
   /* HOW TALL THE BOTTOM BAR IS — the one token in this file that something
      other than this file writes. `.mobile-nav` measures itself into it, on the
      document element, from the observer over `navRef` in components/App.jsx;
@@ -1954,12 +1969,12 @@ html { -webkit-tap-highlight-color: transparent; }
    Anything genuinely too wide for the viewport scrolls in its own container —
    .table-wrap for the screen tables, .f027-screen and its two siblings for the
    sheets — which is the only way a narrow screen can be told from a small one. */
-main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
+main { padding: var(--page-pad-y) var(--page-pad-x); flex: 1; min-width: 0; }
 .page { max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
 
 /* ══ hero ════════════════════════════════════════════════════════════════ */
 
-.stack { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
+.stack { display: flex; flex-direction: column; gap: var(--card-gap); max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
 
 .sidebar.collapsed ~ .body .page,
 .sidebar.collapsed ~ .body .stack,
@@ -1996,8 +2011,8 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   background: var(--panel-hero); color: var(--on-panel);
   border: 1px solid var(--panel-hero-line);
   box-shadow: 0 1px 3px -1px var(--hero-shadow);
-  border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 28px);
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 22px; align-items: end;
+  border-radius: var(--radius-lg); padding: 16px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end;
 }
 /* ── THE SUPPORTING TEXT ON THE HERO IS `--on-panel-2`, NOT `--on-panel` ────
 
@@ -2072,9 +2087,9 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 /* ══ stat cards ══════════════════════════════════════════════════════════ */
 
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
 
-.stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--card-pad); }
 /* ── AND THE SAME MOVE ON THE THREE RATE CARDS, WHERE IT WAS NOT MERELY FAINT ─
 
    `--muted-2` on `--card` measures 5.04 in dark and **3.41 in light**. The
@@ -2123,7 +2138,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 .card {
   background: var(--card); border: 1px solid var(--line);
-  border-radius: var(--radius-lg); padding: 18px; margin-bottom: 16px;
+  border-radius: var(--radius-lg); padding: var(--card-pad); margin-bottom: var(--card-gap);
 }
 .card h2 { font: 600 15px/1.3 var(--sans); margin-bottom: 4px; }
 .card .hint { font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); margin-bottom: 14px; }
@@ -2349,11 +2364,19 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    is what the 860px block turns into the card when the panel goes transparent.
    One extra selector, the same two declarations. */
 .card.flush > .month-head > .card-head {
-  padding: 16px 18px; border-bottom: 1px solid var(--line-soft); margin: 0;
+  padding: var(--head-pad-y) var(--head-pad-x); border-bottom: 1px solid var(--line-soft); margin: 0;
 }
 
 .card.flush { padding: 0; overflow: hidden; }
-.card.flush > h2, .card.flush > .card-head { padding: 16px 18px; border-bottom: 1px solid var(--line-soft); margin: 0; }
+.card.flush > h2, .card.flush > .card-head { padding: var(--head-pad-y) var(--head-pad-x); border-bottom: 1px solid var(--line-soft); margin: 0; }
+
+/* วันหยุดบริษัท — flush since 2026-10-12 so its head is the queue's band (รายงาน UX ค.2).
+   The head carries the ปี dropdown beside the buttons; the table under it keeps
+   the card's own inset, which `.flush` takes away. The dropdown is a `.field`,
+   whose 150px floor and `flex: 1` would stretch it across the head. */
+.holiday-card > .table-wrap, .holiday-card > .empty { margin: var(--head-pad-y) var(--head-pad-x) var(--card-pad); }
+.holiday-card .card-head > .row { align-items: center; margin: 0; }
+.holiday-card .holiday-year { flex: none; width: 140px; min-width: 0; }
 
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .card-head .t { font: 600 15px/1 var(--sans); }
@@ -2417,7 +2440,7 @@ div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2
 
 .item {
   width: 100%; text-align: left; display: flex; align-items: center; gap: 14px;
-  padding: 15px 18px; border: none; border-bottom: 1px solid var(--line-softer);
+  padding: 10px 18px; border: none; border-bottom: 1px solid var(--line-softer);
   background: var(--card); cursor: pointer;
   /* This was written for a button and only ever used on a div. Now that
      รายการล่าสุด draws the real thing, the two UA styles a <button> arrives
@@ -3129,7 +3152,7 @@ button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertica
 
 /* ══ fields ══════════════════════════════════════════════════════════════ */
 
-.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
 /* The gap between a card's controls and the buttons that act on them. Declared
    here rather than as an inline `marginTop` on the element, because an inline
    style is the one thing the 860px block below cannot reach — and this is the
@@ -3266,7 +3289,7 @@ button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertica
    taking whatever the button beside it leaves. It was an inline `flex: 1`; it is
    a class so the phone layout can widen it, which an inline style forbids. */
 .deleg-head-text { flex: 1; }
-.field { display: flex; flex-direction: column; gap: 7px; min-width: 150px; flex: 1; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 150px; flex: 1; }
 
 /* Mono + tracking on labels: the design pairs Thai with an English key. */
 .field label { font: 600 12px/1 var(--mono); letter-spacing: .09em; color: var(--muted); text-transform: uppercase; }
@@ -7000,7 +7023,7 @@ td > .approver-line { margin-top: 5px; }
    กติกาเต็มที่ docs/design.md §5.1 */
 .notice-stack {
   display: flex; flex-direction: column;
-  margin: 12px 18px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  margin: 8px 18px; border: 1px solid var(--line); border-radius: var(--radius-sm);
   overflow: hidden; font-size: 13px; line-height: 1.5;
 }
 .notice-stack.is-empty { display: none; }
@@ -7016,7 +7039,7 @@ td > .approver-line { margin-top: 5px; }
 .notice-dots .notice-ic { width: 14px; height: 14px; font-size: 9px; margin: 0; }
 .notice-hide { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
 
-.notice-row { padding: 7px 12px; color: var(--ink); }
+.notice-row { padding: 5px 12px; color: var(--ink); }
 .notice-row + .notice-row { border-top: 1px solid var(--card); }
 .notice-row.error { order: -3; background: var(--danger-bg); }
 .notice-row.warn { order: -2; background: var(--amber-bg); }
@@ -7056,7 +7079,7 @@ td > .approver-line { margin-top: 5px; }
 .notice-row .link { color: var(--green-text); }
 
 @media (max-width: 860px) {
-  .notice-stack { margin: 10px 12px; }
+  .notice-stack { margin: 8px 12px; }
   .notice-head { padding: 2px 6px 2px 12px; min-height: 40px; }
   .notice-hide { padding: 8px 6px; }
   .notice-row { padding: 6px 6px 6px 12px; }
@@ -8334,12 +8357,12 @@ table { width: 100%; border-collapse: collapse; }
    button is a 46px row; a row of text alone is about 34px. Card layouts below
    860px set their own cell padding and do not read these. */
 th {
-  text-align: left; padding: 8px 12px;
+  text-align: left; padding: 6px 12px;
   font: 600 11.5px/1.4 var(--mono); letter-spacing: .07em; color: var(--muted-2);
   text-transform: uppercase; border-bottom: 1px solid var(--line);
   white-space: nowrap; background: var(--neutral-wash);
 }
-td { padding: 7px 12px; border-bottom: 1px solid var(--line-softer); font: 400 14px/1.4 var(--sans); vertical-align: middle; }
+td { padding: var(--cell-pad-y) 12px; border-bottom: 1px solid var(--line-softer); font: 400 14px/1.4 var(--sans); vertical-align: middle; }
 td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 /* A running line number is an index, not a figure to be compared down the
@@ -10011,7 +10034,7 @@ th.why-col { width: 150px; }
    than of a form, and disappear entirely when the queue is empty. */
 .queue-tools {
   display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
-  padding: 14px 18px; background: var(--neutral-wash);
+  padding: var(--tools-pad-y) var(--head-pad-x); background: var(--neutral-wash);
   border-bottom: 1px solid var(--line-soft);
 }
 /* `position: relative` is the label's business — it is what the inset
@@ -10033,9 +10056,10 @@ th.why-col { width: 150px; }
    THE MARGIN NEGATES THE CARD'S PADDING RATHER THAN THE MARKUP MOVING. Both of
    those cards have a heading above the bar and a table under it, so the bar
    cannot become a `.card.flush` section without restructuring two screens for a
-   fill. `-18px` is `.card`'s own padding and `-15px` is what the 860px block
-   sets; the bar's own `padding: 14px 18px` puts the fields back where they
-   were. The rule above the band is what makes it a section rather than a stripe
+   fill. The margin is `--card-pad` negated, which is `.card`'s own padding on
+   both sides of 860px (it read `-18px` and `-15px` until 2026-10-12, when the
+   padding became a token); the bar's own padding puts the fields back where
+   they were. The rule above the band is what makes it a section rather than a stripe
    — `.card.flush` gets that from the head band's `border-bottom`.
 
    ⚠ `:not(.flush)` IS THE WHOLE RULE, AND IT WAS MISSING FOR AN HOUR. Written
@@ -10047,11 +10071,11 @@ th.why-col { width: 150px; }
    directly above it. Reported the same evening, with a picture: *"ช่องตกขอบ
    ครับ"*. A negative margin is only ever the size of the padding it is cancelling,
    so it has to be written against the cards that HAVE that padding. */
-.card:not(.flush) > .queue-tools { margin: 0 -18px; border-top: 1px solid var(--line-soft); }
+.card:not(.flush) > .queue-tools { margin: 0 calc(-1 * var(--card-pad)); border-top: 1px solid var(--line-soft); }
 /* First child of the card: there is nothing above it to be ruled off from, and
    the band takes the card's own top corners. */
 .card:not(.flush) > .queue-tools:first-child {
-  margin-top: -18px; border-top: 0;
+  margin-top: calc(-1 * var(--card-pad)); border-top: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
@@ -11630,8 +11654,8 @@ table.mini tbody tr:hover { background: none; }
      inset-right. Equal on a phone held upright, which is why it went unseen;
      in landscape the notch is on one side only and the page ran under it. */
   main {
-    padding-top: 14px;
-    padding-bottom: 14px;
+    padding-top: var(--page-pad-y);
+    padding-bottom: var(--page-pad-y);
     padding-left: max(12px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
   }
@@ -12497,12 +12521,15 @@ table.mini tbody tr:hover { background: none; }
   .login-brand h1 { font-size: clamp(22px, 5.6vw, 30px); margin-bottom: 0; }
   .login-form { padding: 24px 24px calc(24px + env(safe-area-inset-bottom, 0px)); }
 
-  .hero { grid-template-columns: 1fr; gap: 18px; }
+  .hero { grid-template-columns: 1fr; gap: 12px; padding: 14px; }
+  .stat { padding: 12px 14px; }
+  /* ระยะห่างของมือถือ — ตัวแปรเดียวกับข้างบน ค่าน้อยกว่า (2026-10-12, กระชับ) */
+  :root { --page-pad-y: 10px; --card-pad: 12px; --card-gap: 10px; --head-pad-y: 10px; --head-pad-x: 12px; --tools-pad-y: 8px; }
   .hero .big span:first-child { font-size: 38px; }
 
   .row { gap: 10px; }
   .field { min-width: 100%; }
-  .card { padding: 15px; border-radius: var(--radius); }
+  .card { padding: var(--card-pad); border-radius: var(--radius); }
 
   /* ── ตั้งค่าระบบ's eight sections on a phone — A DROPDOWN, 2026-09-04 ──────
      One line reading แผนกและเพดาน ▾ where a strip of eight buttons used to be.
@@ -12669,11 +12696,10 @@ table.mini tbody tr:hover { background: none; }
      this one is the foot and keeps its border. Stated as "drop mine when that
      one follows" rather than the reverse so a browser without `:has` errs
      towards one hairline too many rather than none. */
-  .queue-tools { padding: 12px 12px 10px; }
-  /* `.card`'s padding is 15 at this width, not 18 — see the rule by that name
-     in this block. Same negation, one number along. */
-  .card:not(.flush) > .queue-tools { margin: 0 -15px; }
-  .card:not(.flush) > .queue-tools:first-child { margin-top: -15px; border-radius: var(--radius) var(--radius) 0 0; }
+  .queue-tools { padding: var(--tools-pad-y) var(--head-pad-x); }
+  /* The negation follows `--card-pad` by itself since 2026-10-12; only the
+     corners differ here, because the card's radius does. */
+  .card:not(.flush) > .queue-tools:first-child { border-radius: var(--radius) var(--radius) 0 0; }
   .queue-tools:has(+ .queue-mobile-bar) { border-bottom: 0; }
   .queue-tools .field, .queue-tools .field.search { flex: 1 1 100%; }
   /* ── ทะเบียนพนักงาน'S BAR IS FOUR FIELDS, AND FOUR SLABS IS A SCREEN ───────
@@ -15739,6 +15765,8 @@ table.mini tbody tr:hover { background: none; }
      and not. */
   .holiday-tools { gap: 8px; }
   .holiday-tools .btn { padding-left: 14px; padding-right: 14px; }
+  /* ปี on a line of its own above the pair, full width like the buttons under it. */
+  .holiday-card .card-head > .holiday-tools > .holiday-year { flex: 1 1 100%; width: auto; }
 
   /* ══ แผนกและเพดาน on a phone ══════════════════════════════════════════════
      Eight columns, and five of them held one or two characters. At 440px the
