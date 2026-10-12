@@ -2658,8 +2658,10 @@ function ConfirmModal({
 }
 
 /** ไม่อนุมัติ from the table or the batch bar. The in-pop-up path uses the same
-    fields without a second dialog — see RejectFields. */
-function RejectModal({ entries, busy, onClose, onReject }) {
+    fields without a second dialog — see RejectFields.
+    EXPORTED SINCE 2026-10-12 for ปุ่ม ไม่อนุมัติ บนหน้ารายการ OT ของฝ่ายบุคคล
+    (components/HrEntries.jsx) — กล่องเดียวกัน ไม่ใช่สำเนา */
+export function RejectModal({ entries, busy, onClose, onReject }) {
   const [state, setState] = useState({ reason: '', notify: { employee: true, manager: false } });
   const many = entries.length > 1;
   /**

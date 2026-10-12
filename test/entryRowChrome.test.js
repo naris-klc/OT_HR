@@ -829,11 +829,23 @@ test('ข้อมูลเดิมเปิดด้วยการกดท�
   assert.ok(!/กด “ดูข้อมูลเดิม”/.test(jsx), 'ข้อความยังชี้ไปที่ปุ่มที่ไม่มีแล้ว');
 });
 
-test('ปุ่มท้ายแถวเรียง อนุมัติ → ยกเลิก → แก้ไข', () => {
+test('ปุ่มท้ายแถวเรียง อนุมัติ → ไม่อนุมัติ → ยกเลิก → แก้ไข', () => {
   const cell = jsx.slice(jsx.indexOf('<span className="entry-actions">'), jsx.indexOf('</span>\r\n                    </td>\r\n                  </tr>') >= 0
     ? jsx.indexOf('</span>\r\n                    </td>\r\n                  </tr>')
     : jsx.indexOf('</span>\n                    </td>\n                  </tr>'));
   const order = [...cell.matchAll(/<RowAction\s+icon="(\w+)"/g)].map((m) => m[1]);
-  // อนุมัติ · แถวที่ปิดแล้ว (ยกเลิก แก้ไข) · แถวที่ยังเปิด (ยกเลิก แก้ไข)
-  assert.deepEqual(order, ['tick', 'ban', 'pencil', 'ban', 'pencil']);
+  // อนุมัติ ไม่อนุมัติ (2026-10-12) · แถวที่ปิดแล้ว (ยกเลิก แก้ไข) · แถวที่ยังเปิด (ยกเลิก แก้ไข)
+  assert.deepEqual(order, ['tick', 'cross', 'ban', 'pencil', 'ban', 'pencil']);
+});
+
+/** 2026-10-12 — ไม่อนุมัติ ≠ ยกเลิก: ใบไม่จบ พนักงานกด ส่งใหม่ ได้ 1 ครั้ง */
+test('ปุ่ม ไม่อนุมัติ ใช้กล่องและ route เดียวกับคิวรออนุมัติ', () => {
+  // กล่องเดียวกัน ไม่ใช่สำเนา
+  assert.match(read('components/ApprovalQueue.jsx'), /^export function RejectModal\(/m);
+  assert.ok(jsx.includes("import { RejectModal } from './ApprovalQueue.jsx';"));
+  assert.ok(!/function RejectModal/.test(jsx), 'คัดลอก RejectModal มาไว้ในหน้านี้');
+  assert.ok(jsx.includes('api.post(`/entries/${entry._id}/reject`, { reason, notify })'));
+  // กดได้เมื่อ อนุมัติ กดได้ — คำตัดสินเดียวกันจาก server
+  assert.match(jsx, /icon="cross"\s+tone="stop"\s+label="ไม่อนุมัติ"\s+why=\{e\.decide\?\.ok \? '' : whyNotRejectable\(e\)\}/);
+  assert.ok(jsx.includes('{rejectDialog}'));
 });
