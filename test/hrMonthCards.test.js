@@ -122,10 +122,25 @@ test('name, code and สะสม / เพดาน — and the seven columns th
 
   // Hidden by name rather than by a blanket rule with exceptions, so an
   // eleventh column shows up on a phone instead of silently disappearing.
-  const hidden = phone.slice(phone.indexOf('.hr-table tbody td.rate-col,'));
-  for (const col of ['rate-col', 'count-col', 'edits-col', 'pad-col']) {
-    assert.ok(hidden.slice(0, 300).includes(`.hr-table tbody td.${col}`), `${col} is not accounted for`);
+  // rate-col กับ count-col อยู่ในรายการนี้จนถึง 2026-10-12 แล้วย้ายไปเป็นแถบสี่ช่อง
+  // ใต้ชื่อ (ux-d ง.1 แบบ ค) — เทสต์ถัดไป
+  const hidden = phone.slice(phone.indexOf('.hr-table tbody td.edits-col,'));
+  for (const col of ['edits-col', 'pad-col']) {
+    assert.ok(hidden.slice(0, 120).includes(`.hr-table tbody td.${col}`), `${col} is not accounted for`);
   }
+});
+
+test('การ์ดมีแถบชั่วโมงแยกอัตรา ×1.5 ปกติ · ×1.5 หยุด · ×3 หยุด · รายการ (2026-10-12)', () => {
+  // ผู้ใช้เลือกแบบ ค จาก mockup ux-d · มาร์กอัปชุดเดียว: เซลล์เดิมของตารางวางเป็นแถบด้วย CSS
+  for (const [cls, label] of [['b-15w', '×1.5 ปกติ'], ['b-15h', '×1.5 หยุด'], ['b-3h', '×3 หยุด'], ['count-col', 'รายการ']]) {
+    assert.ok(phone.includes(`.hr-table tbody td.${cls}::before { content: '${label}'; }`), `ป้าย ${label} หาย`);
+  }
+  assert.match(phone, /\.hr-table tbody tr:not\(\.total-row\) > :is\(td\.rate-col, td\.count-col\):not\(\.total-col\) \{\s*order: 3; flex: 1 1 20%;/);
+  // flex ต้องไม่ทับ off-page — ไม่งั้นทุกหน้าของตัวแบ่งหน้าโผล่พร้อมกัน
+  assert.match(phone, /\.hr-table tbody tr:not\(\.total-row\):not\(\.off-page\) \{ display: flex; flex-wrap: wrap; \}/);
+  // ศูนย์เป็นขีดจางเฉพาะการ์ด — class มาจากค่าจริงของช่อง
+  assert.match(hrView, /b-15w\$\{row\.summary\.buckets\[BUCKETS\.OT15_WEEKDAY\] \? '' : ' zero'\}/);
+  assert.match(phone, /\.hr-table tbody td\.rate-col\.zero::after \{ content: '–';/);
 });
 
 test('รวม ชม. is dropped because สะสม is the same figure, not because it does not matter', () => {
