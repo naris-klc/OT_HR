@@ -400,6 +400,18 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
 
   const toggleAll = () => setOpen(allOpen ? new Set() : new Set(auditable.map((e) => e._id)));
 
+  /* กดที่แถวเพื่อเปิด/ปิดลิ้นชักประวัติ — แทนปุ่ม ดูข้อมูลเดิม ตั้งแต่ 2026-10-12 ·
+     การกดในช่องปุ่มท้ายแถวหรือช่องเลือก — รวมปุ่มที่กดไม่ได้ ซึ่งเหตุการณ์ตกไปที่
+     `.act-tip` ที่ห่ออยู่ — เป็นของช่องนั้น ไม่เปิดลิ้นชัก */
+  const openRow = (e, ev) => {
+    if (ev.target.closest('button, input, a, label, .entry-actions, td.check')) return;
+    if (ev.type === 'keydown') {
+      if (ev.target !== ev.currentTarget || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+      ev.preventDefault();
+    }
+    toggle(e._id);
+  };
+
   /**
    * ถอนใบวันเกิด — through the same `/cancel` endpoint an employee withdraws
    * their own request with. The server decides which of the two acts it is and
@@ -805,7 +817,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
           <div className="hint" style={{ marginTop: 6 }}>
             ซ่อน {replacedCount} คำขอเดิมที่ถูกไม่อนุมัติและพนักงานส่งใหม่แล้ว ·
             {' '}ตารางนี้แสดงคำขอล่าสุดของแต่ละเรื่องเพียงแถวเดียว ·
-            {' '}กด “ดูข้อมูลเดิม” ที่แถวนั้นเพื่อดูคำขอเดิม เวลาเดิม และเหตุผลที่ไม่อนุมัติ
+            {' '}กดที่แถวนั้นเพื่อดูคำขอเดิม เวลาเดิม และเหตุผลที่ไม่อนุมัติ
           </div>
         )}
 
@@ -875,7 +887,17 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                 const closed = ['rejected', 'cancelled'].includes(e.status);
                 return (
                   <React.Fragment key={e._id}>
-                  <tr className={picked.has(e._id) ? 'picked' : undefined}>
+                  <tr
+                    className={[hasAuditTrail(e) && 'row-open', picked.has(e._id) && 'picked'].filter(Boolean).join(' ') || undefined}
+                    /* แบบเดียวกับแถวคิวรออนุมัติ (ApprovalQueue.jsx) — ไม่ใช่
+                       `role="button"` · tab, Enter/Space, title และมือชี้ */
+                    {...(hasAuditTrail(e) && {
+                      tabIndex: 0,
+                      title: open.has(e._id) ? 'กดเพื่อซ่อนข้อมูลเดิม' : 'กดเพื่อดูข้อมูลเดิม',
+                      onClick: (ev) => openRow(e, ev),
+                      onKeyDown: (ev) => openRow(e, ev),
+                    })}
+                  >
                     {approvable.length > 0 && (
                       <td className="check">
                         <span
@@ -1151,8 +1173,8 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           (docs/design.md §5). The reason is the status. */}
                       {!mayEdit ? null : closed ? (
                         <>
-                          <RowAction icon="pencil" label="แก้ไข" why="แก้ไขไม่ได้ — ใบนี้ไม่อนุมัติหรือยกเลิกแล้ว" />
                           <RowAction icon="ban" label="ยกเลิก" tone="stop" why="ใบนี้ไม่อนุมัติหรือยกเลิกแล้ว" />
+                          <RowAction icon="pencil" label="แก้ไข" why="แก้ไขไม่ได้ — ใบนี้ไม่อนุมัติหรือยกเลิกแล้ว" />
                         </>
                       ) : (
                         /* TWO ACTIONS ON THE ROW SINCE 2026-09-15, and they are
@@ -1165,9 +1187,12 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                            The icons are the app's dictionary in
                            components/icons.jsx. ยกเลิก wore `trash` until
                            2026-10-08 and wears `ban` now: the ใบ stays in the
-                           record as ยกเลิก, it is not deleted. */
+                           record as ยกเลิก, it is not deleted.
+
+                           ยกเลิก ต่อจาก อนุมัติ ทันที ตั้งแต่ 2026-10-12 —
+                           *"เอาไอคอน ไม่อนุมัติมาไว้หลังไอคอนอนุมัติ"* · สองปุ่ม
+                           ที่ตัดสินใบอยู่คู่กัน แก้ไขตามท้าย */
                         <>
-                          <RowAction icon="pencil" label="แก้ไข" onClick={() => setEditing(e)} />
                           {/* `ยกเลิก` AND NOT `ยกเลิกใบ` — asked for in those
                               words. It is the word the employee's own press
                               carries on their screen, and this is the same act
@@ -1186,40 +1211,14 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                             hint="ต้องระบุเหตุผล และชั่วโมงจะถูกตัดออกจากรายงาน"
                             onClick={() => { setCancelling(e); setCancelNote(''); }}
                           />
+                          <RowAction icon="pencil" label="แก้ไข" onClick={() => setEditing(e)} />
                         </>
                       )}
-                      {/* Reconciling a month against the signed paper means
-                          reading what the row used to say, not only what it
-                          says now — which is the one thing the printed form
-                          cannot tell HR.
-                          A row that has only ever been filed SAYS SO rather
-                          than losing the answer: an absent control reads as a
-                          screen that forgot.
-
-                          IT SAID SO AS A DISABLED BUTTON UNTIL 2026-08-26, and
-                          the shape of it was the whole of the problem.
-                          `.btn:disabled` fills with `--neutral-wash`, which on
-                          the dark theme is LIGHTER than the `--card` a ghost
-                          button sits on — so the thing that cannot be pressed
-                          was drawn brighter than the thing that can, and wider
-                          besides (134px against 57). Two controls on the row,
-                          and the eye went to the dead one.
-
-                          It was a sentence — `.cell-sub.th`, ไม่มีประวัติการแก้ไข
-                          — from then until 2026-10-08, when the row's controls
-                          became icon squares and the sentence became the widest
-                          thing in the cell. It is a disabled icon now,
-                          with the sentence as its reason. The icon was
-                          `history` until 2026-10-09 and is `compare` now —
-                          ค่าเดิม has its own icon, ประวัติ is the toggle above. */}
-                      <RowAction
-                        icon="compare"
-                        label={open.has(e._id) ? 'ซ่อนข้อมูลเดิม' : 'ดูข้อมูลเดิม'}
-                        why={hasAuditTrail(e) ? '' : 'ไม่มีประวัติการแก้ไข'}
-                        on={open.has(e._id)}
-                        aria-expanded={open.has(e._id)}
-                        onClick={() => toggle(e._id)}
-                      />
+                      {/* ⚠ ปุ่ม ดูข้อมูลเดิม (`compare`) อยู่ท้ายแถวนี้จนถึง
+                          2026-10-12 — *"เอาไอคอนดูข้อมูลเดิมทิ้ง ให้แสดงเมื่อกด
+                          รายการนั้นแทน"* · ลิ้นชักเดิมเปิดด้วยการกดที่แถว ดู
+                          `openRow` บน <tr> ข้างบน · แถวที่ไม่มีประวัติกดไม่ได้
+                          และไม่มีมือชี้ ส่วนจำนวนแถวที่มีอยู่บนปุ่ม ประวัติ ด้านบน */}
                       </span>
                     </td>
                   </tr>

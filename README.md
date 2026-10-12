@@ -9491,6 +9491,14 @@ all along. Nothing is lost by it: the point of saying so at all is that an
 absent control reads as a screen that forgot, and a sentence says it as plainly
 as a dead button did.
 
+> **ปุ่ม ดูข้อมูลเดิม ออกจากแถวเมื่อ 2026-10-12** — *"เอาไอคอนดูข้อมูลเดิมทิ้ง
+> ให้แสดงเมื่อกดรายการนั้นแทน แล้วเอาไอคอน ไม่อนุมัติมาไว้หลังไอคอนอนุมัติแทน"* ·
+> ลิ้นชัก **ประวัติการแก้ไข** เปิด/ปิดด้วยการกดที่แถว (หรือ Tab แล้ว Enter) แบบ
+> เดียวกับแถวคิวรออนุมัติ · เฉพาะแถวที่มีประวัติเท่านั้นที่กดได้และมีมือชี้ ·
+> กดปุ่มหรือช่องเลือกในแถวไม่เปิดลิ้นชัก · ปุ่มท้ายแถวเหลือ **อนุมัติ → ยกเลิก →
+> แก้ไข** เรียงกันทางซ้ายกลุ่มเดียว ช่องขวา (`margin-left: auto` บนลูกตัวสุดท้าย)
+> ถอดออก · สองย่อหน้าข้างล่างคือสภาพก่อนวันนั้น
+
 **The row's last cell is two slots, and every row has both.** Left: what can be
 *done* to this row — ✏️ แก้ไข, or แก้ไขไม่ได้ where the row is ยกเลิก or
 ไม่อนุมัติ. Right: what can be *read* about it — ดูข้อมูลเดิม, or
