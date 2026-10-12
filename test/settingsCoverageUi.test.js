@@ -618,23 +618,18 @@ test('two controls, one list — the strip above 860px and the dropdown below it
   assert.ok(!/scroll-snap-type: x proximity;[\s\S]{0,200}section-tabs/.test(phone));
 });
 
-test('the gap count stands beside the dropdown, not only inside the list', () => {
-  // A warning that only appears once the list is opened is a warning somebody
-  // has to go looking for. It counts แผนกที่ยังไม่มีหัวหน้างาน, which is a fact
-  // about the roster and not about the section on screen, so it is drawn
-  // whichever section is open.
+test('the gap count is on the row inside the list, not beside the dropdown', () => {
+  // It stood beside the box until 2026-10-12, when the user picked "ก" from
+  // mockup ux-m: a red figure next to วันหยุดบริษัท read as being about วันหยุด,
+  // and the banner at the top of the page already says it on every section.
   const settings = sourceOf(SETTINGS);
   const pick = settings.slice(settings.indexOf('<div className="section-pick">'));
-  assert.match(pick, /\{gapCount > 0 && \(\s*\n\s*<span className="tab-badge"/);
-  assert.match(pick, /aria-label=\{`\$\{gapCount\} แผนกที่ยังไม่มีหัวหน้างาน`\}/);
-  // And the row inside the list carries the figure too — `PickOne` draws a
-  // `count` against the right edge.
+  const box = pick.slice(0, pick.indexOf('</div>'));
+  assert.ok(!/className="tab-badge"/.test(box), 'the count came back beside the dropdown');
+  // The row inside the list carries the figure — `PickOne` draws a `count`
+  // against the right edge.
   assert.match(settings, /count: s\.key === 'departments' && gapCount > 0 \? gapCount : undefined,/);
-  // The scoped rule is written BELOW the badge's own definition, or the slice
-  // the geometry test takes would measure this one instead.
-  const css = styles();
-  assert.ok(css.indexOf('.tab-badge {') < css.indexOf('.section-pick .tab-badge'),
-    'a scoped .tab-badge rule was written above the definition');
+  assert.ok(!/\.section-pick \.tab-badge \{/.test(styles()), 'its scoped rule is still in the stylesheet');
 });
 
 // ── 4 · บันทึกประวัติระบบ ใช้แท็บชุดเดียวกัน ก็ต้องมี dropdown ของมือถือด้วย ────

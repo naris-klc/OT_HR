@@ -302,16 +302,16 @@ test('แถวใหม่ต้องไม่ตกนอกตัวกร�
 
 // ── the phone, and the panel with a box in it ───────────────────────────────
 
-test('มือถือ: ช่องค้นหาเต็มบรรทัด สองกล่องคู่กัน บทบาทเต็มบรรทัด', () => {
+test('มือถือ: ช่องค้นหากับปุ่ม ตัวกรอง แถวเดียว กล่องทั้งสามอยู่ในแผ่น', () => {
+  // They paired off two to a line (`roster-tools` · `roster-wide`) until
+  // 2026-10-12, when every bar's dropdowns moved into `FilterSheet` on a phone
+  // — the user picked it from mockup ux-m.
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.match(phone, /\.queue-tools\.roster-tools \.field:not\(\.search\) \{ flex: 1 1 calc\(50% - 6px\); min-width: 0; \}/);
-  assert.match(phone, /\.queue-tools\.roster-tools \.field\.roster-wide \{ flex: 1 1 100%; \}/);
-  // `roster-wide` is put on บทบาท by the screen — the third of three, which
-  // would otherwise sit alone in a half-width column beside an empty space.
-  assert.match(employees, /className=\{key === 'role' \? 'roster-wide' : undefined\}/);
-  // The search box is NOT in that rule: it is typed into, and a Thai name in a
-  // half-width box is a box you cannot read back what you put in.
-  assert.match(phone, /\.queue-tools \.field, \.queue-tools \.field\.search \{ flex: 1 1 100%; \}/);
+  assert.ok(!/roster-wide \{/.test(phone), 'the pairing rule came back');
+  assert.match(employees, /<FilterSheet count=\{FACET_KEYS\.filter\(\(k\) => filters\[k\]\)\.length\}/);
+  // The search box stays on the bar, full width beside the button: it is typed
+  // into, and a Thai name in a half-width box cannot be read back.
+  assert.match(phone, /\.queue-tools:has\(> \.filter-toggle\) > \.field\.search \{ flex: 1 1 0; min-width: 0; \}/);
 });
 
 test('แผงที่มีช่องค้นหาเป็นแผงเดียว ไม่ใช่กล่องลอยซ้อนอีกใบ', () => {

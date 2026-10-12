@@ -434,7 +434,10 @@ test('ล้างตัวกรองบนทุกแถบเป็นไ�
       assert.ok(before.includes('empty-act'), `${f} ยังมีปุ่มล้างตัวกรองที่เป็นคำนอกข้อความว่าง`);
     }
   }
-  assert.match(css, /\.queue-tools \.btn\.act-icon\.clear-filters \{ width: var\(--field-h\); height: var\(--field-h\); \}/);
+  // Stretched to the bar's row, square, since 2026-10-12 — `--field-h` (40)
+  // stopped being the height of a box on the bar (48, label inside) that day.
+  assert.match(css, /\.queue-tools > \.act-tip:has\(> \.clear-filters\) \{ align-self: stretch; display: flex; \}/);
+  assert.match(css, /\.queue-tools \.btn\.act-icon\.clear-filters \{ height: auto; width: auto; aspect-ratio: 1; \}/);
 });
 
 test('ชื่อกับบรรทัดใต้ชื่ออยู่บรรทัดเดียวกัน ด้วยกฎเดียวทั้งแอป', () => {

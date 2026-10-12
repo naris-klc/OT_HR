@@ -26,7 +26,7 @@ import {
   Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, EntryLead, EntryHistoryBlock, ShowMore,
-  InlineMark, NoticeRow, NoticeStack,
+  InlineMark, NoticeRow, NoticeStack, FilterSheet,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -1481,50 +1481,53 @@ export default function ApprovalQueue({
             that came and went as the last ผู้จัดการแผนก request was signed
             would move แผนก and เดือน sideways underneath somebody mid-filter.
           */}
-          {!isHr && user.seesRoles > 1 && (
+          {/* บนมือถือช่องเลือกพวกนี้อยู่ในแผ่น ตัวกรอง (FilterSheet) — 2026-10-12 */}
+          <FilterSheet count={(applicant ? 1 : 0) + (dept ? 1 : 0) + (per ? 1 : 0)} onClear={() => { setDept(''); setPer(''); setApplicant(''); }}>
+            {!isHr && user.seesRoles > 1 && (
+              <PickOne
+                label="บทบาท"
+                value={applicant}
+                onChange={setApplicant}
+                options={applicants}
+                allLabel="ทุกบทบาท"
+              />
+            )}
+            {/*
+              แผนก — ON EVERY APPROVAL QUEUE, UNCONDITIONALLY, SINCE 2026-09-04.
+
+              It was ฝ่ายบุคคล's alone while a signer held exactly one department,
+              then `isHr || coversDepartments > 1` when `approvesDepartments` gave
+              a ผู้จัดการฝ่าย eight of them. Both readings left SOME approver with
+              a three-field bar and everybody else with four, which is the thing
+              the round of 2026-09-04 was asked to end: the same toolbar on every
+              approval screen, present at nought rows, so nothing moves when the
+              first request arrives.
+
+              A reader who holds one แผนก gets a list with one entry in it. That
+              is a control that cannot narrow anything — the objection that kept
+              it off their bar for a fortnight — and it is a smaller cost than a
+              toolbar that is a different shape for every บทบาท.
+
+              The COUNT is still read (`coversDepartments`), just not here: it
+              names the scope in the head and in the empty state, where saying
+              "eight departments" is the whole point of the sentence.
+            */}
             <PickOne
-              label="บทบาท"
-              value={applicant}
-              onChange={setApplicant}
-              options={applicants}
-              allLabel="ทุกบทบาท"
+              label="แผนก"
+              value={dept}
+              onChange={setDept}
+              options={departments}
+              allLabel="ทุกแผนก"
             />
-          )}
-          {/*
-            แผนก — ON EVERY APPROVAL QUEUE, UNCONDITIONALLY, SINCE 2026-09-04.
-
-            It was ฝ่ายบุคคล's alone while a signer held exactly one department,
-            then `isHr || coversDepartments > 1` when `approvesDepartments` gave
-            a ผู้จัดการฝ่าย eight of them. Both readings left SOME approver with
-            a three-field bar and everybody else with four, which is the thing
-            the round of 2026-09-04 was asked to end: the same toolbar on every
-            approval screen, present at nought rows, so nothing moves when the
-            first request arrives.
-
-            A reader who holds one แผนก gets a list with one entry in it. That
-            is a control that cannot narrow anything — the objection that kept
-            it off their bar for a fortnight — and it is a smaller cost than a
-            toolbar that is a different shape for every บทบาท.
-
-            The COUNT is still read (`coversDepartments`), just not here: it
-            names the scope in the head and in the empty state, where saying
-            "eight departments" is the whole point of the sentence.
-          */}
-          <PickOne
-            label="แผนก"
-            value={dept}
-            onChange={setDept}
-            options={departments}
-            allLabel="ทุกแผนก"
-          />
-          {/* ปฏิทินเดือนตัวเดียวกับทุกจอ (`PickMonth`) แทนรายการ `PickOne` ตั้งแต่
-              2026-10-09 · *"สไตล์ตัวเลือกรายการไม่เหมือนหน้าอื่นของแอป"* · ที่นี่ว่าง
-              ได้ — ว่างคือ ทุกเดือน — จึงมี ✕ ให้ล้างกลับ ตัวเลขต่อเดือนที่รายการเคย
-              แสดงหายไปกับมัน ตารางกับหัวการ์ดบอกจำนวนแทน */}
-          <div className="field">
-            <div className="field-head"><label>ประจำเดือน</label></div>
-            <PickMonth label="ประจำเดือน" value={per} onChange={setPer} clearable allLabel="ทุกเดือน" />
-          </div>
+            {/* ปฏิทินเดือนตัวเดียวกับทุกจอ (`PickMonth`) แทนรายการ `PickOne` ตั้งแต่
+                2026-10-09 · *"สไตล์ตัวเลือกรายการไม่เหมือนหน้าอื่นของแอป"* · ที่นี่ว่าง
+                ได้ — ว่างคือ ทุกเดือน — จึงมี ✕ ให้ล้างกลับ ตัวเลขต่อเดือนที่รายการเคย
+                แสดงหายไปกับมัน ตารางกับหัวการ์ดบอกจำนวนแทน */}
+            <div className="field">
+              <div className="field-head"><label>ประจำเดือน</label></div>
+              <PickMonth label="ประจำเดือน" value={per} onChange={setPer} clearable allLabel="ทุกเดือน" />
+            </div>
+          </FilterSheet>
           {(q || dept || per || st || applicant) && (
             <ClearFilters onClear={() => { setQ(''); setDept(''); setPer(''); setSt(''); setApplicant(''); }} />
           )}

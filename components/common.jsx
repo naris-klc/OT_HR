@@ -22,6 +22,7 @@ import Icon from './icons.jsx';
 /* `PickOne` opens the panel the three pickers already share — see the note at
    its `<Popover>`. Nothing else in this file uses it. */
 import { Popover, PopFoot, useSheet } from './popover.jsx';
+import { useBackHandler } from './nav.jsx';
 
 export function StatusChip({ status }) {
   // A class, not a style: see STATUS in lib/api.js. An unknown status falls
@@ -3003,6 +3004,65 @@ export function RowAction({
  */
 export function ClearFilters({ onClear, label = 'ล้างตัวกรอง' }) {
   return <RowAction icon="reset" label={label} className="clear-filters" onClick={onClear} />;
+}
+
+/**
+ * ตัวกรอง — แถบตัวกรองบนมือถือเหลือช่องค้นหา + ปุ่มนี้ ตั้งแต่ 2026-10-12
+ *
+ * ผู้ใช้เลือก "ข" จาก mockup ux-m: ช่องเลือก 3–4 ช่องเรียงลงเต็มความกว้างกินราว
+ * 240px ก่อนถึงแถวแรก · ห่อช่องกรองที่ไม่ใช่ช่องค้นหาไว้ข้างใน:
+ *
+ *   <div className="queue-tools">
+ *     <Field className="search">…</Field>
+ *     <FilterSheet count={n} onClear={…}>  ← ช่องเลือกทั้งหลาย  </FilterSheet>
+ *   </div>
+ *
+ * **จอกว้างไม่เปลี่ยนอะไรเลย** — ช่องข้างในถูกวาดตรงนั้นเหมือนไม่มีตัวห่อ
+ * (`useSheet` เป็น false) · ใต้ 860px ช่องเหล่านั้นไม่อยู่บนแถบ เหลือปุ่ม
+ * "ตัวกรอง" ที่บอกจำนวนตัวกรองที่เลือกอยู่ กดแล้วเปิดแผ่นจากล่างหน้าตาเดียวกับ
+ * แผ่นของช่องเลือก (`.pop.sheet` · `.pop-sheet-head` · `.pop-foot`)
+ *
+ * ไม่ใช้ `Popover`: มันปิดเมื่อกดนอกแผ่น และช่องเลือกข้างในเปิดแผ่นของตัวเองซ้อน
+ * ขึ้นมาอีกชั้น ซึ่งนับเป็น "นอกแผ่น" ทุกครั้งที่แตะ · ที่นี่ปิดด้วย ✕ · เสร็จ ·
+ * แตะฉากมืดของแผ่นนี้เอง · ปุ่มย้อนกลับของมือถือ
+ */
+export function FilterSheet({ count = 0, onClear = null, children }) {
+  const phone = useSheet();
+  const [open, setOpen] = React.useState(false);
+  useBackHandler(phone && open, () => setOpen(false));
+  if (!phone) return <>{children}</>;
+  return (
+    <>
+      <button
+        type="button"
+        className={`btn ghost filter-toggle${count ? ' on' : ''}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+      >
+        <Icon name="filter" />ตัวกรอง
+        {count > 0 && <span className="filter-count" aria-label={`เลือกอยู่ ${count} ตัวกรอง`}>{count}</span>}
+      </button>
+      {open && createPortal(
+        <div className="pop-scrim" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+          <div className="pop sheet filter-sheet" role="dialog" aria-modal="true" aria-label="ตัวกรอง">
+            <div className="pop-sheet-head">
+              <div className="nav-sheet-head">ตัวกรอง</div>
+              <button type="button" className="modal-x" onClick={() => setOpen(false)} aria-label="ปิด">×</button>
+            </div>
+            <div className="filter-sheet-body">{children}</div>
+            <div className="pop-foot">
+              {onClear && count > 0
+                ? <button type="button" className="btn ghost" onClick={onClear}><Icon name="reset" />ล้างตัวกรอง</button>
+                : <span />}
+              <button type="button" className="btn" onClick={() => setOpen(false)}>เสร็จ</button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
+  );
 }
 
 /**

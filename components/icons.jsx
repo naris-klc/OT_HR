@@ -204,6 +204,12 @@ const ICONS = {
     </>
   ),
 
+  /** ตัวกรอง — the phone's filter button (`FilterSheet`), 2026-10-12. Lucide's
+   *  funnel; not `sliders`, which is ตั้งค่าระบบ in the same bottom bar. */
+  filter: (
+    <path d="M10 20a1 1 0 0 0 .55.9l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .52-1.34L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.74 1.67l7.22 7.99A2 2 0 0 1 10 14z" />
+  ),
+
   /**
    * แสดงรหัสผ่าน — the only two here that are not a destination.
    *
