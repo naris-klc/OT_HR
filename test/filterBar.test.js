@@ -439,10 +439,15 @@ test('ล้างตัวกรองบนทุกแถบเป็นไ�
       assert.ok(before.includes('empty-act') || before.includes('<Empty action={('), `${f} ยังมีปุ่มล้างตัวกรองที่เป็นคำนอกข้อความว่าง`);
     }
   }
-  // Stretched to the bar's row, square, since 2026-10-12 — `--field-h` (40)
-  // stopped being the height of a box on the bar (48, label inside) that day.
-  assert.match(css, /\.queue-tools > \.act-tip:has\(> \.clear-filters\) \{ align-self: stretch; display: flex; \}/);
-  assert.match(css, /\.queue-tools \.btn\.act-icon\.clear-filters \{ height: auto; width: auto; aspect-ratio: 1; \}/);
+  // Stretched to the bar's row since 2026-10-12 — `--field-h` (40) stopped
+  // being the height of a box on the bar (48, label inside) that day.
+  // 48px wide, NOT `width: auto; aspect-ratio: 1`: the bar sizes the wrapper
+  // before the stretch, so it got 18px and the 48px button spilled over the
+  // card edge on every bar (deployed, then reported, the same day).
+  assert.match(css, /\.queue-tools > \.act-tip:has\(> \.clear-filters\) \{ align-self: stretch; display: flex; flex: none; \}/);
+  assert.match(css, /\.queue-tools \.btn\.act-icon\.clear-filters \{ height: auto; width: 48px; padding: 0; \}/);
+  assert.match(css, /\.queue-tools:has\(> \.filter-toggle\) \.btn\.act-icon\.clear-filters \{ width: var\(--btn-h\); \}/);
+  assert.doesNotMatch(css, /clear-filters[^{]*\{[^}]*aspect-ratio/, 'ปุ่มล้างตัวกรองกลับไปใช้ aspect-ratio — กล่องห่อจะแคบกว่าปุ่ม');
 });
 
 test('ชื่อกับบรรทัดใต้ชื่ออยู่บรรทัดเดียวกัน ด้วยกฎเดียวทั้งแอป', () => {
