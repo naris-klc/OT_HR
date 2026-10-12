@@ -63,7 +63,8 @@ test('every control in the cell is a RowAction, and a dead one is disabled with 
   // and the app's rule since 2026-09-11 is DISABLE, DON'T REMOVE, with the
   // reason on the tooltip (docs/design.md §5). The edge that keeps the live
   // square heavier is pinned in the cancelled-row test below.
-  assert.match(jsx, /why=\{hasAuditTrail\(e\) \? '' : 'ไม่มีประวัติการแก้ไข'\}/);
+  // ไม่มีประวัติการแก้ไข ไปพร้อมปุ่ม ดูข้อมูลเดิม เมื่อ 2026-10-12 — แถวที่ไม่มี
+  // ประวัติกดไม่ได้ (ดูเทสต์ท้ายไฟล์)
   assert.match(jsx, /<RowAction icon="pencil" label="แก้ไข" why="แก้ไขไม่ได้ — /);
   assert.ok(!/<span className="cell-sub th">ไม่มีประวัติการแก้ไข<\/span>/.test(jsx),
     'the sentence came back — it is the reason on a disabled icon now');
@@ -448,7 +449,9 @@ test('every card footer is the same two slots, and they line up down the month',
   // column, sized by its widest row, so the same raggedness was there: 1192px
   // against 1221 for the five rows whose left slot is the pencil button.
   assert.match(rule('.entry-actions'), /width: 100%;/);
-  assert.match(rule('.entry-actions > :last-child'), /margin-left: auto;/);
+  // ⚠ ช่องขวา (`margin-left: auto` บนลูกตัวสุดท้าย) ถอดออก 2026-10-12 พร้อมปุ่ม
+  // ดูข้อมูลเดิม — ที่เหลือเป็นปุ่มที่ "ทำ" ทั้งหมด จึงอยู่กลุ่มเดียวทางซ้าย
+  assert.ok(!css.includes('.entry-actions > :last-child {'), 'ช่องขวากลับมา');
   // The phone still wraps and the desktop still does not — that difference is
   // about a 44px button beside a sentence on a 274px card, not about the slots.
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
@@ -782,7 +785,7 @@ test('ป้ายวันเกิดเขียนว่า วันเก�
 
 /** ข.6 ในรายงาน UX 2026-10-10 — หน้า OT ของฉันใช้ `history` ขณะที่หน้า HR ใช้ `compare` */
 test('ปุ่ม ข้อมูลเดิม ทุกหน้าใช้ไอคอน compare', () => {
-  for (const f of ['components/HrEntries.jsx', 'components/EmployeeView.jsx']) {
+  for (const f of ['components/EmployeeView.jsx']) {
     const src = read(f);
     const hits = [...src.matchAll(/<RowAction\s+icon="(\w+)"\s+label=\{[^}]*ข้อมูลเดิม/g)];
     assert.ok(hits.length > 0, `${f}: หาปุ่ม ข้อมูลเดิม ไม่เจอ`);
@@ -810,4 +813,27 @@ test('ไม่มี emoji เป็นไอคอนบนจอ — ใช�
   for (const [, name] of read('lib/approverLine.js').matchAll(/icon: '(\w+)'/g)) {
     assert.ok(name === 'warn' || new RegExp(`\n  ${name}: [(<]`).test(icons), `ไม่มีไอคอน ${name}`);
   }
+});
+
+/** 2026-10-12 — *"เอาไอคอนดูข้อมูลเดิมทิ้ง ให้แสดงเมื่อกดรายการนั้นแทน แล้วเอาไอคอน ไม่อนุมัติมาไว้หลังไอคอนอนุมัติแทน"* */
+test('ข้อมูลเดิมเปิดด้วยการกดที่แถว ไม่มีปุ่มของตัวเองแล้ว', () => {
+  assert.ok(!/<RowAction\s+icon="compare"/.test(jsx), 'ปุ่ม ดูข้อมูลเดิม กลับมาท้ายแถว');
+  // แถวที่มีประวัติเท่านั้นที่กดได้ — แบบเดียวกับแถวคิวรออนุมัติ
+  assert.match(jsx, /className=\{\[hasAuditTrail\(e\) && 'row-open'/);
+  assert.match(jsx, /\.\.\.\(hasAuditTrail\(e\) && \{\s*tabIndex: 0,/);
+  assert.match(jsx, /onClick: \(ev\) => openRow\(e, ev\)/);
+  assert.match(jsx, /onKeyDown: \(ev\) => openRow\(e, ev\)/);
+  // กดปุ่ม/ช่องเลือกในแถว — รวมปุ่มที่กดไม่ได้ — ต้องไม่เปิดลิ้นชัก
+  assert.match(jsx, /ev\.target\.closest\('button, input, a, label, \.entry-actions, td\.check'\)/);
+  assert.match(css, /^\.entry-table tbody tr\.row-open \{ cursor: pointer; \}/m);
+  assert.ok(!/กด “ดูข้อมูลเดิม”/.test(jsx), 'ข้อความยังชี้ไปที่ปุ่มที่ไม่มีแล้ว');
+});
+
+test('ปุ่มท้ายแถวเรียง อนุมัติ → ยกเลิก → แก้ไข', () => {
+  const cell = jsx.slice(jsx.indexOf('<span className="entry-actions">'), jsx.indexOf('</span>\r\n                    </td>\r\n                  </tr>') >= 0
+    ? jsx.indexOf('</span>\r\n                    </td>\r\n                  </tr>')
+    : jsx.indexOf('</span>\n                    </td>\n                  </tr>'));
+  const order = [...cell.matchAll(/<RowAction\s+icon="(\w+)"/g)].map((m) => m[1]);
+  // อนุมัติ · แถวที่ปิดแล้ว (ยกเลิก แก้ไข) · แถวที่ยังเปิด (ยกเลิก แก้ไข)
+  assert.deepEqual(order, ['tick', 'ban', 'pencil', 'ban', 'pencil']);
 });

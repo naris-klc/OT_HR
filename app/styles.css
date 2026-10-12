@@ -7444,7 +7444,15 @@ td > .approver-line { margin-top: 5px; }
   display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap;
   width: 100%;
 }
-.entry-actions > :last-child { margin-left: auto; }
+/* ⚠ A `margin-left: auto` ON `.entry-actions > :last-child` STOOD HERE UNTIL
+   2026-10-12 — it pushed ดูข้อมูลเดิม, the one control that only READS, to the
+   right edge. That button left the row the same day (the drawer opens by
+   pressing the row, `.entry-table tbody tr.row-open` below), and what is left
+   — อนุมัติ, ยกเลิก, แก้ไข — is one group of things that can be DONE, so it
+   stays together at the left. */
+/* กดที่แถวเพื่อเปิดลิ้นชักประวัติ — เหมือน `.queue-table tbody tr.row-open` */
+.entry-table tbody tr.row-open { cursor: pointer; }
+.entry-table tbody tr.row-open:focus-visible { outline-offset: -2px; }
 /* The sentences carry `.cell-sub`'s 2px top margin, which is for a line UNDER a
    value and is a nudge off-centre here. */
 .entry-actions .cell-sub { margin-top: 0; }
