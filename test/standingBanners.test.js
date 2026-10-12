@@ -122,8 +122,11 @@ test('กล่องนโยบายการคำนวณยังเป�
  */
 test('หน้านโยบายการคำนวณบอกคำสั่ง migrate ที่เดียว', () => {
   const admin = src('components/AdminView.jsx');
+  // 2026-10-12 (รายงาน UX ค.8): ไม่มีที่ไหนบนจอบอกคำสั่งแล้ว — สองที่ที่เหลือ
+  // (แถบของ PolicyHistory กับกล่องว่างของมัน) เป็น ติดต่อผู้ดูแลระบบ
   const hits = admin.split('migrate:policy-version').length - 1;
-  assert.equal(hits, 2, `คำสั่ง migrate ขึ้นบนจอ ${hits} ที่ในไฟล์นี้ (ควรเป็น 2: แถบของ PolicyHistory กับกล่องว่างของมัน)`);
+  assert.equal(hits, 0, `คำสั่ง migrate ขึ้นบนจอ ${hits} ที่ในไฟล์นี้ (ควรเป็น 0)`);
+  assert.ok(admin.split('ติดต่อผู้ดูแลระบบ').length - 1 >= 2, 'ข้อความ ติดต่อผู้ดูแลระบบ หายไป');
 
   const i = admin.indexOf('function UnrecordedPolicy(');
   const box = admin.slice(i, admin.indexOf('const CHANGE_LABEL', i));

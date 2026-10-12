@@ -1140,6 +1140,9 @@ function Shell({ session, onRefresh, onLogout }) {
   const [profileJump, setProfileJump] = useState(null);
   // Bumped by the mobile FAB; EmployeeView opens its form when it changes.
   const [formSignal, setFormSignal] = useState(0);
+  // EmployeeView reports when its form is open — the FAB hides then, because
+  // pressing it would open the same form again (รายงาน UX ค.16, 2026-10-12).
+  const [formOpen, setFormOpen] = useState(false);
 
   /**
    * THE SPACER'S HEIGHT IS THE BAR'S OWN, MEASURED.
@@ -1814,6 +1817,7 @@ function Shell({ session, onRefresh, onLogout }) {
   // Read twice — by the FAB itself and by the spacer that has to keep the last
   // row out from under it.
   const showFab = user.maySubmitOt && tab === 'mine';
+  const fabUp = showFab && !formOpen;
 
   // `PAGE_BY_ROLE[user.role]?.[tab] ||` came first here until 2026-09-03 — see
   // the note where that table used to be. One lookup now, and the empty triple
@@ -2170,6 +2174,7 @@ function Shell({ session, onRefresh, onLogout }) {
             {tab === 'mine' && (
               <EmployeeView
                 user={user} onChanged={refreshCounts} openSignal={formSignal}
+                onFormOpen={setFormOpen}
                 notices={tab === home ? homeNotices : null}
               />
             )}
@@ -2247,7 +2252,7 @@ function Shell({ session, onRefresh, onLogout }) {
 
             How tall it is for the BAR is no longer written down anywhere: the
             bar measures itself into `--nav-h` — see the observer above. */}
-        <div className={`mobile-nav-spacer no-print${showFab ? ' with-fab' : ''}`} />
+        <div className={`mobile-nav-spacer no-print${fabUp ? ' with-fab' : ''}`} />
 
         {/* FOUR BUTTONS AT MOST, FLAT, and they hold the same `tabs` the sidebar
             draws — see `BAR_SLOTS` and the derivation above. A slot with one tab
@@ -2271,7 +2276,7 @@ function Shell({ session, onRefresh, onLogout }) {
           ))}
         </nav>
 
-        {showFab && (
+        {fabUp && (
           <button
             className="fab no-print"
             onClick={() => setFormSignal((n) => n + 1)}

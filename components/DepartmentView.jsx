@@ -28,6 +28,10 @@ import { useBackHandler } from './nav.jsx';
  * the paper it prints, and a column here that is not on the paper is a figure
  * with nothing to check it against.
  *
+ * หัวคอลัมน์บนจอเป็น ×1.5 / ×3 ตั้งแต่ 2026-10-12 (รายงาน UX ค.10, ผู้ใช้เลือก) —
+ * คอลัมน์เดียวกับกระดาษ ชื่อเดียวกับป้ายของการ์ดมือถือ (`data-label`) · ใบพิมพ์
+ * (DepartmentPrint) ยังเป็น 1.50 / 3.00 ตามแบบฟอร์ม
+ *
  * ── AND SINCE 2026-09-09 IT CARRIES THE SAME TWO MARKS AS ส่งบัญชี ──────────
  *
  * รายการเกินเพดาน in red, and วันเกิด. Asked for by ฝ่ายบุคคล in those words —
@@ -310,8 +314,8 @@ function DepartmentCard({ dept, period, index }) {
               <th className="seq">ลำดับที่</th>
               <th className="who-col">ชื่อ-นามสกุล</th>
               <th className="co-col">บริษัท</th>
-              <th className="num b-15">1.50</th>
-              <th className="num b-3">3.00</th>
+              <th className="num b-15">×1.5</th>
+              <th className="num b-3">×3</th>
               <th className="num total-col">รวม ชม.</th>
             </tr>
           </thead>
@@ -465,8 +469,8 @@ function AllDepartments({ departments, total }) {
               <th className="seq">ลำดับที่</th>
               <th className="who-col">แผนก</th>
               <th className="num head-col">จำนวนคน</th>
-              <th className="num b-15">1.50</th>
-              <th className="num b-3">3.00</th>
+              <th className="num b-15">×1.5</th>
+              <th className="num b-3">×3</th>
               <th className="num total-col">รวม ชม.</th>
             </tr>
           </thead>

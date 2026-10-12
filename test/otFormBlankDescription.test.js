@@ -170,5 +170,8 @@ test('ใต้ช่องมีบรรทัดเดียว ไม่ใ�
   has(form, '{descriptionRefusal ? (');
   has(form, '<span className="field-note error" id={`${formId}-description-refusal`}>');
   has(form, '{descriptionRefusal}');
-  has(form, 'ตัวอักษร`');
+  // The quiet "ไม่เกิน 22 ตัวอักษร" third state is gone since 2026-10-12 (ค.8);
+  // the too-long sentence is what is left in the slot when nothing is refused.
+  has(form, ') : over ? (');
+  has(form, 'ตัวอักษรก่อนบันทึก`');
 });

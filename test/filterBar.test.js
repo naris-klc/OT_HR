@@ -318,11 +318,15 @@ test('คำอธิบายใต้กล่องสองอันไป�
   // A bar of equal-height boxes has no room for either.
   assert.ok(!code.includes('note="รายชื่อมาจากประวัติเอง'), 'note ยังอยู่ใต้กล่อง');
   assert.ok(!code.includes('note="พิมพ์เพื่อค้นหา'), 'note ยังอยู่ใต้กล่อง');
-  // The one about the screen moved into the card's hint, naming the box it is
-  // about — a sentence that survives only if a reader can tell what it answers.
-  const hint = code.slice(code.indexOf('<div className="hint">'), code.indexOf('</div>', code.indexOf('<div className="hint">')));
-  assert.match(hint, /กรองตามบัญชีผู้แก้ไข/);
-  assert.match(hint, /มาจากประวัติเอง/);
+  // The one about the screen moved into the card's hint on 2026-09-15 — and left
+  // it on 2026-10-12, when the hint became one line under a card-head band
+  // (รายงาน UX ค.2 + ค.8, approved on the mockup with that exact line). Pinned so
+  // the hint does not grow back into four lines.
+  const at = code.indexOf('<div className="card-head bleed">');
+  assert.ok(at > 0, 'หัวการ์ดแบบวันหยุดหายไป');
+  const hint = code.slice(code.indexOf('className="hint"', at), code.indexOf('</div>', code.indexOf('className="hint"', at)));
+  assert.match(hint, /แก้ย้อนหลังไม่ได้ · ไม่เก็บรหัสผ่าน/);
+  assert.doesNotMatch(hint, /มาจากประวัติเอง/);
   // The one about the search box is the placeholder, which is where an example
   // of what to type belongs.
   assert.match(read('components/common.jsx'), /placeholder = 'พิมพ์ชื่อ หรือ รหัสพนักงาน…'/);

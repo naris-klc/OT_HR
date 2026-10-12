@@ -275,11 +275,9 @@ export function policyVersionNotice(spread, { onGoMonthly } = {}) {
   } else if (spread.arithmeticMixed === false) {
     say = 'ต่างกันที่ข้อกำหนดเชิงสิทธิ์ ไม่ใช่การคิดชั่วโมง — ตัวเลขเทียบกันได้ตามปกติ';
   } else if (spread.unversioned > 0) {
-    say = (
-      <>
-        มีใบที่ไม่ได้บันทึกว่าใช้กฎชุดใด — รัน <code>npm run migrate:policy-version</code>
-      </>
-    );
+    // บอกคำสั่ง migrate:policy-version จนถึง 2026-10-12 (รายงาน UX ค.8) — คนอ่าน
+    // แถบนี้รันคำสั่งเองไม่ได้
+    say = 'มีใบที่ไม่ได้บันทึกว่าใช้กฎชุดใด — ติดต่อผู้ดูแลระบบ';
   } else {
     /* THE ONE CASE THAT NAMES A SCREEN, AND NOW OFFERS TO OPEN IT.
 

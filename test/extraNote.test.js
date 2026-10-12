@@ -152,7 +152,10 @@ test('ในฟอร์ม: ซ่อนไว้หลังลิงก์ �
  * note in the form for why ` Rev.4` is deliberately absent.
  */
 test('คำใบ้บอกชัดว่าช่องไหนขึ้นกระดาษ ช่องไหนไม่ขึ้น', () => {
-  assert.match(form, /`ไม่เกิน \$\{DESCRIPTION_MAX_CHARS\} ตัวอักษร`/);
+  // "ไม่เกิน 22 ตัวอักษร" under the box went on 2026-10-12 (รายงาน UX ค.8) — the
+  // n/22 counter on the label already says it. It must not come back.
+  assert.doesNotMatch(form, /: `ไม่เกิน \$\{DESCRIPTION_MAX_CHARS\} ตัวอักษร`/);
+  assert.match(form, /\{form\.description\.length\}\/\{DESCRIPTION_MAX_CHARS\}/);
   assert.match(form, /placeholder="อธิบายรายละเอียดเพิ่มเติม \(ไม่แสดงในแบบฟอร์ม F-HR-027\)"/);
   // No revision number anywhere in the hints: `formCode` ships as
   // "F-HR-027 Rev.4" and HR may change it, so a hint carrying the revision is a

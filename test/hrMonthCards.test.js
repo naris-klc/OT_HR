@@ -531,9 +531,12 @@ test('รวมทั้งหมด is the last card, not a bar over the page',
     assert.ok(!rule.includes(gone), `the total is floating again: ${gone}`);
   }
   // The fill stays: it is what says this row is the month's rather than another
-  // person's, which it did before it was ever sticky.
-  assert.match(rule, /background: var\(--neutral-wash\);/);
+  // person's, which it did before it was ever sticky. Green since 2026-10-12
+  // (รายงาน UX ค.11 แบบ ข) — the colour every other report's total row has.
+  assert.match(rule, /background: var\(--green-bg\); color: var\(--green-dark\);/);
   assert.ok(!desktop.includes('.hr-table tbody tr.total-row'), 'the phone rule reached the desktop table');
+  // The desktop row gets the same green band, cells only, from 861px up.
+  assert.match(desktop, /@media \(min-width: 861px\) \{\s*\.hr-table tr\.total-row > td \{[^}]*background: var\(--green-bg\);/);
 });
 
 test('neither the box nor the page is a filter', () => {
@@ -631,7 +634,9 @@ test('an item is a heading, its figures, and the one sentence that says what to 
   assert.match(pv, /figures: named\.join\(' · '\),/);
   assert.match(pv, /say,/);
   assert.ok(!hrCode.includes('ตรวจยอดก่อนเซ็นรับรอง'), 'the policy wording was copied into the screen');
-  for (const only of ['ตัวเลขเทียบกันได้ตามปกติ', 'npm run migrate:policy-version', 'ไม่ได้โหลดกฎมาเทียบ']) {
+  // 'npm run migrate:policy-version' became ติดต่อผู้ดูแลระบบ on 2026-10-12
+  // (รายงาน UX ค.8) — the reader of this notice cannot run a command.
+  for (const only of ['ตัวเลขเทียบกันได้ตามปกติ', 'มีใบที่ไม่ได้บันทึกว่าใช้กฎชุดใด — ติดต่อผู้ดูแลระบบ', 'ไม่ได้โหลดกฎมาเทียบ']) {
     assert.ok(pv.includes(only), `the ${only} case went missing`);
   }
 });
