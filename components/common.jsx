@@ -8,6 +8,7 @@ import {
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { capChips, capFigure, describeBreaches } from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
+import { ROLE_LABEL_TH } from '@/lib/roles.js';
 import {
   ENTERED_FIELDS, filingLead, filingOf, idOf, isBirthdayWelfare, isHrVerifiedBirthday,
   isProxyFiled, isSystemLog, lastAction, sameSession, sameValue,
@@ -809,8 +810,8 @@ export function EntryLead({ entry: e, marks = true }) {
           : <span className="dm-tag">หักพักเที่ยง</span>}
         <span className="dm-tag">นาฬิกา <b>{hours(e.totals?.clockHours)}</b> ชม.</span>
         {e.capExceeded
-          ? <span className="dm-tag over">เกินเพดานแผนก — {describeBreaches(e).map((b) => b.text).join(' · ')}</span>
-          : <span className="dm-tag ok">ไม่เกินเพดานแผนก</span>}
+          ? <span className="dm-tag over">{describeBreaches(e).map((b) => b.text).join(' · ')}</span>
+          : <span className="dm-tag ok">ไม่เกินเพดาน</span>}
         {marks && <BirthdayWelfareMark entry={e} />}
         {marks && <FlatDailyMark entry={e} />}
       </span>
@@ -1078,12 +1079,16 @@ export function CancelledMark({ entry }) {
  * as long as a หัวหน้า was the only person who could file for somebody else. A
  * birthday request is ordered by ฝ่ายบุคคล and typed by nobody, and both halves
  * of that sentence would have been wrong.
+ *
+ * ชื่อบทบาทจาก `ROLE_LABEL_TH` ตั้งแต่ 2026-10-12 — ตารางคำที่เขียนเองเคยมีคีย์
+ * `manager` ซึ่งไม่ใช่บทบาทในระบบ หัวหน้างาน (`supervisor`) ที่บันทึกแทนจึงได้ป้าย
+ * `บันทึกแทน · ชื่อ` เปล่า ๆ · ชื่อคนบันทึกย้ายไปอยู่ใน tooltip วันเดียวกัน — ผู้ใช้สั่ง
+ * *"ควรกระชับเหลือแค่ หัวหน้างานบันทึกแทน แล้วให้รายละเอียดแสดงใน tooltip หรือไปดู
+ * หน้ารายละเอียดแทน"* (ป๊อปอัปรายละเอียดบอก ผู้บันทึก อยู่แล้ว)
  */
-const FILER_LABEL = {
-  manager: 'หัวหน้าบันทึกแทน',
-  hr: 'ฝ่ายบุคคลบันทึกแทน',
-  admin: 'ผู้ดูแลระบบบันทึกแทน',
-};
+function filerLabel(role) {
+  return ROLE_LABEL_TH[role] ? `${ROLE_LABEL_TH[role]}บันทึกแทน` : 'บันทึกแทน';
+}
 
 export function ProxyMark({ entry }) {
   /* A third branch — the ระบบสร้างใบวันเกิด chip — stood between these two until
@@ -1122,11 +1127,11 @@ export function ProxyMark({ entry }) {
   return (
     <span
       className="chip proxy"
-      title={name
+      data-tip={name
         ? `${name} เป็นผู้บันทึกรายการนี้แทนพนักงาน — ใบนี้ยังเป็นของพนักงานตามเดิม`
         : 'รายการนี้บันทึกโดยผู้อื่น ไม่ใช่พนักงานเจ้าของรายการ'}
     >
-      {FILER_LABEL[entry.filedBy?.role] || 'บันทึกแทน'}{name ? ` · ${name}` : ''}
+      {filerLabel(entry.filedBy?.role)}
     </span>
   );
 }

@@ -6783,8 +6783,11 @@ arriving as a side effect of a feature about something else.
 
 ### On screen and on the paper
 
-Every list that shows a request shows who filed it: **หัวหน้าบันทึกแทน · ชื่อ**
-beside the แก้ไขแล้ว mark it is deliberately *not* coloured like, on the
+Every list that shows a request shows who filed it: **หัวหน้างานบันทึกแทน**
+(the filer's role from `ROLE_LABEL_TH`; their name is in the tooltip and in the
+pop-up — it read "หัวหน้าบันทึกแทน · ชื่อ" until 2026-10-12, when the user asked
+for it shorter, and a หัวหน้างาน filing got the bare "บันทึกแทน · ชื่อ" because
+the label table was keyed on a role named `manager` that does not exist) beside the แก้ไขแล้ว mark it is deliberately *not* coloured like, on the
 employee's own history, the approval queues, and ตรวจสอบรายเดือน → ดู /
 แก้ไขรายการ. The review pop-up says it above the hours, where a view has not
 been formed yet, together with the fact that nobody approved it and why.
@@ -8056,6 +8059,17 @@ line grey all along — `.hr-table tbody td.cap-col .cap-sub` outranked
 `เกินเพดานรายสัปดาห์`, because it is the second ceiling and the reader has to
 tell the two apart. The flag under the status on ฝ่ายบุคคล's list of a person's
 requests is bold now.
+
+**⚠ And again that evening, because the pop-up read it twice.** `EntryLead`
+prefixed `เกินเพดานแผนก — ` to that line, so the pop-up said "เกินเพดานแผนก —
+เกินเพดาน — เพดาน 40 ชม.". `breachLines` now says `เกินเพดาน 40 ชม./เดือน` and
+`เกินเพดาน 12 ชม./สัปดาห์ (03/08/2569 – 09/08/2569)` — the unit is what tells the
+two ceilings apart, and the week is printed in Thai dates though it is stored ISO
+— and the prefix is gone. The ⚠ line under รายละเอียด on คิวรออนุมัติ is gone
+too (the user: it repeats สะสม / เพดาน beside it); a weekly-only breach is
+therefore not visible on that row any more, only in the pop-up and the approve
+sheet. "เกินเพดานแผนก", "เกินเพดานของแผนก" and "เกินเพดาน OT ที่กำหนด" became
+plain `เกินเพดาน` everywhere.
 
 **⚠ `overCapLine` said the bare `เกินเพดาน` for that one round only.** The user
 corrected it the same day — *ตัดแค่คำว่า "แล้ว" ออก แสดงจำนวนที่เกินเหมือนเดิม* —

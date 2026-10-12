@@ -6802,7 +6802,7 @@ const POLICY_FIELDS = [
   },
   {
     section: 5,
-    key: 'capBehaviour', open: 8, label: 'เมื่อเกินเพดานแผนก',
+    key: 'capBehaviour', open: 8, label: 'เมื่อเกินเพดาน',
     options: [['warn', 'เตือนแต่ให้ส่งได้ ให้ HR ตัดสิน'], ['block', 'ไม่ให้ส่ง']],
   },
   {

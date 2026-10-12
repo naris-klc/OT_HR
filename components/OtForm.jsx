@@ -12,6 +12,7 @@ import {
   FLAT_DAY_TIMES, workHoursSay, birthdayRateSay,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
+import { breachLines } from '@/lib/caps.js';
 import {
   // `Modal` left with the birthday pop-up on 2026-09-03 — see the note where
   // that shape used to be chosen, near the foot of this file. A dead import is
@@ -1745,11 +1746,24 @@ export default function OtForm({
               the eight were blocked. Each person's ceiling is checked by the
               server when their own request is posted, and the summary names
               whoever it stopped. */}
-          {cap?.capHours != null && !(proxy && targets.length > 1) && (
+          {/* บรรทัดตัวเลขเป็นของเพดานรายเดือน · บรรทัดเกินบอกทุกเพดานที่เกินจริง
+              (`breachLines`) — จนถึง 2026-10-12 มันต่อ `— เกินเพดาน` ท้ายตัวเลข
+              รายเดือนเสมอ ใบที่เกินแค่รายสัปดาห์จึงอ่านว่า รวม 14 ชม. เกินเพดาน
+              40 และแผนกที่มีแต่เพดานรายสัปดาห์ไม่เห็นกล่องนี้เลย */}
+          {cap && (cap.capHours != null || cap.exceeded) && !(proxy && targets.length > 1) && (
             <Alert kind={cap.exceeded ? 'warn' : 'ok'}>
-              เพดานแผนก {cap.capHours} ชม./เดือน · ใช้ไปแล้ว {hours(cap.usedHoursBefore)} ชม. ·
-              {' '}รวมรายการนี้เป็น {hours(cap.projected)} ชม.
-              {cap.exceeded && (cap.blocked ? ' — เกินเพดาน ไม่สามารถบันทึกได้' : ' — เกินเพดาน ระบบจะส่งให้ HR พิจารณา')}
+              {cap.capHours != null && (
+                <div>
+                  เพดาน {cap.capHours} ชม./เดือน · ใช้ไปแล้ว {hours(cap.usedHoursBefore)} ชม. ·
+                  {' '}รวมรายการนี้เป็น {hours(cap.projected)} ชม.
+                </div>
+              )}
+              {cap.exceeded && (
+                <div>
+                  {breachLines(cap.breaches).map((b) => b.text).join(' · ') || 'เกินเพดาน'}
+                  {cap.blocked ? ' — ไม่สามารถบันทึกได้' : ' — ระบบจะส่งให้ HR พิจารณา'}
+                </div>
+              )}
             </Alert>
           )}
           {proxy && targets.length > 1 && (

@@ -348,7 +348,7 @@ export const GET = route(async (req, { params }) => {
         capped.push({
           name: entry.employee?.name || '',
           date: entry.workDate,
-          text: describeBreaches(entry).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก',
+          text: describeBreaches(entry).map((b) => b.text).join(' · ') || 'เกินเพดาน',
         });
       }
     }
