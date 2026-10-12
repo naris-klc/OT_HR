@@ -159,7 +159,7 @@ test('the page draws the pill and the example box with tokens only', () => {
   };
   const pill = rule('.policy-override');
   assert.match(pill, /background: var\(--amber-bg\); color: var\(--amber-ink\);/);
-  assert.match(pill, /border-radius: 999px/);
+  assert.match(pill, /border-radius: var\(--radius-pill\)/);
   assert.match(css, /\.policy-row-a \.policy-override \{ align-self: flex-end; \}/);
   assert.match(rule('.policy-example'), /background: var\(--neutral-wash\)/);
   assert.match(rule('.hint.policy-reading.inert'), /color: var\(--muted\)/);

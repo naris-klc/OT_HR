@@ -225,7 +225,7 @@ test('แถบเลื่อนเป็นของกล่อง ไม่�
   // Firefox draws none of the `::-webkit-` rules and would show its own bar.
   assert.match(css, /\.pick-list \{ scrollbar-width: thin; scrollbar-color: var\(--scroll-thumb\) transparent; \}/);
   // The page's own rule is what is being deferred to, so it has to still exist.
-  assert.match(css, /::-webkit-scrollbar-thumb \{ background: var\(--scroll-thumb\); border-radius: 8px; border: 3px solid var\(--bg\); \}/);
+  assert.match(css, /::-webkit-scrollbar-thumb \{ background: var\(--scroll-thumb\); border-radius: var\(--radius-xs\); border: 3px solid var\(--bg\); \}/);
   // And this container may not restate the geometry it is borrowing.
   const own = css.slice(css.indexOf('.pick-list::-webkit-scrollbar {'), css.indexOf('.pick-list .check {'));
   assert.ok(!own.includes('border-radius'), '.pick-list ตั้งรูปทรงแถบเลื่อนเอง');

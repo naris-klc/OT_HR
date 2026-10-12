@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api, hours, withHours, currentPeriod, periodLabel } from '@/lib/api.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
 import {
   BirthdayNote, Empty, ExportMenu, NoticeRow, NoticeStack, OverCeilingFigure,
-  OverCeilingNote, PickOne, UnaccountedHours,
+  OverCeilingNote, PAGE_SIZE, PickOne, TablePager, UnaccountedHours, pageWindow, usePageReset,
 } from './common.jsx';
 import DepartmentPrint from './DepartmentPrint.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -269,6 +269,20 @@ export default function DepartmentView() {
  */
 function DepartmentCard({ dept, period, index }) {
   const t = dept.totals;
+  /* ตัวแบ่งหน้า — 2026-10-12 (รายงาน UX หมวด จ): แผนกใหญ่เกิน 50 คนได้ และตารางนี้
+     เป็นตารางเดียวในแอปที่ยังวาดทุกแถว · กลไกเดียวกับ `CompanySheet` ใน AccountingView:
+     แถวนอกหน้าได้ `off-page` (ซ่อนบนจอ ไม่ได้ตัดทิ้ง) Ctrl+P จึงยังพิมพ์ครบทุกคน ·
+     แผนก 50 คนหรือน้อยกว่าไม่มีแถบ (`PAGER_FROM`) · ใบพิมพ์ DepartmentPrint ไม่เกี่ยว */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  usePageReset(setPage, [period, dept.rows.length, pageSize]);
+  const win = pageWindow(page, pageSize, dept.rows.length);
+  const listRef = useRef(null);
+  function goPage(next) {
+    setPage(next);
+    listRef.current?.scrollIntoView({ block: 'start' });
+  }
+  const off = (i) => (i >= win.from && i < win.to ? '' : 'off-page');
   return (
     /* `card flush` — see the note on `CompanySheet` in AccountingView.jsx. The
        two screens are card for card the same and are now ruled the same way. */
@@ -287,7 +301,7 @@ function DepartmentCard({ dept, period, index }) {
         </div>
       </div>
 
-      <div className="table-wrap">
+      <div className="table-wrap dept-list" ref={listRef}>
         {/* Declared widths rather than whatever this department's names happen
             to measure: the cards stack, and a column has to land in the same
             place in every one of them for the stack to be read down. */}
@@ -322,7 +336,7 @@ function DepartmentCard({ dept, period, index }) {
           <tbody>
             {dept.rows.map((row, i) => (
               <React.Fragment key={row.employee.id}>
-                <tr>
+                <tr className={off(i) || undefined}>
                   <td className="seq">{i + 1}</td>
                   <td className="who-col">
                     {row.employee.name}
@@ -372,7 +386,7 @@ function DepartmentCard({ dept, period, index }) {
                   exactly the table it was before this: no extra row, no extra
                   rule, nothing to read past. */}
               {(row.birthdayHours > 0 || row.overCeiling?.count > 0) && (
-                <tr className="row-notes">
+                <tr className={`row-notes ${off(i)}`.trim()}>
                   <td className="seq" />
                   <td className="who-col" />
                   <td className="note-cell" colSpan={4}>
@@ -425,6 +439,16 @@ function DepartmentCard({ dept, period, index }) {
           </tfoot>
         </table>
       </div>
+      <TablePager
+        className="flush-pager no-print"
+        label={`รายงาน OT แยกแผนก · ${dept.name}`}
+        unit="คน"
+        page={win.at}
+        pageSize={pageSize}
+        total={dept.rows.length}
+        onPage={goPage}
+        onPageSize={setPageSize}
+      />
     </div>
   );
 }

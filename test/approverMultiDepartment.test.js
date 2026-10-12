@@ -726,7 +726,7 @@ test('the popover floats over the content below it and scrolls', () => {
   // half-covered button at its bottom edge did not look covered. The tight one
   // is pulled in 2px so it cannot leak out at the sides of a panel that is the
   // full width of its field.
-  assert.match(css, /box-shadow: 0 2px 8px -2px var\(--shadow-soft\), 0 14px 34px var\(--shadow-soft\);/);
+  assert.match(css, /box-shadow: var\(--elev-pop\);/);
   // AND THE TONE IS STILL `--shadow-soft` ON BOTH. `.dept-menu` spent a round on
   // `--shadow-1` — black at half opacity on the dark side — and it "lifted the
   // panel but put a dark band across the field underneath it". Tighter geometry,
@@ -873,7 +873,7 @@ test('the focus ring is on the shell, and survives focus moving to a chip', () =
   // carry buttons and the ring must not vanish when one of them takes focus.
   const css = styles();
   assert.match(css, /\.dept-combo\.open,\s*\n\.dept-combo:focus,\s*\n\.dept-combo:focus-within \{/);
-  assert.match(css, /border-color: var\(--green\); box-shadow: 0 0 0 3px var\(--focus-ring\);/);
+  assert.match(css, /border-color: var\(--green\); box-shadow: var\(--ring-focus\);/);
   // The browser's own outline is replaced, not merely added to.
   assert.match(css, /outline: none;/);
 });

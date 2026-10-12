@@ -500,7 +500,8 @@ test('รายงานแยกแผนก — ตัวเลขแดงต
    * ตรึงไว้ที่ความกว้างนี้ และคอลัมน์ที่ตรึงแล้วมีรูไม่ได้
    */
   const view = strip(read('components/DepartmentView.jsx'));
-  assert.match(view, /<tr className="row-notes">/);
+  // `off(i)` ตั้งแต่ 2026-10-12 — ประโยคตามแถวของมันไปหน้าเดียวกันเมื่อมีตัวแบ่งหน้า
+  assert.match(view, /<tr className=\{`row-notes \$\{off\(i\)\}`\.trim\(\)\}>/);
   assert.match(view, /<td className="who-col" \/>[\s\S]{0,80}<td className="note-cell" colSpan=\{4\}>/,
     'คอลัมน์ที่ตรึงต้องยังเป็นเซลล์จริงในแถวนี้ และสแปนต้องคลุมเฉพาะสี่ช่องหลังมัน');
   assert.match(view, /\{\(row\.birthdayHours > 0 \|\| row\.overCeiling\?\.count > 0\) && \(/,

@@ -170,7 +170,7 @@ test('the pair splits the foot evenly', () => {
   const start = css.indexOf('.foot-split .btn {');
   const rule = css.slice(start, css.indexOf('}', start));
   has(rule, 'flex: 1 1 0;');
-  has(rule, 'min-height: var(--btn-h); border-radius: 8px;');
+  has(rule, 'min-height: var(--btn-h); border-radius: var(--radius-xs);');
   // A <button> centres its own label inside the box its PADDING makes; with a
   // min-height doing the sizing, that is not the box on screen.
   has(rule, 'display: flex; align-items: center; justify-content: center;');
@@ -397,7 +397,7 @@ test('แก้ไขชั่วโมง อยู่ท้ายกล่อ�
 test('the two buttons are the same box down to the hairline', () => {
   const start = css.indexOf('.foot-split .btn {');
   const rule = css.slice(start, css.indexOf('}', start));
-  has(rule, 'border-radius: 8px;');
+  has(rule, 'border-radius: var(--radius-xs);');
   has(rule, 'border: 1px solid transparent;');
   // …and the refusal only re-colours that hairline; it does not add its own.
   const red = css.indexOf('.foot-split .btn.ghost.danger {');

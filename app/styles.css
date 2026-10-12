@@ -476,6 +476,21 @@
   --radius: 14px;
   --radius-sm: 11px;
   --radius-xs: 9px;
+  /* 2026-10-12 (รายงาน UX หมวด จ): สองขั้นเล็ก แคปซูล และหัวแผ่นล่าง — ค่าดิบ 61 จุด
+     ปัดเข้าขั้นที่ใกล้ที่สุด (ต่างไม่เกิน 1px) · แคปซูลเคยเขียนทั้ง 20px และ 999px:
+     999px → `--radius-pill` · 20px ของชิปที่ตัดสองบรรทัดได้ (.chip .head-badge …) →
+     `--radius-lg` ซึ่งบรรทัดเดียวยังเป็นแคปซูล สองบรรทัดยังเป็นมุมมนเหมือนเดิม ·
+     test/rawDesignValues.test.js ห้ามค่าดิบกลับมา */
+  --radius-2xs: 6px;
+  --radius-3xs: 3px;
+  --radius-pill: 999px;
+  --radius-sheet: 22px;
+
+  /* เงาที่ใช้ซ้ำ — สีอยู่ในโทเคน --shadow-* --focus-ring อยู่แล้ว ตรงนี้คือรูปทรง */
+  --ring-focus: 0 0 0 3px var(--focus-ring);
+  --ring-line: inset 0 0 0 1px var(--line);
+  --elev-pop: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
+  --glow-btn-sm: 0 3px 9px var(--green-glow-sm);
 
   /* ── the box a form control is drawn in ───────────────────────────────
      Height, horizontal padding and text size, as three tokens rather than as
@@ -1296,7 +1311,7 @@ html { -webkit-tap-highlight-color: transparent; }
 
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 8px; border: 3px solid var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: var(--radius-xs); border: 3px solid var(--bg); }
 
 /* ══ shell ═══════════════════════════════════════════════════════════════ */
 
@@ -1353,14 +1368,14 @@ html { -webkit-tap-highlight-color: transparent; }
   display: flex; align-items: center; justify-content: center;
   width: 30px; height: 30px; flex: none;
   border: 0; background: transparent;
-  color: var(--on-panel-2); border-radius: 8px; cursor: pointer;
+  color: var(--on-panel-2); border-radius: var(--radius-xs); cursor: pointer;
   transition: background .16s, color .16s;
 }
 .sidebar-toggle:hover {
   background: var(--on-panel-hover); color: var(--on-panel);
 }
 .brand .mark {
-  width: 34px; height: 34px; flex: none; border-radius: 8px;
+  width: 34px; height: 34px; flex: none; border-radius: var(--radius-xs);
   background: var(--green); display: grid; place-items: center;
   font: 700 16px/1 var(--latin);
 }
@@ -1476,7 +1491,7 @@ html { -webkit-tap-highlight-color: transparent; }
   width: 44px; height: 44px;
   padding: 0;
   margin: 0 auto;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   position: relative;
 }
 .sidebar.collapsed .nav .label {
@@ -1499,7 +1514,7 @@ html { -webkit-tap-highlight-color: transparent; }
   padding: 0 4px;
   font-size: 10px;
   line-height: 17px;
-  border-radius: 9px;
+  border-radius: var(--radius-xs);
   box-shadow: 0 1px 3px var(--shadow-tab);
 }
 .sidebar.collapsed .sidebar-foot:not([hidden]) {
@@ -1540,7 +1555,7 @@ html { -webkit-tap-highlight-color: transparent; }
   color: var(--on-fill);
   font: 500 12.5px/1.4 var(--sans);
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-2xs);
   white-space: nowrap;
   pointer-events: none;
   z-index: 25;
@@ -1644,7 +1659,7 @@ html { -webkit-tap-highlight-color: transparent; }
    distinction that was doing the work. */
 .count {
   min-width: 20px; height: 20px; padding: 0 6px; flex: none;
-  border-radius: 10px; background: var(--amber); color: var(--on-amber);
+  border-radius: var(--radius-sm); background: var(--amber); color: var(--on-amber);
   font: 600 11px/20px var(--mono); text-align: center;
 }
 
@@ -1653,7 +1668,7 @@ html { -webkit-tap-highlight-color: transparent; }
    with one, and keep the flex row it had as a div. */
 .whoami {
   width: 100%; display: flex; align-items: center; gap: 11px; padding: 8px;
-  border: none; background: transparent; border-radius: 8px;
+  border: none; background: transparent; border-radius: var(--radius-xs);
   color: inherit; text-align: left; font: inherit; cursor: pointer;
 }
 .whoami:hover { background: var(--on-panel-hover); }
@@ -1718,7 +1733,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .signout {
   width: 100%; margin-top: 6px; padding: 9px;
   border: 1px solid var(--on-panel-danger-line); background: transparent;
-  color: var(--on-panel-danger); border-radius: 8px;
+  color: var(--on-panel-danger); border-radius: var(--radius-xs);
   font: 500 12.5px/1 var(--sans); cursor: pointer;
   transition: background .16s, border-color .16s, box-shadow .16s;
 }
@@ -1931,7 +1946,7 @@ html { -webkit-tap-highlight-color: transparent; }
   animation: otfade .18s ease both;
 }
 .appbar .mark-sm {
-  width: 30px; height: 30px; flex: none; border-radius: 7px;
+  width: 30px; height: 30px; flex: none; border-radius: var(--radius-2xs);
   background: var(--green); color: var(--on-fill); display: grid; place-items: center;
   font: 700 14px/1 var(--latin);
   transition: opacity .14s;
@@ -1949,7 +1964,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .appbar .mark-btn {
   flex: none; width: 44px; height: 44px; margin-left: -7px;
   align-items: center; justify-content: center;
-  padding: 0; border: none; background: none; border-radius: 12px;
+  padding: 0; border: none; background: none; border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background .14s, transform .12s;
 }
@@ -2079,8 +2094,8 @@ main { padding: var(--page-pad-y) var(--page-pad-x); flex: 1; min-width: 0; }
    the word in front of it. */
 .hero .sub.waiting .n { font: 600 13px/1 var(--mono); font-variant-numeric: tabular-nums; }
 
-.meter { margin-top: 14px; height: 6px; border-radius: 3px; background: var(--meter-track); overflow: hidden; }
-.meter > i { display: block; height: 100%; border-radius: 3px; background: var(--meter-fill); transition: width .3s ease; }
+.meter { margin-top: 14px; height: 6px; border-radius: var(--radius-3xs); background: var(--meter-track); overflow: hidden; }
+.meter > i { display: block; height: 100%; border-radius: var(--radius-3xs); background: var(--meter-fill); transition: width .3s ease; }
 .meter.over > i { background: var(--danger); }
 
 .hero-actions { display: flex; flex-direction: column; gap: 8px; }
@@ -2118,7 +2133,7 @@ main { padding: var(--page-pad-y) var(--page-pad-x); flex: 1; min-width: 0; }
 .stat.rate.hol15 { background: var(--info-bg); border-color: var(--info-line); }
 .stat.rate.hol3 { background: var(--amber-bg); border-color: var(--amber-line); }
 .stat.rate .label { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 500 13px/1.2 var(--sans); letter-spacing: 0; }
-.stat.rate .rate-chip { flex: none; font: 700 11.5px/1 var(--mono); background: var(--card); border-radius: 999px; padding: 3px 7px; }
+.stat.rate .rate-chip { flex: none; font: 700 11.5px/1 var(--mono); background: var(--card); border-radius: var(--radius-pill); padding: 3px 7px; }
 .stat.rate .value { flex-wrap: wrap; row-gap: 2px; margin-top: 10px; }
 .stat.rate .value > span:first-child { font-weight: 700; }
 .stat.rate.weekday :is(.rate-chip, .value > span:first-child) { color: var(--green-dark); }
@@ -2471,7 +2486,7 @@ div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2
   padding: 7px 10px; background: var(--field-bg);
   font: 500 13px/1 var(--mono); color: var(--ink);
 }
-.period-input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring); }
+.period-input:focus { outline: none; border-color: var(--green); box-shadow: var(--ring-focus); }
 
 /* ══ rows / list items ═══════════════════════════════════════════════════ */
 
@@ -2490,7 +2505,7 @@ div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2
 
 /* The date chip is the anchor of every row — day number over weekday. */
 .date {
-  width: 46px; height: 46px; flex: none; border-radius: 10px;
+  width: 46px; height: 46px; flex: none; border-radius: var(--radius-sm);
   background: var(--green-bg); color: var(--green-dark);
   display: grid; place-items: center; align-content: center;
   font-family: var(--mono); text-align: center;
@@ -2533,7 +2548,7 @@ div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2
    size only, which is the whole of what makes the word look pressable. */
 .item-go .t {
   font: 500 12.5px/1 var(--sans); color: var(--muted);
-  border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius-2xs); padding: 7px 10px;
   white-space: nowrap;
 }
 /* Hover is on `.item`, not on this: the row is the hit area, so the frame has
@@ -2802,7 +2817,7 @@ div:not(.card):has(> :is(.t, h2, h3, .form-head) + .hint):not(:has(> :not(.t, h2
      pill, whose own background starts where the space ends. 4px is what makes
      the pill read as a separate object rather than as the end of the clock. */
   margin-left: 4px;
-  padding: 1px 6px; border-radius: 5px;
+  padding: 1px 6px; border-radius: var(--radius-2xs);
   background: var(--neutral-wash); color: var(--ink-2);
   font: 600 12px/1.5 var(--mono); font-variant-numeric: tabular-nums;
 }
@@ -3235,7 +3250,7 @@ button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertica
    than the button's width, so พิมพ์ใบสรุปส่งการเงิน does not fold under its tag. */
 .export-menu li .nm { white-space: nowrap; }
 .export-menu li .mi-tag {
-  flex: none; padding: 1px 7px; border-radius: 6px;
+  flex: none; padding: 1px 7px; border-radius: var(--radius-2xs);
   background: var(--neutral-wash); color: var(--muted);
   font: 500 11.5px/1.4 var(--sans); font-variant-numeric: tabular-nums;
 }
@@ -3421,7 +3436,7 @@ button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertica
 .field input:not(:where([type='checkbox'], [type='radio'])):focus,
 .field select:focus, .field textarea:focus, .field .pick-one:focus, .field .pick-box:focus,
 .policy-row select:focus, .policy-row .pick-box:focus {
-  outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: none; border-color: var(--green); box-shadow: var(--ring-focus);
 }
 /* A field this person may not change.
    Greyed for real rather than left to the browser: `background: var(--card)` above
@@ -3591,7 +3606,7 @@ td > .approver-line { margin-top: 5px; }
 .approval-steps .mark { flex: none; font-size: 12px; line-height: 1.55; }
 .approval-steps .body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .approval-steps .act {
-  align-self: flex-start; padding: 3px 10px; border-radius: 20px;
+  align-self: flex-start; padding: 3px 10px; border-radius: var(--radius-lg);
   font: 600 11.5px/1.5 var(--sans); white-space: nowrap;
   background: var(--neutral-wash); color: var(--muted);
 }
@@ -3639,7 +3654,7 @@ td > .approver-line { margin-top: 5px; }
   max-height: 210px;
   overflow-y: auto;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: var(--card);
   overscroll-behavior-y: contain;
 }
@@ -3788,7 +3803,7 @@ td > .approver-line { margin-top: 5px; }
 .dept-combo:focus,
 .dept-combo:focus-within {
   outline: none;
-  border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+  border-color: var(--green); box-shadow: var(--ring-focus);
 }
 .dept-combo.off { background: var(--neutral-wash); cursor: default; opacity: .7; }
 
@@ -3875,7 +3890,7 @@ td > .approver-line { margin-top: 5px; }
 .dept-pill {
   display: inline-flex; align-items: center; gap: 6px;
   min-height: var(--chip-h);
-  padding: 4px 6px 4px 11px; border-radius: 20px;
+  padding: 4px 6px 4px 11px; border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   background: var(--card); color: var(--ink-2);
   font: 500 13px/1.5 var(--sans);
@@ -3888,7 +3903,7 @@ td > .approver-line { margin-top: 5px; }
   padding-right: 6px;
 }
 .dept-pill .tag {
-  padding: 1px 7px; border-radius: 20px;
+  padding: 1px 7px; border-radius: var(--radius-lg);
   background: var(--card); color: var(--green-dark);
   font: 600 10.5px/1.6 var(--sans); white-space: nowrap;
 }
@@ -4128,7 +4143,7 @@ td > .approver-line { margin-top: 5px; }
 .pick-menu.many-menu li .tick {
   flex: none; width: 16px; height: 16px;
   display: grid; place-items: center;
-  border: 1.5px solid var(--input-line); border-radius: 4px;
+  border: 1.5px solid var(--input-line); border-radius: var(--radius-3xs);
   background: var(--card);
   font-size: 10.5px; line-height: 1; color: transparent;
 }
@@ -4189,7 +4204,7 @@ td > .approver-line { margin-top: 5px; }
   font: 500 11.5px/1.5 var(--mono); color: var(--muted-2);
 }
 .pick-menu.dept-menu li .tag {
-  flex: none; padding: 1px 8px; border-radius: 20px;
+  flex: none; padding: 1px 8px; border-radius: var(--radius-lg);
   background: var(--green-bg); color: var(--green-dark);
   font: 600 10.5px/1.6 var(--sans); white-space: nowrap;
 }
@@ -4589,7 +4604,7 @@ td > .approver-line { margin-top: 5px; }
    marks rather than one box with a hole in the middle. */
 .hit {
   background: var(--green-tint); color: var(--green-accent); font-weight: 700;
-  border-radius: 2px; padding: 0;
+  border-radius: var(--radius-3xs); padding: 0;
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 
@@ -4714,7 +4729,7 @@ td > .approver-line { margin-top: 5px; }
      BOTH IN `--shadow-soft`, which is the tone `.dept-menu`'s note settled on
      after `--shadow-1` "lifted the panel but put a dark band across the field
      underneath it". Tighter geometry, same tone — depth rather than weather. */
-  box-shadow: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
+  box-shadow: var(--elev-pop);
 }
 /* 40px rows and no smaller. A row here is "show me this person's history",
    which is a read — but the rows are 4px apart in a list of two hundred, and a
@@ -4800,7 +4815,7 @@ td > .approver-line { margin-top: 5px; }
    panel hanging off nothing. Written after the shared `:focus` rule above so it
    wins at equal specificity when both apply. */
 .field .pick-one.open {
-  border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+  border-color: var(--green); box-shadow: var(--ring-focus);
 }
 .field .pick-one.open .caret { transform: rotate(180deg); color: var(--green); }
 @media (prefers-reduced-motion: reduce) {
@@ -4956,7 +4971,7 @@ td > .approver-line { margin-top: 5px; }
 .pick-box.empty { text-align: left; }
 .pick-box .pick-mark { flex: none; display: grid; color: var(--muted-2); }
 .pick-box .pick-mark svg { width: 16px; height: 16px; }
-.pick-box.open { border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring); }
+.pick-box.open { border-color: var(--green); box-shadow: var(--ring-focus); }
 .pick-box.open .pick-mark { color: var(--green); }
 /* THE BOX HOLDS A DATE ITS OWN RANGE WOULD REFUSE — `input:out-of-range`'s job,
    moved. That selector needs an `<input>`, and every date box in this app is a
@@ -5019,7 +5034,7 @@ td > .approver-line { margin-top: 5px; }
   /* The same two shadows `.pick-menu` uses, and the note there is the reason:
      the wide one is the lift, the tight one is the EDGE — what makes the half
      covered control underneath look covered rather than missing. */
-  box-shadow: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
+  box-shadow: var(--elev-pop);
   animation: otfade .14s ease both;
 }
 /* ── AND THE THIRD SHAPE: A SHELL, NOT A PANEL ──────────────────────────────
@@ -5076,7 +5091,7 @@ td > .approver-line { margin-top: 5px; }
   padding: 6px;
   background: var(--card-lift);
   border: 1px solid var(--line-lift); border-radius: var(--radius-sm);
-  box-shadow: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
+  box-shadow: var(--elev-pop);
 }
 .pop.one-pop:not(.sheet):has(> .one-search) .pick-menu {
   padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none;
@@ -5284,7 +5299,7 @@ td > .approver-line { margin-top: 5px; }
 .cal-type-in::placeholder { color: var(--muted-2); font-weight: 400; }
 .cal-type-in:focus {
   outline: none;
-  border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+  border-color: var(--green); box-shadow: var(--ring-focus);
 }
 /* Disabled until the box holds a date this field can actually take — a button
    whose only answer is a refusal is worse than a button that waits. */
@@ -5497,7 +5512,7 @@ td > .approver-line { margin-top: 5px; }
   .pop.sheet.one-pop {
     background: var(--card-lift);
     border: 1px solid var(--line-lift); border-bottom: 0;
-    box-shadow: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
+    box-shadow: var(--elev-pop);
   }
   /* The list is the sheet's scroll area now, the way `.nav-sheet` is the
      drawer's: no panel of its own, and no height of its own either — it grows
@@ -5652,7 +5667,7 @@ td > .approver-line { margin-top: 5px; }
   background: var(--field-bg); color: var(--ink);
   font: 600 26px/1 var(--mono); font-variant-numeric: tabular-nums;
 }
-.time-num:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring); }
+.time-num:focus { outline: none; border-color: var(--green); box-shadow: var(--ring-focus); }
 /* OUT OF RANGE — 25 for an hour. It is not refused (see the note over `NumBox`:
    taking the digit away silently would leave `2` on screen and no reason), it
    is MARKED, and ตกลง is shut while it stands. The app's own red, and the same
@@ -5759,7 +5774,7 @@ td > .approver-line { margin-top: 5px; }
 .time-chip {
   /* No side padding — the grid column is the width now, and 9px of it plus a
      five-character figure is what overflowed. */
-  border: 1px solid var(--line); border-radius: 20px; padding: 4px 0;
+  border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 4px 0;
   background: none; color: var(--ink-2);
   font: 500 12px/1.4 var(--mono); font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -5908,7 +5923,7 @@ td > .approver-line { margin-top: 5px; }
   align-items: flex-start;
   padding: 10px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
 }
 .batch-result li + li { margin-top: 8px; }
 .batch-result li.ok { background: var(--green-bg); border-color: transparent; }
@@ -6285,12 +6300,12 @@ td > .approver-line { margin-top: 5px; }
    COLUMN below it, where the bar takes the whole line and `flex: 1` below
    splits it evenly between the two. Neither needs a rule of its own here. */
 .queue-tabs {
-  display: flex; gap: 6px; padding: 6px; border-radius: 12px;
+  display: flex; gap: 6px; padding: 6px; border-radius: var(--radius-sm);
   background: var(--neutral-wash); border: 1px solid var(--line);
 }
 .queue-tabs button {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 9px 14px; border: 0; border-radius: 8px; background: transparent;
+  padding: 9px 14px; border: 0; border-radius: var(--radius-xs); background: transparent;
   font: 600 13.5px/1.4 var(--sans); color: var(--muted); cursor: pointer;
 }
 .queue-tabs button:hover { color: var(--ink); }
@@ -6301,7 +6316,7 @@ td > .approver-line { margin-top: 5px; }
 /* The per-tab number. The sidebar badge carries the SUM of the two, because it
    is about the screen; these are about one job each. */
 .queue-tabs .count {
-  min-width: 20px; padding: 0 6px; border-radius: 10px;
+  min-width: 20px; padding: 0 6px; border-radius: var(--radius-sm);
   background: var(--amber-bg); color: var(--amber);
   font: 600 11.5px/18px var(--sans); font-variant-numeric: tabular-nums;
 }
@@ -6327,8 +6342,8 @@ td > .approver-line { margin-top: 5px; }
    ขึ้นไป ใต้นั้นแถบกรองมีเลย์เอาต์มือถือของมันเองที่ต้องไม่ถูกทับ · ช่องค้นหา
    `min-width` 240 ให้จอ 1024 ตัดแท็บไปบรรทัดของมัน แทนที่จะบีบช่องค้นหาจน
    คำค้นตกบรรทัด */
-.queue-tools > .month-tabs { flex: none; align-self: center; padding: 3px; gap: 3px; border-radius: 10px; }
-.month-tabs button { flex: none; gap: 6px; padding: 4px 10px; min-height: 30px; border-radius: 7px; font-size: 13px; }
+.queue-tools > .month-tabs { flex: none; align-self: center; padding: 3px; gap: 3px; border-radius: var(--radius-sm); }
+.month-tabs button { flex: none; gap: 6px; padding: 4px 10px; min-height: 30px; border-radius: var(--radius-2xs); font-size: 13px; }
 @media (min-width: 861px) {
   .queue-tools:has(> .month-tabs) .field { flex-basis: 150px; }
   .queue-tools:has(> .month-tabs) .field.search { flex-basis: 240px; min-width: 240px; }
@@ -6428,7 +6443,7 @@ td > .approver-line { margin-top: 5px; }
      what it is given, and a 18×18 box with 6px of padding is a 30px pill
      holding a “1”. The padding is what a second digit grows into; a count
      large enough to need three is not a badge any more. */
-  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
   background: var(--danger-bg); color: var(--danger-ink);
   /* `/1` and not a line-height: the box is 18px and the flex centring above
      places the glyphs in it. A line-height taller than the box would push the
@@ -6450,7 +6465,7 @@ td > .approver-line { margin-top: 5px; }
 .filter-toggle.on { border-color: var(--green); color: var(--green-text); }
 .filter-count {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
   background: var(--green); color: var(--on-fill); font: 600 11px/1 var(--mono);
 }
 .filter-sheet-body {
@@ -6494,7 +6509,7 @@ td > .approver-line { margin-top: 5px; }
    AA); bold is what sets it apart now. */
 .filter-chip {
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  padding: 7px 13px; border-radius: var(--radius-pill); cursor: pointer;
   background: var(--card); color: var(--muted);
   border: 1px solid var(--line);
   font: 500 12.5px/1.4 var(--sans);
@@ -6515,7 +6530,7 @@ td > .approver-line { margin-top: 5px; }
    เท่าเนื้อหา กล่อง 3px · เลขของ ไม่มีหัวหน้างาน แดงไม่ว่าจะกดหรือไม่ เพราะเป็น
    ข้อเดียวกับแบนเนอร์ — ถ้าแดงเฉพาะตอนกดจะบอกแค่สิ่งที่เพิ่งกดไป · มือถือเต็มแถว
    แบ่งเท่ากัน ป้ายบนเลขล่างตามกฎ `.month-tabs button` ของมือถือ */
-.dept-view { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; border-radius: 10px; margin: 10px 0 2px; }
+.dept-view { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; border-radius: var(--radius-sm); margin: 10px 0 2px; }
 .month-tabs button .count.warn { background: var(--danger-bg); color: var(--danger-ink); }
 @media (max-width: 860px) {
   .dept-view { display: flex; flex-wrap: nowrap; }
@@ -6542,7 +6557,7 @@ td > .approver-line { margin-top: 5px; }
 /* ══ chips & alerts ══════════════════════════════════════════════════════ */
 
 .chip {
-  display: inline-block; padding: 4px 10px; border-radius: 20px;
+  display: inline-block; padding: 4px 10px; border-radius: var(--radius-lg);
   font: 600 11.5px/1.5 var(--sans); white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -6817,7 +6832,7 @@ td > .approver-line { margin-top: 5px; }
 .entry-history .who .behalf { color: var(--muted); font-weight: 500; }
 .badge {
   display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 6px;
-  background: var(--danger); color: var(--on-fill); border-radius: 9px;
+  background: var(--danger); color: var(--on-fill); border-radius: var(--radius-xs);
   font: 600 11px/18px var(--mono); text-align: center;
 }
 
@@ -7217,7 +7232,7 @@ td > .approver-line { margin-top: 5px; }
   display: inline-flex; align-items: center; gap: 5px;
   margin-top: 8px; padding: 3px 10px;
   border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: none; color: inherit; cursor: pointer;
   font: 500 12.5px/1.4 var(--sans);
 }
@@ -7244,7 +7259,7 @@ td > .approver-line { margin-top: 5px; }
   opacity: .85;
 }
 .show-more > button:hover { opacity: 1; }
-.show-more > button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 2px; }
+.show-more > button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: var(--radius-3xs); }
 
 /* How the engine cut a session up — one line per segment, times and hours, so
    it is mono throughout. The green stub on the left ties each line back to the
@@ -7270,7 +7285,7 @@ td > .approver-line { margin-top: 5px; }
 }
 .entry-history .head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .entry-history .act {
-  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  display: inline-block; padding: 3px 10px; border-radius: var(--radius-lg);
   font: 600 11.5px/1.5 var(--sans); white-space: nowrap;
   background: var(--neutral-wash); color: var(--muted);
 }
@@ -7389,7 +7404,7 @@ td > .approver-line { margin-top: 5px; }
   background: var(--amber-bg); border: 1px solid var(--amber-line);
 }
 .refiled-note .mark {
-  flex: none; padding: 3px 9px; border-radius: 20px;
+  flex: none; padding: 3px 9px; border-radius: var(--radius-lg);
   background: var(--amber); color: var(--on-amber);
   font: 600 11px/1.5 var(--sans); white-space: nowrap;
 }
@@ -7475,7 +7490,7 @@ td > .approver-line { margin-top: 5px; }
 .scan-row > .hint { flex: 1 1 260px; min-width: 0; margin: 0; }
 .chip-toggle {
   display: inline-flex; align-items: center; gap: 6px; flex: none;
-  padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius-pill);
   background: var(--card); color: var(--ink-2);
   font: 500 12.5px/1.5 var(--sans); cursor: pointer; white-space: nowrap;
 }
@@ -8190,7 +8205,7 @@ td > .approver-line { margin-top: 5px; }
   font: 500 14px/1.3 var(--mono); font-variant-numeric: tabular-nums;
 }
 .deptset-table td.cap-col input:focus {
-  outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: none; border-color: var(--green); box-shadow: var(--ring-focus);
 }
 .deptset-table td.state-col .btn, .deptset-table td.act-col .btn,
 .deptset-table td.state-col .state-badge { white-space: nowrap; }
@@ -8227,7 +8242,7 @@ td > .approver-line { margin-top: 5px; }
    fills it, which a chip does not do either. */
 .state-badge {
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 5px 11px; border-radius: 999px;
+  padding: 5px 11px; border-radius: var(--radius-pill);
   border: 1px solid var(--line); background: var(--card);
   font: 600 12px/1.5 var(--sans); color: var(--muted);
   cursor: pointer;
@@ -8239,7 +8254,7 @@ td > .approver-line { margin-top: 5px; }
 .state-badge.on { color: var(--green-dark); border-color: var(--green-bg); background: var(--green-bg); }
 .state-badge.on .dot { background: var(--green); }
 .state-badge:hover { border-color: var(--green); color: var(--green-dark); }
-.state-badge:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+.state-badge:focus-visible { outline: none; box-shadow: var(--ring-focus); }
 
 /* ฝ่ายบุคคล see the same badge and cannot press it — ปิด/เปิดใช้งานแผนก is
    ผู้ดูแลระบบ's (lib/departments.js).
@@ -8326,7 +8341,7 @@ td > .approver-line { margin-top: 5px; }
 .head-badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
 .head-badge {
   display: inline-flex; align-items: baseline; gap: 5px;
-  padding: 4px 10px; border-radius: 20px;
+  padding: 4px 10px; border-radius: var(--radius-lg);
   background: var(--neutral-wash); color: var(--ink-2);
   font: 500 12.5px/1.5 var(--sans);
   /* Thai has no spaces, so a two-word name is one unbreakable run to the layout
@@ -8351,7 +8366,7 @@ td > .approver-line { margin-top: 5px; }
    being read: a หัวหน้า who belongs here is solid, one on loan is a ring. Same
    ink and same size — it is not a warning, and a colour would make a perfectly
    ordinary arrangement look like one. */
-.head-badge.visiting { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.head-badge.visiting { background: transparent; box-shadow: var(--ring-line); }
 .head-badge .from { color: var(--muted-2); font-weight: 400; font-size: 11.5px; }
 
 /* THE GAP BADGE — amber, and the same amber `.cell-note` used to carry.
@@ -8471,7 +8486,7 @@ table.fixed td { overflow-wrap: anywhere; }
    `--muted`, หยุดยาว ahead is the amber `.chip.warn`. */
 .cal-next {
   display: flex; align-items: center; gap: 10px; min-width: 0;
-  padding: 8px 12px; margin-bottom: 8px; border-radius: 10px;
+  padding: 8px 12px; margin-bottom: 8px; border-radius: var(--radius-sm);
   background: var(--green-bg); color: var(--green-dark);
 }
 .cal-next .k { flex: none; font: 600 12px/1.4 var(--sans); }
@@ -8632,7 +8647,7 @@ table.fixed td { overflow-wrap: anywhere; }
    app/print.css is paper, which has no theme and no colour here. */
 .cell-flag {
   display: block; width: fit-content;
-  margin-top: 3px; padding: 1px 6px; border-radius: 4px;
+  margin-top: 3px; padding: 1px 6px; border-radius: var(--radius-3xs);
   font: 600 11.5px/1.45 var(--sans);
   background: var(--danger-bg); color: var(--danger-ink);
   /* `nowrap` BECAUSE A FILL MAKES A LINE BREAK VISIBLE. Plain text that wraps
@@ -8667,7 +8682,7 @@ table.fixed td { overflow-wrap: anywhere; }
    filed. */
 .filed-lead {
   display: block; width: fit-content;
-  margin-top: 3px; padding: 1px 6px; border-radius: 4px;
+  margin-top: 3px; padding: 1px 6px; border-radius: var(--radius-3xs);
   font: 600 11.5px/1.45 var(--sans);
   white-space: nowrap;
 }
@@ -8827,7 +8842,7 @@ tbody tr:hover { background: var(--green-wash); }
 .policy-override {
   font: 500 12px/1.5 var(--sans);
   background: var(--amber-bg); color: var(--amber-ink);
-  padding: 1px 9px; border-radius: 999px;
+  padding: 1px 9px; border-radius: var(--radius-pill);
 }
 
 /* The sentence under the title — what the answer in force does
@@ -9853,7 +9868,7 @@ th.act-col { width: 258px; }
    already uses — and the words are in the shared tooltip (`data-tip`). */
 .count-frac .count-wait {
   display: inline-grid; place-items: center; width: 20px; height: 20px;
-  margin-left: 4px; border-radius: 6px; color: var(--amber); cursor: help;
+  margin-left: 4px; border-radius: var(--radius-2xs); color: var(--amber); cursor: help;
 }
 .count-frac .count-wait svg { width: 16px; height: 16px; }
 /* The heading is one short word and the cells are one short phrase; without
@@ -9874,6 +9889,11 @@ th.act-col { width: 258px; }
    rows the screen was left on. The row stays in the document and the screen
    simply stops drawing it. */
 .acct-table tbody tr.off-page { display: none; }
+/* รายงาน OT แยกแผนก ตั้งแต่ 2026-10-12 (รายงาน UX หมวด จ) — `table.` ให้ชนะ
+   `.stack-table tbody tr` ของการ์ดมือถือ · ตอนพิมพ์คืนแถวในบล็อก @media print ท้ายไฟล์นี้
+   (app/print.css เป็นของแบบฟอร์มกระดาษ ไม่แตะ) */
+table.dept-table tbody tr.off-page { display: none; }
+.table-wrap.dept-list { scroll-margin-top: calc(62px + 14px); }
 
 /* ── สรุป OT ส่งบัญชี — SEVEN COLUMNS THAT ALL SAY HOW WIDE THEY ARE ────────
 
@@ -10271,7 +10291,7 @@ th.why-col { width: 150px; }
   font: 400 12.5px/1 var(--mono); color: var(--muted);
 }
 .batch-progress .bar {
-  flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden;
+  flex: 1; height: 6px; border-radius: var(--radius-3xs); background: var(--line); overflow: hidden;
 }
 .batch-progress .bar > i {
   display: block; height: 100%; background: var(--green); transition: width .2s ease;
@@ -10422,7 +10442,7 @@ td .row-actions { justify-content: flex-end; }
 .over-cap-fold {
   border: none; background: none; cursor: pointer;
   color: inherit; opacity: .65;
-  padding: 2px 4px; border-radius: 6px;
+  padding: 2px 4px; border-radius: var(--radius-2xs);
   font: 400 11px/1 var(--sans);
 }
 .over-cap-head:hover .over-cap-fold,
@@ -10876,7 +10896,7 @@ table.mini tbody tr:hover { background: none; }
 .dm-span { font: 600 24px/1.2 var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
 .dm-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .dm-tag {
-  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 20px;
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: var(--radius-lg);
   font: 500 12.5px/1.5 var(--sans); white-space: nowrap;
   background: var(--neutral-wash); color: var(--ink-2); border: 1px solid var(--line-soft);
 }
@@ -11135,7 +11155,7 @@ table.mini tbody tr:hover { background: none; }
 .cap-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; }
 .cap-chip {
   display: inline-flex; align-items: baseline; gap: 4px;
-  padding: 3px 8px; border-radius: 999px;
+  padding: 3px 8px; border-radius: var(--radius-pill);
   /* The card behind them is `--neutral-wash`; a chip in the same wash would be
      an outline with nothing in it. */
   background: var(--card); border: 1px solid var(--line);
@@ -11313,7 +11333,7 @@ table.mini tbody tr:hover { background: none; }
 .modal-foot .btn:disabled {
   opacity: 1;
   background: var(--neutral-wash); color: var(--muted-2);
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: var(--ring-line);
 }
 
 /* Closing over unsaved typing is asked for twice — on a phone the backdrop is
@@ -11352,7 +11372,7 @@ table.mini tbody tr:hover { background: none; }
    the band can come in without the pair ending up against the edge of a sheet. */
 .ask-acts {
   flex: none; display: flex; align-items: center; gap: 6px;
-  padding: 4px; border-radius: 10px;
+  padding: 4px; border-radius: var(--radius-sm);
   background: var(--card); border: 1px solid var(--danger-line);
 }
 
@@ -11363,7 +11383,7 @@ table.mini tbody tr:hover { background: none; }
    chrome and keeps its letters, which is what `.btn.quiet` does elsewhere for
    the same reason; the fill beside it is then the only edge in the bar, and it
    is the one meant to be seen. */
-.ask-acts .btn { min-height: var(--btn-h); padding: 0 14px; border-radius: 7px; }
+.ask-acts .btn { min-height: var(--btn-h); padding: 0 14px; border-radius: var(--radius-2xs); }
 .ask-acts .btn.ghost { background: transparent; border-color: transparent; box-shadow: none; }
 .ask-acts .btn.ghost:hover:not(:disabled) {
   background: var(--neutral-wash); border-color: transparent; color: var(--ink-2);
@@ -11414,7 +11434,7 @@ table.mini tbody tr:hover { background: none; }
 /* แก้ไขชั่วโมง ก่อนคู่คำตอบ (ป๊อปอัปรายละเอียดใบ แบบ B, 2026-10-09) — สูงเท่าคู่นั้น
    แต่ไม่ร่วม `flex: 1 1 0` ของมัน เพราะไม่ใช่คำตอบ · บนมือถือเหลือไอคอนสี่เหลี่ยม
    (ข้างล่าง ในบล็อก 860px) ไม่งั้นสามปุ่มแบ่งความกว้าง 360px แล้ว อนุมัติใบ OT ไม่พอ */
-.modal-foot .btn.foot-edit { min-height: var(--btn-h); border-radius: 8px; white-space: nowrap; }
+.modal-foot .btn.foot-edit { min-height: var(--btn-h); border-radius: var(--radius-xs); white-space: nowrap; }
 
 /* ONE BOX, TWICE. The two answers to a question must not differ in any way that
    could be read as a hint, so everything about their shape is stated here
@@ -11452,7 +11472,7 @@ table.mini tbody tr:hover { background: none; }
      corners, so they cannot differ by construction — and the number has been
      asked for four times, at 10px, then 8px. Set here, once, where anybody can
      read it off the file and compare it to what is on the glass. */
-  min-height: var(--btn-h); border-radius: 8px;
+  min-height: var(--btn-h); border-radius: var(--radius-xs);
   display: flex; align-items: center; justify-content: center;
   /* ── ONE LINE, AND THAI IS THE REASON IT HAD TO BE SAID ────────────────
      ไม่อนุมัติ was coming out on two lines: ไม่ over อนุมัติ.
@@ -11564,7 +11584,7 @@ table.mini tbody tr:hover { background: none; }
    which is the thing being complained about, one shade over. */
 .foot-split .btn.ghost.danger:disabled {
   background: var(--neutral-wash); color: var(--muted-2);
-  border-color: transparent; box-shadow: inset 0 0 0 1px var(--line);
+  border-color: transparent; box-shadow: var(--ring-line);
   cursor: not-allowed;
 }
 
@@ -11615,7 +11635,7 @@ table.mini tbody tr:hover { background: none; }
 .login-brand .ver { font: 400 12px/1.5 var(--mono); opacity: .6; }
 .login-brand .lockup { display: flex; align-items: center; gap: 12px; }
 .login-brand .lockup .mark {
-  width: 40px; height: 40px; border-radius: 9px; background: var(--card); color: var(--green);
+  width: 40px; height: 40px; border-radius: var(--radius-xs); background: var(--card); color: var(--green);
   display: grid; place-items: center; font: 700 19px/1 var(--latin); letter-spacing: -.5px;
 }
 .login-brand .lockup .word { font: 600 15px/1.2 var(--latin); letter-spacing: .14em; }
@@ -11640,7 +11660,7 @@ table.mini tbody tr:hover { background: none; }
 .login-form h2 { font: 600 24px/1.3 var(--sans); margin-bottom: 6px; }
 .login-form .lede { font: 400 14px/1.5 var(--sans); color: var(--muted); margin-bottom: 28px; }
 .login-form .foot {
-  margin-top: 24px; padding: 14px 16px; border-radius: 10px;
+  margin-top: 24px; padding: 14px 16px; border-radius: var(--radius-sm);
   background: var(--neutral-wash); font: 400 12.5px/1.6 var(--sans); color: var(--muted);
 }
 
@@ -11731,7 +11751,7 @@ table.mini tbody tr:hover { background: none; }
      ring `.pick-one.open` takes, for the same reason and out of the same two
      tokens. */
   .appbar .avatar.open {
-    box-shadow: 0 0 0 3px var(--focus-ring);
+    box-shadow: var(--ring-focus);
   }
 
   /* Longhand, because the shorthand had the two insets the wrong way round —
@@ -12075,7 +12095,7 @@ table.mini tbody tr:hover { background: none; }
   .mobile-nav .count {
     position: absolute; top: -6px; right: -13px;
     min-width: 16px; height: 16px; padding: 0 4px;
-    border-radius: 8px; font: 600 10px/16px var(--mono);
+    border-radius: var(--radius-xs); font: 600 10px/16px var(--mono);
     box-shadow: 0 0 0 2px var(--bar-ground);
   }
 
@@ -12212,7 +12232,7 @@ table.mini tbody tr:hover { background: none; }
        The plain `vh` line stays as the fallback for a browser with neither. */
     max-height: 92vh;
     max-height: 88svh;
-    border-radius: 22px 22px 0 0;
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
     animation: otslide .22s ease both;
     /* What springs the sheet back when a downward drag stops short of the
        dismiss threshold. Transform only — a blanket `all` here would catch the
@@ -12223,7 +12243,7 @@ table.mini tbody tr:hover { background: none; }
   .modal.wide { width: 100%; }
   .modal-head {
     position: relative;
-    border-radius: 22px 22px 0 0;
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
     /* Room above the title for the grabber. */
     padding: 20px 16px 14px;
     /* The header IS the drag surface, so the browser must not claim the same
@@ -12246,7 +12266,7 @@ table.mini tbody tr:hover { background: none; }
   .modal-grab {
     display: block; position: absolute; top: 8px; left: 50%;
     width: 38px; height: 4px; margin-left: -19px;
-    border-radius: 2px; background: var(--line);
+    border-radius: var(--radius-3xs); background: var(--line);
   }
   .modal-body { padding: 16px; }
 
@@ -12362,7 +12382,7 @@ table.mini tbody tr:hover { background: none; }
   .head-meta { flex-direction: row; align-items: center; gap: 6px; }
   .head-meta .total {
     align-items: baseline; gap: 3px;
-    padding: 3px 8px; border-radius: 999px;
+    padding: 3px 8px; border-radius: var(--radius-pill);
     background: var(--neutral-wash); border: 1px solid var(--line);
   }
   .head-meta .total .k { display: none; }
@@ -12734,7 +12754,7 @@ table.mini tbody tr:hover { background: none; }
       "act    act";
     gap: 4px 12px;
     padding: 11px 12px;
-    border: 1px solid var(--line-softer); border-radius: 12px; background: var(--card);
+    border: 1px solid var(--line-softer); border-radius: var(--radius-sm); background: var(--card);
   }
   .withdraw-table td { display: block; border: 0; padding: 0; }
   .withdraw-table td.who-col { grid-area: who; }
@@ -13306,7 +13326,7 @@ table.mini tbody tr:hover { background: none; }
   .queue-table td.total-col {
     grid-area: total; align-self: start;
     display: inline-flex; align-items: baseline; gap: 4px;
-    padding: 5px 10px; border-radius: 999px;
+    padding: 5px 10px; border-radius: var(--radius-pill);
     border: 1px solid var(--line); background: var(--neutral-wash);
     text-align: left; white-space: nowrap;
   }
@@ -13397,7 +13417,7 @@ table.mini tbody tr:hover { background: none; }
      two equal targets; the fill and the red outline still carry which is which,
      which is the part of that weight worth keeping. */
   .queue-table td.act-col .row-actions .btn:not(.ghost) {
-    box-shadow: 0 3px 9px var(--green-glow-sm);
+    box-shadow: var(--glow-btn-sm);
   }
   /* Released from the action column's 190px — on a card it has the width. */
   .queue-table td.act-col .own-note { flex: 1 1 100%; max-width: none; }
@@ -13472,7 +13492,7 @@ table.mini tbody tr:hover { background: none; }
      stays neutral and lets that through rather than fighting it. */
   .bday-table td.age-col {
     grid-area: age; align-self: start; justify-self: end;
-    padding: 4px 10px; border-radius: 999px;
+    padding: 4px 10px; border-radius: var(--radius-pill);
     border: 1px solid var(--line); background: var(--neutral-wash);
     font: 500 12.5px/1.4 var(--sans);
   }
@@ -13551,7 +13571,7 @@ table.mini tbody tr:hover { background: none; }
   .bday-table td.act-col .row-actions { gap: 8px; }
   .bday-table td.act-col .row-actions .btn { flex: 1 1 40%; min-height: var(--btn-h); }
   .bday-table td.act-col .row-actions .btn:not(.ghost) {
-    box-shadow: 0 3px 9px var(--green-glow-sm);
+    box-shadow: var(--glow-btn-sm);
   }
 
   /* ══ วันเกิดของเดือนนี้ (ตรวจสอบรายเดือน) ══════════════════════════════
@@ -14007,7 +14027,7 @@ table.mini tbody tr:hover { background: none; }
      Needed here from the day บันทึก OT ให้ stopped being a ghost — see
      BirthdayRowActions in components/HrView.jsx. */
   .bmonth-table td.act-col .btn:not(.ghost) {
-    box-shadow: 0 3px 9px var(--green-glow-sm);
+    box-shadow: var(--glow-btn-sm);
   }
 
   /* ══ AND THE ROWS THAT ASK NOTHING ARE FOLDED ════════════════════════════
@@ -16159,7 +16179,7 @@ table.mini tbody tr:hover { background: none; }
   transition: border-color .15s ease, box-shadow .15s ease;
 }
 .stat.as-button:hover { border-color: var(--green); }
-.stat.as-button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+.stat.as-button:focus-visible { outline: none; box-shadow: var(--ring-focus); }
 /* Amber rather than red: a run of refused passwords is a thing to look at, not
    a thing that has gone wrong. The same amber `.chip.edited` and every "needs
    attention" panel in the app already uses. */
@@ -16184,7 +16204,7 @@ table.mini tbody tr:hover { background: none; }
 .log-bar .col {
   position: relative; flex: 1;
   display: flex; flex-direction: column; justify-content: flex-end;
-  background: var(--line-softer); border-radius: 4px; overflow: hidden;
+  background: var(--line-softer); border-radius: var(--radius-3xs); overflow: hidden;
 }
 /* THE FILL IS NOT `--green-bg`, and that is the second half of why the card
    looked empty. It read that token until 2026-08-31, and a background tint is
@@ -16197,7 +16217,7 @@ table.mini tbody tr:hover { background: none; }
    figures are on the token. */
 .log-bar .fill {
   background: var(--chart-bar);
-  border-radius: 4px; min-height: 3px;
+  border-radius: var(--radius-3xs); min-height: 3px;
   display: flex; flex-direction: column; justify-content: flex-end;
 }
 /* Writes are a slice of the same bar, not a second bar beside it: they are a
@@ -16210,7 +16230,7 @@ table.mini tbody tr:hover { background: none; }
    promises would be drawn as nothing on every day that has one. The div is
    rendered only on days whose count is above zero (see LogSystem.jsx), so the
    floor cannot invent a mark on a day where nothing was edited. */
-.log-bar .writes { background: var(--green); border-radius: 0 0 4px 4px; min-height: 6px; }
+.log-bar .writes { background: var(--green); border-radius: 0 0 var(--radius-3xs) var(--radius-3xs); min-height: 6px; }
 /* A failed login is a mark, not a height. One at the foot of the column says
    "something was refused here" without competing with the volume the bar is
    drawing — and a day with four hundred requests and one refusal must not draw
@@ -16305,9 +16325,9 @@ table.mini tbody tr:hover { background: none; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   width: 100%; padding: 9px 4px; font: inherit; text-align: left; background: none; border: 0;
 }
-.log-tally li > button { cursor: pointer; border-radius: 6px; }
+.log-tally li > button { cursor: pointer; border-radius: var(--radius-2xs); }
 .log-tally li > button:hover { background: var(--neutral-wash); }
-.log-tally li > button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+.log-tally li > button:focus-visible { outline: none; box-shadow: var(--ring-focus); }
 .log-tally .t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .log-tally .main { font: 500 13.5px/1.4 var(--sans); color: var(--ink); overflow-wrap: anywhere; }
 .log-tally .sub { font: 400 11.5px/1.4 var(--sans); color: var(--muted-2); overflow-wrap: anywhere; }
@@ -16398,7 +16418,7 @@ table.mini tbody tr:hover { background: none; }
   border: 1px solid var(--input-line); border-radius: var(--radius-sm);
   background: var(--field-bg);
 }
-.range-pair:has(.pick-box.open) { border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring); }
+.range-pair:has(.pick-box.open) { border-color: var(--green); box-shadow: var(--ring-focus); }
 .range-pair .pick-box-wrap { flex: 1 1 0; min-width: 0; }
 .field .range-pair .pick-box {
   border: 0; border-radius: 0; background: transparent; box-shadow: none;
@@ -17037,7 +17057,7 @@ table.mini tbody tr:hover { background: none; }
 .manual-sec-gate {
   flex: none; align-self: flex-start;
   font: 500 10.5px/1.5 var(--sans);
-  padding: 4px 9px; border-radius: 999px;
+  padding: 4px 9px; border-radius: var(--radius-pill);
   background: var(--green-tint); color: var(--green-dark);
   border: 1px solid var(--green-bg);
 }
@@ -17146,7 +17166,7 @@ table.mini tbody tr:hover { background: none; }
 .mk-row.on { background: var(--green-bg); border-color: var(--green); color: var(--green-dark); font-weight: 600; }
 .mk-row-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mk-badge {
-  flex: none; padding: 1px 6px; border-radius: 999px;
+  flex: none; padding: 1px 6px; border-radius: var(--radius-pill);
   background: var(--amber-bg); color: var(--amber-ink);
   border: 1px solid var(--amber-line);
   font: 600 8.5px/1.5 var(--mono);
@@ -17182,7 +17202,7 @@ table.mini tbody tr:hover { background: none; }
 .mk-btn.ghost { background: transparent; color: var(--green-text); border: 1px solid var(--green); }
 
 .mk-chip {
-  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  display: inline-block; padding: 2px 8px; border-radius: var(--radius-pill);
   font: 500 9px/1.5 var(--sans); border: 1px solid transparent; white-space: nowrap;
 }
 .mk-chip.wait { background: var(--amber-bg); color: var(--amber-ink); border-color: var(--amber-line); }
@@ -17257,7 +17277,7 @@ table.mini tbody tr:hover { background: none; }
 .mk-fold { font: 400 9px/1 var(--sans); color: var(--muted-3); }
 /* The logo, which is the ย้อนกลับ button on both devices. */
 .mk-mark {
-  width: 11px; height: 11px; border-radius: 3px; flex: none;
+  width: 11px; height: 11px; border-radius: var(--radius-3xs); flex: none;
   background: var(--on-fill); opacity: .9;
 }
 /* ตัวอักษรย่อ at the top right — the phone's way into the whole menu. Drawn
@@ -17305,7 +17325,7 @@ table.mini tbody tr:hover { background: none; }
 .mk-ibtn-t { font: 500 8.5px/1.4 var(--sans); }
 .mk-tick { display: flex; align-items: center; gap: 5px; font: 400 8.5px/1.5 var(--sans); color: var(--ink-2); }
 .mk-box {
-  width: 9px; height: 9px; flex: none; border-radius: 2px;
+  width: 9px; height: 9px; flex: none; border-radius: var(--radius-3xs);
   border: 1px solid var(--line-lift); background: var(--card-lift);
   font: 600 7px/8px var(--sans); text-align: center;
 }
@@ -17313,7 +17333,7 @@ table.mini tbody tr:hover { background: none; }
 .mk-tick-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mk-tabs { display: flex; flex-wrap: wrap; gap: 3px; }
 .mk-tab {
-  padding: 3px 6px; border-radius: 999px; border: 1px solid var(--green);
+  padding: 3px 6px; border-radius: var(--radius-pill); border: 1px solid var(--green);
   font: 500 8px/1.4 var(--sans); color: var(--green-text);
 }
 .mk-tab.on { background: var(--green); border-color: var(--green); color: var(--on-fill); }
@@ -17617,6 +17637,9 @@ table.mini tbody tr:hover { background: none; }
    */
   :root { color-scheme: only light; }
   html, body { background: #fff; }
+  /* แถวนอกหน้าของรายงาน OT แยกแผนก กลับมาบนกระดาษ — ตัวแบ่งหน้าเป็นของจอ (2026-10-12)
+     แบบเดียวกับที่ app/print.css ทำให้ .acct-table และ .hr-table */
+  table.dept-table tbody tr.off-page { display: table-row !important; }
   /* The dialog now lives on <body>, outside .shell — so it has to be named
      here or it would print over the form. */
   .no-print, .sidebar, .appbar, .mobile-nav, .mobile-nav-spacer, .fab,

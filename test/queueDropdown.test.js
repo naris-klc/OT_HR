@@ -342,7 +342,7 @@ test('บนมือถือ ดรอปดาวน์เปิดเป็�
   const shell = rule('.pop.sheet.one-pop');
   assert.match(shell, /background: var\(--card-lift\)/);
   assert.match(shell, /border: 1px solid var\(--line-lift\); border-bottom: 0;/);
-  assert.match(shell, /box-shadow: 0 2px 8px -2px var\(--shadow-soft\), 0 14px 34px var\(--shadow-soft\);/);
+  assert.match(shell, /box-shadow: var\(--elev-pop\);/);
   // `border-bottom` is the shell's own — a sheet has no bottom edge to draw —
   // so the ban is on the SHAPE, and `bottom:` is left off it for that reason.
   for (const prop of ['border-radius', 'padding', 'inset', 'max-height', 'animation']) {
@@ -453,7 +453,7 @@ test('กล่องอ่านโทเคนของ .field ไม่ได
 test('เปิดอยู่แล้ววงแหวนยังอยู่ และลูกศรกลับหัว', () => {
   // The list is attached to this box. A box that dropped its ring the moment
   // the panel appeared would leave the panel hanging off nothing.
-  assert.match(css, /\.field \.pick-one\.open \{\s*\n\s*border-color: var\(--green\); box-shadow: 0 0 0 3px var\(--focus-ring\);/);
+  assert.match(css, /\.field \.pick-one\.open \{\s*\n\s*border-color: var\(--green\); box-shadow: var\(--ring-focus\);/);
   assert.match(css, /\.field \.pick-one\.open \.caret \{ transform: rotate\(180deg\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\n\s*\.field \.pick-one \.caret \{ transition: none; \}/);
 });
