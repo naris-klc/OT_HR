@@ -8041,11 +8041,20 @@ the half that was not.
 
 **⚠ On a breach the line no longer says `รวมรออนุมัติ 45 / 40` — since
 2026-10-12** (*"ให้แจ้งเตือนเกินเพดานเหมือนหน้ารออนุมัติ"*) it prints the queue's
-own sentence, `overCapLine`: `เกินเพดานแล้ว 16 ชม.` or `อนุมัติครบจะเกิน 5 ชม.`,
+own sentence, `overCapLine`: `เกินเพดาน` or `อนุมัติครบจะเกิน 5 ชม.`,
 and the figure above it is bold as well as red. The pending note still stands on
 every row that is inside its ceiling. The phone card had been drawing the breach
 line grey all along — `.hr-table tbody td.cap-col .cap-sub` outranked
 `.cap-sub.over` — and now has a rule of its own that keeps it red.
+
+**⚠ The wording was cut across the app later the same day** (*"เกินเพดานรายเดือน
+เปลี่ยนเป็นตัวหนา เกินเพดาน · เกินเพดานแล้ว x ชม. ตัดเหลือ เกินเพดาน"*):
+`overCapLine` says `เกินเพดาน` where it said "เกินเพดานแล้ว 16 ชม.", and
+`breachLines` says `เกินเพดาน — เพดาน 40 ชม.` where it said
+"เกินเพดานรายเดือน — เพดาน 40 ชม.". The weekly ceiling keeps its name,
+`เกินเพดานรายสัปดาห์`, because it is the second ceiling and the reader has to
+tell the two apart. The flag under the status on ฝ่ายบุคคล's list of a person's
+requests is bold now.
 
 #### รอนำเข้า — THE THIRD STATE, AND IT IS OFF THE GREEN–RED SCALE
 

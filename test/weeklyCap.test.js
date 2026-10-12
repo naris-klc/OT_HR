@@ -265,7 +265,8 @@ test('a flagged entry describes every ceiling it passed', () => {
   });
 
   assert.equal(lines.length, 2);
-  assert.match(lines[0].text, /รายเดือน/);
+  // รายเดือนอ่านแค่ `เกินเพดาน` ตั้งแต่ 2026-10-12 · รายสัปดาห์ยังบอกชื่อ
+  assert.equal(lines[0].text, 'เกินเพดาน — เพดาน 40 ชม.');
   assert.match(lines[1].text, /รายสัปดาห์/);
   assert.match(lines[1].text, /2026-08-03 – 2026-08-09/);
 });
