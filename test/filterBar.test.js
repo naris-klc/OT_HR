@@ -184,11 +184,12 @@ test('the box makes room for it, and the arithmetic fits --field-h', () => {
    *                       ────
    *                       33.5  + 6 top + 7 bottom = 46.5
    *
-   * `--field-h` is 46, which the `min-height` already declares — so the box is
-   * the height it always was and only the row above it is gone. If any of the
-   * three moves, this sum is what has to be redone.
+   * `--field-h` was 46 until 2026-10-12 and the `min-height` matched this sum.
+   * It is 40 now (ระยะห่างกระชับ) and a box on the bar is still 46.5 — its own
+   * padding holds it there, because the label inside needs the room. If any of
+   * the three moves, this sum is what has to be redone.
    */
-  assert.match(css, /--field-h: 46px;/);
+  assert.match(css, /--field-h: 40px;/);
   assert.match(css, /--field-size: 15px;/);
   assert.match(rule('.queue-tools .field > .field-head label'), /font: 600 10px\/1\.2 var\(--mono\)/);
   const pad = css.slice(css.indexOf('.queue-tools .field input:not('));
@@ -213,14 +214,16 @@ test('the bar runs to the edges of whichever card it is in', () => {
   // On `.card.flush` it always did — that card has no padding. On a plain
   // `.card` the same wash drew as a grey slab floating inside 18px of white,
   // which is one shape on four screens and another on two.
-  assert.match(rule('.card:not(.flush) > .queue-tools'), /margin: 0 -18px/);
+  // One token on both sides of 860px since 2026-10-12 — the card's padding and
+  // the margin that cancels it cannot drift apart (they were 18/-18 and 15/-15).
+  assert.match(rule('.card:not(.flush) > .queue-tools'), /margin: 0 calc\(-1 \* var\(--card-pad\)\)/);
   assert.match(rule('.card:not(.flush) > .queue-tools'), /border-top: 1px solid var\(--line-soft\)/);
-  assert.match(rule('.card'), /padding: 18px;/,
-    'ระยะขอบของ .card เปลี่ยน แต่ margin ที่หักล้างมันยังเป็น -18px');
+  assert.match(rule('.card'), /padding: var\(--card-pad\);/,
+    'ระยะขอบของ .card ไม่ได้อ่าน --card-pad แล้ว แต่ margin ที่หักล้างยังอ่านตัวนั้น');
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.match(phone.slice(0, phone.indexOf('\n}\n\n')), /\.card \{ padding: 15px;/);
-  assert.match(phone, /\.card:not\(\.flush\) > \.queue-tools \{ margin: 0 -15px; \}/,
-    'บนมือถือ .card ใช้ padding 15 แต่แถบยังหักล้าง 18 อยู่');
+  assert.match(phone, /\.card \{ padding: var\(--card-pad\);/);
+  assert.ok(!/\.card:not\(\.flush\) > \.queue-tools \{ margin: 0 -\d+px/.test(phone),
+    'บนมือถือกลับมาเขียนตัวเลขหักล้างเองอีกแล้ว');
 });
 
 test('a card with no padding gets no negative margin — reported 2026-09-10', () => {
@@ -259,7 +262,7 @@ test('a form is not a filter bar', () => {
   assert.ok(!selector.includes('.form-grid'), 'กฎ label-ในกล่อง เอื้อมไปถึงฟอร์มแล้ว');
   // `.field-head` keeps its own height for every field that is NOT on a bar.
   assert.match(rule('.field-head'), /min-height: 18px/);
-  assert.match(rule('.field'), /gap: 7px/);
+  assert.match(rule('.field'), /gap: 5px/);  // 7 until 2026-10-12 (ระยะห่างกระชับ)
   // The forms this is about must still be form grids — a label over a box,
   // with room under it for the note that explains the field.
   for (const f of ['components/AdminView.jsx', 'components/Delegation.jsx']) {

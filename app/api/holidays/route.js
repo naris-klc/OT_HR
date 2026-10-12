@@ -14,7 +14,12 @@ export const GET = route(async (req) => {
     ? { date: { $gte: `${Number(year)}-01-01`, $lte: `${Number(year)}-12-31` } }
     : {};
   const holidays = await Holiday.find(filter).sort({ date: 1 }).lean();
-  return json({ holidays });
+  // Every year the calendar holds, for the ปี dropdown on วันหยุดบริษัท (2026-10-12).
+  // Read off `date` for the same reason as the filter above — old rows have no `year`.
+  const years = [...new Set((await Holiday.distinct('date')).map((d) => Number(String(d).slice(0, 4))))]
+    .filter(Boolean)
+    .sort((a, b) => a - b);
+  return json({ holidays, years });
 });
 
 export const POST = route(async (req) => {

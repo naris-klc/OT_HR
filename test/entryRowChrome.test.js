@@ -406,7 +406,8 @@ test('the one value that wraps gets a line-height, and only that one', () => {
   // The table's own rule is left alone: on the desktop this cell is a column
   // beside ten others, and a line-height set for a wrapped card value would
   // loosen every row of every table in the app.
-  assert.match(css, /^td \{ padding: 7px 12px;[^}]*font: 400 14px\/1\.4 var\(--sans\);/m);
+  // `--cell-pad-y` since 2026-10-12 (4px, ระยะห่างกระชับ — it read 7px)
+  assert.match(css, /^td \{ padding: var\(--cell-pad-y\) 12px;[^}]*font: 400 14px\/1\.4 var\(--sans\);/m);
 });
 
 test('on a phone card the description\'s chips start at the left, like สถานะ', () => {

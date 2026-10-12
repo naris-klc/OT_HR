@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, thaiDate, thaiStamp, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
-import { readEra } from '@/lib/smartDate.js';
 import {
   HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
   chosenPasswordPermission, defaultPassword, dropsAnAdmin, unsignedStaff, UNNAMEABLE_ROLES,
@@ -6162,11 +6161,15 @@ function Holidays() {
   const [rows, setRows] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
   /**
-   * ช่องปีพิมพ์เป็น พ.ศ. ตั้งแต่ 2026-10-11 (รายงาน UX ค.6) — ตารางข้างใต้เป็น
-   * 01/01/2569 อยู่แล้ว · `year` ยังเป็น ค.ศ. เพราะ API ถามแบบนั้น และเปลี่ยนเมื่อพิมพ์
-   * ครบสี่หลักเท่านั้น ไม่งั้นทุกตัวที่พิมพ์ระหว่างทางเป็นปีที่ถูกโหลด
+   * ปีที่มีวันหยุดบันทึกอยู่ จาก GET /holidays — ช่องปีเป็นดรอปดาวน์ตั้งแต่ 2026-10-12
+   * (ผู้ใช้เลือกจาก mockup ux-c): เคยเป็นช่องพิมพ์ พ.ศ. ที่ต้องพิมพ์ครบสี่หลักและแปลงปี
+   * ระหว่างทาง · ปีนี้กับปีหน้าอยู่ในรายการเสมอ ปีหน้าไว้นำเข้าปฏิทินล่วงหน้า
    */
-  const [yearText, setYearText] = useState(String(new Date().getFullYear() + 543));
+  const [years, setYears] = useState([]);
+  const thisYear = new Date().getFullYear();
+  const yearOptions = [...new Set([...years, thisYear, thisYear + 1, Number(year)])]
+    .sort((a, b) => b - a)
+    .map((y) => ({ value: String(y), label: `ปี ${y + 543}` }));
   /** Whether เพิ่มวันหยุด is open — the only way this screen adds one by hand. */
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
@@ -6185,7 +6188,11 @@ function Holidays() {
   const fileRef = useRef(null);
 
   async function load() {
-    try { setRows((await api.get(`/holidays?year=${year}`)).holidays); }
+    try {
+      const res = await api.get(`/holidays?year=${year}`);
+      setRows(res.holidays);
+      setYears(res.years || []);
+    }
     catch (err) { setError(err.message); }
   }
   useEffect(() => { load(); }, [year]);
@@ -6242,11 +6249,41 @@ function Holidays() {
   }
 
   return (
-    <div className="card">
-      <h2>ปฏิทินวันหยุดบริษัท</h2>
-      <div className="hint">
-        เสาร์–อาทิตย์เป็นวันหยุดโดยอัตโนมัติ ไม่ต้องบันทึกที่นี่ · หน้านี้เก็บเฉพาะวันหยุดพิเศษของบริษัท
-        · การเพิ่มหรือลบวันหยุดจะคำนวณรายการ OT ของวันนั้นใหม่ทันที
+    <div className="card flush holiday-card">
+      {/* หัวการ์ดแบบคิวและรายงานตั้งแต่ 2026-10-12 (รายงาน UX ค.2): ชื่อกับบรรทัดเดียว
+          ทางซ้าย ปุ่มชิดขวาแถวหัวการ์ดตาม design.md · ช่องปีอยู่ซ้ายของปุ่ม แถว
+          `holiday-tools` ใต้คำอธิบายที่เคยถือช่องปีกับปุ่มจึงไม่มีแล้ว · บนมือถือ
+          `.card-head:has(> .row .btn)` วางช่องปีกับปุ่มเต็มแถวใต้ชื่อ */}
+      <div className="card-head">
+        <div style={{ minWidth: 0 }}>
+          <div className="t"><span className="t-name">ปฏิทินวันหยุดบริษัท</span></div>
+          <div className="hint" style={{ margin: 0 }}>
+            เสาร์–อาทิตย์หยุดอัตโนมัติ ไม่ต้องบันทึก · เพิ่มหรือลบวันหยุดแล้ว OT ของวันนั้นคำนวณใหม่ทันที
+          </div>
+        </div>
+        <div className="row holiday-tools">
+          <PickOne
+            label="ปี"
+            hideLabel
+            className="holiday-year"
+            value={String(year)}
+            onChange={(v) => setYear(Number(v))}
+            options={yearOptions}
+          />
+          <button
+            className="btn ghost"
+            onClick={() => api.download('/holidays/import/template', 'holiday-import-template.csv')}
+          >
+            <Icon name="download" />แม่แบบ CSV
+          </button>
+          <label className="btn ghost" style={{ cursor: 'pointer' }}>
+            <Icon name="upload" />นำเข้า CSV
+            <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} onChange={upload} style={{ display: 'none' }} />
+          </label>
+          {/* Beside the import, because they are the same decision asked twice —
+              one day or a calendar of them. */}
+          <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />เพิ่มวันหยุด</button>
+        </div>
       </div>
       <NoticeStack id="holidays">
         {error && <NoticeRow tone="error" title={error} />}
@@ -6268,38 +6305,6 @@ function Holidays() {
         )}
       </NoticeStack>
 
-      {/* `holiday-tools` is the phone layout's hook for this row — the two CSV
-          buttons are the longest labels on the screen and at the app's ordinary
-          button padding they only just fit a 375px card. See the block in
-          styles.css; nothing about the desktop changes. */}
-      <div className="row holiday-tools" style={{ marginBottom: 14 }}>
-        <div className="field" style={{ maxWidth: 120 }}>
-          <label>ปี (พ.ศ.)</label>
-          <input
-            type="number"
-            value={yearText}
-            onChange={(e) => {
-              setYearText(e.target.value);
-              // พ.ศ. → ค.ศ. through `readEra`, the one place a year is moved back
-              const era = readEra(e.target.value);
-              if (/^\d{4}$/.test(e.target.value) && era.converted) setYear(era.year);
-            }}
-          />
-        </div>
-        <button
-          className="btn ghost"
-          onClick={() => api.download('/holidays/import/template', 'holiday-import-template.csv')}
-        >
-          <Icon name="download" />แม่แบบ CSV
-        </button>
-        <label className="btn ghost" style={{ cursor: 'pointer' }}>
-          <Icon name="upload" />นำเข้า CSV
-          <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} onChange={upload} style={{ display: 'none' }} />
-        </label>
-        {/* Beside the import, because they are the same decision asked twice —
-            one day or a calendar of them. */}
-        <button className="btn" onClick={() => setAdding(true)}><Icon name="plus" />เพิ่มวันหยุด</button>
-      </div>
 
       {rows.length === 0 ? <Empty>ยังไม่มีวันหยุดในปีนี้</Empty> : (
         <div className="table-wrap">

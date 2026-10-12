@@ -623,7 +623,8 @@ test('the space between the head and the bar is one number, and the phone has it
      so without it the bar would sit against the title. */
   const flush = css.slice(css.indexOf('.card.flush > .month-head > .card-head {'));
   assert.match(flush.slice(0, flush.indexOf('}')),
-    /padding: 16px 18px; border-bottom: 1px solid var\(--line-soft\);/,
+    // tokens since 2026-10-12 (ระยะห่างกระชับ) — it read 16px 18px
+    /padding: var\(--head-pad-y\) var\(--head-pad-x\); border-bottom: 1px solid var\(--line-soft\);/,
     'the panel’s head band lost its padding or its rule');
   // COMMENTS STRIPPED FIRST. `.month-find` is named in the note that explains
   // why it was deleted, and a bare match finds the explanation — see the same
@@ -788,7 +789,8 @@ test('the one card above the list is 12px, and the list itself is nobody’s car
   // and it did not move; only the class the rule reaches it by did.
   assert.match(phone, /\.month-head, \.card\.period-status \{ margin-bottom: 18px; \}/);
   // ONLY THIS SCREEN. `.card` is worn by every screen in the app.
-  assert.match(css, /\.card \{ padding: 15px; border-radius: var\(--radius\); \}/,
+  // `--card-pad` since 2026-10-12: 12 on a phone (it read 15)
+  assert.match(css, /\.card \{ padding: var\(--card-pad\); border-radius: var\(--radius\); \}/,
     'the phone padding of every card in the app moved');
 });
 
