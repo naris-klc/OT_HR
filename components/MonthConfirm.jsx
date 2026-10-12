@@ -94,8 +94,9 @@ export default function MonthConfirm({
                 the one that reaches payroll. "ยืนยัน 3 คน" over seventeen
                 signatures is the sentence §5.1 was worried about. It read
                 `ยืนยัน N รายการ` until 2026-10-09; the unit is the จำนวนรายการ
-                box right above it now, the button carries only the figure. */}
-            <Icon name="check" />
+                box right above it now, the button carries only the figure.
+                ไอคอน tick ตัวเดียวกับ อนุมัติ ตั้งแต่ 2026-10-12 */}
+            <Icon name="tick" />
             {`ยืนยัน (${tally.entries})`}
           </button>
         </>

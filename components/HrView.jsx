@@ -2059,8 +2059,9 @@ export default function HrView({
                   onClick={() => setConfirming(true)}
                 >
                   {/* ยืนยันรายการที่เลือก until 2026-10-09 · the count is ใบ
-                      (§5.1, as in the dialog) and is dropped at zero */}
-                  <Icon name="check" />
+                      (§5.1, as in the dialog) and is dropped at zero ·
+                      ไอคอนเป็น tick ตัวเดียวกับ อนุมัติ ตั้งแต่ 2026-10-12 */}
+                  <Icon name="tick" />
                   {chosen.length ? `ยืนยัน (${tally.entries})` : 'ยืนยัน'}
                 </button>
               </div>
@@ -2636,7 +2637,7 @@ export default function HrView({
                                that failed to fill itself in, and the reason is
                                already in the tooltip. */
                             <RowAction
-                              icon="check"
+                              icon="tick"
                               tone="go"
                               label={row.approvable?.count
                                 ? `ยืนยัน ${row.approvable.count} ใบ`

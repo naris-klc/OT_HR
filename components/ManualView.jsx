@@ -2230,7 +2230,7 @@ const SECTIONS = [
                     <MkChip tone="ok">ตรง</MkChip>
                     <span className="mk-cell"><span className="mk-cell-k">รวม ชม.</span><span className="mk-cell-v">28</span></span>
                     <MkIconBtn icon="printer" tone="off" />
-                    <MkIconBtn icon="check" tone="ok" />
+                    <MkIconBtn icon="tick" tone="ok" />
                   </span>
                 </span>
                 <span className="mk-headrow">
@@ -2239,7 +2239,7 @@ const SECTIONS = [
                     <MkChip tone="no">เวลาไม่ตรง 2</MkChip>
                     <span className="mk-cell"><span className="mk-cell-k">รวม ชม.</span><span className="mk-cell-v">9.5</span></span>
                     <MkIconBtn icon="printer" tone="off" />
-                    <MkIconBtn icon="check" tone="off" />
+                    <MkIconBtn icon="tick" tone="off" />
                   </span>
                 </span>
                 <MkNote>รวมทั้งหมด — ยอดของทั้งเดือน ไม่ใช่ยอดของผลการค้นหา</MkNote>
@@ -2287,11 +2287,11 @@ const SECTIONS = [
                   <MkNote><InlineMark tone="warn" />2 รายการเกินเพดาน — ต้องระบุเหตุผล</MkNote>
                   <span className="mk-headrow">
                     <MkTick on>สมชาย ใจดี · ฝ่ายผลิต</MkTick>
-                    <span className="mk-acts"><MkIconBtn icon="check" tone="ok" /></span>
+                    <span className="mk-acts"><MkIconBtn icon="tick" tone="ok" /></span>
                   </span>
                   <span className="mk-headrow">
                     <MkTick>วิภา สุขใจ · ฝ่ายบัญชี</MkTick>
-                    <span className="mk-acts"><MkIconBtn icon="check" tone="off" /></span>
+                    <span className="mk-acts"><MkIconBtn icon="tick" tone="off" /></span>
                   </span>
                 </Desk>
               )}
