@@ -133,7 +133,8 @@ test('the wrap belongs to the card layout and not to the table', () => {
   // of a long month.
   assert.match(rule('.entry-actions'), /flex-wrap: nowrap;/);
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.match(phone, /\.stack-table tbody td \.entry-actions \{ flex-wrap: wrap; \}/);
+  // ⚠ IT WAS `flex-wrap: wrap` UNTIL 2026-10-12 — a grid of equal buttons now (see the last test)
+  assert.match(phone, /\.stack-table tbody td \.entry-actions \{\s*display: grid; /);
 });
 
 // ── the icon ─────────────────────────────────────────────────────────────────
@@ -456,7 +457,8 @@ test('every card footer is the same two slots, and they line up down the month',
   // The phone still wraps and the desktop still does not — that difference is
   // about a 44px button beside a sentence on a 274px card, not about the slots.
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.match(phone, /\.stack-table tbody td \.entry-actions \{ flex-wrap: wrap; \}/);
+  // ⚠ IT WAS `flex-wrap: wrap` UNTIL 2026-10-12 — a grid of equal buttons now (see the last test)
+  assert.match(phone, /\.stack-table tbody td \.entry-actions \{\s*display: grid; /);
   assert.match(rule('.entry-actions'), /flex-wrap: nowrap;/);
 
   // THE LAST CHILD, not `justify-content: space-between`. Three things land
@@ -849,4 +851,20 @@ test('ปุ่ม ไม่อนุมัติ ใช้กล่องแล
   // กดได้เมื่อ อนุมัติ กดได้ — คำตัดสินเดียวกันจาก server
   assert.match(jsx, /icon="cross"\s+tone="stop"\s+label="ไม่อนุมัติ"\s+why=\{e\.decide\?\.ok \? '' : whyNotRejectable\(e\)\}/);
   assert.ok(jsx.includes('{rejectDialog}'));
+});
+
+/** 2026-10-12 — *"ขยายขนาดปุ่มให้เท่าๆกันแล้วเต็มพอดีกับหน้าจอ"* · แบบ ข. */
+test('บนมือถือปุ่มท้ายแถวกว้างเท่ากันเต็มการ์ด: 4 ปุ่มแถวเดียว · 2×2 ที่ 640px ลงมา', () => {
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(phone, /\.stack-table tbody td \.entry-actions \{\s*display: grid; grid-template-columns: repeat\(var\(--entry-act-cols, 4\), minmax\(0, 1fr\)\);/);
+  assert.ok(phone.includes('.stack-table tbody td .entry-actions .btn { width: 100%; min-width: 0; }'));
+  // 2×2 ที่ 640px ลงมา — ในบล็อก 640 ที่ซ้อนอยู่ในบล็อกมือถือ (มีได้บล็อกเดียว)
+  const inner = phone.indexOf('@media (max-width: 640px) {');
+  assert.ok(inner > 0, 'บล็อกมือถือไม่มี 640 ซ้อนอยู่');
+  const block = phone.slice(inner, phone.indexOf('\n  }', inner));
+  assert.match(block, /\.stack-table tbody td \.entry-actions \{\s*--entry-act-cols: 2;\s*\}/, 'ไม่มี 2×2 ที่ 640px');
+  // จำนวนคอลัมน์ตายตัว — auto-fit จะทำให้เป็น 3 + 1 ได้
+  assert.ok(!/\.entry-actions[^{]*\{[^}]*auto-fit/.test(css), 'กริดปุ่มเป็น auto-fit');
+  // เดสก์ท็อปยังเป็นแถวเดียวไม่ตัดบรรทัด
+  assert.match(rule('.entry-actions'), /display: inline-flex;[^}]*flex-wrap: nowrap;/);
 });

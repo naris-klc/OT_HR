@@ -12440,6 +12440,10 @@ table.mini tbody tr:hover { background: none; }
     /* The other half of that: a cell allowed to be narrower than its longest
        run of letters is only an improvement if the letters then break. */
     .fact-grid dd { overflow-wrap: anywhere; }
+    /* ปุ่มท้ายการ์ด รายการ OT เป็น 2×2 — ดู `.stack-table tbody td .entry-actions` */
+    .stack-table tbody td .entry-actions {
+      --entry-act-cols: 2;
+    }
   }
 
   /* The gaps BETWEEN the blocks, which on a sheet are the other half of the
@@ -15481,8 +15485,22 @@ table.mini tbody tr:hover { background: none; }
      eleventh column of a table. Wrapping is allowed — and only here — because a
      44px button beside "ไม่มีประวัติการแก้ไข" is 204px of a 274px card at 360px
      and does not fit at 320. The desktop keeps them on one line; see
-     `.entry-actions`. */
-  .stack-table tbody td .entry-actions { flex-wrap: wrap; }
+     `.entry-actions`.
+
+     ⚠ IT WAS `flex-wrap: wrap` UNTIL 2026-10-12, and the four buttons kept
+     their own widths — two short rows, ragged at the right. Asked for that day:
+     *"ขยายขนาดปุ่มให้เท่าๆกันแล้วเต็มพอดีกับหน้าจอ"* · แบบ ข. ที่ผู้ใช้เลือก:
+     แถวเดียวสี่ปุ่มเท่ากันเมื่อการ์ดกว้างพอ (641–860px) และ 2×2 ที่ 640px ลงมา
+     ซึ่ง "ไม่อนุมัติ" กับไอคอนไม่พอในช่องหนึ่งในสี่ · เส้น 640 มีอยู่แล้ว
+     (docs/design.md §6) · ไม่มีวันเป็น 3 + 1 เพราะคอลัมน์นับตายตัว ไม่ใช่
+     `auto-fit` · ค่า 2 ตั้งใน `@media (max-width: 640px)` ที่ซ้อนอยู่ในบล็อกนี้แล้ว
+     (มีได้บล็อกเดียว — test/detailSheetCompact.test.js) ผ่าน `--entry-act-cols`
+     เพราะบล็อกนั้นอยู่ก่อนกฎนี้ ถ้าเขียน `grid-template-columns` ตรง ๆ กฎนี้จะทับ */
+  .stack-table tbody td .entry-actions {
+    display: grid; grid-template-columns: repeat(var(--entry-act-cols, 4), minmax(0, 1fr));
+  }
+  .stack-table tbody td .entry-actions > .act-tip,
+  .stack-table tbody td .entry-actions .btn { width: 100%; min-width: 0; }
 
   /* THE FOOTNOTE LINES UP WITH THE CARDS, NOT WITH THE CARD IT IS IN. On a
      phone the rows are cards inset 12px by `.stack-table tbody`'s padding,
