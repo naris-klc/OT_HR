@@ -20,6 +20,7 @@ import OtForm from './OtForm.jsx';
 import { useBackHandler } from './nav.jsx';
 import Icon from './icons.jsx';
 import { useToast } from './Toast.jsx';
+import { RejectModal } from './ApprovalQueue.jsx';
 
 /**
  * Why อนุมัติ is dead on this row, in one sentence — `''` when it is live.
@@ -60,6 +61,16 @@ function whyNotApprovable(entry) {
   if (entry.status === 'rejected') return 'ใบนี้ถูกไม่อนุมัติแล้ว ไม่มีอะไรให้อนุมัติ';
   if (entry.status === 'cancelled') return 'ใบนี้ถูกยกเลิกแล้ว ไม่มีอะไรให้อนุมัติ';
   return 'อนุมัติใบนี้จากหน้านี้ไม่ได้';
+}
+
+/** เหตุผลบนปุ่ม ไม่อนุมัติ ที่กดไม่ได้ — สิทธิ์เดียวกับ อนุมัติ (`decide`) ต่างแค่ถ้อยคำ */
+function whyNotRejectable(entry) {
+  if (entry.decide) return entry.decide.ok ? '' : entry.decide.why;
+  if (entry.status === 'pending_mgr') return 'ใบนี้ยังอยู่ที่ขั้นหัวหน้าแผนก';
+  if (entry.status === 'approved') return 'ใบนี้อนุมัติแล้ว';
+  if (entry.status === 'rejected') return 'ใบนี้ถูกไม่อนุมัติแล้ว';
+  if (entry.status === 'cancelled') return 'ใบนี้ถูกยกเลิกแล้ว';
+  return 'ไม่อนุมัติใบนี้จากหน้านี้ไม่ได้';
 }
 
 /**
@@ -247,6 +258,8 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
    */
   const [cancelling, setCancelling] = useState(null);
   const [cancelNote, setCancelNote] = useState('');
+  /** ใบที่กำลังจะไม่อนุมัติ — กล่องเหตุผลคือ `RejectModal` ของคิวรออนุมัติ */
+  const [rejecting, setRejecting] = useState(null);
   /* One request in flight, and it is the only write on this screen that cannot
      be repeated harmlessly — a second press would answer 409 and show the
      reader an error about a row they have already dealt with. */
@@ -313,6 +326,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
      which is the failure useBackHandler exists for, and it matters more here
      than on a dialog that only reads. */
   useBackHandler(Boolean(cancelling), () => { setCancelling(null); setCancelNote(''); });
+  useBackHandler(Boolean(rejecting), () => setRejecting(null));
 
   // A drawer left open over a row that no longer exists — a different month,
   // a reloaded list — would never be closed by anything.
@@ -499,6 +513,38 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
       onChanged?.();
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
+
+  /**
+   * ไม่อนุมัติ — เพิ่ม 2026-10-12 (*"ปุ่ม X ไม่อนุมัติ มันจะส่งกลับไปให้พนักงาน"*) ·
+   * route เดียวกับคิวรออนุมัติ `/reject` ซึ่งตัดสินสิทธิ์ด้วย `approvalPermission`
+   * ตัวเดียวกับ อนุมัติ และอ่าน `hrMayReject` / `hrRejectReturnsTo` จากนโยบายเอง
+   * ข้อความจึงไม่เดาว่าใบไปอยู่ที่พนักงานหรือหัวหน้า — เหมือน `reject` ในคิว
+   * ต่างจาก ยกเลิก: ใบไม่จบ พนักงานกด ส่งใหม่ ได้ 1 ครั้ง
+   */
+  async function rejectEntry(reason, notify) {
+    const entry = rejecting;
+    if (!entry) return;
+    setBusy(true);
+    try {
+      await api.post(`/entries/${entry._id}/reject`, { reason, notify });
+      setRejecting(null);
+      await load();
+      onChanged?.();
+      toast(`ไม่อนุมัติรายการวันที่ ${thaiDate(entry.workDate)} · บันทึกเหตุผลแล้ว`);
+    } catch (err) {
+      setRejecting(null);
+      setError(err.message);
+    } finally { setBusy(false); }
+  }
+
+  const rejectDialog = rejecting && (
+    <RejectModal
+      entries={[rejecting]}
+      busy={busy}
+      onClose={() => { if (!busy) setRejecting(null); }}
+      onReject={rejectEntry}
+    />
+  );
 
   /**
    * DECLARED ONCE, DRAWN IN BOTH RETURNS. `Modal` portals out of wherever it is
@@ -1165,6 +1211,21 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           onClick={() => confirmEntry(e)}
                         />
                       )}
+                      {/* ไม่อนุมัติ ต่อจาก อนุมัติ — 2026-10-12 · ไอคอน `cross`
+                          คำ และกล่องเหตุผล (`RejectModal`) เดียวกับคิวรออนุมัติ ·
+                          กดได้เมื่อ อนุมัติ กดได้ (`decide` ตัวเดียวกัน) — ใบที่
+                          HR อนุมัติแล้วไม่อนุมัติย้อนหลังไม่ได้ ผู้ใช้ตอบว่าไม่ทำ */}
+                      {mayEdit && (
+                        <RowAction
+                          icon="cross"
+                          tone="stop"
+                          label="ไม่อนุมัติ"
+                          why={e.decide?.ok ? '' : whyNotRejectable(e)}
+                          hint="ต้องระบุเหตุผล · ใบไม่จบเหมือนยกเลิก ยื่นใหม่ได้"
+                          disabled={busy}
+                          onClick={() => setRejecting(e)}
+                        />
+                      )}
                       {/* ⚠ แก้ไขไม่ได้ WAS A SENTENCE HERE UNTIL 2026-10-08.
                           With every row action an icon square, four words were
                           wider than the two controls they stood in for, and the
@@ -1304,6 +1365,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
         </ul>
       </div>
       {cancelDialog}
+      {rejectDialog}
       {batch && (
         <BatchApproveModal
           entries={batch.list}
