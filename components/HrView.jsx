@@ -5,7 +5,7 @@ import {
   api, hours, thaiDate, dayName, dayAbbr, currentPeriod, periodLabel,
   BUCKETS, companyLabel,
 } from '@/lib/api.js';
-import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
+import { capFigure, capPair, overCap, overCapLine, pendingCapNote } from '@/lib/caps.js';
 import {
   ClearButton, ClearFilters, Empty, InlineMark, NoticeRow, NoticeStack, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
   PAGE_SIZE, RowAction, ShowMore, TablePager, WhoName, pageWindow,
@@ -2910,7 +2910,6 @@ function MonthAlerts({
  */
 function CapCell({ cap }) {
   const capUsed = cap.capUsedHours ?? cap.usedHours;
-  const note = pendingCapNote(cap.usedHours, capUsed, cap.capHours);
   /**
    * PAST THE CEILING — and it is `capUsed` that decides, never the printed
    * figure. See the block above: what this cell PRINTS is the hours สถานะที่นับ
@@ -2927,6 +2926,20 @@ function CapCell({ cap }) {
    * only number on the row that knew, in grey.
    */
   const over = overCap(capUsed, cap.capHours);
+  /**
+   * เกินเพดาน → ประโยคเดียวกับคิวรออนุมัติ (`overCapLine`): `เกินเพดานแล้ว 16 ชม.`
+   * หรือ `อนุมัติครบจะเกิน 5 ชม.` แทน `รวมรออนุมัติ 45 / 40` — ขอไว้ 2026-10-12
+   * *"ให้แจ้งเตือนเกินเพดานเหมือนหน้ารออนุมัติ"* · ประโยคเดิมบอกยอดแล้วให้คนอ่าน
+   * ลบเอง ประโยคนี้บอกว่าเกินเท่าไร และแยก *เกินแล้ว* กับ *จะเกินถ้าอนุมัติ*
+   * ซึ่งเป็นสองเรื่องที่ต้องตัดสินต่างกัน · ไม่เกิน → ยังเป็น `pendingCapNote`
+   *
+   * ช่องว่างหน้า `ชม.` เป็นช่องว่างไม่ตัดบรรทัด: การ์ดมือถือกว้าง 108px ตัด
+   * `เกินเพดานแล้ว 16` ไว้บรรทัดแรกแล้วเหลือ `ชม.` อยู่บรรทัดเดียว (เดินดู 2026-10-12)
+   */
+  const note = over
+    ? overCapLine({ capHours: cap.capHours, approvedHours: cap.approvedHours ?? capUsed, usedHours: capUsed })
+        ?.replace(/ ชม\.$/, ' ชม.')
+    : pendingCapNote(cap.usedHours, capUsed, cap.capHours);
 
   return (
     <>
@@ -2936,7 +2949,8 @@ function CapCell({ cap }) {
           department sets no ceiling. See the note on `capPair` in
           lib/caps.js for why the sentences on this screen keep the other
           form. */}
-      <span style={{ color: over ? 'var(--danger-ink)' : 'inherit' }}>
+      {/* แดงหนาเมื่อเกิน — น้ำหนักเดียวกับ `OVER_CAP` ของคิวรออนุมัติ */}
+      <span style={over ? { color: 'var(--danger-ink)', fontWeight: 600 } : undefined}>
         {capPair(cap.usedHours, cap.capHours)}
       </span>
       {/* ALWAYS DRAWN, EMPTY OR NOT, and that is the point of it.

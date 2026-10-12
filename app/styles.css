@@ -10025,7 +10025,10 @@ th.why-col { width: 150px; }
 
    `--danger-ink`, the same token the figure above it takes, so the two lines
    are one warning rather than two opinions. Weight, not size: the line stays
-   11.5px because it is still the second thing read. */
+   11.5px because it is still the second thing read.
+
+   ⚠ ตั้งแต่ 2026-10-12 บรรทัดที่ใส่ `over` บน ตรวจสอบประจำเดือน คือ `overCapLine`
+   (`เกินเพดานแล้ว 16 ชม.`) ประโยคเดียวกับคิว ไม่ใช่ `รวมรออนุมัติ 45 / 40` แล้ว */
 .cap-sub.over { color: var(--danger-ink); font-weight: 600; }
 
 /* HR's queue arrives all at once at month end. These are the controls that
@@ -14885,6 +14888,9 @@ table.mini tbody tr:hover { background: none; }
        follows the type if the type moves. */
     min-height: 2.9em;
   }
+  /* กฎข้างบนเจาะจงกว่า `.cap-sub.over` จึงเคยทับสีแดงเป็นเทา — บรรทัด
+     เกินเพดานบนการ์ดมือถือเลยไม่เตือน (พบ 2026-10-12) */
+  .hr-table tbody td.cap-col .cap-sub.over { color: var(--danger-ink); }
 
   .hr-table tbody td.act-col {
     grid-area: act; margin-top: 2px;

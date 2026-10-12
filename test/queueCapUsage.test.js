@@ -559,6 +559,27 @@ test('ตรวจสอบรายเดือน opens on ทั้งหม�
 });
 
 /**
+ * ตรวจสอบประจำเดือนเตือนเกินเพดานด้วยประโยคเดียวกับคิวรออนุมัติ — 2026-10-12
+ * *"ให้แจ้งเตือนเกินเพดานเหมือนหน้ารออนุมัติ"* · ตัวเลขแดงหนา บรรทัดใต้เป็น
+ * `overCapLine` ไม่ใช่ `รวมรออนุมัติ 45 / 40` · และบนการ์ดมือถือต้องยังแดง
+ */
+test('the monthly cap cell warns in the queue words', () => {
+  const view = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
+  const cell = view.slice(view.indexOf('function CapCell('), view.indexOf('function CapCell(') + 4000);
+  assert.match(cell, /const note = over\s*\?\s*overCapLine\(/, 'a breach no longer reads like the queue');
+  assert.match(cell, /\{ color: 'var\(--danger-ink\)', fontWeight: 600 \}/, 'the figure lost the queue weight');
+
+  const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+  assert.match(css, /\.hr-table tbody td\.cap-col \.cap-sub\.over \{ color: var\(--danger-ink\); \}/,
+    'the phone card paints the breach line grey again');
+
+  // ตัวเลขจาก payload ของ ตรวจสอบประจำเดือน (`capColumn`): อนุมัติ 56 เพดาน 40
+  const month = capColumn({ shown: [], live: [], capHours: 40 });
+  assert.equal(overCapLine({ ...month, approvedHours: 56, usedHours: 56 }), 'เกินเพดานแล้ว 16 ชม.');
+  assert.equal(overCapLine({ capHours: 40, approvedHours: 30, usedHours: 45 }), 'อนุมัติครบจะเกิน 5 ชม.');
+});
+
+/**
  * The สะสมทั้งเดือน column, read as text — there is no DOM in this suite.
  *
  * ANOTHER DELIBERATE CHANGE OF SPEC, and the assertions below used to say the

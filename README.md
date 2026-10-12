@@ -8039,6 +8039,14 @@ taking it past — `รวมรออนุมัติ 45 / 40` is **the only 
 knows**. The alarm colour was on the half that was fine and the footnote voice on
 the half that was not.
 
+**⚠ On a breach the line no longer says `รวมรออนุมัติ 45 / 40` — since
+2026-10-12** (*"ให้แจ้งเตือนเกินเพดานเหมือนหน้ารออนุมัติ"*) it prints the queue's
+own sentence, `overCapLine`: `เกินเพดานแล้ว 16 ชม.` or `อนุมัติครบจะเกิน 5 ชม.`,
+and the figure above it is bold as well as red. The pending note still stands on
+every row that is inside its ceiling. The phone card had been drawing the breach
+line grey all along — `.hr-table tbody td.cap-col .cap-sub` outranked
+`.cap-sub.over` — and now has a rule of its own that keeps it red.
+
 #### รอนำเข้า — THE THIRD STATE, AND IT IS OFF THE GREEN–RED SCALE
 
 **2026-09-11:** *"หากรายการไหนยังไม่ได้นำเข้าไฟล์สแกนเวลา ให้แสดงข้อความตรงคอลัมน์
