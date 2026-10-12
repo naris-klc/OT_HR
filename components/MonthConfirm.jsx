@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { hours, thaiDate } from '@/lib/api.js';
-import { overCeilingApproveHead } from '@/lib/caps.js';
+import { overCeilingApproveHead, OVER_CEILING_REASON_SAY } from '@/lib/caps.js';
 import { Modal, Alert, ShowMore } from './common.jsx';
 import Icon from './icons.jsx';
 
@@ -148,10 +148,8 @@ export default function MonthConfirm({
               </li>
             )}
           />
-          <div className="say">
-            เหตุผลที่ระบุจะถูกบันทึกไว้ในประวัติของใบคำขอ และนำไปแสดงบนรายงานสรุป OT ส่งบัญชี
-            {' '}(ตรงตัวเลขชั่วโมงของพนักงานคนนี้)
-          </div>
+          {/* ค่าคงที่ ไม่ใช่สำเนา — เคยพิมพ์ประโยคนี้เองจนถึง 2026-10-12 */}
+          <div className="say">{OVER_CEILING_REASON_SAY}</div>
         </Alert>
       )}
 

@@ -82,7 +82,7 @@ test('คำปฏิเสธเป็นข้อความเดียว�
   const refusal = overCeilingRefusal(flagged(), '');
   assert.equal(refusal.error, OVER_CEILING_REASON_REQUIRED);
   assert.equal(refusal.status, 400);
-  assert.match(OVER_CEILING_REASON_REQUIRED, /เกินเพดาน OT ที่กำหนด/);
+  assert.match(OVER_CEILING_REASON_REQUIRED, /^รายการนี้เกินเพดาน /);
   assert.ok(
     read('components/ApprovalQueue.jsx').includes('OVER_CEILING_REASON_REQUIRED'),
     'จอต้องใช้ค่าคงที่ตัวเดียวกัน ไม่ใช่พิมพ์ประโยคซ้ำ',
@@ -279,14 +279,15 @@ test('หัวข้อของแผ่นยืนยัน พูดถึ�
   assert.equal(overCeilingApproveHead(1), OVER_CEILING_REASON_APPROVE);
   assert.equal(
     OVER_CEILING_REASON_APPROVE,
-    'รายการนี้เกินเพดาน OT ที่กำหนด กรุณาระบุเหตุผลการยืนยันอนุมัติรายบุคคล',
+    'รายการนี้เกินเพดาน กรุณาระบุเหตุผลการยืนยันอนุมัติรายบุคคล',
   );
   assert.equal(
     overCeilingApproveHead(9),
-    '9 รายการที่เลือกไว้เกินเพดาน OT ที่กำหนด กรุณาระบุเหตุผลการยืนยันอนุมัติรายบุคคล',
+    '9 รายการที่เลือกไว้เกินเพดาน กรุณาระบุเหตุผลการยืนยันอนุมัติรายบุคคล',
     '"รายการนี้" เหนือรายชื่อเก้าคน คือแผ่นที่พูดถึงใบเดียวแต่โชว์เก้าใบ',
   );
-  const fact = 'รายการนี้เกินเพดาน OT ที่กำหนด';
+  // `เกินเพดาน OT ที่กำหนด` จนถึง 2026-10-12 — รวมคำให้เหลือ เกินเพดาน ทั้งแอป
+  const fact = 'รายการนี้เกินเพดาน';
   assert.ok(OVER_CEILING_REASON_REQUIRED.startsWith(fact), 'ข้อเท็จจริงต้องมาจากที่เดียวกัน');
   assert.ok(OVER_CEILING_REASON_APPROVE.startsWith(fact));
   assert.doesNotMatch(OVER_CEILING_REASON_APPROVE, /ไม่อนุมัติ/);

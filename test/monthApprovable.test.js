@@ -168,7 +168,7 @@ test('the payload carries what a batch needs and nothing it does not', () => {
   // the browser, asked on whichever side is holding the entry.
   assert.match(route, /if \(needsOverCeilingReason\(entry\)\) \{/);
   assert.match(route, /capOver \+= 1;/);
-  assert.match(route, /text: describeBreaches\(entry\)\.map\(\(b\) => b\.text\)\.join\(' · '\) \|\| 'เกินเพดานแผนก',/);
+  assert.match(route, /text: describeBreaches\(entry\)\.map\(\(b\) => b\.text\)\.join\(' · '\) \|\| 'เกินเพดาน',/);
   // Rounded where every other figure in this app is.
   assert.match(route, /hours: Math\.round\(hours \* 100\) \/ 100,/);
 });

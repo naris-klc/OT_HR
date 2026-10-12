@@ -7,7 +7,7 @@ import {
   STATUS,
 } from '@/lib/api.js';
 import {
-  capPair, describeBreaches, overCapLine,
+  blockedMessage, capPair, describeBreaches, overCapLine,
   needsOverCeilingReason, overCeilingApproveHead,
   OVER_CEILING_REASON_REQUIRED, OVER_CEILING_REASON_SAY,
 } from '@/lib/caps.js';
@@ -26,7 +26,7 @@ import {
   Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, EntryLead, EntryHistoryBlock, ShowMore,
-  InlineMark, NoticeRow, NoticeStack, FilterSheet,
+  NoticeRow, NoticeStack, FilterSheet,
   PAGE_SIZE, StatusChip, TablePager, TeamMark, editsOf, pageWindow, shownWarnings, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
@@ -2072,12 +2072,11 @@ export default function ApprovalQueue({
                         <span className="chip refiled">ส่งใหม่จากที่ไม่อนุมัติ</span>
                       </div>
                     )}
-                    {/* Every ceiling breached, not the first — an entry can be
-                        over the week and the month at once, and the reviewer
-                        needs both to know what moving the shift would fix. */}
-                    {describeBreaches(e).map((b) => (
-                      <div className="cell-note" key={b.scope + b.text}><InlineMark tone="warn" />{b.text}</div>
-                    ))}
+                    {/* ⚠ เกินเพดาน ใต้รายละเอียดถูกตัดออก 2026-10-12 — ผู้ใช้ชี้ว่า
+                        ซ้ำกับคอลัมน์ สะสม / เพดาน ข้างกัน · ใบที่เกินเพดานรายสัปดาห์
+                        จึงไม่มีอะไรบอกบนแถวแล้ว (คอลัมน์ดูแต่รายเดือน) ผู้ใช้รับรู้และ
+                        เลือกเอง · ป๊อปอัปรายละเอียดยังบอกทุกเพดาน และกดอนุมัติยัง
+                        ต้องใส่เหตุผล */}
                     {/* code + column: a bucket-scoped minimum can leave two
                         warnings on one entry sharing a code. */}
                     {shownWarnings(e.warnings).map((w) => (
@@ -2605,7 +2604,7 @@ function ConfirmModal({
             render={(e) => (
               <li key={e._id}>
                 {e.employee?.name} · {thaiDate(e.workDate)} ·
-                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก'}
+                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดาน'}
               </li>
             )}
           />
@@ -2706,7 +2705,7 @@ export function RejectModal({ entries, busy, onClose, onReject }) {
               live on this sheet — rather than a paraphrase of its first half. */}
           <strong>
             {many
-              ? `${capped.length} รายการที่เลือกไว้เกินเพดาน OT ที่กำหนด`
+              ? `${capped.length} รายการที่เลือกไว้เกินเพดาน`
               : OVER_CEILING_REASON_REQUIRED}
           </strong>
           <ShowMore
@@ -2716,7 +2715,7 @@ export function RejectModal({ entries, busy, onClose, onReject }) {
             render={(e) => (
               <li key={e._id}>
                 {e.employee?.name} · {thaiDate(e.workDate)} ·
-                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก'}
+                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดาน'}
               </li>
             )}
           />
@@ -3687,10 +3686,9 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
                 <div key={w.code + (w.bucket || '')} className="hint">{w.message}</div>
               ))}
               {preview.cap?.exceeded && (
-                <Alert kind="warn">
-                  แก้แล้วเกินเพดานแผนก {preview.cap.capHours} ชม./เดือน
-                  {' '}(ใช้ไปแล้ว {hours(preview.cap.usedHoursBefore)} ชม.)
-                </Alert>
+                /* ทุกเพดานที่เกินจริง — จนถึง 2026-10-12 พิมพ์ตัวเลขรายเดือนเสมอ
+                   ใบที่เกินแค่รายสัปดาห์จึงถูกบอกว่าเกินเพดานเดือน */
+                <Alert kind="warn">แก้แล้ว{blockedMessage(preview.cap)}</Alert>
               )}
             </>
           ) : !err && <div className="hint">กำลังคำนวณ…</div>}

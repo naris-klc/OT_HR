@@ -1098,7 +1098,9 @@ test('the รายละเอียด pop-up still shows the whole story', ()
   const grid = common.slice(gridFrom, common.indexOf('export function EntryHistoryBlock(', gridFrom));
   assert.ok(gridFrom > 0 && grid.length < 4000, 'the คำขอ grid or the card after it moved');
   assert.doesNotMatch(grid, /สะสม \/ เพดาน/, 'the ceiling is back among the request\'s own facts');
-  assert.match(grid, /เกินเพดานแผนก — \{describeBreaches\(e\)/, 'the filed-day breach left the grid with it');
+  assert.match(grid, /<span className="dm-tag over">\{describeBreaches\(e\)\.map/, 'the filed-day breach left the grid with it');
+  // ไม่มีคำนำ เกินเพดานแผนก — ซ้อนหน้าข้อความของ breachLines อีก (2026-10-12)
+  assert.doesNotMatch(grid, /เกินเพดานแผนก/);
   /*
    * AND THE TINT IS STILL THE SERVER'S ANSWER, NOT THE CARD'S.
    *

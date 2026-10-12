@@ -265,10 +265,11 @@ test('a flagged entry describes every ceiling it passed', () => {
   });
 
   assert.equal(lines.length, 2);
-  // รายเดือนอ่านแค่ `เกินเพดาน` ตั้งแต่ 2026-10-12 · รายสัปดาห์ยังบอกชื่อ
-  assert.equal(lines[0].text, 'เกินเพดาน — เพดาน 40 ชม.');
-  assert.match(lines[1].text, /รายสัปดาห์/);
-  assert.match(lines[1].text, /2026-08-03 – 2026-08-09/);
+  // `เกินเพดาน 40 ชม./เดือน` ตั้งแต่ 2026-10-12 — หน่วยแยกสองเพดาน ·
+  // ช่วงสัปดาห์เก็บเป็น ISO แต่แสดงเป็นวันที่ไทย
+  assert.equal(lines[0].text, 'เกินเพดาน 40 ชม./เดือน');
+  assert.equal(lines[1].text, 'เกินเพดาน 12 ชม./สัปดาห์ (03/08/2569 – 09/08/2569)');
+  assert.doesNotMatch(lines.map((l) => l.text).join(' '), /— เพดาน/);
 });
 
 test('a row written before the weekly cap existed still reads as a monthly breach', () => {

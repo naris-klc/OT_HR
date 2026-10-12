@@ -330,7 +330,7 @@ test('both confirm dialogs read the ceiling wording from lib/caps.js', () => {
   // cannot read as two different rules.
   assert.equal(overCeilingApproveHead(1), OVER_CEILING_REASON_APPROVE);
   // And nothing in the new dialog spells a ceiling sentence out by hand.
-  assert.ok(!confirm.includes('เกินเพดาน OT ที่กำหนด'), 'the wording was copied instead of imported');
+  assert.ok(!confirm.includes('เหตุผลที่ระบุจะถูกบันทึก'), 'the wording was copied instead of imported');
 
   // The rows are NAMED, not counted: a reason is being demanded for exactly
   // them. คิวรออนุมัติ builds those lines in the browser from entries it holds;

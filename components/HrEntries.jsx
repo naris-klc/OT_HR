@@ -152,7 +152,7 @@ function BatchApproveModal({ entries, choosable, busy, onClose, onConfirm }) {
             render={(e) => (
               <li key={e._id}>
                 {thaiDate(e.workDate)} ·
-                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก'}
+                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดาน'}
               </li>
             )}
           />
@@ -469,7 +469,7 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
     if (entry.decide?.needsReason) {
       note = window.prompt([
         OVER_CEILING_REASON_APPROVE,
-        'เหตุผลนี้จะถูกบันทึกไว้ในประวัติของใบ และแสดงบนรายงานสรุป OT ส่งบัญชี',
+        OVER_CEILING_REASON_SAY,
       ].join('\n\n'));
       if (!note || !note.trim()) return;
     }

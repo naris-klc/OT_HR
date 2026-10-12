@@ -85,8 +85,10 @@ test('nothing in a row writes its own type size any more', () => {
     'an inline font size came back into a row',
   );
   assert.match(jsx, /className="cell-note"/);
-  // The same class, on the screen that shares these rows.
-  assert.match(read('components/ApprovalQueue.jsx'), /className="cell-note"/);
+  // คิวรออนุมัติ เคยพิมพ์ ⚠ เกินเพดาน ด้วยคลาสเดียวกันใต้รายละเอียด — ตัดออก
+  // 2026-10-12 เพราะซ้ำกับคอลัมน์ สะสม / เพดาน ข้างกัน (ผู้ใช้สั่ง)
+  assert.doesNotMatch(read('components/ApprovalQueue.jsx'), /describeBreaches\(e\)\.map\(\(b\) => \(\s*<div className="cell-note"/,
+    'ป้าย ⚠ เกินเพดาน กลับมาในแถวคิว');
 });
 
 test('the date reads "จ.05/10/2569", the form คิวรออนุมัติ prints, and does not wrap', () => {
@@ -867,4 +869,21 @@ test('บนมือถือปุ่มท้ายแถวกว้าง�
   assert.ok(!/\.entry-actions[^{]*\{[^}]*auto-fit/.test(css), 'กริดปุ่มเป็น auto-fit');
   // เดสก์ท็อปยังเป็นแถวเดียวไม่ตัดบรรทัด
   assert.match(rule('.entry-actions'), /display: inline-flex;[^}]*flex-wrap: nowrap;/);
+});
+
+test('ป้ายบันทึกแทนบอกบทบาทของคนบันทึก ชื่ออยู่ใน tooltip', () => {
+  // 2026-10-12 ผู้ใช้สั่ง: "บันทึกแทน · ชื่อ" ให้เหลือ "หัวหน้างานบันทึกแทน" รายละเอียด
+  // ไปอยู่ใน tooltip · ตารางคำเดิมมีคีย์ `manager` ซึ่งไม่ใช่บทบาท หัวหน้างานจึงได้แค่ บันทึกแทน
+  const kit = read('components/common.jsx');
+  assert.match(kit, /function filerLabel\(role\) \{\s*return ROLE_LABEL_TH\[role\] \? `\$\{ROLE_LABEL_TH\[role\]\}บันทึกแทน` : 'บันทึกแทน';/);
+  const proxy = kit.slice(kit.indexOf('className="chip proxy"'), kit.indexOf('</span>', kit.indexOf('className="chip proxy"')));
+  assert.match(proxy, /data-tip=\{name/, 'ชื่อคนบันทึกต้องอยู่ใน tooltip');
+  assert.match(proxy, /\{filerLabel\(entry\.filedBy\?\.role\)\}\s*$/, 'ชื่อคนบันทึกกลับมาบนป้าย');
+});
+
+test('กล่องเพดานในฟอร์มบอกเพดานที่เกินจริง ไม่ใช่ตัวเลขรายเดือนเสมอ', () => {
+  // จนถึง 2026-10-12 ใบที่เกินแค่รายสัปดาห์อ่านว่า "รวม 14 ชม. — เกินเพดาน" ใต้เพดาน 40/เดือน
+  const form = read('components/OtForm.jsx');
+  assert.match(form, /breachLines\(cap\.breaches\)\.map\(\(b\) => b\.text\)/);
+  assert.match(read('components/ApprovalQueue.jsx'), /แก้แล้ว\{blockedMessage\(preview\.cap\)\}/);
 });
