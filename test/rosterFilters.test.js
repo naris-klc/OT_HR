@@ -309,9 +309,11 @@ test('มือถือ: ช่องค้นหากับปุ่ม ต�
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.ok(!/roster-wide \{/.test(phone), 'the pairing rule came back');
   assert.match(employees, /<FilterSheet count=\{FACET_KEYS\.filter\(\(k\) => filters\[k\]\)\.length\}/);
-  // The search box stays on the bar, full width beside the button: it is typed
-  // into, and a Thai name in a half-width box cannot be read back.
-  assert.match(phone, /\.queue-tools:has\(> \.filter-toggle\) > \.field\.search \{ flex: 1 1 0; min-width: 0; \}/);
+  // The search box stays on the bar on a line of its own, the button under it:
+  // it is typed into, and a Thai name in a narrow box cannot be read back. It
+  // shared the line with the button for part of 2026-10-12 — *"ช่องค้นหามันเล็ก
+  // เกินไป ปรับให้ช่องค้นหาเต็ม 1 แถวไปเลยดีกว่า"*.
+  assert.match(phone, /\.queue-tools:has\(> \.filter-toggle\) > \.field\.search \{ flex: 1 1 100%; min-width: 0; \}/);
 });
 
 test('แผงที่มีช่องค้นหาเป็นแผงเดียว ไม่ใช่กล่องลอยซ้อนอีกใบ', () => {

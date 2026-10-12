@@ -12730,13 +12730,14 @@ table.mini tbody tr:hover { background: none; }
   .queue-tools:has(+ .queue-mobile-bar) { border-bottom: 0; }
   .queue-tools .field, .queue-tools .field.search { flex: 1 1 100%; }
   /* ── ตัวกรอง (`FilterSheet`) — 2026-10-12 ───────────────────────────────
-     ช่องค้นหากับปุ่ม ตัวกรอง อยู่แถวเดียวกัน ช่องเลือกที่เหลืออยู่ในแผ่นจากล่าง ·
-     ผู้ใช้เลือกจาก mockup ux-m แทนการเรียงช่องเลือกลงเต็มความกว้าง */
-  .queue-tools:has(> .filter-toggle) > .field.search { flex: 1 1 0; min-width: 0; }
-  .queue-tools > .filter-toggle { flex: none; align-self: stretch; height: auto; }
-  /* ล้างตัวกรอง beside them is the icon alone, as on a desktop — with its
-     word it left the search box too narrow to read back a name. The sheet's
-     foot carries the worded one. */
+     ช่องเลือกอยู่ในแผ่นจากล่าง ผู้ใช้เลือกจาก mockup ux-m แทนการเรียงช่องเลือกลง
+     เต็มความกว้าง · ช่องค้นหาเต็มแถว ปุ่ม ตัวกรอง อยู่แถวถัดไปเต็มความกว้าง —
+     วันเดียวกันมันเคยอยู่แถวเดียวกับช่องค้นหา แล้วผู้ใช้สั่ง *"ช่องค้นหามันเล็ก
+     เกินไป ปรับให้ช่องค้นหาเต็ม 1 แถวไปเลยดีกว่า"* */
+  .queue-tools:has(> .filter-toggle) > .field.search { flex: 1 1 100%; min-width: 0; }
+  .queue-tools > .filter-toggle { flex: 1 1 0; }
+  /* ล้างตัวกรอง beside the button is the icon alone, as on a desktop; the
+     sheet's foot carries the worded one. */
   .queue-tools:has(> .filter-toggle) .clear-filters .btn-word { display: none; }
   .queue-tools:has(> .filter-toggle) .btn.act-icon.clear-filters { height: auto; width: auto; aspect-ratio: 1; padding: 0; }
   /* "แสดง 1 จาก 181 คน" takes the next line, or it squeezes the search box to its icon. */
