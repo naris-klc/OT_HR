@@ -1113,8 +1113,11 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           key={b.scope + b.text}
                           className="cell-note"
                           title={b.text}
+                          style={{ fontWeight: 600 }}
                         >
-                          เกินเพดานราย{b.scope === 'week' ? 'สัปดาห์' : 'เดือน'}
+                          {/* `เกินเพดานรายเดือน` ตัวปกติ จนถึง 2026-10-12 — ผู้ใช้สั่ง
+                              ตัวหนา `เกินเพดาน` (ทั้งแอป ดู `breachLines`) */}
+                          {b.scope === 'week' ? 'เกินเพดานรายสัปดาห์' : 'เกินเพดาน'}
                         </div>
                       ))}
                     </td>

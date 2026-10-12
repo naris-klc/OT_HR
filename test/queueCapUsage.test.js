@@ -246,12 +246,12 @@ test('at the widest filter every figure on both screens is the same figure', asy
  *
  * One is a fact about signed-off hours that the reviewer cannot undo; the other
  * is a consequence of the decision in front of them, which they can. A reviewer
- * told "เกินเพดานแล้ว" about hours that are still requests would refuse a
+ * told "เกินเพดาน" ("เกินเพดานแล้ว" until 2026-10-12) about hours that are still requests would refuse a
  * request to fix something that was never broken.
  */
 test('a ceiling already passed by approved hours alone says so as a fact', () => {
   const line = overCapLine({ approvedHours: 43, usedHours: 50, pendingHours: 7, capHours: 40 });
-  assert.equal(line, 'เกินเพดานแล้ว 3 ชม.');
+  assert.equal(line, 'เกินเพดาน');
   assert.ok(!line.includes('จะเกิน'), 'a settled breach is described as a projection');
 });
 
@@ -271,14 +271,14 @@ test('inside the ceiling on both counts says nothing at all', () => {
 
 test('no ceiling is never a breach, and a ceiling of zero always is', () => {
   assert.equal(overCapLine({ approvedHours: 99, usedHours: 99, capHours: null }), null);
-  assert.equal(overCapLine({ approvedHours: 3, usedHours: 3, capHours: 0 }), 'เกินเพดานแล้ว 3 ชม.');
+  assert.equal(overCapLine({ approvedHours: 3, usedHours: 3, capHours: 0 }), 'เกินเพดาน');
   // Exactly on it is not over it — the same boundary as `overCap`.
   assert.equal(overCapLine({ approvedHours: 40, usedHours: 40, capHours: 40 }), null);
 });
 
 test('the settled breach wins when both are true — it is the one that is real', () => {
   const line = overCapLine({ approvedHours: 45, usedHours: 60, pendingHours: 15, capHours: 40 });
-  assert.equal(line, 'เกินเพดานแล้ว 5 ชม.', 'the projection was reported over the fact');
+  assert.equal(line, 'เกินเพดาน', 'the projection was reported over the fact');
 });
 
 // ── the เพดาน column: printed filtered, coloured unfiltered ─────────────────
@@ -575,7 +575,7 @@ test('the monthly cap cell warns in the queue words', () => {
 
   // ตัวเลขจาก payload ของ ตรวจสอบประจำเดือน (`capColumn`): อนุมัติ 56 เพดาน 40
   const month = capColumn({ shown: [], live: [], capHours: 40 });
-  assert.equal(overCapLine({ ...month, approvedHours: 56, usedHours: 56 }), 'เกินเพดานแล้ว 16 ชม.');
+  assert.equal(overCapLine({ ...month, approvedHours: 56, usedHours: 56 }), 'เกินเพดาน');
   assert.equal(overCapLine({ capHours: 40, approvedHours: 30, usedHours: 45 }), 'อนุมัติครบจะเกิน 5 ชม.');
 });
 
