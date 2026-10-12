@@ -3321,11 +3321,14 @@ button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertica
    ที่อื่น (หัวการ์ดข้างปุ่ม .btn.sm) ใช้ 32px ตามปุ่มข้าง ๆ
    · ยืดตามความสูงแถว (สี่เหลี่ยมจัตุรัส) ตั้งแต่ 2026-10-12 — เคยเป็น `--field-h`
    ซึ่งเท่าช่องบนแถบพอดี (46) จนช่องกรองทั่วไปลดเป็น 40 แต่ช่องบนแถบยังสูง 48
-   เพราะมีป้ายอยู่ในกล่อง · ใช้กับแถวปุ่ม ตัวกรอง บนมือถือด้วย */
-.queue-tools > .act-tip:has(> .clear-filters) { align-self: stretch; display: flex; }
-@media (min-width: 861px) {
-  .queue-tools .btn.act-icon.clear-filters { height: auto; width: auto; aspect-ratio: 1; }
-}
+   เพราะมีป้ายอยู่ในกล่อง · ใช้กับแถวปุ่ม ตัวกรอง บนมือถือด้วย
+   · ⚠ กว้าง 48px ตายตัว ไม่ใช่ `width: auto; aspect-ratio: 1` ที่ใช้อยู่ครึ่งวัน
+   2026-10-12 — แถบจองที่ให้กล่องห่อปุ่มก่อนรู้ความสูงที่ยืด จึงได้ 18px (มือถือ
+   30px) แล้วปุ่ม 48px ล้นออกไปทับขอบการ์ดหรือคำ แสดง X จาก Y ทุกแถบทุกความกว้าง
+   (ผู้ใช้เจอหลัง deploy) · 48 คือความสูงช่องบนแถบที่วัดได้ทุกความกว้าง ถ้าช่อง
+   สูงขึ้น ปุ่มยังยืดตามแต่ไม่ล้น */
+.queue-tools > .act-tip:has(> .clear-filters) { align-self: stretch; display: flex; flex: none; }
+.queue-tools .btn.act-icon.clear-filters { height: auto; width: 48px; padding: 0; }
 
 /* The bubble `TipLayer` draws. Inverted — `--ink` under `--card` — so it reads
    as something laid over the page in both themes without a colour of its own.
@@ -12821,7 +12824,9 @@ table.mini tbody tr:hover { background: none; }
   /* ล้างตัวกรอง beside the button is the icon alone, as on a desktop; the
      sheet's foot carries the worded one. */
   .queue-tools:has(> .filter-toggle) .clear-filters .btn-word { display: none; }
-  .queue-tools:has(> .filter-toggle) .btn.act-icon.clear-filters { height: auto; width: auto; aspect-ratio: 1; padding: 0; }
+  /* แถวนี้สูงเท่าปุ่ม ตัวกรอง (`--btn-h`) จึงกว้างเท่านั้นให้เป็นจัตุรัส — ความกว้าง
+     ตายตัวด้วยเหตุผลเดียวกับบนจอกว้าง (ดู ล้างตัวกรอง ข้าง `.act-tip`) */
+  .queue-tools:has(> .filter-toggle) .btn.act-icon.clear-filters { width: var(--btn-h); }
   /* "แสดง 1 จาก 181 คน" takes the next line, or it squeezes the search box to its icon. */
   .queue-tools:has(> .filter-toggle) > .found { flex: 1 1 100%; }
   /* ทะเบียนพนักงาน's three dropdowns paired off two to a line here
