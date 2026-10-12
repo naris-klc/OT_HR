@@ -11,7 +11,7 @@ import {
 import {
   Alert, Empty, Field, Modal, NoticeRow, NoticeStack, PickOne, ClearButton, ClearFilters, PAGE_SIZE, TablePager, TipButton,
   useScrollEdge,
-  pageQuery, pageWindow, serverRows, useKeptFetch, usePageClamp, usePageReset,
+  pageQuery, pageWindow, serverRows, useKeptFetch, usePageClamp, usePageReset, FilterSheet,
 } from './common.jsx';
 import Icon from './icons.jsx';
 
@@ -1021,49 +1021,52 @@ function LogList({
             from the roster is still in it — and it is about the SCREEN rather
             than about this one control, which is where a sentence that long
             belongs on a bar of equal-height boxes. */}
-        <PickOne
-          label="กรองตามบัญชี"
-          value={filters.actor}
-          onChange={(v) => setFilter('actor', v)}
-          allLabel="ทุกบัญชี"
-          options={[
-            /* The rows nobody's session is attached to: refused logins, and
-               requests turned away before a session existed. Its own choice
-               because it is the one somebody scanning for trouble wants. */
-            { value: 'none', label: 'ไม่มีบัญชี (ยังไม่ได้เข้าระบบ)' },
-            ...(data?.actors || []).map((a) => ({
-              value: a.id,
-              label: `${a.code || '—'} · ${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
-            })),
-          ]}
-        />
-        {tab === 'auth' && (
+        {/* บนมือถือช่องเลือกพวกนี้อยู่ในแผ่น ตัวกรอง (FilterSheet) — 2026-10-12 */}
+        <FilterSheet count={['actor', 'event', 'status'].filter((k) => filters[k]).length + (filters.from || filters.to ? 1 : 0)} onClear={() => ['actor', 'event', 'status', 'from', 'to'].forEach((k) => setFilter(k, ''))}>
           <PickOne
-            label="กรองตามเหตุการณ์"
-            value={filters.event}
-            onChange={(v) => setFilter('event', v)}
-            allLabel="ทั้งหมด"
+            label="กรองตามบัญชี"
+            value={filters.actor}
+            onChange={(v) => setFilter('actor', v)}
+            allLabel="ทุกบัญชี"
             options={[
-              { value: 'login', label: EVENT_LABEL.login },
-              { value: 'login_failed', label: EVENT_LABEL.login_failed },
-              { value: 'logout', label: EVENT_LABEL.logout },
+              /* The rows nobody's session is attached to: refused logins, and
+                 requests turned away before a session existed. Its own choice
+                 because it is the one somebody scanning for trouble wants. */
+              { value: 'none', label: 'ไม่มีบัญชี (ยังไม่ได้เข้าระบบ)' },
+              ...(data?.actors || []).map((a) => ({
+                value: a.id,
+                label: `${a.code || '—'} · ${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
+              })),
             ]}
           />
-        )}
-        <PickOne
-          label="กรองตามผลลัพธ์"
-          value={filters.status}
-          onChange={(v) => setFilter('status', v)}
-          allLabel="ทุกผลลัพธ์"
-          options={Object.entries(STATUS_CLASS_LABEL)
-            .filter(([k]) => k !== 'unknown')
-            .map(([k, label]) => ({ value: k, label }))}
-        />
-        {/* ONE BOX FOR BOTH DATES — 2026-10-08; see `DateRange`. */}
-        <Field label="ช่วงวันที่ (รวมวันสุดท้าย)" className="daterange">
-          <DateRange from={filters.from} to={filters.to} max={today} clearable
-            onFrom={(v) => setFilter('from', v)} onTo={(v) => setFilter('to', v)} />
-        </Field>
+          {tab === 'auth' && (
+            <PickOne
+              label="กรองตามเหตุการณ์"
+              value={filters.event}
+              onChange={(v) => setFilter('event', v)}
+              allLabel="ทั้งหมด"
+              options={[
+                { value: 'login', label: EVENT_LABEL.login },
+                { value: 'login_failed', label: EVENT_LABEL.login_failed },
+                { value: 'logout', label: EVENT_LABEL.logout },
+              ]}
+            />
+          )}
+          <PickOne
+            label="กรองตามผลลัพธ์"
+            value={filters.status}
+            onChange={(v) => setFilter('status', v)}
+            allLabel="ทุกผลลัพธ์"
+            options={Object.entries(STATUS_CLASS_LABEL)
+              .filter(([k]) => k !== 'unknown')
+              .map(([k, label]) => ({ value: k, label }))}
+          />
+          {/* ONE BOX FOR BOTH DATES — 2026-10-08; see `DateRange`. */}
+          <Field label="ช่วงวันที่ (รวมวันสุดท้าย)" className="daterange">
+            <DateRange from={filters.from} to={filters.to} max={today} clearable
+              onFrom={(v) => setFilter('from', v)} onTo={(v) => setFilter('to', v)} />
+          </Field>
+        </FilterSheet>
       </div>
 
       {/* แถวแดงในกล่องแจ้งเตือนบนสุดของหน้า ตั้งแต่ 2026-10-10 (รายงาน UX ข.2) — เคยเป็น `Alert` บนการ์ด */}

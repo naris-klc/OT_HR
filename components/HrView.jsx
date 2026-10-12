@@ -8,7 +8,7 @@ import {
 import { capFigure, capPair, overCap, overCapLine, pendingCapNote } from '@/lib/caps.js';
 import {
   ClearButton, ClearFilters, Empty, InlineMark, NoticeRow, NoticeStack, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
-  PAGE_SIZE, RowAction, ShowMore, TablePager, WhoName, pageWindow,
+  PAGE_SIZE, RowAction, ShowMore, TablePager, WhoName, pageWindow, FilterSheet,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -1850,18 +1850,21 @@ export default function HrView({
               แผนก the list is ทุกแผนก and their own, which narrows nothing and
               is the same one-row list คิวรออนุมัติ decided was a smaller cost
               than a toolbar that is a different shape for every บทบาท. */}
-          <PickOne
-            label="แผนก"
-            value={dept}
-            onChange={setDept}
-            options={departments}
-            allLabel="ทุกแผนก"
-          />
-          {/* `month-field` — the width hook, see `.month-field` in app/styles.css */}
-          <div className="field month-field">
-            <div className="field-head"><label>ประจำเดือน</label></div>
-            <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
-          </div>
+          {/* บนมือถือช่องเลือกพวกนี้อยู่ในแผ่น ตัวกรอง (FilterSheet) — 2026-10-12 */}
+          <FilterSheet count={dept ? 1 : 0} onClear={() => setDept('')}>
+            <PickOne
+              label="แผนก"
+              value={dept}
+              onChange={setDept}
+              options={departments}
+              allLabel="ทุกแผนก"
+            />
+            {/* `month-field` — the width hook, see `.month-field` in app/styles.css */}
+            <div className="field month-field">
+              <div className="field-head"><label>ประจำเดือน</label></div>
+              <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
+            </div>
+          </FilterSheet>
           {/* ล้างตัวกรอง — the queue's own escape hatch, drawn only while there
               is something to escape. ประจำเดือน IS NOT ONE OF THE THINGS IT
               CLEARS: a month is always chosen on this screen, so "clearing" it

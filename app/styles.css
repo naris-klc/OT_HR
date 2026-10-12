@@ -3264,11 +3264,15 @@ button.link > svg, a.link > svg { width: 14px; height: 14px; flex: none; vertica
     clip-path: inset(50%); white-space: nowrap;
   }
 }
-/* ล้างตัวกรอง (`ClearFilters`, 2026-10-09) บนแถบกรองสูงเท่าช่องกรอง (46px)
-   ไม่ใช่ 32px ของแถวตาราง — สี่เหลี่ยมเล็กข้างช่องสูง 46px อ่านเป็นของหลงมา
-   ที่อื่น (หัวการ์ดข้างปุ่ม .btn.sm) ใช้ 32px ตามปุ่มข้าง ๆ */
+/* ล้างตัวกรอง (`ClearFilters`, 2026-10-09) บนแถบกรองสูงเท่าช่องกรอง
+   ไม่ใช่ 32px ของแถวตาราง — สี่เหลี่ยมเล็กข้างช่องสูงอ่านเป็นของหลงมา
+   ที่อื่น (หัวการ์ดข้างปุ่ม .btn.sm) ใช้ 32px ตามปุ่มข้าง ๆ
+   · ยืดตามความสูงแถว (สี่เหลี่ยมจัตุรัส) ตั้งแต่ 2026-10-12 — เคยเป็น `--field-h`
+   ซึ่งเท่าช่องบนแถบพอดี (46) จนช่องกรองทั่วไปลดเป็น 40 แต่ช่องบนแถบยังสูง 48
+   เพราะมีป้ายอยู่ในกล่อง · ใช้กับแถวปุ่ม ตัวกรอง บนมือถือด้วย */
+.queue-tools > .act-tip:has(> .clear-filters) { align-self: stretch; display: flex; }
 @media (min-width: 861px) {
-  .queue-tools .btn.act-icon.clear-filters { width: var(--field-h); height: var(--field-h); }
+  .queue-tools .btn.act-icon.clear-filters { height: auto; width: auto; aspect-ratio: 1; }
 }
 
 /* The bubble `TipLayer` draws. Inverted — `--ink` under `--card` — so it reads
@@ -6400,11 +6404,27 @@ td > .approver-line { margin-top: 5px; }
   align-self: center; position: relative; top: .5px;
   flex: 0 0 auto;
 }
-/* The same badge on the phone's dropdown row, where it stands beside the box
-   rather than on a button. `flex-end` lines the row up on the box's bottom
-   edge, and this lifts the badge to the middle of it rather than leaving it on
-   the baseline of a control it is not inside. */
-.section-pick .tab-badge { margin-bottom: 13px; }
+/* ── ตัวกรอง บนมือถือ — the button and the sheet `FilterSheet` draws ─────
+   Only rendered below 860px (the component asks `useSheet`), so nothing here
+   is wrapped in a media query. The sheet itself is `.pop.sheet`; these are the
+   parts that one does not already have: the count on the button, a body that
+   scrolls between the fixed head and foot, and the fields at full width with
+   their labels above them — out of `.queue-tools`, they are a form. */
+.filter-toggle.on { border-color: var(--green); color: var(--green-text); }
+.filter-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--green); color: var(--on-fill); font: 600 11px/1 var(--mono);
+}
+.filter-sheet-body {
+  display: flex; flex-direction: column; gap: 12px; padding: 4px 0 12px;
+  overflow-y: auto; overscroll-behavior: contain; min-height: 0;
+}
+.filter-sheet-body .field { flex: none; width: 100%; min-width: 0; }
+.filter-sheet .pop-foot { flex: none; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+/* `.section-pick .tab-badge` stood here until 2026-10-12 — the phone's count
+   beside the dropdown is gone; the row inside the list carries it (AdminView). */
 
 /* `.tabs-view` STOOD HERE — the wrapper around `.section-tabs`, carrying a fade
    at whichever edge still had buttons behind it, painted from `data-edge` off
@@ -12709,26 +12729,21 @@ table.mini tbody tr:hover { background: none; }
   .card:not(.flush) > .queue-tools:first-child { border-radius: var(--radius) var(--radius) 0 0; }
   .queue-tools:has(+ .queue-mobile-bar) { border-bottom: 0; }
   .queue-tools .field, .queue-tools .field.search { flex: 1 1 100%; }
-  /* ── ทะเบียนพนักงาน'S BAR IS FOUR FIELDS, AND FOUR SLABS IS A SCREEN ───────
-     The rule above is right for a bar of one or two and was written when no bar
-     had more: one control per line, because a filter you have to pinch at is a
-     filter nobody uses. ทะเบียนพนักงาน has ค้นหาพนักงาน plus ตำแหน่ง · แผนก ·
-     บทบาท since 2026-09-14, and stacked at full width that is 4 × 46px of
-     chrome plus the gaps before the first row of the table — on a 390px phone
-     the register starts below the fold.
-
-     THE SEARCH BOX KEEPS THE FULL WIDTH and the three dropdowns pair off.
-     Agreed at this width before the screen was built, and the asymmetry is the
-     point: the search box is TYPED INTO — a Thai name in a half-width box is a
-     box you cannot read back what you put in — while a dropdown shows a value
-     and opens a sheet that is the width of the screen either way.
-
-     บทบาท TAKES A LINE OF ITS OWN rather than sitting alone in a half-width
-     column: it is the third of three, so something is going to be odd, and a
-     lone half-width box beside an empty space reads as a layout that broke.
-     `roster-wide` is put on it by the screen — see AdminView. */
-  .queue-tools.roster-tools .field:not(.search) { flex: 1 1 calc(50% - 6px); min-width: 0; }
-  .queue-tools.roster-tools .field.roster-wide { flex: 1 1 100%; }
+  /* ── ตัวกรอง (`FilterSheet`) — 2026-10-12 ───────────────────────────────
+     ช่องค้นหากับปุ่ม ตัวกรอง อยู่แถวเดียวกัน ช่องเลือกที่เหลืออยู่ในแผ่นจากล่าง ·
+     ผู้ใช้เลือกจาก mockup ux-m แทนการเรียงช่องเลือกลงเต็มความกว้าง */
+  .queue-tools:has(> .filter-toggle) > .field.search { flex: 1 1 0; min-width: 0; }
+  .queue-tools > .filter-toggle { flex: none; align-self: stretch; height: auto; }
+  /* ล้างตัวกรอง beside them is the icon alone, as on a desktop — with its
+     word it left the search box too narrow to read back a name. The sheet's
+     foot carries the worded one. */
+  .queue-tools:has(> .filter-toggle) .clear-filters .btn-word { display: none; }
+  .queue-tools:has(> .filter-toggle) .btn.act-icon.clear-filters { height: auto; width: auto; aspect-ratio: 1; padding: 0; }
+  /* "แสดง 1 จาก 181 คน" takes the next line, or it squeezes the search box to its icon. */
+  .queue-tools:has(> .filter-toggle) > .found { flex: 1 1 100%; }
+  /* ทะเบียนพนักงาน's three dropdowns paired off two to a line here
+     (`.roster-tools … roster-wide`) from 2026-09-14 until 2026-10-12, when every
+     bar's dropdowns moved into `FilterSheet` on a phone — see the block above. */
   .batch-progress { padding: 10px 12px; }
   /* 8px, which is what the queue and birthday cards already override to: at
      44px tall and side by side, 6px between two decisions is close enough that

@@ -83,7 +83,7 @@ import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, PickMany,
   InlineMark, NoticeRow, NoticeStack, RowAction, ClearFilters,
   ClearButton, PAGE_SIZE, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
-  pageQuery, useShowMore, pageWindow, serverRows, useKeptFetch, usePageClamp,
+  pageQuery, useShowMore, pageWindow, serverRows, useKeptFetch, usePageClamp, FilterSheet,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
@@ -198,14 +198,13 @@ export default function AdminView({ user, initialSection }) {
             a native `<select>` gives for free put back by hand (the keys, the
             type-ahead, the one roving highlight, the ARIA).
 
-            THE BADGE RIDES OUTSIDE THE BOX and not on the row inside it, which
-            is the one thing the strip did that a dropdown cannot: a count that
-            only appears once the list is open is a warning you have to go
-            looking for. It is the same `.tab-badge`, with the same sentence
-            behind it, and it is drawn whichever section is open — it counts
-            แผนกที่ยังไม่มีหัวหน้างาน, which is true of the roster and not of the
-            screen. The row inside the list carries the figure too, because
-            `PickOne` puts a `count` against the right edge. */}
+            THE COUNT IS ON THE ROW INSIDE THE LIST ONLY, since 2026-10-12 —
+            `PickOne` puts a `count` against the right edge of แผนกและเพดาน. A
+            `.tab-badge` stood outside the box until then, drawn whichever
+            section was open; the user picked "ก" from mockup ux-m (*"เลข 1 หลัง
+            dropdown … มันไม่สวย"*): a red figure beside วันหยุดบริษัท read as
+            being about วันหยุด, and the red banner at the top of the page
+            already says บางแผนกยังไม่มีหัวหน้า whichever section is open. */}
         <div className="section-pick">
           <PickOne
             label="หน้าตั้งค่า"
@@ -217,11 +216,6 @@ export default function AdminView({ user, initialSection }) {
               count: s.key === 'departments' && gapCount > 0 ? gapCount : undefined,
             }))}
           />
-          {gapCount > 0 && (
-            <span className="tab-badge" aria-label={`${gapCount} แผนกที่ยังไม่มีหัวหน้างาน`}>
-              {gapCount}
-            </span>
-          )}
         </div>
       </div>
       {section === 'departments' && (
@@ -3580,31 +3574,28 @@ function Employees({ user }) {
             แผนก is eighteen and บทบาท is seven, and a box to type in above seven
             rows is a control asking to be filled in before the list can be
             used. */}
-        {FACET_KEYS.map((key) => (
-          <PickOne
-            key={key}
-            label={FACETS[key].label}
-            value={filters[key]}
-            onChange={(v) => setFilter(key, v)}
-            allLabel={FACETS[key].all}
-            options={facets[key]}
-            searchable={key === 'position'}
-            searchPlaceholder="พิมพ์ชื่อตำแหน่ง…"
-            /* PHONE ONLY, AND IT IS A LAYOUT FACT — see `.roster-tools` in
-               app/styles.css. Below 860px the three pair off two to a line, and
-               the third of three would otherwise sit alone in a half-width
-               column beside an empty space, which reads as a layout that broke
-               rather than as a line with one box on it. */
-            className={key === 'role' ? 'roster-wide' : undefined}
-            /* A box with one row on it narrows nothing — but it is drawn all
-               the same, for the reason คิวรออนุมัติ draws แผนก for a หัวหน้างาน
-               who holds one: a toolbar that changes shape with the data is a
-               toolbar a reader has to re-read. `emptyLabel` is what the list
-               says if the search above it has left the register with nothing in
-               that column at all. */
-            emptyLabel="ไม่มีในผลการค้นหานี้"
-          />
-        ))}
+        {/* บนมือถือช่องเลือกพวกนี้อยู่ในแผ่น ตัวกรอง (FilterSheet) — 2026-10-12 */}
+        <FilterSheet count={FACET_KEYS.filter((k) => filters[k]).length} onClear={() => setFilters(NO_FILTERS)}>
+          {FACET_KEYS.map((key) => (
+            <PickOne
+              key={key}
+              label={FACETS[key].label}
+              value={filters[key]}
+              onChange={(v) => setFilter(key, v)}
+              allLabel={FACETS[key].all}
+              options={facets[key]}
+              searchable={key === 'position'}
+              searchPlaceholder="พิมพ์ชื่อตำแหน่ง…"
+              /* A box with one row on it narrows nothing — but it is drawn all
+                 the same, for the reason คิวรออนุมัติ draws แผนก for a หัวหน้างาน
+                 who holds one: a toolbar that changes shape with the data is a
+                 toolbar a reader has to re-read. `emptyLabel` is what the list
+                 says if the search above it has left the register with nothing in
+                 that column at all. */
+              emptyLabel="ไม่มีในผลการค้นหานี้"
+            />
+          ))}
+        </FilterSheet>
         {/* ล้างตัวกรอง — drawn only while there is something to clear, and it
             clears ALL FOUR including ค้นหาพนักงาน. Asked for that way on
             2026-09-14: the reader who presses it is trying to get the whole
@@ -5837,36 +5828,39 @@ function RosterAudit() {
             onChange={(id) => setFilter('employee', id)}
           />
         </Field>
-        <PickOne
-          label="กรองตามสิ่งที่ถูกแก้"
-          tip={'แสดงเฉพาะรายการที่แก้ฟิลด์นั้น เช่น วันเกิด '
-            + '· การแก้ครั้งเดียวเปลี่ยนได้หลายฟิลด์พร้อมกัน รายการที่ผ่านตัวกรองจึงยังแสดงฟิลด์อื่นที่แก้พร้อมกันด้วย '
-            + '· การตั้งรหัสผ่านใหม่ไม่ได้แก้ฟิลด์ใด จึงไม่อยู่ในผลของตัวกรองนี้'}
-          value={filters.field}
-          onChange={(v) => setFilter('field', v)}
-          allLabel="ทุกอย่าง"
-          options={AUDITED_FIELDS.map((f) => ({ value: f, label: FIELD_LABEL[f] || f }))}
-        />
-        <PickOne
-          label="กรองตามประเภท"
-          value={filters.action}
-          onChange={(v) => setFilter('action', v)}
-          allLabel="ทุกประเภท"
-          options={Object.entries(ACTION_LABEL).map(([value, label]) => ({ value, label }))}
-        />
-        {/* Named บัญชีผู้แก้ไข, not ผู้แก้ไข: ฝ่ายบุคคล is one shared login for
-            the whole department, so what is on the record — and all this can
-            filter by — is which ACCOUNT made the change. */}
-        <PickOne
-          label="กรองตามบัญชีผู้แก้ไข"
-          value={filters.by}
-          onChange={(v) => setFilter('by', v)}
-          allLabel="ทุกบัญชี"
-          options={actors.map((a) => ({
-            value: a.id,
-            label: `${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
-          }))}
-        />
+        {/* บนมือถือช่องเลือกพวกนี้อยู่ในแผ่น ตัวกรอง (FilterSheet) — 2026-10-12 */}
+        <FilterSheet count={['field', 'action', 'by'].filter((k) => filters[k]).length} onClear={() => setFilters((f) => ({ ...f, field: '', action: '', by: '' }))}>
+          <PickOne
+            label="กรองตามสิ่งที่ถูกแก้"
+            tip={'แสดงเฉพาะรายการที่แก้ฟิลด์นั้น เช่น วันเกิด '
+              + '· การแก้ครั้งเดียวเปลี่ยนได้หลายฟิลด์พร้อมกัน รายการที่ผ่านตัวกรองจึงยังแสดงฟิลด์อื่นที่แก้พร้อมกันด้วย '
+              + '· การตั้งรหัสผ่านใหม่ไม่ได้แก้ฟิลด์ใด จึงไม่อยู่ในผลของตัวกรองนี้'}
+            value={filters.field}
+            onChange={(v) => setFilter('field', v)}
+            allLabel="ทุกอย่าง"
+            options={AUDITED_FIELDS.map((f) => ({ value: f, label: FIELD_LABEL[f] || f }))}
+          />
+          <PickOne
+            label="กรองตามประเภท"
+            value={filters.action}
+            onChange={(v) => setFilter('action', v)}
+            allLabel="ทุกประเภท"
+            options={Object.entries(ACTION_LABEL).map(([value, label]) => ({ value, label }))}
+          />
+          {/* Named บัญชีผู้แก้ไข, not ผู้แก้ไข: ฝ่ายบุคคล is one shared login for
+              the whole department, so what is on the record — and all this can
+              filter by — is which ACCOUNT made the change. */}
+          <PickOne
+            label="กรองตามบัญชีผู้แก้ไข"
+            value={filters.by}
+            onChange={(v) => setFilter('by', v)}
+            allLabel="ทุกบัญชี"
+            options={actors.map((a) => ({
+              value: a.id,
+              label: `${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
+            }))}
+          />
+        </FilterSheet>
         {/* LAST CELL OF THE BAR, and it was a row of its own underneath —
             a lone button on white directly under a wash band, which is the
             shape บันทึกประวัติระบบ had its two buttons in until 2026-09-10.
