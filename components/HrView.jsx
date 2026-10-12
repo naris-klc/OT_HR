@@ -120,8 +120,10 @@ const DEFAULT_STATUS = ALL_LIVE_STATUSES;
  * `รอหัวหน้า 1 · รอHR 3` เคยเป็นบรรทัดล่างและกินคอลัมน์ 136px · ตอนนี้เป็น
  * นาฬิกา (`clock` ตัวเดียวกับเมนู OT) สีเดียวกับ `.chip.st-pending_mgr` และ
  * คำอยู่ใน tooltip ร่วมของแอป (`data-tip` → `TipLayer`) · `tabIndex` ให้ Tab
- * ถึงและเปิด tooltip ได้ด้วยคีย์บอร์ด · ไม่มีปัญหาเรื่องแตะบนมือถือ เพราะการ์ด
- * มือถือซ่อนคอลัมน์นี้อยู่แล้ว (test/hrMonthCards.test.js)
+ * ถึงและเปิด tooltip ได้ด้วยคีย์บอร์ด · บนการ์ดมือถือช่องนี้กลับมาในแถบสี่ช่อง
+ * ตั้งแต่ 2026-10-12 (ux-d ง.1) — แตะไม่เปิด tooltip (`TipLayer` เปิดเฉพาะเมาส์กับ
+ * คีย์บอร์ด) และแตะแล้วเปิดใบของคนนั้นแบบแตะที่อื่นของการ์ด นาฬิกาจึงบอกแค่ว่ามีใบค้าง
+ * ส่วนรายละเอียดอยู่ในใบของคนนั้น
  *
  * ไอคอนบอกเรื่องของทั้งเดือนเสมอ ไม่ขึ้นกับตัวกรอง — คำถามของมันคือ "คนนี้ยังมี
  * อะไรค้างไหม" ซึ่งต้องไม่หายเพราะคนอ่านแคบตัวกรองลง
@@ -2319,9 +2321,11 @@ export default function HrView({
                           {row.department?.nameTh || row.department?.name}
                         </div>
                       </td>
-                      <td className="num rate-col b-15w">{hours(row.summary.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                      <td className="num rate-col b-15h">{hours(row.summary.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                      <td className="num rate-col b-3h">{hours(row.summary.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                      {/* `zero` ใช้เฉพาะการ์ดมือถือ — ช่องอัตราที่เป็นศูนย์เป็นขีดจาง
+                          (ux-d ง.1 2026-10-12) · ตารางจอคอมยังพิมพ์ 0 เหมือนเดิม */}
+                      <td className={`num rate-col b-15w${row.summary.buckets[BUCKETS.OT15_WEEKDAY] ? '' : ' zero'}`}>{hours(row.summary.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                      <td className={`num rate-col b-15h${row.summary.buckets[BUCKETS.OT15_HOLIDAY] ? '' : ' zero'}`}>{hours(row.summary.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                      <td className={`num rate-col b-3h${row.summary.buckets[BUCKETS.OT3_HOLIDAY] ? '' : ' zero'}`}>{hours(row.summary.buckets[BUCKETS.OT3_HOLIDAY])}</td>
                       <td className="num total-col"><strong>{hours(row.summary.otHours)}</strong></td>
                       <td className="num count-col">
                         {/* ── ใบทั้งเดือนของคนนี้ และค้างอยู่ที่ขั้นไหน ─────

@@ -14863,13 +14863,51 @@ table.mini tbody tr:hover { background: none; }
     overflow-wrap: anywhere;
   }
 
-  /* The seven the card does not have room for. Named rather than hidden with a
+  /* The columns the card does not have room for. Named rather than hidden with a
      blanket rule and three exceptions, so adding an eleventh column to this
-     table shows up on a phone instead of silently disappearing. */
-  .hr-table tbody td.rate-col,
-  .hr-table tbody td.count-col,
+     table shows up on a phone instead of silently disappearing.
+     ×1.5/×3 กับ รายการ อยู่ในรายการนี้จนถึง 2026-10-12 แล้วกลับมาเป็นแถบสี่ช่องใต้ชื่อ
+     — ดูหัวข้อ ชั่วโมงแยกอัตรา ข้างล่าง */
   .hr-table tbody td.edits-col,
   .hr-table tbody td.pad-col { display: none; }
+
+  /* ── ชั่วโมงแยกอัตรา: แถบสี่ช่องใต้ชื่อ — 2026-10-12 ──────────────────────
+     ผู้ใช้เลือกแบบ ค จาก mockup ux-d (ง.1): ×1.5 ปกติ · ×1.5 หยุด · ×3 หยุด · รายการ
+     ก่อนหน้านั้นการ์ดซ่อนทั้งสี่ช่อง (ตั้งแต่ 2026-09-10) และไม่เคยถามผู้ใช้
+
+     FLEX แทน GRID เฉพาะการ์ดคน: grid สามคอลัมน์ข้างบน (ช่องติ๊ก · ชื่อ · 108px)
+     แบ่งสี่ช่องเท่ากันไม่ได้ · ชื่อกิน `100% − เพดาน − ช่องว่าง` เพื่อให้แถวแรก
+     เต็มพอดี แถบจึงขึ้นบรรทัดใหม่เอง แล้วสี่ช่องที่ฐานเท่ากันโตเท่ากัน · มาร์กอัป
+     ชุดเดียวเหมือนเดิม (test/hrMonthCards.test.js) · แถวรวมทั้งหมดยังเป็น grid
+     `:not(.off-page)` ต้องมี — ไม่งั้น `display: flex` ทับ `tr.off-page` ที่อยู่ก่อน */
+  .hr-table tbody tr:not(.total-row):not(.off-page) { display: flex; flex-wrap: wrap; }
+  .hr-table tbody tr:not(.total-row) > td { order: 5; flex: 1 1 100%; }
+  .hr-table tbody tr:not(.total-row) > td.check { order: 0; flex: none; }
+  .hr-table tbody tr:not(.total-row) > td.who-col { order: 1; flex: 1 1 calc(100% - 121px); }
+  .hr-table tbody tr:has(> td.check) > td.who-col { flex-basis: calc(100% - 155px); }
+  .hr-table tbody tr:not(.total-row) > td.cap-col { order: 2; flex: 0 0 108px; }
+  .hr-table tbody tr:not(.total-row) > td.act-col { order: 6; }
+  .hr-table tbody tr:not(.total-row) > :is(td.rate-col, td.count-col):not(.total-col) {
+    order: 3; flex: 1 1 20%; min-width: 0;
+    padding: 6px 4px; text-align: center; white-space: nowrap;
+    border: 1px solid var(--line-soft);
+    font: 600 15px/1.4 var(--mono); font-variant-numeric: tabular-nums;
+  }
+  /* ติดกันเป็นแถบเดียว: ลบช่องว่าง 12px ของแถว และเส้นขอบซ้อนกัน 1px */
+  .hr-table tbody tr:not(.total-row) > :is(td.b-15h, td.b-3h, td.count-col) { margin-left: -13px; }
+  .hr-table tbody tr:not(.total-row) > td.b-15w { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+  .hr-table tbody tr:not(.total-row) > td.count-col { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+  .hr-table tbody tr:not(.total-row) > :is(td.rate-col, td.count-col):not(.total-col)::before {
+    display: block; overflow: hidden; text-overflow: ellipsis;
+    font: 400 11.5px/1.4 var(--sans); color: var(--muted-2);
+  }
+  .hr-table tbody td.b-15w::before { content: '×1.5 ปกติ'; }
+  .hr-table tbody td.b-15h::before { content: '×1.5 หยุด'; }
+  .hr-table tbody td.b-3h::before { content: '×3 หยุด'; }
+  .hr-table tbody td.count-col::before { content: 'รายการ'; }
+  /* ศูนย์เป็นขีดจาง — `font-size: 0` ซ่อนเลข 0 (โปรแกรมอ่านจอยังอ่านได้) ป้ายมี font ของตัวเอง */
+  .hr-table tbody tr:not(.total-row) > td.rate-col.zero { font-size: 0; }
+  .hr-table tbody td.rate-col.zero::after { content: '–'; font: 400 15px/1.4 var(--mono); color: var(--muted); }
   /* `scan-col` IS NOT IN THAT LIST, and it is the first column added to this
      table in a long while that is not. The five above are figures the card
      either repeats elsewhere (รวม ชม. = สะสม) or can do without on a phone;
@@ -15866,9 +15904,41 @@ table.mini tbody tr:hover { background: none; }
      tight enough that the two extra pixels are the difference between fitting
      and not. */
   .holiday-tools { gap: 8px; }
-  .holiday-tools .btn { padding-left: 14px; padding-right: 14px; }
-  /* ปี on a line of its own above the pair, full width like the buttons under it. */
-  .holiday-card .card-head > .holiday-tools > .holiday-year { flex: 1 1 100%; width: auto; }
+  /* 10 ตั้งแต่ 2026-10-12: ช่องปีขึ้นมาอยู่แถวเดียวกับสองปุ่ม (ง.5 ข้างล่าง) */
+  .holiday-tools .btn { padding-left: 10px; padding-right: 10px; }
+  /* ── หัวการ์ดวันหยุดบนมือถือ — 2026-10-12 (ux-d ง.5) ─────────────────────
+     ปุ่ม เพิ่มวันหยุด ขึ้นไปขวาของชื่อการ์ดแบบ แผนก · คำอธิบายเต็มแถวใต้ · ช่องปีกับ
+     ปุ่ม CSV สองปุ่มอยู่แถวเดียวกัน · ก่อนหน้านั้นปีเต็มแถว CSV สองปุ่มอีกแถว แล้ว
+     ปุ่มเพิ่มเต็มแถวอีกแถว (กฎกลาง `.card-head:has(> .row .btn)` ข้างบน)
+     `display: contents` ปลดกล่องชื่อกับ `.holiday-tools` ให้ลูกทุกตัววางบน grid
+     เดียว — มาร์กอัปชุดเดียวกับจอคอม · ตัวเลือกยาวกว่ากฎกลางเพื่อชนะเรื่องความเจาะจง */
+  .holiday-card > .card-head:has(> .holiday-tools) {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: 't t add' 'hint hint hint' 'year tpl imp';
+    align-items: center; gap: 4px 8px;
+  }
+  /* `:has(> .t)` ยกความเจาะจงให้ชนะกฎชื่อกับคำอธิบายบรรทัดเดียว (`div:not(.card):has(...)` ต้นไฟล์) */
+  .holiday-card > .card-head:has(> .holiday-tools) > div:first-child:has(> .t),
+  .holiday-card > .card-head > .holiday-tools { display: contents; }
+  .holiday-card > .card-head .t { grid-area: t; }
+  .holiday-card > .card-head .hint { grid-area: hint; }
+  .holiday-card > .card-head .holiday-year { grid-area: year; width: auto; }
+  .holiday-card > .card-head .holiday-tools > button.btn.ghost { grid-area: tpl; }
+  .holiday-card > .card-head .holiday-tools > label.btn { grid-area: imp; }
+  .holiday-card > .card-head .holiday-tools > :is(.holiday-year, .btn.ghost, label.btn) { margin-top: 6px; }
+  .holiday-card > .card-head .holiday-tools > .btn:not(.ghost) { grid-area: add; }
+  /* จอแคบกว่า 560: ช่องปีเต็มแถว ปุ่ม CSV แบ่งครึ่งแถวล่าง — แถวเดียวกันแล้วช่องปีเหลือ
+     58–88px อ่านปีไม่ออก (ผู้ใช้ตีกลับ 2026-10-12 *"ไม่เห็นปี"*) */
+  @media (max-width: 560px) {
+    .holiday-card > .card-head:has(> .holiday-tools) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-areas: 't add' 'hint hint' 'year year' 'tpl imp';
+    }
+    .holiday-card > .card-head .holiday-tools > .btn:not(.ghost) { justify-self: end; }
+    .holiday-card > .card-head .holiday-tools > :is(.btn.ghost, label.btn) { margin-top: 0; }
+  }
+  /* การ์ดแต่ละวันเยื้องเท่าการ์ดแผนก: `.table-wrap` เว้นขอบให้แล้ว `tbody` ไม่ต้องเว้นซ้ำ */
+  .holiday-card .stack-table tbody { padding-left: 0; padding-right: 0; }
 
   /* ══ แผนกและเพดาน on a phone ══════════════════════════════════════════════
      Eight columns, and five of them held one or two characters. At 440px the
