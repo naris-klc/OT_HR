@@ -243,7 +243,7 @@ test('the company an entry is filed under comes from the employee on the entry',
   assert.equal([...groups.values()][0].company, 'themtech');
 });
 
-test('every active บทบาท gets a blank line, and the ADMIN account does not', () => {
+test('every active บทบาท gets a blank line, and the ADMIN account and ไม่มี OT do not', () => {
   /**
    * WHAT THE ROSTER FILTER IS ALLOWED TO DECIDE, checked where it lives.
    *
@@ -257,12 +257,15 @@ test('every active บทบาท gets a blank line, and the ADMIN account does
    * is the system escalation login (ผู้ดูแลระบบ), not somebody on a payroll.
    * If it ever files OT the entries put it on the sheet anyway — which is the
    * property every test above this one holds.
+   *
+   * `noOt` is the second exclusion since 2026-10-15 (the CEO, set per person on
+   * the พนักงาน screen) and holds the same property: blank lines only.
    */
   const src = readFileSync(join(ROOT, 'lib/accounting.js'), 'utf8');
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   assert.ok(
-    code.includes('Employee.find({ active: true, role: { $ne: ADMIN_ROLE } })'),
+    code.includes('Employee.find({ active: true, role: { $ne: ADMIN_ROLE }, noOt: { $ne: true } })'),
     'the roster pass is not the widened one — check whose blank line it prints',
   );
   assert.ok(code.includes("const ADMIN_ROLE = 'admin';"), 'ADMIN_ROLE is gone or renamed');

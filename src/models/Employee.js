@@ -175,6 +175,18 @@ const employeeSchema = new mongoose.Schema(
     mustChangePassword: { type: Boolean, default: false },
 
     active: { type: Boolean, default: true },
+
+    /**
+     * ไม่มี OT — คนที่ไม่มีวันทำ OT แต่ยังต้องเข้าระบบ เช่น CEO ที่เซ็นอนุมัติให้
+     * คนอื่น (ขอไว้ 2026-10-15) · ปิดใช้งานใช้แทนไม่ได้เพราะจะเข้าระบบไม่ได้
+     *
+     * ผลมีสองอย่าง: ยื่น OT ไม่ได้ (`maySubmitOt` ข้างล่าง) และไม่มีบรรทัดว่างใน
+     * รายงานบัญชี/แยกแผนก (roster pass ใน lib/accounting.js) · ชั่วโมงที่มีอยู่แล้ว
+     * ยังขึ้นรายงานตามเดิม — ตัวกรองนี้ตัดได้แค่บรรทัดว่าง ไม่ตัดชั่วโมง
+     *
+     * ตั้งได้จากฟอร์มพนักงานโดย ฝ่ายบุคคล และ ผู้ดูแลระบบ ไม่ต้องแก้โค้ด
+     */
+    noOt: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
@@ -274,7 +286,8 @@ employeeSchema.methods.verifyPassword = async function verifyPassword(plain) {
  * currently always true has somewhere for that to go; a deleted one does not.
  */
 employeeSchema.methods.maySubmitOt = function maySubmitOt() {
-  return ROLES.includes(this.role);
+  // `noOt` (2026-10-15) is the condition this predicate was kept for.
+  return ROLES.includes(this.role) && !this.noOt;
 };
 
 export default model('Employee', employeeSchema);

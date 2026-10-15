@@ -4626,6 +4626,11 @@ export function PickOne({
      itself. It narrows what is drawn and hands ↑/↓ and Enter the shorter list. */
   searchable = false,
   searchPlaceholder = 'พิมพ์เพื่อกรองรายการ…',
+  /* ── ONE SMALL CONTROL ON THE BOX'S OWN LINE — 2026-10-15 ─────────────────
+     ปุ่ม ไม่มี OT beside สถานะการใช้งาน, asked for so the form gains no row.
+     Laid out by `.field.has-after` in styles.css: the box takes the width, this
+     takes what it needs, and the label and notes span both. */
+  after = null,
 }) {
   const id = React.useId();
   const [open, setOpen] = React.useState(false);
@@ -4877,7 +4882,8 @@ export function PickOne({
       note={note}
       tip={tip}
       style={style}
-      className={[className, hideLabel ? 'label-off' : ''].filter(Boolean).join(' ') || undefined}
+      className={[className, hideLabel ? 'label-off' : '', after ? 'has-after' : '']
+        .filter(Boolean).join(' ') || undefined}
       labelId={`${id}-label`}
     >
       <div className="pick-one-wrap">
@@ -5118,6 +5124,7 @@ export function PickOne({
           </Popover>
         )}
       </div>
+      {after && <div className="pick-after">{after}</div>}
     </Field>
   );
 }

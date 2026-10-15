@@ -89,7 +89,7 @@ export const POST = route(async (req) => {
 
   const {
     code, name, email, position, birthDate, department, role, company, approvesCompany, password,
-    approvesDepartments,
+    approvesDepartments, noOt,
   } = await body(req);
 
   if (!code || !name || !department) {
@@ -97,6 +97,7 @@ export const POST = route(async (req) => {
   }
   if (role && !ROLES.includes(role)) return fail('บทบาทไม่ถูกต้อง', 400);
   if (company && !COMPANY_KEYS.includes(company)) return fail('บริษัทไม่ถูกต้อง', 400);
+  if (noOt != null && typeof noOt !== 'boolean') return fail('ค่า ไม่มี OT ต้องเป็น true หรือ false', 400);
 
   // ฝ่ายบุคคล owns the roster; Admin still owns who may administer the system.
   const may = rosterPermission(actor, { role: role || 'employee' });
@@ -184,6 +185,7 @@ export const POST = route(async (req) => {
     // above. `null` from an empty box must become undefined, not '', or the
     // schema's YYYY-MM-DD match rejects the whole save.
     birthDate: birth.date || undefined,
+    noOt: noOt === true,
   });
   /**
    * A NEW ROW CAN BE STRANDED THE MOMENT IT EXISTS — a Themtech พนักงาน created
@@ -280,6 +282,8 @@ export const POST = route(async (req) => {
       company: employee.company,
       approvesCompany: employee.approvesCompany,
       active: employee.active,
+      // Only when set: "มี OT" on every new hire would be a line of noise.
+      ...(employee.noOt ? { noOt: true } : {}),
     }),
     actor,
   });

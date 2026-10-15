@@ -2171,7 +2171,17 @@ function Shell({ session, onRefresh, onLogout }) {
                 <HolidayBanner />
               </NoticeStack>
             )}
-            {tab === 'mine' && (
+            {/* ไม่มี OT on a พนักงาน leaves no tab at all, and `home` is still
+                'mine' — so this says why instead of a blank page (agreed
+                2026-10-15). Any other บทบาท is sent to its own home by
+                `reachable`, since 'mine' is not in its tabs. */}
+            {tab === 'mine' && !user.maySubmitOt && (
+              <Empty>
+                <strong>บัญชีนี้ตั้งไว้ว่าไม่มี OT</strong>
+                <div>ยื่น OT ไม่ได้ · ถ้าตั้งไว้ผิด ติดต่อฝ่ายบุคคล</div>
+              </Empty>
+            )}
+            {tab === 'mine' && user.maySubmitOt && (
               <EmployeeView
                 user={user} onChanged={refreshCounts} openSignal={formSignal}
                 onFormOpen={setFormOpen}

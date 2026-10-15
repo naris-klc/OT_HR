@@ -1172,6 +1172,11 @@ actor?.name` ใน `OtEntry.log`) เพื่อให้คนที่ลา
 
 ### ใบของใคร ไปหาใครเซ็น — the routing matrix
 
+**ยกเว้นคนที่ตั้ง ไม่มี OT** (`noOt`, 2026-10-15) — เช่น CEO ที่ต้องเข้าระบบเพื่อ
+เซ็นแต่ไม่มีวันมี OT · ตั้งรายคนที่ปุ่มข้างสถานะการใช้งานในฟอร์มพนักงาน (ฝ่ายบุคคล/
+ผู้ดูแลระบบ) · ยื่นเองไม่ได้ ไม่มีใครยื่นแทนได้ (`NO_OT_ERROR`) และไม่มีบรรทัดว่าง
+ในรายงาน · บทบาทพนักงานที่ตั้งไว้จะเห็นข้อความ "บัญชีนี้ตั้งไว้ว่าไม่มี OT" แทนหน้าว่าง
+
 **ทุกบทบาทยื่น OT ของตัวเองได้ ตั้งแต่ 2026-09-03** และนั่นคือการกลับข้อ §2 ซึ่ง
 เคยห้ามหัวหน้างานยื่น เพื่อไม่ให้เกิดคำถามว่า "แล้วใครอนุมัติหัวหน้า" · โครงเจ็ด
 บทบาทตอบคำถามนั้นตรง ๆ แทนที่จะเลี่ยงมัน กฎอยู่ที่ `APPROVED_BY` ใน
@@ -2169,7 +2174,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     162 files, run by `npm test`. Six named below as a
+test/                     163 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2182,9 +2187,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2896 tests
-across 162 files**, measured 2026-10-12 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2904 tests
+across 163 files**, measured 2026-10-15 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2896 tests across 162 files" until ไม่มี OT (`noOt`, 2026-10-15).
 It read "2871 tests across 161 files" until หมวด จ of the UX audit on 2026-10-12;
 "2868 tests" until the QA of 2026-10-10 (docs/plan-qa-fixes-2026-10-10.md).
 It read "2866 tests" until ผู้ใต้บังคับบัญชาที่อนุมัติ reached ข้อมูลส่วนตัว (2026-10-09).
@@ -12837,10 +12843,12 @@ leaving **21 of the 164 active people off both sheets**: 10 ผู้จัด�
 7 หัวหน้างาน, and one each of การเงิน, ฝ่ายบุคคล and ผู้จัดการฝ่าย. §2 says a
 manager's ordinary OT is not payable; it does not say the department has fewer
 people in it, and a หัวหน้างาน with no line at all is indistinguishable from one
-who was missed. The one exclusion is the **ADMIN** account — `ผู้ดูแลระบบ`, the
+who was missed. There are two exclusions. The **ADMIN** account — `ผู้ดูแลระบบ`, the
 system escalation login rather than somebody on a payroll (`ADMIN_ROLE` in
-`lib/accounting.js`). If it ever files OT its entries put it on the sheet anyway:
-this filter decides blank lines and nothing else, which is the property
+`lib/accounting.js`) — and since 2026-10-15 anybody set to **ไม่มี OT** (`noOt`),
+asked for so the CEO (S001) stops printing as an empty line; HR sets it per
+person on the พนักงาน form, no code change. If either ever has hours, the entries put them on
+the sheet anyway: this filter decides blank lines and nothing else, which is the property
 `test/accountingReconciliation.test.js` exists to hold.
 
 **The printed sheet** (`components/AccountingPrint.jsx`, styles under `.acct`
@@ -14670,8 +14678,8 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2896 tests**, about 9 s, measured 2026-10-12 across 162
-  files, all green (it read "2871 tests" until หมวด จ of the UX audit on 2026-10-12;
+- `npm test` — **2904 tests**, about 9 s, measured 2026-10-15 across 163
+  files, all green (it read "2896 tests" until ไม่มี OT on 2026-10-15; "2871 tests" until หมวด จ of the UX audit on 2026-10-12;
   "2868 tests" until the QA of 2026-10-10;
   "2866 tests" until ผู้ใต้บังคับบัญชาที่อนุมัติ;
   "2850 tests … across 160 files" until ผู้อนุมัติ

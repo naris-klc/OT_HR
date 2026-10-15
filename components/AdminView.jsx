@@ -2325,6 +2325,7 @@ const BLANK = {
    * ticks for itself. Also only read for a หัวหน้างาน.
    */
   approvesDepartments: [],
+  noOt: false,
   /**
    * The first password, and how it is being decided.
    *
@@ -2343,6 +2344,30 @@ const BLANK = {
 };
 
 /** What actually goes to the server — the mode is this screen's, not the API's. */
+/**
+ * ปุ่ม ไม่มี OT — 🕒 มี OT (เขียว, ค่าของทุกคน) ↔ ⊘ ไม่มี OT (แดง). Sits on the
+ * line of the box beside it (`PickOne`'s `after`) so the form gains no row —
+ * mockup agreed 2026-10-15. What it does is in the tooltip, not under it.
+ */
+const NO_OT_TIP = 'ไม่มี OT: ยื่น OT ไม่ได้ และไม่มีบรรทัดว่างในรายงาน OT · '
+  + 'ชั่วโมงที่มีอยู่แล้วยังแสดงตามเดิม · ยังเข้าระบบและเซ็นอนุมัติได้';
+
+function NoOtToggle({ value, onChange, disabled }) {
+  return (
+    <button
+      type="button"
+      className={value ? 'ot-toggle no' : 'ot-toggle'}
+      aria-pressed={value}
+      disabled={disabled}
+      title={`${NO_OT_TIP} · กดเพื่อสลับ`}
+      onClick={() => onChange(!value)}
+    >
+      <Icon name={value ? 'ban' : 'clock'} />
+      {value ? 'ไม่มี OT' : 'มี OT'}
+    </button>
+  );
+}
+
 function createPayload(form) {
   const { passwordMode, password, ...fields } = form;
   return passwordMode === 'choose' ? { ...fields, password } : fields;
@@ -3706,9 +3731,12 @@ function Employees({ user }) {
                 {/* ป้ายจุดสีแบบตารางแผนก (รายงาน UX ค.5, 2026-10-12) — ที่นี่กดไม่ได้
                     (`static`): เปิด/ปิดบัญชีอยู่ในฟอร์มแก้ไข */}
                 <td data-label="สถานะ">
-                  <span className={`state-badge static ${p.active ? 'on' : 'off'}`}>
-                    <span className="dot" aria-hidden="true" />
-                    {p.active ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                  <span className="state-row">
+                    <span className={`state-badge static ${p.active ? 'on' : 'off'}`}>
+                      <span className="dot" aria-hidden="true" />
+                      {p.active ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                    </span>
+                    {p.noOt && <span className="chip no-ot"><Icon name="ban" />ไม่มี OT</span>}
                   </span>
                 </td>
                 <td>
@@ -4199,6 +4227,7 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
               value={form.role}
               onChange={(v) => set({ role: v })}
               disabled={busy}
+              after={<NoOtToggle value={form.noOt} onChange={(v) => set({ noOt: v })} disabled={busy} />}
               options={ROLE_OPTIONS.map((o) => {
                 const refused = !isAdmin && !HR_ASSIGNABLE_ROLES.includes(o.value);
                 return {
@@ -4341,6 +4370,7 @@ const formOf = (employee, roster = []) => ({
     .filter((p) => (p.personalApprovers || []).some((a) => String(a) === String(employee._id)))
     .map((p) => String(p._id)),
   active: employee.active !== false,
+  noOt: employee.noOt === true,
 });
 
 /**
@@ -4386,6 +4416,7 @@ function showValue(field, value, depts = [], people = []) {
   if (field === 'company') return companyName(value);
   if (field === 'role') return ROLE_LABEL[value] || value;
   if (field === 'active') return String(value) === 'true' ? 'ใช้งาน' : 'ปิดใช้งาน';
+  if (field === 'noOt') return String(value) === 'true' ? 'ไม่มี OT' : 'มี OT';
   if (field === 'birthDate') return thaiDate(value);
   return value;
 }
@@ -4887,6 +4918,7 @@ function EditEmployee({
                 value={form.active ? 'yes' : 'no'}
                 onChange={(v) => set({ active: v === 'yes' })}
                 disabled={disabled(activeLocked)}
+                after={<NoOtToggle value={form.noOt} onChange={(v) => set({ noOt: v })} disabled={disabled()} />}
                 options={[
                   { value: 'yes', label: 'ใช้งาน' },
                   { value: 'no', label: 'ปิดใช้งาน' },

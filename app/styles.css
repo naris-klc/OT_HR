@@ -8280,6 +8280,32 @@ td > .approver-line { margin-top: 5px; }
 .state-badge.static:hover { border-color: var(--line); color: var(--muted); }
 .state-badge.static.on:hover { border-color: var(--green-bg); color: var(--green-dark); }
 
+/* ── ไม่มี OT (2026-10-15) ─────────────────────────────────────────────────
+   ปุ่มในฟอร์มพนักงาน: 🕒 มี OT สีเขียวเป็นค่าของทุกคน · ⊘ ไม่มี OT สีแดง ·
+   วางบนบรรทัดเดียวกับกล่องข้าง ๆ ผ่าน `after` ของ PickOne (`.field.has-after`)
+   ฟอร์มจึงไม่เพิ่มแถว · ตารางทะเบียนมีแค่ป้ายแดง ข้างป้ายสถานะ บรรทัดเดียวกัน */
+.field.has-after { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; }
+.field.has-after > :not(.pick-one-wrap):not(.pick-after) { grid-column: 1 / -1; }
+.pick-after { display: flex; }
+.ot-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: var(--field-h, 40px); padding: 0 14px 0 11px;
+  border-radius: var(--radius-pill); border: 1px solid var(--green-bg);
+  background: var(--green-bg); color: var(--green-dark);
+  font: 600 12.5px/1.2 var(--sans); white-space: nowrap; cursor: pointer;
+}
+.ot-toggle svg { width: 16px; height: 16px; flex: none; }
+.ot-toggle.no { border-color: var(--danger-bg); background: var(--danger-bg); color: var(--danger-ink); }
+.ot-toggle:not(:disabled):hover { border-color: currentColor; }
+.ot-toggle:focus-visible { outline: none; box-shadow: var(--ring-focus); }
+.ot-toggle:disabled { cursor: default; }
+.state-row { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.chip.no-ot {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--danger-bg); color: var(--danger-ink); border-radius: var(--radius-pill);
+}
+.chip.no-ot svg { width: 13px; height: 13px; flex: none; }
+
 /* ── THE DOT IS THE STATE, AND OFF IS RED SINCE 2026-09-02 ─────────────────
    It was `--muted-2` — the same grey as the word beside it, which meant the
    two states differed by the WORD and by a green that was only there on one of
