@@ -23,7 +23,7 @@ export const PATCH = route(async (req, { params }) => {
 
   const {
     code, name, email, position, birthDate, department, role, company, approvesCompany, active,
-    approvesDepartments, approvesEmployees, resetPassword, password, reason,
+    approvesDepartments, approvesEmployees, resetPassword, password, reason, noOt,
   } = await body(req);
 
   if (role != null && !ROLES.includes(role)) return fail('บทบาทไม่ถูกต้อง', 400);
@@ -125,6 +125,7 @@ export const PATCH = route(async (req, { params }) => {
     approvesEmployees: (await Employee.find({ personalApprovers: employee._id })
       .select('_id').lean()).map((p) => String(p._id)),
     active: employee.active,
+    noOt: Boolean(employee.noOt),
   };
 
   if (codeChange.changed) {
@@ -206,6 +207,9 @@ export const PATCH = route(async (req, { params }) => {
     employee.approvesDepartments = scope.value;
   }
   if (active != null) employee.active = Boolean(active);
+  // ไม่มี OT — true/false only: `'yes' === true` would quietly clear the flag.
+  if (noOt != null && typeof noOt !== 'boolean') return fail('ค่า ไม่มี OT ต้องเป็น true หรือ false', 400);
+  if (noOt != null) employee.noOt = noOt;
 
   /**
    * อนุมัติรายคน AS IT WILL STAND. Somebody who stops being an active signer is
@@ -286,6 +290,7 @@ export const PATCH = route(async (req, { params }) => {
     approvesDepartments: employee.approvesDepartments,
     approvesEmployees: codes(named),
     active: employee.active,
+    noOt: Boolean(employee.noOt),
   });
   const birthDateMoved = changes.some((c) => c.field === 'birthDate');
 

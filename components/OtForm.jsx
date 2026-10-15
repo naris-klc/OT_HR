@@ -292,7 +292,8 @@ export default function OtForm({
   useEffect(() => {
     if (!proxy) return;
     api.get('/employees')
-      .then((res) => setTeam((res.employees || []).filter((e) => e.role === 'employee')))
+      // ไม่มี OT is refused by `proxyPermission`, so it is not offered either.
+      .then((res) => setTeam((res.employees || []).filter((e) => e.role === 'employee' && !e.noOt)))
       .catch((err) => setTeamError(err.message));
   }, [proxy]);
 

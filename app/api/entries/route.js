@@ -17,7 +17,7 @@ import { today } from '@/lib/today.js';
 import { resolveScope, visibleEmployeeClause } from '@/lib/delegationQuery.js';
 import { approvalPermission } from '@/lib/delegation.js';
 import { signerPool, noFirstStep, routeUnsignableToHr } from '@/lib/unsignableRepair.js';
-import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
+import { proxyPermission, initialStatus, NO_OT_ERROR } from '@/lib/proxyFiling.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { blockedMessage, needsOverCeilingReason } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
@@ -413,13 +413,13 @@ export const POST = route(async (req) => {
     employee = target;
   } else if (!user.maySubmitOt()) {
     /**
-     * True for every บทบาท since 2026-09-03, so this refuses nothing today —
-     * see `Employee.maySubmitOt()` for why the predicate is kept anyway. It
+     * True for every บทบาท since 2026-09-03, so the role half refuses nothing
+     * today — see `Employee.maySubmitOt()` for why the predicate is kept. It
      * used to carry §2, which barred หัวหน้างาน, ฝ่ายบุคคล and ผู้ดูแลระบบ from
      * filing at all; the ladder in `APPROVED_BY` replaced that bar with an
-     * answer to the question it was avoiding.
+     * answer to the question it was avoiding. What it refuses now is ไม่มี OT.
      */
-    return fail('ตำแหน่งนี้ไม่สามารถบันทึก OT ได้', 403);
+    return fail(user.noOt ? NO_OT_ERROR : 'ตำแหน่งนี้ไม่สามารถบันทึก OT ได้', 403);
   }
 
   const session = pickSession(payload);
