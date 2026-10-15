@@ -2603,10 +2603,9 @@ const companyName = (key) => COMPANIES.find((c) => c.key === key)?.label || key 
 /**
  * The same company in two words rather than four.
  *
- * `label` is "ไพรมัส (Primus)" — right for a dropdown, where the English is what
- * accounting says on their own sheets and somebody may be matching the two. Read
- * inside a table cell it is twice the length of the sentence around it, and the
- * sentence is what carries the meaning.
+ * `label` is "ไพรมัส (PM)" — right for a dropdown and a column of its own. Read
+ * inside a sentence the code is noise, and the sentence is what carries the
+ * meaning.
  */
 const companyShort = (key) => COMPANIES.find((c) => c.key === key)?.shortTh || companyName(key);
 
