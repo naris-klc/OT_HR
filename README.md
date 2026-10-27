@@ -1216,6 +1216,7 @@ actor?.name` ใน `OtEntry.log`) เพื่อให้คนที่ลา
 | ใบที่ไม่เคยมีขั้นแรก | มีขั้นแรกขึ้นมา — ผู้จัดการฝ่าย การเงิน และแผนกที่ `signedByHr` (`initialStatus`) |
 | ผู้รับช่วงอนุมัติ | ได้รายชื่อรายคนของผู้ที่ตนรับช่วงด้วย |
 | ผู้อนุมัติถูกปิดใช้งานหรือเปลี่ยนเป็นบทบาทที่ไม่เซ็น | ถูกถอดออกจากทุกรายการทันที ใบกลับไปตามกฎแผนก — ทั้งที่ PATCH และที่นำเข้าทะเบียน |
+| พิมพ์ใบขออนุมัติ OT ของตัวเอง | **ได้เสมอ** ทุกบทบาท (`mayPrintForm`) — จนถึง 2026-10-27 หัวหน้าที่มีผู้อนุมัติรายคนได้ 403 *ดูได้เฉพาะพนักงานในแผนกของตน* บนใบตัวเอง เพราะ route ถาม `isDepartmentManager` กับตัวผู้อ่านเอง ซึ่งส่งต่อไป `signsPersonallyFor` ที่ตอบ false เมื่อเป็นคนเดียวกัน |
 
 ระบุไม่ได้: ผู้ดูแลระบบ กรรมการผู้จัดการ และคนที่ปิดใช้งาน (ฝ่ายบุคคลระบุได้ตั้งแต่รอบหลังของ 2026-10-09 — ขั้น HR ที่ตามมายังเซ็นใบตัวเองได้)
 (`personalScope`) · ประวัติการแก้ทะเบียนบันทึกเป็นรหัสพนักงานในฟิลด์
@@ -1335,6 +1336,10 @@ index ของ array
 `exports/monthly.csv` · `exports/entries.csv` (สามตัวนี้ผ่าน `teamScoped`) และ
 `reports/form` · ตกหล่นที่ใดที่หนึ่งคือตารางที่กดปุ่มพิมพ์แล้วได้ 403 ทุกแถว
 ยกเว้นแผนกตัวเอง
+
+> **`reports/form` ถาม `readsOwnTeamOnly` ผ่าน `mayPrintForm` ใน `lib/entries.js`**
+> ตั้งแต่ 2026-10-27 — ฟังก์ชันนั้นให้ใบของตัวเองผ่านก่อนถามข้ออื่น
+> (ดูแถว *พิมพ์ใบขออนุมัติ OT ของตัวเอง* ใน §ผู้อนุมัติรายคน)
 
 > **สามตัวแรกเรียก `teamScoped` ผ่าน `departmentScope` แล้ว ไม่ได้เรียกตรง ๆ
 > อีกต่อไป** ตั้งแต่ 2026-09-10 · ประโยคข้างบนยังจริงทุกคำ แต่ถ้า grep หา
@@ -2174,7 +2179,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     163 files, run by `npm test`. Six named below as a
+test/                     164 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2187,9 +2192,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2904 tests
-across 163 files**, measured 2026-10-15 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2908 tests
+across 164 files**, measured 2026-10-27 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
+It read "2904 tests across 163 files" until พิมพ์ใบของตัวเองได้เสมอ (`formOwnSheet`, 2026-10-27).
 It read "2896 tests across 162 files" until ไม่มี OT (`noOt`, 2026-10-15).
 It read "2871 tests across 161 files" until หมวด จ of the UX audit on 2026-10-12;
 "2868 tests" until the QA of 2026-10-10 (docs/plan-qa-fixes-2026-10-10.md).
@@ -14678,8 +14684,8 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2904 tests**, about 9 s, measured 2026-10-15 across 163
-  files, all green (it read "2896 tests" until ไม่มี OT on 2026-10-15; "2871 tests" until หมวด จ of the UX audit on 2026-10-12;
+- `npm test` — **2908 tests**, about 9 s, measured 2026-10-27 across 164
+  files, all green (it read "2904 tests … across 163 files" until `formOwnSheet` on 2026-10-27; "2896 tests" until ไม่มี OT on 2026-10-15; "2871 tests" until หมวด จ of the UX audit on 2026-10-12;
   "2868 tests" until the QA of 2026-10-10;
   "2866 tests" until ผู้ใต้บังคับบัญชาที่อนุมัติ;
   "2850 tests … across 160 files" until ผู้อนุมัติ
