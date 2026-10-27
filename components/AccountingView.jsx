@@ -66,6 +66,27 @@ export default function AccountingView() {
     return () => { live = false; };
   }, [cycleKey, includeZero]);
 
+  /**
+   * ป้าย `คน` ของแถวพิมพ์ — นับจากใบที่จะพิมพ์จริง ไม่ใช่จากแถวบนจอ.
+   *
+   * ใบสรุปดึง `includeZero=1` เสมอ (AccountingPrint.jsx) จึงมีทุกคนรวมคนที่
+   * ไม่มี OT ส่วนจอนี้ซ่อนคนเหล่านั้นจนกว่าจะติ๊ก แสดงพนักงานที่ไม่มี OT · ป้าย
+   * เคยนับแถวบนจอ แล้วบอก 73 คน ขณะที่ใบพิมพ์ออกมาเป็นร้อยกว่าชื่อ (แจ้งมา
+   * 2026-10-27) · ติ๊กอยู่แล้วก็ใช้ `data` ได้เลย เพราะเป็นคำขอเดียวกับใบพิมพ์
+   */
+  const [roster, setRoster] = useState(null);
+  useEffect(() => {
+    if (includeZero) return undefined;
+    let live = true;
+    setRoster(null);
+    const [first, second] = cycleKey.split(',');
+    api.get(`/reports/accounting/${first}?includeZero=1${second ? `&with=${second}` : ''}`)
+      .then((res) => { if (live) setRoster(res); })
+      // ป้ายแค่หายไป — ถ้าเรียกไม่ได้ คำขอหลักข้างบนก็แจ้งข้อผิดพลาดเองอยู่แล้ว
+      .catch(() => {});
+    return () => { live = false; };
+  }, [cycleKey, includeZero]);
+
   // The sheet replaces the screen while it is up, the way PrintForm does on
   // ตรวจสอบรายเดือน — printing a page that still had filters and buttons on it
   // is what @media print is for, but the paper form is a different document,
@@ -91,8 +112,14 @@ export default function AccountingView() {
      `totals` the dropdown's own rows carry, so the box and the chip cannot
      quote a company two different ways. */
   const shownTotal = shown.reduce((n, c) => n + c.totals.otHours, 0);
-  /** คนบนใบสรุปและในไฟล์การเงิน — one row each, for the export menu's tags. */
-  const people = shown.reduce((n, c) => n + (c.rows || []).length, 0);
+  const countRows = (report) => report.companies
+    .filter((c) => company === 'all' || c.key === company)
+    .reduce((n, c) => n + (c.rows || []).length, 0);
+  /** คนในไฟล์การเงิน — ไฟล์ตามติ๊ก แสดงพนักงานที่ไม่มี OT เหมือนจอ */
+  const people = countRows(data || { companies: [] });
+  /** คนบนใบสรุป — ทุกคนเสมอ; `null` ระหว่างโหลด ป้ายจึงไม่ขึ้นตัวเลขผิด */
+  const sheetSource = includeZero ? data : roster;
+  const sheetPeople = sheetSource ? countRows(sheetSource) : null;
 
   // Scoped to the tab, and read from the queue rather than from the rows —
   // somebody with nothing approved yet has no row to carry their backlog.
@@ -258,7 +285,7 @@ export default function AccountingView() {
                   key: 'print',
                   label: 'พิมพ์ใบสรุปส่งการเงิน',
                   note: 'ตามบริษัทที่เลือก',
-                  tag: `${people} คน`,
+                  tag: sheetPeople == null ? null : `${sheetPeople} คน`,
                   primary: true,
                   onSelect: () => setPrinting(true),
                 },
