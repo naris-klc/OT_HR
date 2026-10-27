@@ -156,8 +156,11 @@ compose ผูก `./backups` ของ repo เข้ากับ `/app/backups
 รันบน host ได้เพราะ mongod ฟังที่ 127.0.0.1 ของเครื่องเดียวกัน (`crontab -e`):
 
 ```
-0 2 * * * PATH=/home/app_sales/.nvm/versions/node/v22.23.2/bin:/usr/bin:/bin /bin/sh /home/app_sales/primus-ot/scripts/backup.sh /home/app_sales/primus-ot/backups 30 >/dev/null 2>&1
+0 2 * * * PATH=/home/app_sales/.nvm/versions/node/v22.23.2/bin:/usr/bin:/bin /bin/sh /home/app_sales/primus-ot/scripts/backup.sh /home/app_sales/primus-ot/backups 7 >/dev/null 2>&1
 ```
+
+เลขท้าย `7` คือจำนวนชุดที่เก็บ — ชุดที่เก่ากว่านั้นถูกลบหลังชุดใหม่เขียนและตรวจเสร็จ
+*(เคยเป็น `30` จน 2026-10-27 ที่ผู้ใช้สั่งให้เหลือ 7 ชุดล่าสุด)*
 
 > 🔴 **อัปเกรด node บนเครื่องนี้เมื่อไหร่ ต้องแก้ crontab ด้วย** — เลขเวอร์ชัน
 > `v22.23.2` ใน `PATH` ข้างบนเขียนตายตัว เพราะ cron ไม่โหลด nvm และหา `npm` เองไม่เจอ
@@ -170,7 +173,9 @@ compose ผูก `./backups` ของ repo เข้ากับ `/app/backups
 
 - เรียกผ่าน `/bin/sh` เพราะ `scripts/backup.sh` ใน repo ไม่มีบิต execute
 - ผลแต่ละรอบอยู่ใน `backups/backup.log`
-- ลง crontab ของ `app_sales` แล้วเมื่อ 2026-10-08
+- ลง crontab ของ `app_sales` แล้วเมื่อ 2026-10-08 · เปลี่ยนเป็นเก็บ 7 ชุด 2026-10-27
+- แก้ crontab จากไฟล์ ให้ส่งทาง stdin (`crontab - < ไฟล์`) — `crontab <ไฟล์>` บนเครื่องนี้
+  ตัดชื่อไฟล์ที่ยาวทิ้งแล้วฟ้อง `No such file or directory` โดย crontab เดิมไม่เปลี่ยน
 - ชุดสำรองต้องเป็น `backups/primus_ot-…/manifest.json` ชั้นเดียว โฟลเดอร์ที่
   คัดลอกมาซ้อนกันสองชั้นจะถูกนับเป็น "สำรองไม่จบ" (เคยเกิดกับชุด 20260909-013005)
 
