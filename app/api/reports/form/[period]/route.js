@@ -1,5 +1,4 @@
 import OtEntry, { STATUS_LABEL_TH } from '@/src/models/OtEntry.js';
-import { readsOwnTeamOnly } from '@/lib/roles.js';
 import Employee from '@/src/models/Employee.js';
 import Setting from '@/src/models/Setting.js';
 import { route, query, json, fail } from '@/lib/http.js';
@@ -8,8 +7,7 @@ import {
   BUCKETS, BUCKET_LABEL_TH, summariseEntries, hrSummary, capUsage, makeIsHoliday,
 } from '@/src/lib/otEngine.js';
 import { loadHolidaySet } from '@/src/services/otService.js';
-import { companyOf } from '@/src/config/companies.js';
-import { isDepartmentManager } from '@/lib/entries.js';
+import { mayPrintForm } from '@/lib/entries.js';
 import { managerSignature } from '@/lib/approverLine.js';
 import {
   PERIOD_RE, actingNotes, previousPeriod, thaiMonth, min, max, latestPerSession,
@@ -52,8 +50,7 @@ export const GET = route(async (req, { params }) => {
    * on the บทบาท alone would give them a table whose two buttons answer 403 on
    * every row but their own แผนก's.
    */
-  if (readsOwnTeamOnly(user.role)
-    && !isDepartmentManager(user, employee.department, companyOf(employee), employee)) {
+  if (!mayPrintForm(user, employee)) {
     return fail('ดูได้เฉพาะพนักงานในแผนกของตน', 403);
   }
 

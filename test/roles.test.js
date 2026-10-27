@@ -642,9 +642,13 @@ test('the three monthly documents narrow through teamScoped, and none on isSigne
   // The printable sheet takes no `?scope=`: it is one employee, and whether
   // this reader may print THAT employee is a question about the person, not
   // about how wide a table they were looking at.
+  // The rule moved into `mayPrintForm` on 2026-10-27 — see
+  // test/formOwnSheet.test.js for what it answers.
   const form = src('app/api/reports/form/[period]/route.js');
-  assert.match(form, /readsOwnTeamOnly\(user\.role\)/);
+  assert.match(form, /if \(!mayPrintForm\(user, employee\)\)/);
   assert.ok(!/isSigner\(user\.role\)/.test(form), 'the form route still narrows on isSigner');
+  const rule = src('lib/entries.js');
+  assert.match(rule, /if \(!readsOwnTeamOnly\(user\?\.role\)\) return true;/);
 });
 
 test('scope=team narrows and never widens — which is the only direction that matters', () => {
