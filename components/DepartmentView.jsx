@@ -72,6 +72,26 @@ export default function DepartmentView() {
     return () => { live = false; };
   }, [period, includeZero]);
 
+  /**
+   * ป้าย `แผนก` ของแถวพิมพ์ — นับจากใบที่จะพิมพ์จริง ไม่ใช่จากจอ.
+   *
+   * ใบสรุปแยกแผนกดึง `includeZero=1` เสมอ (DepartmentPrint.jsx) แผนกที่ไม่มีใคร
+   * มี OT เลยจึงยังได้หน้าของตัวเอง แต่หายจากจอจนกว่าจะติ๊ก แสดงพนักงานที่ไม่มี
+   * OT — ป้ายเคยนับจากจอ (แก้ 2026-10-27 คู่กับรายงาน OT การเงิน ดู
+   * AccountingView.jsx) · ติ๊กอยู่แล้วก็ใช้ `data` ได้เลย
+   */
+  const [roster, setRoster] = useState(null);
+  useEffect(() => {
+    if (includeZero) return undefined;
+    let live = true;
+    setRoster(null);
+    api.get(`/reports/accounting/${period}?includeZero=1`)
+      .then((res) => { if (live) setRoster(res); })
+      // ป้ายแค่หายไป — ถ้าเรียกไม่ได้ คำขอหลักข้างบนก็แจ้งข้อผิดพลาดเองอยู่แล้ว
+      .catch(() => {});
+    return () => { live = false; };
+  }, [period, includeZero]);
+
   // The sheet replaces the screen while it is up, the way it does on สรุป OT
   // ส่งบัญชี — the paper form is a different document, not a stripped-down
   // version of this one.
@@ -81,6 +101,9 @@ export default function DepartmentView() {
 
   const departments = data ? groupByDepartment(data.companies) : [];
   const total = sumRows(departments.flatMap((d) => d.rows));
+  /** แผนกบนใบสรุป — ทุกแผนกเสมอ; `null` ระหว่างโหลด ป้ายจึงไม่ขึ้นตัวเลขผิด */
+  const sheetSource = includeZero ? data : roster;
+  const sheetDepartments = sheetSource ? groupByDepartment(sheetSource.companies).length : null;
 
   // A department picked in one month may not exist in the next — nobody in it
   // worked OT, or it was closed. Falling back to ทุกแผนก keeps the dropdown
@@ -176,7 +199,7 @@ export default function DepartmentView() {
                   key: 'print',
                   label: 'พิมพ์ใบสรุปแยกแผนก',
                   note: 'ครบทุกแผนก ไม่ตามตัวกรอง · แผนกละชุด',
-                  tag: `${departments.length} แผนก`,
+                  tag: sheetDepartments == null ? null : `${sheetDepartments} แผนก`,
                   primary: true,
                   onSelect: () => setPrinting(true),
                 },
