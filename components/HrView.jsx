@@ -2030,7 +2030,7 @@ export default function HrView({
                       {' · '}<strong>{tally.entries}</strong> รายการ
                       {' · '}<strong>{hours(tally.hours)}</strong> ชม.
                       {tally.capOver > 0 && (
-                        <span className="sub"><InlineMark tone="warn" />{tally.capOver} รายการเกินเพดาน — ต้องระบุเหตุผล</span>
+                        <span className="sub"><InlineMark tone="warn" />{tally.capOver} รายการเกินเพดาน — ดูเหตุผลจากหัวหน้าในกล่องยืนยัน</span>
                       )}
                     </>
                   )}

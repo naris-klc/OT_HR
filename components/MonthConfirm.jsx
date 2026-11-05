@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { hours, thaiDate } from '@/lib/api.js';
-import { overCeilingApproveHead, OVER_CEILING_REASON_SAY } from '@/lib/caps.js';
-import { Modal, Alert, ShowMore } from './common.jsx';
+import { Modal, CeilingAckAlert } from './common.jsx';
 import Icon from './icons.jsx';
 
 /**
@@ -53,19 +52,11 @@ export default function MonthConfirm({
   tally,
   busy = false,
   onClose,
-  /** `(note | null) => void` — the sentence, when the ceiling rule demands one. */
+  /** `(null) => void` — ไม่มีเหตุผลส่งไปแล้ว ดูข้างล่าง (2026-11-05) */
   onConfirm,
 }) {
-  /**
-   * The reason for confirming past a department's ceiling.
-   *
-   * Local to the dialog and never pre-filled, for `ConfirmModal`'s reason: a
-   * sentence the system wrote appearing in the record as something a person
-   * decided, on the one line whose whole job is to say what a person decided.
-   */
-  const [why, setWhy] = useState('');
-  const mustExplain = tally.capOver > 0;
-  const ready = !mustExplain || why.trim().length > 0;
+  /* ⚠ ช่อง เหตุผลที่ยืนยันทั้งที่เกินเพดาน * อยู่ที่นี่จนถึง 2026-11-05 — แผ่นนี้
+     ยืนยันขั้นฝ่ายบุคคลเท่านั้น ซึ่งแค่รับทราบแล้ว (`overCeilingAsks`) */
   const many = tally.persons > 1;
 
   return (
@@ -80,14 +71,13 @@ export default function MonthConfirm({
       title={many ? `ยืนยันรายการของ ${tally.persons} คน` : 'ยืนยันรายการของคนนี้'}
       subtitle="รายการที่ยืนยันแล้วจะเข้าสู่รายงานส่งออกทันที"
       onClose={onClose}
-      dirty={why.trim().length > 0}
       footer={(
         <>
           <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
           <button
             className="btn"
-            disabled={busy || !ready}
-            onClick={() => onConfirm(mustExplain ? why.trim() : null)}
+            disabled={busy}
+            onClick={() => onConfirm(null)}
           >
             {/* ⚠ THE BUTTON COUNTS ใบ, NOT คน. It is the last thing read before
                 the request leaves, and the unit that matters at that moment is
@@ -122,58 +112,23 @@ export default function MonthConfirm({
 
       {/* ── ONE BOX FOR THE CEILING, WORDED FROM lib/caps.js ────────────────
 
-          `overCeilingApproveHead` is the same function คิวรออนุมัติ's confirm
-          box calls and the same sentence `overCeilingRefusal` refuses with on
-          the route — so the screen and a 400 cannot read as two different
-          rules. Nothing about a ceiling is written out in this file.
+          `CeilingAckAlert` (components/common.jsx) — กล่องเดียวกับแผ่นยืนยันของ
+          ฝ่ายบุคคลในคิวรออนุมัติและหน้ารายการ OT · ถ้อยคำทั้งหมดมาจาก
+          lib/caps.js ไม่มีประโยคเรื่องเพดานพิมพ์ไว้ในไฟล์นี้
 
-          The rows are named because a reason is being demanded for exactly
-          them: *"เมื่อบังคับให้เขียนเหตุผล ก็ต้องให้ข้อมูลพอที่จะเขียนได้"*.
+          The rows are named because they are what is being signed past, and
+          each carries the หัวหน้า's reason (`reason`, from the route) — HR
+          was asked to type one of its own here until 2026-11-05.
           The route builds those lines with `describeBreaches` — the same
           function the queue calls in the browser, asked on whichever side is
-          holding the entry.
-
-          The headline typed its own ⚠️ under `mark={false}` until 2026-10-10;
-          the badge `.alert` draws is that mark now. */}
-      {tally.capOver > 0 && (
-        <Alert kind="warn">
-          <strong>{overCeilingApproveHead(tally.capOver)}</strong>
-          <ShowMore
-            as="ul"
-            className="alert-list"
-            items={tally.capped}
-            render={(row, i) => (
-              <li key={`${row.name}-${row.date}-${i}`}>
-                {row.name} · {thaiDate(row.date)} · {row.text}
-              </li>
-            )}
-          />
-          {/* ค่าคงที่ ไม่ใช่สำเนา — เคยพิมพ์ประโยคนี้เองจนถึง 2026-10-12 */}
-          <div className="say">{OVER_CEILING_REASON_SAY}</div>
-        </Alert>
-      )}
-
-      {/* ABOVE the list of people, for `ConfirmModal`'s reason: this is the one
-          thing on the sheet that has to be DONE rather than read, and a
-          required field under a collapsible list is a required field somebody
-          hunts for after the button refuses to work. */}
-      {mustExplain && (
-        <div className="field" style={{ marginTop: 12 }}>
-          <div className="field-head">
-            <label htmlFor="month-confirm-why">เหตุผลที่ยืนยันทั้งที่เกินเพดาน *</label>
-          </div>
-          <textarea
-            id="month-confirm-why"
-            rows={2}
-            value={why}
-            placeholder="เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมด่วน · ปิดงบสิ้นเดือน"
-            onChange={(ev) => setWhy(ev.target.value)}
-          />
-          {why.trim()
-            ? <div className="field-note">เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้</div>
-            : <div className="field-note error">ต้องกรอกเหตุผลก่อนจึงจะยืนยันได้</div>}
-        </div>
-      )}
+          holding the entry. */}
+      <CeilingAckAlert
+        rows={tally.capped.map((row, i) => ({
+          key: `${row.name}-${row.date}-${i}`,
+          text: `${row.name} · ${thaiDate(row.date)} · ${row.text}`,
+          reason: row.reason,
+        }))}
+      />
 
       {/* ── WHO, AND HOW MANY EACH — the preview `EntryPeek` is for entries ──
 

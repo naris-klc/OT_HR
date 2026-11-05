@@ -61,6 +61,7 @@ const read = (f) => readFileSync(join(ROOT, f), 'utf8');
 const hrView = read('components/HrView.jsx');
 const confirm = read('components/MonthConfirm.jsx');
 const queue = read('components/ApprovalQueue.jsx');
+const common = read('components/common.jsx');
 const css = read('app/styles.css');
 const printCss = read('app/print.css');
 const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
@@ -319,28 +320,33 @@ test('both confirm dialogs read the ceiling wording from lib/caps.js', () => {
   // ⚠ THIS IS WHAT §5.5 WAS FOR. It asked for one shared component; what it was
   // protecting was one shared SENTENCE, and that is what is pinned. Neither
   // dialog may keep a copy or a paraphrase.
-  for (const [name, src] of [['MonthConfirm', confirm], ['ApprovalQueue', queue]]) {
-    assert.ok(
-      /import \{[^}]*overCeilingApproveHead/s.test(src),
-      `${name} stopped importing overCeilingApproveHead`,
-    );
-    assert.ok(src.includes('overCeilingApproveHead('), `${name} does not call it`);
-  }
+  //
+  // ⚠ IT PINNED `overCeilingApproveHead` IN BOTH UNTIL 2026-11-05. แผ่นนี้ยืนยัน
+  // ขั้นฝ่ายบุคคลเท่านั้น ซึ่งแค่รับทราบแล้ว จึงวาด `CeilingAckAlert` จาก
+  // components/common.jsx — กล่องเดียวกับแผ่นของฝ่ายบุคคลในคิวรออนุมัติ และถ้อยคำ
+  // มาจาก lib/caps.js (`overCeilingAckHead`) · คิวรออนุมัติยังเรียก
+  // `overCeilingApproveHead` ให้หัวหน้า
+  assert.ok(/import \{[^}]*CeilingAckAlert/s.test(confirm), 'MonthConfirm stopped importing CeilingAckAlert');
+  assert.ok(/import \{[^}]*CeilingAckAlert/s.test(queue), 'ApprovalQueue stopped importing CeilingAckAlert');
+  assert.ok(queue.includes('overCeilingApproveHead('), 'ApprovalQueue does not call overCeilingApproveHead');
+  assert.match(common, /<strong>\{overCeilingAckHead\(rows\.length\)\}<\/strong>/);
+  assert.match(common, /<div className="say">\{OVER_CEILING_REASON_SAY_HR\}<\/div>/);
   // The head of one row IS the server's own refusal, so the screen and a 400
   // cannot read as two different rules.
   assert.equal(overCeilingApproveHead(1), OVER_CEILING_REASON_APPROVE);
   // And nothing in the new dialog spells a ceiling sentence out by hand.
   assert.ok(!confirm.includes('เหตุผลที่ระบุจะถูกบันทึก'), 'the wording was copied instead of imported');
+  assert.ok(!confirm.includes('รายการที่เลือกไว้เกินเพดาน'), 'the wording was copied instead of imported');
 
-  // The rows are NAMED, not counted: a reason is being demanded for exactly
-  // them. คิวรออนุมัติ builds those lines in the browser from entries it holds;
-  // this screen gets them from the route, which holds them instead.
-  assert.match(confirm, /items=\{tally\.capped\}/);
-  assert.match(confirm, /\{row\.name\} · \{thaiDate\(row\.date\)\} · \{row\.text\}/);
-  // One textarea, one reason, for the same rule that queue states: one person
-  // making one decision does not say the same thing twice.
-  assert.equal((confirm.match(/<textarea/g) || []).length, 1);
-  assert.match(confirm, /const ready = !mustExplain \|\| why\.trim\(\)\.length > 0;/);
+  // The rows are NAMED, not counted, and each carries the หัวหน้า's reason.
+  // คิวรออนุมัติ builds those lines in the browser from entries it holds; this
+  // screen gets them from the route, which holds them instead.
+  assert.match(confirm, /rows=\{tally\.capped\.map\(/);
+  assert.match(confirm, /text: `\$\{row\.name\} · \$\{thaiDate\(row\.date\)\} · \$\{row\.text\}`,/);
+  assert.match(confirm, /reason: row\.reason,/);
+  // ฝ่ายบุคคลไม่ต้องพิมพ์ — ไม่มีช่อง และปุ่มไม่ติดเงื่อนไขเหตุผล
+  assert.equal((confirm.match(/<textarea/g) || []).length, 0);
+  assert.match(confirm, /disabled=\{busy\}/);
 });
 
 test('the preview is people, which is the whole reason this dialog is its own', () => {

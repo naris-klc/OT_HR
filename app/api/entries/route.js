@@ -19,7 +19,7 @@ import { approvalPermission } from '@/lib/delegation.js';
 import { signerPool, noFirstStep, routeUnsignableToHr } from '@/lib/unsignableRepair.js';
 import { proxyPermission, initialStatus, NO_OT_ERROR } from '@/lib/proxyFiling.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
-import { blockedMessage, needsOverCeilingReason } from '@/lib/caps.js';
+import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { normaliseDescription, normaliseExtraNote } from '@/src/config/policy.js';
 import { scanChecksFor } from '@/lib/scanMatchQuery.js';
@@ -352,11 +352,11 @@ export const GET = route(async (req) => {
     for (const entry of entries) {
       if (entry.status !== 'pending_hr') { entry.decide = null; continue; }
       const may = approvalPermission({ user, entry, delegations: [] });
+      /* `needsReason` อยู่ที่นี่จนถึง 2026-11-05 — ทุกใบในนี้อยู่ขั้นฝ่ายบุคคล
+         ซึ่งไม่ถูกถามเหตุผลเกินเพดานแล้ว (`overCeilingAsks`) จึงเป็น false เสมอ */
       entry.decide = {
         ok: may.ok,
         why: may.ok ? '' : may.error,
-        /** Whether confirming it will demand a sentence — same rule as the batch. */
-        needsReason: may.ok ? needsOverCeilingReason(entry) : false,
       };
     }
   }

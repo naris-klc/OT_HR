@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import {
   needsOverCeilingReason, overCeilingRefusal, wasOverCeiling, overCeilingApproveHead,
   OVER_CEILING_REASON_REQUIRED, OVER_CEILING_REASON_APPROVE,
+  overCeilingAsks, ceilingReasonShown, ceilingReasonLine, overCeilingAckHead,
 } from '../lib/caps.js';
 import { overCeilingOf } from '../lib/accountingRows.js';
 
@@ -58,6 +59,56 @@ const flagged = (over = {}) => ({
 });
 
 const ordinary = { workDate: '2026-08-06', totals: { otHours: 3 }, capExceeded: false };
+
+// ── ฝ่ายบุคคลแค่รับทราบ — 2026-11-05 ─────────────────────────────────────────
+//
+// *ใส่เหตุผลการอนุมัติ ตั้งแต่ระดับขั้นผู้อนุมัติก่อนหน้า HR ส่วน HR แค่รับทราบ
+// และเห็นเหตุผล ไม่ต้องใส่เหตุผลแล้ว แต่การแจ้งเตือนจุดต่าง ๆ คงไว้เหมือนเดิม*
+
+test('หัวหน้าถูกถามเหตุผล ฝ่ายบุคคลไม่ถูกถาม — ใบก็ยังนับว่าเกินเพดาน', () => {
+  assert.equal(overCeilingAsks(flagged(), 'mgr'), true);
+  assert.equal(overCeilingAsks(flagged(), 'hr'), false);
+  assert.equal(overCeilingAsks(ordinary, 'mgr'), false);
+  // ไม่บอกขั้น = ถาม — ปลอดภัยไว้ก่อน
+  assert.equal(overCeilingAsks(flagged()), true);
+  assert.equal(overCeilingRefusal(flagged(), '', 'mgr').ok, false);
+  assert.equal(overCeilingRefusal(flagged(), '', 'hr').ok, true, 'HR อนุมัติได้โดยไม่พิมพ์');
+  assert.equal(overCeilingRefusal(flagged(), '').ok, false);
+  // กล่องเตือนอ่านจากคำถามนี้ ซึ่งไม่ขึ้นกับขั้น — จึงยังเตือนบนจอของ HR
+  assert.equal(needsOverCeilingReason(flagged()), true);
+});
+
+test('เหตุผลที่ให้เห็น: เฉพาะ รอฝ่ายบุคคล และ อนุมัติแล้ว', () => {
+  const r = 'งานส่งลูกค้าเลื่อนไม่ได้';
+  assert.equal(ceilingReasonShown(flagged({ status: 'pending_hr', overCeilingReason: ` ${r} ` })), r);
+  assert.equal(ceilingReasonShown(flagged({ status: 'approved', overCeilingReason: r })), r);
+  // ใบที่ไม่อนุมัติ: ฟิลด์นี้คือเหตุผลที่ไม่อนุมัติ (route reject เขียนทับ) ไม่ใช่เหตุผลที่อนุมัติ
+  assert.equal(ceilingReasonShown(flagged({ status: 'rejected', overCeilingReason: r })), '');
+  assert.equal(ceilingReasonShown(flagged({ status: 'pending_mgr', overCeilingReason: r })), '');
+  assert.equal(ceilingReasonShown(flagged({ status: 'pending_hr' })), '');
+  assert.equal(ceilingReasonLine(r), `เหตุผลจากหัวหน้า: ${r}`);
+  assert.equal(ceilingReasonLine(''), 'ไม่มีเหตุผลจากขั้นหัวหน้า');
+  // ข้อเท็จจริงเดียวกับแผ่นของหัวหน้า แต่ไม่ถามเหตุผล
+  assert.match(overCeilingAckHead(1), /^รายการนี้เกินเพดาน /);
+  assert.match(overCeilingAckHead(3), /^3 รายการที่เลือกไว้เกินเพดาน /);
+  assert.doesNotMatch(overCeilingAckHead(1), /กรุณาระบุเหตุผล/);
+});
+
+test('ฝ่ายบุคคลเห็นเหตุผลของหัวหน้า: แผ่นยืนยัน · แถวในคิว · ป๊อปอัป', () => {
+  const queue = strip(read('components/ApprovalQueue.jsx'));
+  const confirmModal = queue.slice(queue.indexOf('function ConfirmModal('), queue.indexOf('function RejectModal('));
+  assert.match(confirmModal, /\{isHr && \(\s*<CeilingAckAlert/);
+  assert.match(confirmModal, /\{!isHr && capped\.length > 0 && \(/, 'แผ่นของหัวหน้าต้องเหมือนเดิม');
+  assert.match(queue, /\{isHr && ceilingReasonShown\(e\) && \(\s*<div className="cell-sub">เหตุผลเกินเพดาน: \{ceilingReasonShown\(e\)\}<\/div>/);
+  // ป๊อปอัปเห็นทั้งหัวหน้าและ HR — ผู้ใช้เลือก
+  assert.match(queue, /<ReasonCard description=\{e\.description\} extraNote=\{e\.extraNote\} ceilingReason=\{ceilingReasonShown\(e\)\} \/>/);
+  const common = strip(read('components/common.jsx'));
+  assert.match(common, /\{ceilingReason && \(/);
+  assert.match(common, /เหตุผลที่อนุมัติเกินเพดาน \(หัวหน้า\)/);
+  // ตรวจสอบประจำเดือน: route ส่งเหตุผลมากับแต่ละใบที่เกิน
+  const monthly = strip(read('app/api/reports/monthly/[period]/route.js'));
+  assert.match(monthly, /reason: ceilingReasonShown\(entry\),/);
+});
 
 // ── who has to explain themselves ───────────────────────────────────────────
 
@@ -181,9 +232,11 @@ test('ใบเก่าที่อนุมัติไปก่อนมี�
 
 test('อนุมัติ: ปฏิเสธถ้าไม่มีเหตุผล และเก็บเหตุผลลงใบ', () => {
   const code = strip(read('app/api/entries/[id]/approve/route.js'));
-  assert.match(code, /const over = overCeilingRefusal\(entry, note\);/);
+  // ขั้นที่เซ็นเข้าไปในกฎตั้งแต่ 2026-11-05: หัวหน้าถูกถาม ฝ่ายบุคคลไม่ถูกถาม และ
+  // ไม่เขียนทับเหตุผลของหัวหน้า
+  assert.match(code, /const over = overCeilingRefusal\(entry, note, may\.stage\);/);
   assert.match(code, /if \(!over\.ok\) return fail\(over\.error, over\.status\);/);
-  assert.match(code, /if \(needsOverCeilingReason\(entry\)\) entry\.overCeilingReason = String\(note\)\.trim\(\);/);
+  assert.match(code, /if \(overCeilingAsks\(entry, may\.stage\)\) entry\.overCeilingReason = String\(note\)\.trim\(\);/);
   // ลำดับสำคัญ: คนที่เซ็นใบนี้ไม่ได้อยู่แล้ว ต้องถูกบอกแบบนั้น ไม่ใช่ถูกขอเหตุผล
   // ของการตัดสินใจที่เขาทำไม่ได้
   assert.ok(
@@ -257,7 +310,8 @@ test('ทางเข้าอนุมัติทุกทางผ่าน�
    * 400 จากกฎใหม่ — และกล่องแดงไม่ใช่วิธีที่ดีในการบอกคนว่าต้องพิมพ์เหตุผล
    */
   const queue = strip(read('components/ApprovalQueue.jsx'));
-  assert.match(queue, /if \(needsOverCeilingReason\(e\)\) setConfirming\(\[e\]\);/);
+  // `capReason` — กฎเดียวกับกล่องยืนยัน (ฝ่ายบุคคลไม่ถูกถาม ตั้งแต่ 2026-11-05)
+  assert.match(queue, /if \(capReason\(\[e\]\)\) setConfirming\(\[e\]\);/);
   assert.match(queue, /else approve\(\[e\]\);/);
 });
 

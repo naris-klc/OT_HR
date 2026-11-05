@@ -62,7 +62,9 @@ test('the refusal travels with the verdict, in the route’s own words', () => {
   // not something a reader can deduce from a dead button — so the sentence the
   // route would have answered with is carried to the screen instead.
   assert.match(route, /why: may\.ok \? '' : may\.error,/);
-  assert.match(route, /needsReason: may\.ok \? needsOverCeilingReason\(entry\) : false,/);
+  // `needsReason` ออกไปแล้ว 2026-11-05 — ทุกใบที่ได้ `decide` อยู่ขั้นฝ่ายบุคคล
+  // ซึ่งไม่ถูกถามเหตุผลเกินเพดานแล้ว จึงเป็น false เสมอ
+  assert.doesNotMatch(route, /needsReason:/);
 });
 
 test('it is offered to ฝ่ายบุคคล and ผู้ดูแลระบบ only', () => {
@@ -175,20 +177,17 @@ test('the word is อนุมัติ on both screens that sign the same ใ�
   // written this way from the start.
   assert.ok(!list.includes("ยืนยัน{e.decide"), 'ยืนยัน came back as a button label');
   assert.ok(!list.includes('>ยืนยันไม่ได้</span>'), 'the old refusal sentence is still drawn');
-  assert.match(list, /\? 'ใบนี้เกินเพดาน — ต้องระบุเหตุผลก่อนอนุมัติ'/);
   // The tooltip's second line under the word อนุมัติ since 2026-10-08.
-  assert.match(list, /: 'จะเข้าสู่รายงานส่งออกทันที'\}/);
+  assert.match(list, /hint="จะเข้าสู่รายงานส่งออกทันที"/);
 });
 
-test('a ceiling row still owes a sentence here, and it is the same sentence', () => {
-  // Imported from lib/caps.js, never typed out — the same protection
-  // components/MonthConfirm.jsx keeps for the batch dialog.
-  assert.match(list, /describeBreaches, OVER_CEILING_REASON_APPROVE, OVER_CEILING_REASON_SAY, overCeilingApproveHead,\n\} from '@\/lib\/caps\.js';/);
-  assert.match(list, /window\.prompt\(\[\s*\n\s*OVER_CEILING_REASON_APPROVE,/);
-  // Cancelling, or an empty line, cancels the approval — the route would refuse
-  // it anyway, and a reader should not learn a rule by watching a request fail.
-  assert.match(list, /if \(!note \|\| !note\.trim\(\)\) return;/);
-  assert.match(list, /e\.decide\.needsReason \? 'อนุมัติ \*' : 'อนุมัติ'/);
+test('a ceiling row no longer owes HR a sentence here', () => {
+  // ⚠ IT DID UNTIL 2026-11-05 — a `window.prompt` asked for one and the button
+  // read `อนุมัติ *`. ฝ่ายบุคคลแค่รับทราบแล้ว (`overCeilingAsks`) และ route
+  // `approve` ไม่ถามขั้นนี้ จึงไม่มีอะไรให้ถามบนจอ
+  assert.ok(!list.includes('window.prompt('), 'prompt ถามเหตุผลกลับมา');
+  assert.ok(!list.includes("'อนุมัติ *'"), 'ปุ่มยังมีดอกจันบอกว่าต้องใส่เหตุผล');
+  assert.match(list, /label="อนุมัติ"/);
 });
 
 test('settling a row re-reads the month behind this screen', () => {
@@ -197,7 +196,7 @@ test('settling a row re-reads the month behind this screen', () => {
   // this person alive, instead of still greyed for a row they just settled.
   const fn = list.slice(list.indexOf('async function confirmEntry(entry)'));
   const body = fn.slice(0, fn.indexOf('async function voidEntry'));
-  assert.match(body, /await api\.post\(`\/entries\/\$\{entry\._id\}\/approve`, note \? \{ note: note\.trim\(\) \} : undefined\);/);
+  assert.match(body, /await api\.post\(`\/entries\/\$\{entry\._id\}\/approve`\);/);
   assert.match(body, /await load\(\);/);
   assert.match(body, /onChanged\?\.\(\);/);
 });

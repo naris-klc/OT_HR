@@ -751,12 +751,17 @@ test('batch approve: two doors, one sheet, and the ceiling words come from lib/c
   assert.match(code, /const approvable = mayEdit \? \(entries \|\| \[\]\)\.filter\(\(e\) => e\.decide\?\.ok\) : \[\];/);
   // One request per ใบ, the same answer คิวรออนุมัติ gives.
   assert.match(code, /await api\.post\(`\/entries\/\$\{e\._id\}\/approve`, note \? \{ note \} : undefined\);/);
+  assert.match(code, /onClick=\{\(\) => onConfirm\(sel, null\)\}/);
   // ไม่ได้สแกน warns and does not block: it never feeds `ready`.
   const modal = code.slice(code.indexOf('function BatchApproveModal'), code.indexOf('export default function HrEntries'));
   assert.match(modal, /SCAN_MATCH\.NO_SCAN/);
-  assert.match(modal, /const ready = sel\.length > 0 && \(capped\.length === 0 \|\| why\.trim\(\)\.length > 0\);/);
-  assert.match(modal, /overCeilingApproveHead\(capped\.length\)/);
-  assert.equal((modal.match(/<textarea/g) || []).length, 1);
+  // ฝ่ายบุคคลแค่รับทราบใบที่เกินเพดาน (2026-11-05) — ไม่มีช่องเหตุผลแล้ว แต่
+  // กล่องเตือนยังอยู่ (`CeilingAckAlert`) พร้อมเหตุผลของหัวหน้า
+  assert.match(modal, /const ready = sel\.length > 0;/);
+  assert.match(modal, /const capped = sel\.filter\(\(e\) => needsOverCeilingReason\(e\)\);/);
+  assert.match(modal, /<CeilingAckAlert/);
+  assert.match(modal, /reason: ceilingReasonShown\(e\)/);
+  assert.equal((modal.match(/<textarea/g) || []).length, 0);
   // The bar is drawn on a phone too: `.batch-bar` is display:none there.
   assert.match(css, /\.batch-bar\.entry-bar \{ display: flex;/);
 });

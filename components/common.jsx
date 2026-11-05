@@ -6,7 +6,9 @@ import {
   STATUS, BUCKETS, BUCKET_LABEL, hours, periodLabel, thaiDate, thaiDateTime, thaiStamp,
 } from '@/lib/api.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
-import { capChips, capFigure, describeBreaches } from '@/lib/caps.js';
+import {
+  capChips, capFigure, describeBreaches, ceilingReasonLine, overCeilingAckHead, OVER_CEILING_REASON_SAY_HR,
+} from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
 import { ROLE_LABEL_TH } from '@/lib/roles.js';
 import {
@@ -2539,7 +2541,12 @@ export const stamp = (at) => (at ? thaiStamp(at) : undefined);
  * in full and on no screen that shows a row — the queue's own รายละเอียด column
  * stays exactly as it was, which is what was asked (*ไม่ต้องแสดงในแถวรายการ*).
  */
-export function ReasonCard({ description, extraNote = '' }) {
+/**
+ * `ceilingReason` — เหตุผลที่อนุมัติเกินเพดาน (2026-11-05) ให้ฝ่ายบุคคลและหัวหน้า
+ * เห็นในป๊อปอัป ไม่ต้องไล่ประวัติ · หัวข้อย่อยรูปเดียวกับ เพิ่มเติม · ผู้เรียก
+ * ส่ง `ceilingReasonShown(entry)` ซึ่งว่างเมื่อไม่ควรแสดง
+ */
+export function ReasonCard({ description, extraNote = '', ceilingReason = '' }) {
   return (
     <div className="reason-card">
       {/* NOT a `kicker-sm`. Every other heading in these pop-ups is one — mono,
@@ -2576,7 +2583,45 @@ export function ReasonCard({ description, extraNote = '' }) {
           <Disclosure className="reason-text" lines={4} of="รายละเอียดเพิ่มเติม">{extraNote}</Disclosure>
         </>
       )}
+      {ceilingReason && (
+        <>
+          <div className="reason-label sub">เหตุผลที่อนุมัติเกินเพดาน (หัวหน้า)</div>
+          <p className="reason-text">{ceilingReason}</p>
+        </>
+      )}
     </div>
+  );
+}
+
+/**
+ * กล่องเตือนเกินเพดานบนแผ่นยืนยันของฝ่ายบุคคล — 2026-11-05
+ *
+ * HR ไม่ต้องพิมพ์เหตุผลแล้ว (`overCeilingAsks` ใน lib/caps.js) แต่กล่องเตือนยัง
+ * อยู่ และแต่ละใบมีเหตุผลของหัวหน้าต่อท้าย · แผ่นของ HR สามแผ่นใช้ตัวนี้ตัว
+ * เดียว: `ConfirmModal` (คิวรออนุมัติ), `BatchApproveModal` (หน้ารายการ OT),
+ * `MonthConfirm` (ตรวจสอบประจำเดือน) · แต่ละแผ่นจัด `rows` เอง เพราะถือข้อมูล
+ * คนละรูป (ใบเต็ม / สรุปจาก route)
+ *
+ * `rows`: `[{ key, text, reason }]` — `text` คือ ชื่อ · วันที่ · เพดานที่เกิน
+ */
+export function CeilingAckAlert({ rows }) {
+  if (!rows?.length) return null;
+  return (
+    <Alert kind="warn">
+      <strong>{overCeilingAckHead(rows.length)}</strong>
+      <ShowMore
+        as="ul"
+        className="alert-list"
+        items={rows}
+        render={(r) => (
+          <li key={r.key}>
+            {r.text}
+            <span className={r.reason ? 'ceil-why' : 'ceil-why none'}>{ceilingReasonLine(r.reason)}</span>
+          </li>
+        )}
+      />
+      <div className="say">{OVER_CEILING_REASON_SAY_HR}</div>
+    </Alert>
   );
 }
 
