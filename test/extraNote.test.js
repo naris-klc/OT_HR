@@ -164,7 +164,7 @@ test('คำใบ้บอกชัดว่าช่องไหนขึ้�
 });
 
 test('บนจอรายละเอียดใบ: อยู่ในการ์ดเดิม และไม่มีอะไรเลยเมื่อไม่มีข้อความ', () => {
-  assert.match(common, /export function ReasonCard\(\{ description, extraNote = '' \}\)/);
+  assert.match(common, /export function ReasonCard\(\{ description, extraNote = '', ceilingReason = '' \}\)/);
   assert.match(common, /\{extraNote && \(/, 'การ์ดวาดหัวข้อว่างเปล่าเมื่อไม่มีข้อความ');
   assert.match(common, /<div className="reason-label sub">เพิ่มเติม<\/div>/);
   assert.match(common, /lines=\{4\} of="รายละเอียดเพิ่มเติม">\{extraNote\}<\/Disclosure>/);

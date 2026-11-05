@@ -3,16 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayAbbr, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  Alert, BirthdayWelfareMark, CancelledMark, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark,
+  Alert, BirthdayWelfareMark, CancelledMark, CeilingAckAlert, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark,
   Modal, NoBreakMark, ProxyMark,
   RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
   NoticeRow, NoticeStack, RowAction, ShowMore, StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail, isBirthdayWelfare, isProxyFiled } from '@/lib/entries.js';
-import {
-  describeBreaches, OVER_CEILING_REASON_APPROVE, OVER_CEILING_REASON_SAY, overCeilingApproveHead,
-} from '@/lib/caps.js';
+import { describeBreaches, needsOverCeilingReason, ceilingReasonShown } from '@/lib/caps.js';
 import { SCAN_MATCH, SCAN_MATCH_TOLERANCE_MINUTES, summariseScanChecks } from '@/lib/scanMatch.js';
 import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
@@ -91,12 +89,13 @@ function whyNotRejectable(entry) {
  */
 function BatchApproveModal({ entries, choosable, busy, onClose, onConfirm }) {
   const [chosen, setChosen] = useState(() => new Set(entries.map((e) => e._id)));
-  const [why, setWhy] = useState('');
   const sel = entries.filter((e) => chosen.has(e._id));
   const total = sel.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
-  const capped = sel.filter((e) => e.decide?.needsReason);
+  /* ⚠ ช่อง เหตุผลที่อนุมัติทั้งที่เกินเพดาน * อยู่ที่นี่จนถึง 2026-11-05 — ฝ่าย
+     บุคคลแค่รับทราบแล้ว (`overCeilingAsks`) กล่องเตือนยังอยู่ พร้อมเหตุผลของหัวหน้า */
+  const capped = sel.filter((e) => needsOverCeilingReason(e));
   const unscanned = sel.filter((e) => e.scanCheck?.state === SCAN_MATCH.NO_SCAN);
-  const ready = sel.length > 0 && (capped.length === 0 || why.trim().length > 0);
+  const ready = sel.length > 0;
   const flip = (id) => setChosen((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -114,7 +113,7 @@ function BatchApproveModal({ entries, choosable, busy, onClose, onConfirm }) {
           <button
             className="btn"
             disabled={busy || !ready}
-            onClick={() => onConfirm(sel, capped.length ? why.trim() : null)}
+            onClick={() => onConfirm(sel, null)}
           >
             <Icon name="tick" />
             {sel.length > 1 ? `ยืนยัน (${sel.length})` : 'ยืนยัน'}
@@ -142,43 +141,13 @@ function BatchApproveModal({ entries, choosable, busy, onClose, onConfirm }) {
         </Alert>
       )}
 
-      {capped.length > 0 && (
-        <Alert kind="warn">
-          <strong>{overCeilingApproveHead(capped.length)}</strong>
-          <ShowMore
-            as="ul"
-            className="alert-list"
-            items={capped}
-            render={(e) => (
-              <li key={e._id}>
-                {thaiDate(e.workDate)} ·
-                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดาน'}
-              </li>
-            )}
-          />
-          <div className="say">{OVER_CEILING_REASON_SAY}</div>
-        </Alert>
-      )}
-
-      {capped.length > 0 && (
-        <div className="field" style={{ marginTop: 12 }}>
-          <div className="field-head">
-            <label htmlFor="batch-why">เหตุผลที่อนุมัติทั้งที่เกินเพดาน *</label>
-          </div>
-          <textarea
-            id="batch-why"
-            rows={2}
-            value={why}
-            placeholder="เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมด่วน · ปิดงบสิ้นเดือน"
-            onChange={(ev) => setWhy(ev.target.value)}
-          />
-          {!why.trim() ? (
-            <div className="field-note error">ต้องกรอกเหตุผลก่อนจึงจะอนุมัติได้</div>
-          ) : sel.length > 1 && (
-            <div className="field-note">เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้</div>
-          )}
-        </div>
-      )}
+      <CeilingAckAlert
+        rows={capped.map((e) => ({
+          key: e._id,
+          text: `${thaiDate(e.workDate)} · ${describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดาน'}`,
+          reason: ceilingReasonShown(e),
+        }))}
+      />
 
       <ul className="peek-list">
         {entries.map((e) => (
@@ -443,38 +412,13 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
    * this list was to read them. Sending that reader to another screen to act on
    * what they just read is the round trip this round exists to delete.
    *
-   * ── THE REASON GOES THROUGH `window.prompt`, AND THAT IS DELIBERATE ───────
-   *
-   * A row over its department's ceiling owes a sentence — the same rule
-   * `overCeilingRefusal` enforces on the route and the batch dialog collects in
-   * a textarea. Here it is one row and one line, inside a screen that is ALREADY
-   * a full-page sub-view with an editor of its own behind `แก้ไข`; a third modal
-   * layer over a table inside a tab is a stack this app has nowhere else, and
-   * `Modal` would be the fourth thing on screen competing for an Escape key.
-   *
-   * ⚠ WHAT IT COSTS, said plainly: a prompt cannot be styled, cannot show the
-   * ceiling that was passed, and on a phone it is the browser's own sheet. So a
-   * row that owes a sentence is deliberately the SMALL case here — the batch
-   * dialog on ตรวจสอบประจำเดือน is where a ceiling is explained properly, with
-   * `describeBreaches` naming every limit — and this is the one-row escape
-   * hatch beside it. If ceiling rows ever become the common path through this
-   * screen, this is the line that has to change.
-   *
-   * Cancelling the prompt cancels the approval. An empty string would be
-   * refused by the route anyway; refusing it here means the reader is not told
-   * about a rule by watching a request fail.
+   * ⚠ ใบที่เกินเพดานเคยเด้ง `window.prompt` ให้พิมพ์เหตุผลก่อน จนถึง
+   * 2026-11-05 — ฝ่ายบุคคลไม่ต้องพิมพ์แล้ว (`overCeilingAsks` ใน lib/caps.js)
+   * จึงอนุมัติทันทีเหมือนใบปกติ · เหตุผลของหัวหน้าดูได้ในประวัติของแถวนี้
    */
   async function confirmEntry(entry) {
-    let note;
-    if (entry.decide?.needsReason) {
-      note = window.prompt([
-        OVER_CEILING_REASON_APPROVE,
-        OVER_CEILING_REASON_SAY,
-      ].join('\n\n'));
-      if (!note || !note.trim()) return;
-    }
     try {
-      await api.post(`/entries/${entry._id}/approve`, note ? { note: note.trim() } : undefined);
+      await api.post(`/entries/${entry._id}/approve`);
       await load();
       // ⚠ THE MONTH BEHIND THIS SCREEN JUST MOVED. `onChanged` is what re-reads
       // it — the row's status, the totals, and `approvable`, which is what
@@ -1206,11 +1150,9 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                         <RowAction
                           icon="tick"
                           tone="go"
-                          label={e.decide?.ok && e.decide.needsReason ? 'อนุมัติ *' : 'อนุมัติ'}
+                          label="อนุมัติ"
                           why={e.decide?.ok ? '' : whyNotApprovable(e)}
-                          hint={e.decide?.needsReason
-                            ? 'ใบนี้เกินเพดาน — ต้องระบุเหตุผลก่อนอนุมัติ'
-                            : 'จะเข้าสู่รายงานส่งออกทันที'}
+                          hint="จะเข้าสู่รายงานส่งออกทันที"
                           onClick={() => confirmEntry(e)}
                         />
                       )}

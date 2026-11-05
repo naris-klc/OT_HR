@@ -13,7 +13,7 @@ import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
 import { isHrVerifiedBirthday, signsForCompany, mayCorrectEntries } from '@/lib/entries.js';
 import { approvalPermission } from '@/lib/delegation.js';
-import { needsOverCeilingReason, describeBreaches } from '@/lib/caps.js';
+import { needsOverCeilingReason, describeBreaches, ceilingReasonShown } from '@/lib/caps.js';
 import { companyOf } from '@/src/config/companies.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
@@ -349,6 +349,8 @@ export const GET = route(async (req, { params }) => {
           name: entry.employee?.name || '',
           date: entry.workDate,
           text: describeBreaches(entry).map((b) => b.text).join(' · ') || 'เกินเพดาน',
+          /** เหตุผลของหัวหน้า ให้ HR อ่านบนแผ่นยืนยัน (2026-11-05) — `''` เมื่อไม่มี */
+          reason: ceilingReasonShown(entry),
         });
       }
     }
@@ -360,13 +362,14 @@ export const GET = route(async (req, { params }) => {
       /**
        * How many of them are over a department ceiling.
        *
-       * The confirm dialog demands ONE sentence for the whole decision when
-       * this is non-zero, which is the rule `overCeilingRefusal` enforces on
-       * the route. Counted here rather than re-derived in the browser because
+       * The confirm dialog warns about these rows and prints the หัวหน้า's
+       * reason under each — it demanded one sentence of its own until
+       * 2026-11-05, when ฝ่ายบุคคล stopped being asked (`overCeilingAsks`).
+       * Counted here rather than re-derived in the browser because
        * `capExceeded` is a field on the entry and the entries do not travel.
        */
       capOver,
-      /** `[{ name, date, text }]` for those rows — see above. Empty when none. */
+      /** `[{ name, date, text, reason }]` for those rows — see above. Empty when none. */
       capped,
     };
   };

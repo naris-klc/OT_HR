@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { POPULATE, DECIDE_POPULATE } from '@/lib/entries.js';
 import { approvalPermission, approvalRecord, historyExtra } from '@/lib/delegation.js';
 import { heldBy, today } from '@/lib/delegationQuery.js';
-import { needsOverCeilingReason, overCeilingRefusal } from '@/lib/caps.js';
+import { overCeilingAsks, overCeilingRefusal } from '@/lib/caps.js';
 
 export const POST = route(async (req, { params }) => {
   const user = requireRole(await requireAuth(req), ...SIGNER_ROLES, 'hr', 'admin');
@@ -60,8 +60,11 @@ export const POST = route(async (req, { params }) => {
    *
    * The rule is in lib/caps.js rather than here, because `reject` beside this
    * has to apply the same one — see the note over `overCeilingRefusal`.
+   *
+   * ขั้นฝ่ายบุคคลไม่ต้องพิมพ์แล้ว (2026-11-05) — `may.stage` เข้าไปในกฎ ดู
+   * `overCeilingAsks`
    */
-  const over = overCeilingRefusal(entry, note);
+  const over = overCeilingRefusal(entry, note, may.stage);
   if (!over.ok) return fail(over.error, over.status);
 
   if (may.stage === 'mgr') {
@@ -85,11 +88,14 @@ export const POST = route(async (req, { params }) => {
    *
    * Written only when the entry is actually over a ceiling, so an ordinary
    * approval's optional note does not end up in a field whose name says the
-   * hours were over a limit. Last decision wins: a row that goes หัวหน้า →
-   * ฝ่ายบุคคล collects two sentences and the sheet shows the one signed last,
-   * with both still in the history under their own steps.
+   * hours were over a limit.
+   *
+   * ⚠ "LAST DECISION WINS" จนถึง 2026-11-05 — ฝ่ายบุคคลเคยต้องพิมพ์เหตุผลของตัว
+   * เองและเขียนทับของหัวหน้า · ตอนนี้ HR แค่รับทราบ จึงเขียนเฉพาะขั้นที่ถาม
+   * (`overCeilingAsks`) และเหตุผลของหัวหน้าคือสิ่งที่ไปถึงสรุป OT ส่งบัญชี ·
+   * ไม่อนุมัติ ของ HR ยังเขียนทับเหมือนเดิม (route `reject`) ผู้ใช้เลือกเอง
    */
-  if (needsOverCeilingReason(entry)) entry.overCeilingReason = String(note).trim();
+  if (overCeilingAsks(entry, may.stage)) entry.overCeilingReason = String(note).trim();
 
   await entry.save();
   return json({ entry: await entry.populate(POPULATE) });

@@ -8,7 +8,7 @@ import {
 } from '@/lib/api.js';
 import {
   blockedMessage, capPair, describeBreaches, overCapLine,
-  needsOverCeilingReason, overCeilingApproveHead,
+  needsOverCeilingReason, overCeilingAsks, ceilingReasonShown, overCeilingApproveHead,
   OVER_CEILING_REASON_REQUIRED, OVER_CEILING_REASON_SAY,
 } from '@/lib/caps.js';
 import {
@@ -23,7 +23,7 @@ import {
 } from '@/lib/delegation.js';
 import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
-  Alert, BirthdayWelfareMark, CapCard, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
+  Alert, BirthdayWelfareMark, CapCard, CeilingAckAlert, ClearFilters, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SHORT, Modal, PickOne, ProxyMark, WhoName,
   RateHead, ReasonCard, RefiledNote, RequestTrail, RowAction, SegmentList, SegmentRates, EntryLead, EntryHistoryBlock, ShowMore,
   NoticeRow, NoticeStack, FilterSheet,
@@ -396,8 +396,11 @@ export default function ApprovalQueue({
    * Worked out per batch rather than per screen because the queue mixes them:
    * ticking three rows of which one is over its ceiling has to ask, and
    * unticking that row has to stop asking.
+   *
+   * ฝ่ายบุคคลไม่ถูกถามแล้ว (2026-11-05) — `overCeilingAsks` รับขั้นที่เซ็น
+   * กฎเดียวกับ route `approve` · กล่องเตือนยังขึ้นเหมือนเดิม ดู `ConfirmModal`
    */
-  const capReason = (list = []) => list.some((e) => needsOverCeilingReason(e));
+  const capReason = (list = []) => list.some((e) => overCeilingAsks(e, isHr ? 'hr' : 'mgr'));
   const toast = useToast();
 
   const [entries, setEntries] = useState(null);
@@ -2077,6 +2080,12 @@ export default function ApprovalQueue({
                         จึงไม่มีอะไรบอกบนแถวแล้ว (คอลัมน์ดูแต่รายเดือน) ผู้ใช้รับรู้และ
                         เลือกเอง · ป๊อปอัปรายละเอียดยังบอกทุกเพดาน และกดอนุมัติยัง
                         ต้องใส่เหตุผล */}
+                    {/* เหตุผลเกินเพดานของหัวหน้า บนคิวฝ่ายบุคคลเท่านั้น
+                        (2026-11-05) — HR ไม่ต้องพิมพ์เองแล้ว จึงต้องเห็นของหัวหน้า
+                        ได้โดยไม่ต้องเปิดใบ · ใบที่ไม่มีเหตุผลไม่แสดงอะไรเพิ่ม */}
+                    {isHr && ceilingReasonShown(e) && (
+                      <div className="cell-sub">เหตุผลเกินเพดาน: {ceilingReasonShown(e)}</div>
+                    )}
                     {/* code + column: a bucket-scoped minimum can leave two
                         warnings on one entry sharing a code. */}
                     {shownWarnings(e.warnings).map((w) => (
@@ -2434,11 +2443,13 @@ export default function ApprovalQueue({
            * learn that a sentence is owed. So a row that needs one is handed
            * to the same dialog every other over-ceiling approval goes through,
            * and every other row signs straight away exactly as before.
+           * ฝ่ายบุคคลไม่ต้องพิมพ์ (2026-11-05) จึงเซ็นทันทีเหมือนใบปกติ — เหตุผล
+           * ของหัวหน้าอยู่ในการ์ดรายละเอียดของป๊อปอัปที่เพิ่งอ่านไปแล้ว
            */
           onApprove={() => {
             const e = detail;
             setDetail(null);
-            if (needsOverCeilingReason(e)) setConfirming([e]);
+            if (capReason([e])) setConfirming([e]);
             else approve([e]);
           }}
           onReject={(reason, notify) => { const e = detail; setDetail(null); reject([e], reason, notify); }}
@@ -2589,8 +2600,21 @@ function ConfirmModal({
           another one" is not an instruction any more.
 
           The headline typed its own ⚠️ under `mark={false}` until 2026-10-10;
-          the amber badge `.alert` draws is that mark now (รายงาน UX ข.4). */}
-      {capped.length > 0 && (
+          the amber badge `.alert` draws is that mark now (รายงาน UX ข.4).
+
+          ฝ่ายบุคคลได้ `CeilingAckAlert` แทน (2026-11-05): ข้อเท็จจริงเดียวกัน
+          แต่ไม่ถามเหตุผล และต่อเหตุผลของหัวหน้าท้ายแต่ละใบ */}
+      {isHr && (
+        <CeilingAckAlert
+          rows={capped.map((e) => ({
+            key: e._id,
+            text: `${e.employee?.name} · ${thaiDate(e.workDate)} · ${
+              describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดาน'}`,
+            reason: ceilingReasonShown(e),
+          }))}
+        />
+      )}
+      {!isHr && capped.length > 0 && (
         <Alert kind="warn">
           <strong>{overCeilingApproveHead(capped.length)}</strong>
           {/* Every ceiling each of them passed, by name. `describeBreaches` is
@@ -3126,7 +3150,7 @@ function DetailModal({
               )}
             </div>
             <div className="dm-panel">
-              <ReasonCard description={e.description} extraNote={e.extraNote} />
+              <ReasonCard description={e.description} extraNote={e.extraNote} ceilingReason={ceilingReasonShown(e)} />
             </div>
           </div>
             {/* One request's history, or the whole chain when this one replaced

@@ -1467,7 +1467,7 @@ lookup ที่ไม่เจออะไรกับบทบาทที่�
 | คำนวณใหม่ (ใบที่ยังไม่อนุมัติ) | ✅ | ✅ | `authorizeReplay` |
 | คำนวณใหม่ **รวมใบที่อนุมัติแล้ว** | ❌ | ✅ *(ต้องระบุเหตุผล)* | `authorizeReplay` |
 | ยกเว้นเพดานให้ใบหนึ่ง | ✅ | ✅ | `/api/entries/[id]/cap-override` *(ไม่มีหน้าจอ — ปุ่ม **อนุมัติเกินเพดาน** และกล่องของมันถูกถอดออก 2026-09-02 เราต์ยังอยู่และยังปฏิเสธเหตุผลว่าง)* |
-| เซ็นใบที่เกินเพดาน **โดยไม่บอกเหตุผล** | ❌ | ❌ | `overCeilingRefusal` — หัวหน้าก็ไม่ได้ ทั้ง อนุมัติ และ ไม่อนุมัติ |
+| เซ็นใบที่เกินเพดาน **โดยไม่บอกเหตุผล** | ✅ *(อนุมัติ ขั้นฝ่ายบุคคล)* | ✅ *(อนุมัติ ขั้นฝ่ายบุคคล)* | `overCeilingRefusal` · `overCeilingAsks` — ขั้นหัวหน้ายังต้องบอกเหตุผล ทั้ง อนุมัติ และ ไม่อนุมัติ · ขั้นฝ่ายบุคคลแค่รับทราบ เห็นเหตุผลของหัวหน้าแล้วกดอนุมัติได้เลย ตั้งแต่ 2026-11-05 (อ่านว่า ❌ ❌ *หัวหน้าก็ไม่ได้* จนถึงวันนั้น) · ไม่อนุมัติ ยังต้องมีเหตุผลเสมอ |
 | **บันทึกประวัติระบบ** | ❌ | ✅ | `/api/logs`, `/api/logs/summary`, `/api/exports/logs.csv` |
 
 **ตารางนี้มีสองคอลัมน์เพราะสองบทบาทนี้เท่านั้นที่*แก้*อะไรได้บ้าง** ตั้งแต่
@@ -2724,7 +2724,7 @@ thought that was all right was that a button had been pressed. The flag was
 shown on two screens, both of them the approval queue, which accounting does
 not open and which no longer holds the row by the time a month is closed.
 
-So **deciding a flagged entry now costs a sentence, either way and at either
+So **deciding a flagged entry costs a sentence, either way, at the หัวหน้า
 step** — `overCeilingRefusal` in `lib/caps.js`, applied by both
 `/api/entries/[id]/approve` and `/api/entries/[id]/reject`. The rule is in
 `caps.js` rather than in the routes for the reason `approvalPermission` is:
@@ -2734,6 +2734,25 @@ always going to be missing. On `reject` it can never fire — that route refuses
 an empty reason twenty lines earlier — and it is called anyway, because "this
 is unnecessary here" is a fact about today's code that nothing would notice
 going stale.
+
+> **It read *"either way and at either step"* until 2026-11-05.** ผู้ใช้สั่ง:
+> *ใส่เหตุผลการอนุมัติ ตั้งแต่ระดับขั้นผู้อนุมัติก่อนหน้า HR ส่วน HR แค่รับทราบ
+> และเห็นเหตุผล ไม่ต้องใส่เหตุผลแล้ว แต่การแจ้งเตือนจุดต่าง ๆ คงไว้เหมือนเดิม* ·
+> `overCeilingAsks(entry, stage)` ตอบว่าขั้นนี้ต้องพิมพ์ไหม — `'mgr'` ใช่
+> `'hr'` ไม่ · `needsOverCeilingReason` ยังตอบว่าใบเกินเพดานไหม และกล่องเตือน
+> ทุกจุดยังอ่านจากมัน
+>
+> - **อนุมัติ ขั้นฝ่ายบุคคล ไม่ถาม และไม่เขียนทับ `overCeilingReason`** — เหตุผล
+>   ของหัวหน้าคือสิ่งที่ไปถึงสรุป OT ส่งบัญชี · **ไม่อนุมัติ ของ HR ยังเขียนทับ**
+>   (ใบที่ถูกปฏิเสธ รายงานบอกว่าทำไมไม่จ่าย) ผู้ใช้เลือกเอง
+> - **ใบที่มาถึง HR โดยไม่มีเหตุผล** (ก่อน 2026-09-02 หรือข้ามขั้นหัวหน้า) HR ก็
+>   ไม่ต้องพิมพ์ — กล่องเตือนเขียนว่า *ไม่มีเหตุผลจากขั้นหัวหน้า* · ผู้ใช้เลือกเอง
+> - **HR เห็นเหตุผลของหัวหน้าสามที่**: `CeilingAckAlert` บนแผ่นยืนยันของ HR ทั้ง
+>   สามแผ่น (คิวรออนุมัติ · หน้ารายการ OT · ตรวจสอบประจำเดือน) · บรรทัด
+>   *เหตุผลเกินเพดาน:* ใต้รายละเอียดงานในแถวคิว HR · และหัวข้อย่อยในการ์ด
+>   รายละเอียดงานของป๊อปอัป ซึ่งหัวหน้าเห็นด้วย · ทั้งหมดอ่าน `ceilingReasonShown`
+>   ซึ่งว่างนอกสถานะ รอฝ่ายบุคคล / อนุมัติแล้ว เพราะบนใบที่ถูกปฏิเสธ ฟิลด์นี้คือ
+>   เหตุผลที่ไม่อนุมัติ
 
 - **One box, two rules.** The confirmation dialog already demanded a sentence
   for a different reason: an administrator signing the หัวหน้า step of a
@@ -2777,8 +2796,9 @@ going stale.
   they produced would be a restatement of HR's.
 - **The reason lands in two places.** `history` gets it through `entry.log()`,
   one row per step, and that is the account that cannot be overwritten. The
-  entry also gets `overCeilingReason`, which the last decision overwrites —
-  that copy exists because สรุป OT ส่งบัญชี holds a month of rows and cannot
+  entry also gets `overCeilingReason`, written by the หัวหน้า's decision and
+  by any ไม่อนุมัติ after it (*"which the last decision overwrites"* until
+  2026-11-05, when HR's อนุมัติ stopped writing it) — that copy exists because สรุป OT ส่งบัญชี holds a month of rows and cannot
   walk every entry's history to colour a number.
 - **There is no `isOverCeiling` field, deliberately.** `capExceeded` has meant
   precisely that since the ceiling existed and a dozen screens, reports and
@@ -8345,6 +8365,10 @@ The two halves are one feature: **the batch is the fast path for rows nothing is
 wrong with, and this is the considered path for the rest.** Either alone leaves
 the screen worse than it was.
 
+> **⚠ GONE 2026-11-05 — ฝ่ายบุคคลไม่ต้องพิมพ์เหตุผลเกินเพดานแล้ว
+> (`overCeilingAsks`) จึงไม่มี prompt และไม่มีช่องเหตุผลในกล่องอนุมัติหลายใบ
+> ด้วย · ย่อหน้าเดิม:**
+>
 > **⚠ A ceiling row here asks for its sentence through `window.prompt`**, which
 > is worth saying out loud because it is the one place in this round that is
 > not properly designed. This list is already a full-page sub-view with an
