@@ -414,9 +414,18 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
    *
    * ⚠ ใบที่เกินเพดานเคยเด้ง `window.prompt` ให้พิมพ์เหตุผลก่อน จนถึง
    * 2026-11-05 — ฝ่ายบุคคลไม่ต้องพิมพ์แล้ว (`overCeilingAsks` ใน lib/caps.js)
-   * จึงอนุมัติทันทีเหมือนใบปกติ · เหตุผลของหัวหน้าดูได้ในประวัติของแถวนี้
+   *
+   * แต่จุดเตือนต้องอยู่ (ผู้ใช้สั่ง "การแจ้งเตือนจุดต่าง ๆ คงไว้เหมือนเดิม") —
+   * วันที่ 05 ใบเกินเพดานกด ✓ แล้วเซ็นทันที ไม่มีอะไรบอกและไม่เห็นเหตุผลของ
+   * หัวหน้า (เจอตอนเดิน flow 2026-11-06) · ตอนนี้ใบเกินเพดานเปิด
+   * `BatchApproveModal` ใบเดียว ซึ่งมี `CeilingAckAlert` อยู่แล้ว ใบปกติยัง
+   * เซ็นทันทีเหมือนเดิม
    */
   async function confirmEntry(entry) {
+    if (needsOverCeilingReason(entry)) {
+      setBatch({ list: [entry], choosable: false });
+      return;
+    }
     try {
       await api.post(`/entries/${entry._id}/approve`);
       await load();

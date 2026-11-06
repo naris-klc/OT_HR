@@ -656,10 +656,16 @@ export function OverCeilingNote({ over }) {
             {n.reason && <> · เหตุผลผู้อนุมัติ: {n.reason}</>}
             {n.waivedReason && <> · ยกเว้นเพดานโดยฝ่ายบุคคล: {n.waivedReason}</>}
             {!n.reason && !n.waivedReason && (
-              /* Approved before 2026-09-02, when nobody was asked for one. Said
-                 out loud rather than left blank: an empty space after a colon
-                 reads as a reason that failed to load. */
-              <> · <span className="muted">ไม่ได้บันทึกเหตุผลไว้ (อนุมัติก่อนเริ่มใช้กฎนี้)</span></>
+              /* No sentence on record. Said out loud rather than left blank: an
+                 empty space after a colon reads as a reason that failed to load.
+
+                 It read "(อนุมัติก่อนเริ่มใช้กฎนี้)" until 2026-11-06 — true while
+                 both steps were asked (2026-09-02 → 2026-11-05). Since HR only
+                 acknowledges, a ใบ that reached HR without the หัวหน้า's sentence
+                 (moved to HR by lib/unsignableRepair.js, or signed before
+                 2026-09-02) is approved today with none, and "before the rule"
+                 would be a false date on the sheet accounting reads. */
+              <> · <span className="muted">ไม่ได้บันทึกเหตุผลไว้</span></>
             )}
           </li>
         ))}

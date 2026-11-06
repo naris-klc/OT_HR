@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import {
   needsOverCeilingReason, overCeilingRefusal, wasOverCeiling, overCeilingApproveHead,
   OVER_CEILING_REASON_REQUIRED, OVER_CEILING_REASON_APPROVE,
-  overCeilingAsks, ceilingReasonShown, ceilingReasonLine, overCeilingAckHead,
+  overCeilingAsks, ceilingStageOf, ceilingReasonShown, ceilingReasonLine, overCeilingAckHead,
 } from '../lib/caps.js';
 import { overCeilingOf } from '../lib/accountingRows.js';
 
@@ -97,8 +97,8 @@ test('เหตุผลที่ให้เห็น: เฉพาะ รอ�
 test('ฝ่ายบุคคลเห็นเหตุผลของหัวหน้า: แผ่นยืนยัน · แถวในคิว · ป๊อปอัป', () => {
   const queue = strip(read('components/ApprovalQueue.jsx'));
   const confirmModal = queue.slice(queue.indexOf('function ConfirmModal('), queue.indexOf('function RejectModal('));
-  assert.match(confirmModal, /\{isHr && \(\s*<CeilingAckAlert/);
-  assert.match(confirmModal, /\{!isHr && capped\.length > 0 && \(/, 'แผ่นของหัวหน้าต้องเหมือนเดิม');
+  assert.match(confirmModal, /\{acked\.length > 0 && \(\s*<CeilingAckAlert\s*rows=\{acked\.map/);
+  assert.match(confirmModal, /\{asked\.length > 0 && \(/, 'แผ่นของหัวหน้าต้องเหมือนเดิม');
   assert.match(queue, /\{isHr && ceilingReasonShown\(e\) && \(\s*<div className="cell-sub">เหตุผลเกินเพดาน: \{ceilingReasonShown\(e\)\}<\/div>/);
   // ป๊อปอัปเห็นทั้งหัวหน้าและ HR — ผู้ใช้เลือก
   assert.match(queue, /<ReasonCard description=\{e\.description\} extraNote=\{e\.extraNote\} ceilingReason=\{ceilingReasonShown\(e\)\} \/>/);
@@ -724,4 +724,49 @@ test('ช่องหมายเหตุบนใบพิมพ์ยัง�
   const body = fn.slice(0, fn.indexOf(String.fromCharCode(10) + '}'));
   assert.match(body, /BIRTHDAY_REMARK/);
   assert.doesNotMatch(body, /overCeiling|เกินเพดาน/, 'แถบนี้ไม่รับหมายเหตุชนิดที่สอง');
+});
+
+// ── เดิน flow ก่อน deploy 2026-11-06 — สามข้อที่ test เดิมไม่จับ ─────────────
+
+test('คิวฝ่ายบุคคล: ใบที่ HR เซ็นแทนหัวหน้า (pending_mgr) ยังถูกถามเหตุผล — ขั้นอ่านจากใบ ไม่ใช่จากคิว', () => {
+  const queue = strip(read('components/ApprovalQueue.jsx'));
+  // ขั้นของใบตรงกับที่ approvalPermission คืนให้ route
+  assert.equal(ceilingStageOf({ status: 'pending_hr' }), 'hr');
+  assert.equal(ceilingStageOf({ status: 'pending_mgr' }), 'mgr');
+  assert.equal(ceilingStageOf(undefined), 'mgr', 'ไม่รู้ขั้น = ถาม (ปลอดภัยไว้ก่อน)');
+  assert.doesNotMatch(queue, /overCeilingAsks\(e, isHr/, 'ห้ามอ่านขั้นจากคิว — คิว HR มีใบขั้นหัวหน้าที่เซ็นแทนได้');
+  const confirmModal = queue.slice(queue.indexOf('function ConfirmModal('), queue.indexOf('function RejectModal('));
+  assert.match(confirmModal, /const asked = capped\.filter\(\(e\) => overCeilingAsks\(e, ceilingStageOf\(e\)\)\);/);
+  assert.match(confirmModal, /const acked = capped\.filter\(\(e\) => !overCeilingAsks\(e, ceilingStageOf\(e\)\)\);/);
+  assert.match(confirmModal, /items=\{asked\}/, 'รายการในกล่องที่ถามเหตุผลต้องเป็นใบที่ถูกถามจริง');
+  assert.doesNotMatch(confirmModal, /isHr && \(\s*<CeilingAckAlert|!isHr && capped/);
+  // ข้อเท็จจริงที่ทั้งหมดนี้พิงอยู่: HR ที่ถือการมอบสิทธิ์เซ็นใบ pending_mgr เป็นขั้นหัวหน้า
+  assert.equal(overCeilingAsks(flagged({ status: 'pending_mgr' }), 'mgr'), true);
+  assert.equal(overCeilingAsks(flagged({ status: 'pending_hr' }), 'hr'), false);
+});
+
+test('รายงานการเงิน: ใบเกินเพดานที่ไม่มีเหตุผล ไม่ถูกบอกว่า "อนุมัติก่อนเริ่มใช้กฎนี้"', () => {
+  // HR ไม่ถูกถามแล้ว ใบที่มาถึง HR โดยไม่มีเหตุผลจึงถูกอนุมัติวันนี้โดยไม่มีเหตุผล
+  const common = strip(read('components/common.jsx'));
+  assert.doesNotMatch(common, /อนุมัติก่อนเริ่มใช้กฎนี้/);
+  assert.match(common, /<span className="muted">ไม่ได้บันทึกเหตุผลไว้<\/span>/);
+});
+
+test('ตรวจสอบประจำเดือน: `toast` ที่ signPicked เรียกถูกประกาศไว้', () => {
+  const hr = strip(read('components/HrView.jsx'));
+  assert.match(hr, /import \{ useToast \} from '\.\/Toast\.jsx';/);
+  const body = hr.slice(hr.indexOf('export default function HrView('), hr.indexOf('async function signPicked('));
+  assert.match(body, /const toast = useToast\(\);/);
+});
+
+test('หน้ารายการ OT ของ HR: ✓ บนใบเกินเพดานเปิดกล่องรับทราบ ไม่เซ็นทันที — จุดเตือนเดิมของ window.prompt', () => {
+  const list = strip(read('components/HrEntries.jsx'));
+  const fn = list.slice(list.indexOf('async function confirmEntry(entry)'));
+  const body = fn.slice(0, fn.indexOf('async function voidEntry'));
+  assert.match(body, /if \(needsOverCeilingReason\(entry\)\) \{\s*setBatch\(\{ list: \[entry\], choosable: false \}\);\s*return;\s*\}/);
+  // กล่องที่เปิดคือกล่องที่มีเหตุผลของหัวหน้า และไม่มีช่องพิมพ์
+  const modal = list.slice(list.indexOf('function BatchApproveModal('), list.indexOf('export default function'));
+  assert.match(modal, /<CeilingAckAlert/);
+  assert.match(modal, /reason: ceilingReasonShown\(e\)/);
+  assert.doesNotMatch(modal, /<textarea/);
 });

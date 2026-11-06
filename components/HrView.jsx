@@ -22,6 +22,7 @@ import PeriodStatus from './PeriodStatus.jsx';
 import ScanImport from './ScanImport.jsx';
 import ScanCompareCard from './ScanCompareCard.jsx';
 import MonthConfirm from './MonthConfirm.jsx';
+import { useToast } from './Toast.jsx';
 import PrintForm from './PrintForm.jsx';
 import PrintFormBatch from './PrintFormBatch.jsx';
 import HrEntries from './HrEntries.jsx';
@@ -235,6 +236,12 @@ export default function HrView({
 }) {
   /** The query string both the table and its two CSVs carry. */
   const scopeParam = scope === 'team' ? '&scope=team' : '';
+  /**
+   * `signPicked` เรียก `toast` มาตั้งแต่ 2026-09-10 (ef2f8c9) แต่ไม่เคยประกาศ —
+   * ยืนยันประจำเดือนสำเร็จแล้วจึงโยน ReferenceError แทนที่จะขึ้นข้อความ
+   * ข้อมูลถูกบันทึกครบ เสียแค่คำยืนยัน (เจอตอนเดิน flow 2026-11-06)
+   */
+  const toast = useToast();
   const [period, setPeriod] = useState(currentPeriod());
   const [data, setData] = useState(null);
   /**

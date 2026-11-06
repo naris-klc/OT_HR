@@ -476,8 +476,9 @@ test('the reason box is compulsory for a ceiling, and for nothing else', () => {
   // screen-wide flag would demand a reason for entries that are under their
   // ceiling and get a 200 from a server that asked for nothing.
   // ขั้นที่เซ็นเข้าไปในกฎตั้งแต่ 2026-11-05 (ฝ่ายบุคคลไม่ถูกถาม) — ยังอ่านจากแถว
-  // ไม่ใช่ธงทั้งจอ: ใบที่ไม่เกินเพดานไม่ถูกถามไม่ว่าขั้นไหน
-  assert.match(queue, /const capReason = \(list = \[\]\) => list\.some\(\(e\) => overCeilingAsks\(e, isHr \? 'hr' : 'mgr'\)\);/);
+  // ไม่ใช่ธงทั้งจอ: ใบที่ไม่เกินเพดานไม่ถูกถามไม่ว่าขั้นไหน · ขั้นอ่านจากสถานะของใบ
+  // ไม่ใช่จากคิว ตั้งแต่ 2026-11-06 (คิว HR มีใบขั้นหัวหน้าที่เซ็นแทนได้)
+  assert.match(queue, /const capReason = \(list = \[\]\) => list\.some\(\(e\) => overCeilingAsks\(e, ceilingStageOf\(e\)\)\);/);
   // The screen must not demand more than the route: ฝ่ายบุคคล signing a covered
   // team's row on a real delegation is not overriding anything, and the server
   // asks them for nothing.
