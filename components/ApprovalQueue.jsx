@@ -8,7 +8,7 @@ import {
 } from '@/lib/api.js';
 import {
   blockedMessage, capPair, describeBreaches, overCapLine,
-  needsOverCeilingReason, overCeilingAsks, ceilingReasonShown, overCeilingApproveHead,
+  needsOverCeilingReason, overCeilingAsks, ceilingStageOf, ceilingReasonShown, overCeilingApproveHead,
   OVER_CEILING_REASON_REQUIRED, OVER_CEILING_REASON_SAY,
 } from '@/lib/caps.js';
 import {
@@ -399,8 +399,13 @@ export default function ApprovalQueue({
    *
    * ฝ่ายบุคคลไม่ถูกถามแล้ว (2026-11-05) — `overCeilingAsks` รับขั้นที่เซ็น
    * กฎเดียวกับ route `approve` · กล่องเตือนยังขึ้นเหมือนเดิม ดู `ConfirmModal`
+   *
+   * ขั้นอ่านจากสถานะของแต่ละใบ ไม่ใช่จากคิว (แก้ 2026-11-06) — คิวของฝ่ายบุคคล
+   * มีใบ `pending_mgr` ที่ HR เซ็นแทนหัวหน้าได้ผ่านการมอบสิทธิ์ (`signableHere`)
+   * ใบนั้น server เซ็นเป็นขั้นหัวหน้าและถามเหตุผล เดิมจออ่าน `isHr` แล้วไม่ถาม
+   * กดยืนยันจึงได้ 400 กลับมา
    */
-  const capReason = (list = []) => list.some((e) => overCeilingAsks(e, isHr ? 'hr' : 'mgr'));
+  const capReason = (list = []) => list.some((e) => overCeilingAsks(e, ceilingStageOf(e)));
   const toast = useToast();
 
   const [entries, setEntries] = useState(null);
@@ -2505,6 +2510,10 @@ function ConfirmModal({
    * case that would split them.
    */
   const capped = entries.filter((e) => needsOverCeilingReason(e));
+  // แยกตามขั้นของแต่ละใบ: ขั้นหัวหน้าถูกถามเหตุผล ขั้นฝ่ายบุคคลแค่รับทราบ — ชุดเดียว
+  // ในคิว HR มีได้ทั้งสองแบบ (ใบที่เซ็นแทนหัวหน้า + ใบรอ HR) ดู `capReason`
+  const asked = capped.filter((e) => overCeilingAsks(e, ceilingStageOf(e)));
+  const acked = capped.filter((e) => !overCeilingAsks(e, ceilingStageOf(e)));
   const many = entries.length > 1;
   /**
    * The reason for letting a request through over its department's ceiling.
@@ -2603,10 +2612,11 @@ function ConfirmModal({
           the amber badge `.alert` draws is that mark now (รายงาน UX ข.4).
 
           ฝ่ายบุคคลได้ `CeilingAckAlert` แทน (2026-11-05): ข้อเท็จจริงเดียวกัน
-          แต่ไม่ถามเหตุผล และต่อเหตุผลของหัวหน้าท้ายแต่ละใบ */}
-      {isHr && (
+          แต่ไม่ถามเหตุผล และต่อเหตุผลของหัวหน้าท้ายแต่ละใบ · แยกตามขั้นของใบ
+          ไม่ใช่ตามคิว ตั้งแต่ 2026-11-06 (`asked` / `acked`) */}
+      {acked.length > 0 && (
         <CeilingAckAlert
-          rows={capped.map((e) => ({
+          rows={acked.map((e) => ({
             key: e._id,
             text: `${e.employee?.name} · ${thaiDate(e.workDate)} · ${
               describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดาน'}`,
@@ -2614,9 +2624,9 @@ function ConfirmModal({
           }))}
         />
       )}
-      {!isHr && capped.length > 0 && (
+      {asked.length > 0 && (
         <Alert kind="warn">
-          <strong>{overCeilingApproveHead(capped.length)}</strong>
+          <strong>{overCeilingApproveHead(asked.length)}</strong>
           {/* Every ceiling each of them passed, by name. `describeBreaches` is
               the same wording the row underneath and the pop-up already use —
               a reason is being demanded for exactly this, so the sheet has to
@@ -2624,7 +2634,7 @@ function ConfirmModal({
           <ShowMore
             as="ul"
             className="alert-list"
-            items={capped}
+            items={asked}
             render={(e) => (
               <li key={e._id}>
                 {e.employee?.name} · {thaiDate(e.workDate)} ·

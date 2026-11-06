@@ -596,7 +596,7 @@ test('a long list in a notice shows five, then ten more a press, and can be put 
 
 test('every unbounded list in a notice goes through ShowMore', () => {
   const uses = {
-    'components/ApprovalQueue.jsx': ['items={capped}', 'items={failed}'],
+    'components/ApprovalQueue.jsx': ['items={capped}', 'items={asked}', 'items={failed}'],
     'components/HrView.jsx': ['items={data.birthDates.missingFor}'],
     'components/PrintForm.jsx': [
       'items={form.pending}', 'items={form.notPrinted}', 'items={form.acting}', 'items={form.hidden}',
@@ -620,8 +620,14 @@ test('every unbounded list in a notice goes through ShowMore', () => {
     const src = sourceOf(file);
     for (const l of lists) assert.ok(src.includes(l), `${file}: ${l} ไม่ได้ผ่าน ShowMore`);
   }
-  // The two approval dialogs both list what is over the ceiling.
-  assert.equal((sourceOf('components/ApprovalQueue.jsx').match(/items=\{capped\}/g) || []).length, 2);
+  // The two approval dialogs both list what is over the ceiling. Since
+  // 2026-11-06 the อนุมัติ dialog lists only the rows it asks a reason for
+  // (`asked`); the rows HR only acknowledges go through `CeilingAckAlert`,
+  // whose own list is a ShowMore too.
+  const queueSrc = sourceOf('components/ApprovalQueue.jsx');
+  assert.equal((queueSrc.match(/items=\{capped\}/g) || []).length, 1, 'กล่องไม่อนุมัติ');
+  assert.equal((queueSrc.match(/items=\{asked\}/g) || []).length, 1, 'กล่องอนุมัติ ขั้นหัวหน้า');
+  assert.match(sourceOf('components/common.jsx'), /export function CeilingAckAlert[\s\S]*?<ShowMore/);
   // The table of hours with no owner uses the hook, above its early return.
   const unacc = common.slice(common.indexOf('export function UnaccountedHours('));
   assert.ok(
